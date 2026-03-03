@@ -1,4 +1,12 @@
 import { useState } from 'react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { 
+  faSearch, 
+  faGlobe, 
+  faChevronDown,
+  faBars,
+  faTimes
+} from '@fortawesome/free-solid-svg-icons'
 import logoImage from '../assets/eki-white-logo.png'
 
 const Navbar = () => {
@@ -31,20 +39,10 @@ const Navbar = () => {
 
         {/* Search Bar with Icon on Left */}
         <div className="flex-1 max-w-sm mx-4 relative">
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            fill="none" 
-            viewBox="0 0 24 24" 
-            strokeWidth="1.5" 
-            stroke="currentColor" 
-            className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-          >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" 
-            />
-          </svg>
+          <FontAwesomeIcon 
+            icon={faSearch}
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5"
+          />
           <input 
             type="text" 
             placeholder="Search" 
@@ -62,43 +60,24 @@ const Navbar = () => {
             <li>
               <a 
                 href="#signup" 
-                className="bg-[#efb034] text-black font-medium px-4 py-2 rounded no-underline hover:bg-[#efb034] hover:text-black transition-colors duration-300"
+                className="bg-[#efb034] text-white border-none px-8 py-3.5 rounded-lg cursor-pointer text-base font-semibold transition-all duration-300 hover:bg-[#d99c1c] hover:-translate-y-0.5 hover:shadow-[0_20px_30px_rgba(0,0,0,0.2)] inline-block"
               >
                 Sign Up
               </a>
             </li>
             
-            {/* Language Selector - Now after Sign Up */}
+            {/* Language Selector */}
             <li className="relative">
               <button
                 onClick={() => setIsLanguageOpen(!isLanguageOpen)}
                 className="flex items-center gap-1 text-black font-medium hover:text-[#efb034ff] transition-colors duration-300 focus:outline-none"
               >
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  strokeWidth="1.5" 
-                  stroke="currentColor" 
-                  className="w-5 h-5"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418"
-                  />
-                </svg>
+                <FontAwesomeIcon icon={faGlobe} className="w-5 h-5" />
                 <span>{selectedLanguage}</span>
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  strokeWidth="1.5" 
-                  stroke="currentColor" 
+                <FontAwesomeIcon 
+                  icon={faChevronDown} 
                   className={`w-4 h-4 transition-transform duration-300 ${isLanguageOpen ? 'rotate-180' : ''}`}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                </svg>
+                />
               </button>
               
               {/* Language Dropdown */}
@@ -126,9 +105,10 @@ const Navbar = () => {
           className="flex lg:hidden flex-col cursor-pointer"
           onClick={() => setIsOpen(!isOpen)}
         >
-          <span className={`w-6 h-0.5 bg-gray-800 my-0.5 transition-transform duration-300 ${isOpen ? 'rotate-45 translate-y-2' : ''}`}></span>
-          <span className={`w-6 h-0.5 bg-gray-800 my-0.5 transition-opacity duration-300 ${isOpen ? 'opacity-0' : ''}`}></span>
-          <span className={`w-6 h-0.5 bg-gray-800 my-0.5 transition-transform duration-300 ${isOpen ? '-rotate-45 -translate-y-2' : ''}`}></span>
+          <FontAwesomeIcon 
+            icon={isOpen ? faTimes : faBars} 
+            className="text-gray-800 text-2xl"
+          />
         </div>
       </div>
 
@@ -153,37 +133,18 @@ const Navbar = () => {
               </a>
             </li>
             
-            {/* Mobile Language Selector - Now after Sign Up */}
+            {/* Mobile Language Selector */}
             <li className="relative">
               <button
                 onClick={() => setIsLanguageOpen(!isLanguageOpen)}
                 className="flex items-center justify-center gap-1 text-black font-medium hover:text-[#efb034ff] py-2 mx-auto"
               >
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  strokeWidth="1.5" 
-                  stroke="currentColor" 
-                  className="w-5 h-5"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418"
-                  />
-                </svg>
+                <FontAwesomeIcon icon={faGlobe} className="w-5 h-5" />
                 <span>{selectedLanguage}</span>
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  strokeWidth="1.5" 
-                  stroke="currentColor" 
+                <FontAwesomeIcon 
+                  icon={faChevronDown} 
                   className={`w-4 h-4 transition-transform duration-300 ${isLanguageOpen ? 'rotate-180' : ''}`}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                </svg>
+                />
               </button>
               
               {/* Mobile Language Dropdown */}

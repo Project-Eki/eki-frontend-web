@@ -1,7 +1,7 @@
 import React from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faList, faCreditCard, faBoltLightning, faMessage } from '@fortawesome/free-solid-svg-icons'
-import featuresImage from '../assets/dashboard-preview.jpg'
+import featuresImage from '../assets/features-image.jpg'
 
 const Features = () => {
   const features = [
@@ -57,16 +57,15 @@ const Features = () => {
           </div>
           
           {/* Right side - Image preview */}
-          <div className="w-full lg:w-1/2">
+          <div className="w-full lg:w-1/2 max-w-md"> 
             <div className="rounded-xl overflow-hidden shadow-2xl border border-white/10">
               <img 
                 src={featuresImage} 
                 alt="Vendor dashboard preview" 
-                className="w-full h-auto object-cover"
-              />
+                className="w-full h-auto object-cover"/>
             </div>
           </div>
-          
+
         </div>
       </div>
     </section>

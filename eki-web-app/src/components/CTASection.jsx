@@ -1,5 +1,5 @@
 import React from 'react'
-import ctaBackground from '../assets/vendor1.jpg'
+import ctaBackground from '../assets/cta-image.jpg'
 
 const CTASection = () => {
   return (
