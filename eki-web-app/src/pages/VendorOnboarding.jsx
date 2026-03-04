@@ -1,3 +1,10 @@
+import { 
+  registerUser, 
+  verifyEmail,
+  submitBusinessIdentity, 
+  submitContactLocation, 
+  submitOperationCompliance 
+} from "../services/api";
 import { useState } from "react";
 import Navbar from "../components/Navbar";
 import AccountBasics from "../components/AccountBasics";
@@ -15,6 +22,103 @@ const VendorOnboarding = () => {
 
   // NEW: State for tracking if the final "Submit" was clicked
   const [isSubmitted, setIsSubmitted] = useState(false);
+  // 1. Centralized State
+  const [formData, setFormData] = useState({
+    // Account Basics(User Model)
+    first_name: "",
+    last_name: "",
+    email: "",
+    password: "",
+    agreeToTerms: false,
+
+    // Business identity
+    business_name: "",
+    business_type: "", 
+    owner_full_name: "",
+    tax_id: "",
+    registration_number: "",
+    business_description: "",
+
+    // Contact and location
+    business_email: "",
+    business_phone: "",
+    address: "",
+    city: "",
+    country: "",
+
+    // Operations and compliance
+    opening_time: "09:00",
+    closing_time: "17:00",
+
+    // Documents 
+    documents: {
+    national_id: null,
+    business_license: null,
+    tax_certificate: null,
+    incorporation_cert: null,
+  }
+
+  });
+
+  // 2. Update Function
+  const handleUpdate = (newData) => {
+    setFormData(prev => ({ ...prev, ...newData }));
+  };
+
+  const handleNextStep = async () => {
+  try {
+    if (currentStep === 1) {
+      // Register the user
+      await registerUser({
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        password: formData.password,
+        agreeToTerms: formData.agreeToTerms,
+      });
+    }
+
+    if (currentStep === 3) {
+      // Submit business info
+      await submitBusinessIdentity({
+        business_name: formData.business_name,
+        business_type: formData.business_type,
+        owner_full_name: formData.owner_full_name,
+        tax_id: formData.tax_id,
+        registration_number: formData.registration_number,
+        business_description: formData.business_description,
+      });
+    }
+
+    if (currentStep === 4) {
+      // Submit contact info
+      await submitContactLocation({
+        business_email: formData.business_email,
+        business_phone: formData.business_phone,
+        address: formData.address,
+        city: formData.city,
+        country: formData.country,
+      });
+    }
+
+    if (currentStep === 5) {
+      // Submit operations & compliance info (documents etc.)
+      await submitOperationCompliance({
+        opening_time: formData.opening_time,
+        closing_time: formData.closing_time,
+        documents: formData.documents,
+      });
+      setIsSubmitted(true); // Show success screen
+      return;
+    }
+
+    // Move to next step
+    setCurrentStep(currentStep + 1);
+  } catch (error) {
+    console.error(error.message);
+    alert(error.message); // optional: show error to user
+  }
+};
 
   return (
     <div className="h-screen w-full flex flex-col bg-[#F8F9FA]  font-sans">
@@ -53,7 +157,10 @@ const VendorOnboarding = () => {
               <h2 className="text-[28px] font-black text-gray-900 mt-2 leading-tight">Join to enjoy faster Sales</h2>
               <p className="text-gray-500 text-[14px]">Let's start with the basics to get your account ready.</p>
             </div>
-            <AccountBasics onNext={() => setCurrentStep(2)} />
+            <AccountBasics 
+              formData={formData}
+              updateFormData={handleUpdate}
+              onNext={handleNextStep} />
           </>
         )}
 
@@ -62,7 +169,10 @@ const VendorOnboarding = () => {
           <div className="flex flex-col items-start w-full">
             <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">Step 2 of 5</span>
             <div className="w-full flex justify-center">
-              <VerifyIdentity onNext={() => setCurrentStep(3)} onBack={()=> setCurrentStep(1)}/>
+              <VerifyIdentity 
+                formData={formData} 
+                onNext={() => setCurrentStep(3)} 
+                onBack={()=> setCurrentStep(1)}/>
             </div>
           </div>
         )}
@@ -71,7 +181,11 @@ const VendorOnboarding = () => {
         {currentStep === 3 && (
           <div className="flex flex-col items-start w-full">
             <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">Step 3 of 5</span>
-            <BusinessIdentity onNext={() => setCurrentStep(4)} onBack={() => setCurrentStep(2)}  />
+            <BusinessIdentity 
+              formData={formData} 
+              updateFormData={handleUpdate} 
+              onNext={handleNextStep} 
+              onBack={() => setCurrentStep(2)}  />
           </div>
         )}
 
@@ -79,7 +193,11 @@ const VendorOnboarding = () => {
         {currentStep === 4 && (
           <div className="flex flex-col items-start w-full">
             <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">Step 4 of 5</span>
-            <ContactLocation onNext={() => setCurrentStep(5)} onBack={() => setCurrentStep(3)}/>
+            <ContactLocation 
+              formData={formData} 
+              updateFormData={handleUpdate} 
+              onNext={handleNextStep} 
+              onBack={() => setCurrentStep(3)}/>
           </div>
         )}
 
@@ -87,7 +205,11 @@ const VendorOnboarding = () => {
         {currentStep === 5 && (
           <div className="flex flex-col items-start w-full mb-10"> {/* mb-10 added for bottom scrolling padding */}
             <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">Step 5 of 5</span>
-            <OperationCompliance onFinish={() => setIsSubmitted(true)} onBack={() => setCurrentStep(4)} />
+            <OperationCompliance 
+              formData={formData} 
+              updateFormData={handleUpdate} 
+              onFinish={handleNextStep} 
+              onBack={() => setCurrentStep(4)} />
           </div>
         )}
       </>
