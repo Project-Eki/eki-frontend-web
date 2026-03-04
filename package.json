@@ -10,7 +10,11 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^7.2.0",
+    "@fortawesome/free-solid-svg-icons": "^7.2.0",
+    "@fortawesome/react-fontawesome": "^3.2.0",
     "@tailwindcss/vite": "^4.2.1",
+    "axios": "^1.13.6",
     "react-dom": "^19.2.0",
     "react-icons": "^5.5.0",
     "react-router-dom": "^6.30.3"
@@ -32,9 +36,9 @@
     "init": "^0.1.2",
     "jest": "^30.2.0",
     "jsdom": "^28.1.0",
-    "npx": "^10.2.2",
+    "npx": "^3.0.0",
     "postcss": "^8.5.6",
-    "tailwind": "^4.0.0",
+    "tailwind": "^2.3.1",
     "tailwindcss": "^4.2.1",
     "vite": "^7.3.1",
     "vitest": "^4.0.18"

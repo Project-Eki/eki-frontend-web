@@ -5,8 +5,8 @@ import { describe, test, expect, beforeEach, vi } from 'vitest';
 import ResetPassword from './ResetPassword';
 
 // Mock image imports (avoids Vite issues)
-vi.mock('../image/logo.jpeg', () => ({ default: 'logo.jpeg' }));
-vi.mock('../image/reset.jpeg', () => ({ default: 'reset.jpeg' }));
+vi.mock('../assets/logo.jpeg', () => ({ default: 'logo.jpeg' }));
+vi.mock('../assets/reset.jpeg', () => ({ default: 'reset.jpeg' }));
 
 describe('ResetPassword Component', () => {
   beforeEach(() => {

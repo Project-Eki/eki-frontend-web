@@ -1,6 +1,8 @@
+import { loginUser } from '../services/api';
 import React, { useState } from 'react';
-import logoImage from '../image/logo.jpeg';
-import sideImage from '../image/login.jpeg';
+import { useNavigate } from 'react-router-dom'; 
+import logoImage from '../assets/logo.jpeg';
+import sideImage from '../assets/signin.jpeg';
 
 const SignInPage = ({
   logoUrl = logoImage,
@@ -8,27 +10,40 @@ const SignInPage = ({
   welcomeMessage = "Welcome back! ready to sell?",
   onSignIn = (data) => console.log("Sign in logic here:", data),
   onGoogleSignIn = () => console.log("Google sign in clicked"),
- 
-  onSignUpClick = () => console.log("Navigate to Sign Up")
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  
+  const navigate = useNavigate();
 
   const validateEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async(e) => {
     e.preventDefault();
     let hasError = false;
+    
     if (!email.trim()) { setEmailError('Email required'); hasError = true; }
     else if (!validateEmail(email)) { setEmailError('Invalid email'); hasError = true; }
     else setEmailError('');
+    
     if (!password.trim()) { setPasswordError('Password required'); hasError = true; }
     else setPasswordError('');
-    if (!hasError) onSignIn({ email, password });
-  };
+    
+    if (!hasError) {
+      try {
+        const data = await loginUser({ email, password });
+        console.log("Login Success:", data);
+        
+        localStorage.setItem('token', data.token);
+        navigate('/dashboard'); 
+      } catch (err) {
+        setEmailError(err.message || "Login failed");
+      }
+    }
+  }; // <--- Only ONE closing brace here
 
   return (
     <div className="flex flex-col min-h-screen bg-white font-sans text-sm">
@@ -38,13 +53,12 @@ const SignInPage = ({
           <img src={sideImageUrl} alt="Sign In Visual" className="h-full w-full object-cover" />
         </div>
 
-       
         <div className="flex w-full md:w-1/2 h-full flex-col justify-center items-center p-12 bg-white">
           <div className="mb-6 flex flex-col items-center">
-            <div className="flex h-60 w-60 mt-10 items-center justify-center overflow-hidden -translate-y-12">
-              <img src={logoUrl} alt="Logo" className="h-full w-full object-contain" />
+            <div className="flex h-40 w-60 mt-10 items-center justify-center overflow-hidden -translate-y-12">
+              <img src={logoUrl} alt="Logo" className="h-full w-full object-contain mt-10" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-10 text-center -mt-24">{welcomeMessage}</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-0 text-center -mt-24">{welcomeMessage}</h2>
           </div>
 
           <form className="w-full max-w-md space-y-4" onSubmit={handleSubmit}>
@@ -86,15 +100,14 @@ const SignInPage = ({
                  <input type="checkbox" className="mr-2 h-3.5 w-3.5 rounded border-gray-300 accent-yellow-500" />
                  Remember me
                </label>
-               <a href="#" className="font-semibold text-yellow-500 hover:underline">Forgot Password?</a>
+               <button type="button" onClick={() => navigate('/forgot-password')} className="font-semibold text-yellow-500 hover:underline">Forgot Password?</button>
             </div>
 
             <button type="submit" className="w-full rounded-full bg-yellow-500 py-3 font-bold text-white shadow-md hover:bg-yellow-600 transition-all active:scale-[0.98]">
-              Continue
+              Sign In
             </button>
           </form>
 
-         
           <div className="flex items-center w-full max-w-md my-6">
             <div className="flex-grow border-t border-gray-300"></div>
             <span className="flex-shrink mx-4 text-gray-400 text-xs font-semibold">OR</span>
@@ -107,24 +120,25 @@ const SignInPage = ({
             <span className="text-xs font-semibold text-gray-700">Sign in with Google</span>
           </button>
 
-          
           <div className="mt-8 text-xs text-gray-600">
             Don't have an account?{" "}
-            <button onClick={onSignUpClick} className="font-semibold text-yellow-500 hover:underline">
+            <button 
+              onClick={() => navigate('/signup')} 
+              className="font-semibold text-yellow-500 hover:underline"
+            >
               Sign up
             </button>
           </div>
         </div>
       </div>
       
-     
       <footer className="w-full font-sans">
         <div className="w-full bg-[#234E4D] text-white py-3 px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] tracking-wide">
             <div className="flex-shrink-0 font-bold">Buy Smart. Sell Fast. Grow Together...</div>
             <div className="flex items-center gap-1 text-center">
               <span>© 2026 Vendor Portal. All rights reserved.</span>
-              <span className="ml-1 font-bold">eki<span className="text-[8px] font-normal ml-0.5">TM</span></span>
+              <span className="ml-1 font-bold">eki<span className="text-[4px] font-normal ml-0.5">TM</span></span>
             </div>
             <div className="flex items-center gap-6">
               <a href="#" className="hover:opacity-80">Support</a>

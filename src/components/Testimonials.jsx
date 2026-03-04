@@ -31,7 +31,7 @@ const Testimonials = () => {
   ]
 
   return (
-    <section className="bg-gradient-to-b from-[#F3FBFA] to-[#A7E2DB] py-20 md:py-16 sm:py-12">
+    <section className="bg-[linear-gradient(180deg,#F3FBFAFF_0%,#A7E2DBFF_100%)] py-20 md:py-16 sm:py-12">
       <div className="container mx-auto px-4 max-w-7xl">
         
         <h2 className="text-4xl md:text-3xl sm:text-2xl font-bold text-center mb-4 text-gray-800">

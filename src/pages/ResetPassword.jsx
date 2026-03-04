@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import logoImage from '../image/logo.jpeg';
-import resetIllustration from '../image/reset.jpeg';
+import logoImage from '../assets/logo.jpeg';
+import resetIllustration from '../assets/reset.jpeg';
 
 const ResetPasswordPage = () => {
   const [password, setPassword] = useState('');
@@ -22,10 +22,10 @@ const ResetPasswordPage = () => {
         </div>
         <div className="flex w-full md:w-1/2 h-full flex-col justify-center items-center p-12 bg-white">
           <div className="mb-6 flex flex-col items-center">
-            <div className="flex h-32 w-32 items-center justify-center overflow-hidden -translate-y-12">
+            <div className="flex h-40 w-60 mt-10 items-center justify-center overflow-hidden -translate-y-12">
               <img src={logoImage} alt="Logo" className="h-full w-full object-contain" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 text-center -mt-6">Reset Password</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-0 text-center -mt-24">Reset Password</h2>
           </div>
           
           <form className="w-full max-w-md space-y-6" onSubmit={handleSubmit}>
@@ -34,7 +34,7 @@ const ResetPasswordPage = () => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Min. 8 characters"
+              placeholder="Enter new password"
               aria-label="New Password"
               className={`w-full rounded-md border py-3 pl-3 pr-4 focus:outline-none bg-gray-50/30 mb-6
                 ${error && password.length < 8 ? 'border-red-500 placeholder-red-500 text-red-500' : 'border-gray-300 focus:border-yellow-500 placeholder-black'}`}
@@ -44,7 +44,7 @@ const ResetPasswordPage = () => {
               type="password"
               value={confirmPassword}
               onChange={(e) => { setConfirmPassword(e.target.value); if (password === e.target.value) setError(''); }}
-              placeholder={error && confirmPassword !== password ? 'Passwords must match' : "Repeat password"}
+              placeholder={error && confirmPassword !== password ? 'Passwords must match' : "Confirm new password"}
               aria-label="Confirm Password"
               className={`w-full rounded-md border py-3 pl-3 pr-4 focus:outline-none bg-gray-50/30 mb-6
                 ${error && confirmPassword !== password ? 'border-red-500 placeholder-red-500 text-red-500' : 'border-gray-300 focus:border-yellow-500 placeholder-black'}`}

@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import logoImage from '../image/logo.jpeg';
-import resetIllustration from '../image/reset.jpeg';
+import { useNavigate } from 'react-router-dom'; // 1. Import useNavigate
+import logoImage from '../assets/logo.jpeg';
+import resetIllustration from '../assets/reset.jpeg';
 
 const ForgotPassword = ({ 
   logoUrl = logoImage, 
-  illustrationUrl = resetIllustration,
-  onBackToLogin = () => console.log("Navigate back") 
+  illustrationUrl = resetIllustration
 }) => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
+  const navigate = useNavigate(); // 2. Initialize navigate hook
 
   const validateEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
@@ -25,22 +26,25 @@ const ForgotPassword = ({
     }
     setError('');
     console.log('Reset link sent');
+    // You could also navigate to a "Success" page here if you have one
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 font-sans text-sm">
       <div className="flex flex-grow h-[calc(100vh-96px)] overflow-hidden">
-       
+        
+        {/* Illustration */}
         <div className="hidden md:flex w-2/5 h-full">
           <img src={illustrationUrl} alt="Forgot Password" title="Forgot Password" className="h-full w-full object-cover" />
         </div>
 
+        {/* Form Content */}
         <div className="flex w-full md:w-3/5 h-full flex-col justify-center items-center p-12 bg-white">
           <div className="mb-10 flex flex-col items-center">
             <div className="flex h-60 w-60 mt-10 items-center justify-center overflow-hidden -translate-y-12">
               <img src={logoUrl} alt="Logo" className="h-full w-full object-contain" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 text-center -mt-10">Forgot Password?</h2>
+            <h2 className="text-2xl font-bold text-gray-800 text-center -mt-24">Forgot Password?</h2>
             <p className="text-gray-500 text-center mt-3 text-xs max-w-sm">
               Enter your email and we'll send you a recovery link.
             </p>
@@ -61,9 +65,10 @@ const ForgotPassword = ({
             </button>
 
             <div className="text-center mt-4">
+              {/* 3. Updated Button to trigger Navigation */}
               <button 
                 type="button"
-                onClick={onBackToLogin}
+                onClick={() => navigate('/signin')} 
                 className="text-xs font-semibold text-gray-600 hover:text-yellow-600 hover:underline"
               >
                 Back to Sign in
@@ -72,7 +77,8 @@ const ForgotPassword = ({
           </form>
         </div>
       </div>
-     
+      
+      {/* Footer */}
       <footer className="w-full font-sans">
         <div className="w-full bg-[#234E4D] text-white py-3 px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] tracking-wide">

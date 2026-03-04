@@ -28,7 +28,7 @@ const Features = () => {
   ]
 
   return (
-    <section className="bg-[#F3FBFAFF] py-20 md:py-16 sm:py-12 relative overflow-hidden" id="products">
+    <section className="bg-[#F8F9FAFF] py-20 md:py-16 sm:py-12 relative overflow-hidden" id="products">
       <div className="container mx-auto px-8 max-w-7xl">
         
         <h2 className="text-4xl md:text-3xl sm:text-2xl font-bold text-center mb-4 text-gray-800 max-w-4xl mx-auto">

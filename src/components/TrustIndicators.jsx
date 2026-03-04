@@ -27,7 +27,7 @@ const TrustIndicators = () => {
   ]
 
   return (
-    <section className="bg-gradient-to-b from-[#235E5D] to-[#22365D] py-20 md:py-16 sm:py-12 w-full">
+    <section className="bg-[linear-gradient(0deg,#F3FBFAFF_0%,#A7E2DBFF_100%)] py-20 md:py-16 sm:py-12 w-full">
       <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
         
         <h2 className="text-4xl md:text-3xl sm:text-2xl font-bold text-center mb-4 text-white max-w-4xl mx-auto px-4">
