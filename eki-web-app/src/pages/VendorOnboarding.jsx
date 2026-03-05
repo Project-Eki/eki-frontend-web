@@ -1,10 +1,10 @@
-import { 
-  registerUser, 
-  verifyEmail,
-  submitBusinessIdentity, 
-  submitContactLocation, 
-  submitOperationCompliance 
-} from "../services/api";
+// import { 
+//   registerUser, 
+//   verifyEmail,
+//   submitBusinessIdentity, 
+//   submitContactLocation, 
+//   submitOperationCompliance 
+// } from "../services/api";
 import { useState } from "react";
 import Navbar from "../components/Navbar";
 import AccountBasics from "../components/AccountBasics";
@@ -69,36 +69,36 @@ const VendorOnboarding = () => {
   try {
     if (currentStep === 1) {
       // Register the user
-      await registerUser({
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        email: formData.email,
-        password: formData.password,
-        agreeToTerms: formData.agreeToTerms,
-      });
+      // await registerUser({
+      //   first_name: formData.first_name,
+      //   last_name: formData.last_name,
+      //   email: formData.email,
+      //   password: formData.password,
+      //   agreeToTerms: formData.agreeToTerms,
+      // });
     }
 
     if (currentStep === 3) {
       // Submit business info
-      await submitBusinessIdentity({
-        business_name: formData.business_name,
-        business_type: formData.business_type,
-        owner_full_name: formData.owner_full_name,
-        tax_id: formData.tax_id,
-        registration_number: formData.registration_number,
-        business_description: formData.business_description,
-      });
+      // await submitBusinessIdentity({
+      //   business_name: formData.business_name,
+      //   business_type: formData.business_type,
+      //   owner_full_name: formData.owner_full_name,
+      //   tax_id: formData.tax_id,
+      //   registration_number: formData.registration_number,
+      //   business_description: formData.business_description,
+      // });
     }
 
     if (currentStep === 4) {
       // Submit contact info
-      await submitContactLocation({
-        business_email: formData.business_email,
-        business_phone: formData.business_phone,
-        address: formData.address,
-        city: formData.city,
-        country: formData.country,
-      });
+      // await submitContactLocation({
+      //   business_email: formData.business_email,
+      //   business_phone: formData.business_phone,
+      //   address: formData.address,
+      //   city: formData.city,
+      //   country: formData.country,
+      // });
     }
 
     if (currentStep === 5) {

@@ -32,7 +32,7 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
         
         {/* Business Name */}
         <div className="flex flex-col">
@@ -43,7 +43,7 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
               value={formData.business_name}
               onChange={(e) => handleChange('business_name', e.target.value)}
               placeholder="e.g. Global Tech Solutions Ltd." 
-              className={`w-full h-11 pl-4 pr-16 border ${errors.business_name ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
+              className={`w-full h-10 pl-4 pr-16 border ${errors.business_name ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
             />
             {errors.business_name && (
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">
@@ -60,7 +60,7 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
             <select 
               value={formData.business_type}
               onChange={(e) => handleChange('business_type', e.target.value)}
-              className={`w-full h-11 pl-4 pr-10 border ${errors.business_type ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none bg-white cursor-pointer appearance-none`}
+              className={`w-full h-10 pl-4 pr-10 border ${errors.business_type ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none bg-white cursor-pointer appearance-none`}
             >
               <option value="">Select type</option>
               <option value="RETAIL">Retailer</option>
@@ -85,7 +85,7 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
               value={formData.owner_full_name}
               onChange={(e) => handleChange('owner_full_name', e.target.value)}
               placeholder="Enter full legal name" 
-              className={`w-full h-11 pl-4 pr-16 border ${errors.owner_full_name ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
+              className={`w-full h-10 pl-4 pr-16 border ${errors.owner_full_name ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
             />
             {errors.owner_full_name && (
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">
@@ -104,7 +104,7 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
               value={formData.registration_number}
               onChange={(e) => handleChange('registration_number', e.target.value)}
               placeholder="RC / BN Number" 
-              className={`w-full h-11 pl-4 pr-16 border ${errors.registration_number ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none`} 
+              className={`w-full h-10 pl-4 pr-16 border ${errors.registration_number ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none`} 
             />
             {errors.registration_number && (
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">
@@ -122,7 +122,7 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
             value={formData.tax_id}
             onChange={(e) => handleChange('tax_id', e.target.value)}
             placeholder="VAT / TIN Number" 
-            className="h-11 px-4 border border-gray-200 rounded-xl text-[14px] focus:border-[#F2B53D] outline-none" 
+            className="h-10 px-4 border border-gray-200 rounded-xl text-[14px] focus:border-[#F2B53D] outline-none" 
           />
         </div>
 
@@ -133,12 +133,12 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
             value={formData.business_description}
             onChange={(e) => handleChange('business_description', e.target.value)}
             placeholder="Describe what you sell or your business mission..." 
-            className="h-16 p-3 border border-gray-200 rounded-xl text-[14px] focus:border-[#F2B53D] outline-none resize-none"
+            className="h-12 p-2 border border-gray-200 rounded-xl text-[14px] focus:border-[#F2B53D] outline-none resize-none"
           ></textarea>
         </div>
       </div>
 
-      <div className="w-full flex justify-center items-center gap-4 mt-6">
+      <div className="w-full flex justify-center items-center gap-4 mt-4">
         <button onClick={onBack} className="flex-1 max-w-[140px] h-11 border-2 border-gray-100 text-gray-500 font-bold rounded-full hover:bg-gray-50 transition-all text-[14px]">
           Back
         </button>
