@@ -7,13 +7,13 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
   const [errors, setErrors] = useState({}); 
 
   const handleChange = (field, value) => {
-    // 1. Update the master state
+  
     updateFormData({ [field]: value });
     
-    // 2. Validate against the new data immediately
+   
     const validationErrors = validateBusinessIdentity({ ...formData, [field]: value });
     
-    // 3. Clear the error for this specific field if it's now valid
+ 
     setErrors(validationErrors);
   };
 
@@ -40,7 +40,7 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
         
-        {/* Business Name */}
+     
         <div className="flex flex-col">
           <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Legal Business Name</label>
           <div className="relative">
@@ -59,7 +59,7 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
           </div>
         </div>
 
-        {/* Business Type */}
+       
         <div className="flex flex-col">
           <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Business Type</label>
           <div className="relative">
@@ -81,7 +81,7 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
           </div>
         </div>
 
-        {/* Owner Name */}
+       
         <div className="flex flex-col">
           <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Owner Full Name</label>
           <div className="relative">
@@ -100,7 +100,7 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
           </div>
         </div>
 
-        {/* Registration Number */}
+      
         <div className="flex flex-col">
           <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Business Registration Number</label>
           <div className="relative">
@@ -119,7 +119,7 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
           </div>
         </div>
 
-        {/* Tax ID */}
+     
         <div className="flex flex-col">
           <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Tax ID (TIN)</label>
           <input 
@@ -131,7 +131,7 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
           />
         </div>
 
-        {/* Business Description */}
+       
         <div className="flex flex-col md:col-span-2">
           <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Business Description</label>
           <textarea 

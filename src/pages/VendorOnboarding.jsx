@@ -1,11 +1,11 @@
-import { 
-  registerUser, // This handles the Account Basics registration
-  submitBusinessIdentity, 
-  submitContactLocation, 
-  submitOperationCompliance 
-} from "../services/api"; // Fixed: Using relative path from src/pages to src/services
+// import { 
+//   registerUser, // This handles the Account Basics registration
+//   submitBusinessIdentity, 
+//   submitContactLocation, 
+//   submitOperationCompliance 
+// } from "../services/api"; // Fixed: Using relative path from src/pages to src/services
 import { useState } from "react";
-import Navbar from "../components/Navbar"; // Fixed: Using relative path to components
+import Navbar2 from "../components/Navbar2"; // Fixed: Using relative path to components
 import AccountBasics from "../components/AccountBasics";
 import VerifyIdentity from "../components/VerifyIdentity";
 import BusinessIdentity from "../components/BusinessIdentity";
@@ -55,42 +55,42 @@ const VendorOnboarding = () => {
     setLoading(true);
     try {
       if (currentStep === 1) {
-        await registerUser({
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          email: formData.email,
-          password: formData.password,
-          agreeToTerms: formData.agreeToTerms,
-        });
+        // await registerUser({
+        //   first_name: formData.first_name,
+        //   last_name: formData.last_name,
+        //   email: formData.email,
+        //   password: formData.password,
+        //   agreeToTerms: formData.agreeToTerms,
+        // });
       }
 
       if (currentStep === 3) {
-        await submitBusinessIdentity({
-          business_name: formData.business_name,
-          business_type: formData.business_type,
-          owner_full_name: formData.owner_full_name,
-          tax_id: formData.tax_id,
-          registration_number: formData.registration_number,
-          business_description: formData.business_description,
-        });
+        // await submitBusinessIdentity({
+        //   business_name: formData.business_name,
+        //   business_type: formData.business_type,
+        //   owner_full_name: formData.owner_full_name,
+        //   tax_id: formData.tax_id,
+        //   registration_number: formData.registration_number,
+        //   business_description: formData.business_description,
+        // });
       }
 
       if (currentStep === 4) {
-        await submitContactLocation({
-          business_email: formData.business_email,
-          business_phone: formData.business_phone,
-          address: formData.address,
-          city: formData.city,
-          country: formData.country,
-        });
+        // await submitContactLocation({
+        //   business_email: formData.business_email,
+        //   business_phone: formData.business_phone,
+        //   address: formData.address,
+        //   city: formData.city,
+        //   country: formData.country,
+        // });
       }
 
       if (currentStep === 5) {
-        await submitOperationCompliance({
-          opening_time: formData.opening_time,
-          closing_time: formData.closing_time,
-          documents: formData.documents,
-        });
+        // await submitOperationCompliance({
+        //   opening_time: formData.opening_time,
+        //   closing_time: formData.closing_time,
+        //   documents: formData.documents,
+        // });
         setIsSubmitted(true);
         return;
       }
@@ -106,7 +106,7 @@ const VendorOnboarding = () => {
 
   return (
     <div className="h-screen w-full flex flex-col bg-[#F8F9FA] font-sans">
-      <Navbar/>
+      <Navbar2/>
       <div className="flex flex-1 overflow-hidden">
         
         {/* SIDEBAR */}

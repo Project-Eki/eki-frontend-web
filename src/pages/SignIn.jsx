@@ -123,7 +123,7 @@ const SignInPage = ({
           <div className="mt-8 text-xs text-gray-600">
             Don't have an account?{" "}
             <button 
-              onClick={() => navigate('/signup')} 
+              onClick={() => navigate('/vendorOnboarding')} 
               className="font-semibold text-yellow-500 hover:underline"
             >
               Sign up

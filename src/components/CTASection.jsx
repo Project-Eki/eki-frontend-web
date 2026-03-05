@@ -7,7 +7,7 @@ const CTASection = () => {
       className="relative text-center py-20 md:py-16 sm:py-12 bg-cover bg-center bg-no-repeat"
       style={{ backgroundImage: `url(${ctaBackground})` }}
     >
-      {/* Dark overlay for better text readability */}
+     
       <div className="absolute inset-0 bg-black/50"></div>
       
       <div className="container mx-auto px-4 max-w-2xl relative z-10">

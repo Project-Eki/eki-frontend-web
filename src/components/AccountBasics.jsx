@@ -2,18 +2,18 @@ import React, { useState } from 'react';
 import { FcGoogle } from "react-icons/fc";
 import { FaRegUser, FaRegEnvelope, FaRegEye, FaRegEyeSlash } from "react-icons/fa6"; 
 import { FiLock } from "react-icons/fi"; 
-// FIXED: Correct relative path
+
 import { validateAccountBasics } from "../utils/onboardingValidation";
 
 const AccountBasics = ({ onNext, formData, updateFormData }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
 
-  // HELPER: Handles input changes AND clears errors in real-time
+ 
   const handleChange = (field, value) => {
     updateFormData({ [field]: value });
 
-    // Live validation check
+   
     const validationErrors = validateAccountBasics({ ...formData, [field]: value });
     setErrors(validationErrors);
   };
@@ -31,7 +31,7 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
     <div className="w-full animate-fadeIn max-w-[580px]">
       <div className="space-y-3">
         
-        {/* Name Row */}
+      
         <div className="grid grid-cols-2 gap-4">
           <div className="relative">
             <FaRegUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
@@ -65,7 +65,7 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
           </div>
         </div>
 
-        {/* Email */}
+       
         <div className="relative">
           <FaRegEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
           <input 
@@ -82,7 +82,7 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
           )}
         </div>
 
-        {/* Password */}
+     
         <div className="relative">
           <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={14}/>
           <input 
@@ -107,7 +107,7 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
           )}
         </div>
 
-        {/* Terms & Conditions Section */}
+      
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-3 py-1">
             <input 

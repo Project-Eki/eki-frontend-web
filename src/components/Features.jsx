@@ -38,10 +38,10 @@ const Features = () => {
           Everything you need to showcase products, handle transactions, and build a reputation in one centralized hub.
         </p>
         
-        {/* Two column layout - Left side features list, Right side image */}
+       
         <div className="flex flex-col lg:flex-row gap-12 items-center">
           
-          {/* Left side */}
+         
           <div className="w-full lg:w-1/2 space-y-8">
             {features.map((feature, index) => (
               <div key={index} className="flex gap-4 items-start">
@@ -56,7 +56,7 @@ const Features = () => {
             ))}
           </div>
           
-          {/* Right side - Image preview */}
+        
           <div className="w-full lg:w-1/2 max-w-md"> 
             <div className="rounded-xl overflow-hidden shadow-2xl border border-white/10">
               <img 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom' // 1. Import Link
+import { Link } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faSearch,
@@ -33,19 +33,17 @@ const Navbar = () => {
     <nav className="bg-white shadow-md sticky top-0 z-50">
       <div className="container mx-auto px-4 flex justify-between items-center h-20">
 
-
         <div className="flex-shrink-0">
           <Link to="/">
             <img src={logoImage} alt="Eki Logo" className="h-16 w-auto object-contain" />
           </Link>
         </div>
 
-
         <div className="hidden sm:flex flex-1 justify-center px-6">
           <div className="relative w-full max-w-[320px] lg:max-w-[420px] flex items-center">
             <FontAwesomeIcon
               icon={faSearch}
-              className="absolute left-4 top-7 -translate-y-1/2 text-gray-400 pointer-events-none"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
             />
             <input
               type="text"
@@ -55,31 +53,29 @@ const Navbar = () => {
           </div>
         </div>
 
-
         <div className="hidden lg:flex items-center">
           <ul className="flex list-none gap-6 items-center">
-            <li><a href="#home" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">Home</a></li>
+            <li><Link to="/" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">Home</Link></li>
             <li><a href="#products" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">Products</a></li>
             <li><a href="#services" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">Services</a></li>
 
-
             <li>
-              <Link to="/signin" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">
+              {/* Note: Path matches your App.jsx route */}
+              <Link to="/signIn" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">
                 Sign in
               </Link>
             </li>
 
-
             <li>
+             
               <Link
-                to="/signup"
+                to="/VendorOnboarding"
                 className="bg-[#efb034] text-white px-6 py-2.5 rounded-lg font-bold hover:bg-[#d99c1c] transition-all active:scale-95"
               >
                 Sign Up
               </Link>
             </li>
             
-           
             <li className="relative">
               <button
                 onClick={() => setIsLanguageOpen(!isLanguageOpen)}
@@ -111,17 +107,16 @@ const Navbar = () => {
           </ul>
         </div>
 
-
         <div className="lg:hidden ml-4" onClick={() => setIsOpen(!isOpen)}>
           <FontAwesomeIcon icon={isOpen ? faTimes : faBars} className="text-2xl text-gray-800 cursor-pointer" />
         </div>
       </div>
 
-
       <div className={`lg:hidden overflow-hidden transition-all duration-300 bg-white ${isOpen ? 'max-h-screen border-t' : 'max-h-0'}`}>
         <div className="p-6 space-y-4">
-          <Link to="/signin" className="block font-medium text-gray-800" onClick={() => setIsOpen(false)}>Sign in</Link>
-          <Link to="/signup" className="block w-full text-center bg-[#efb034] text-white py-3 rounded-lg font-bold" onClick={() => setIsOpen(false)}>Sign Up</Link>
+          <Link to="/signIn" className="block font-medium text-gray-800" onClick={() => setIsOpen(false)}>Sign in</Link>
+         
+          <Link to="/VendorOnboarding" className="block w-full text-center bg-[#efb034] text-white py-3 rounded-lg font-bold" onClick={() => setIsOpen(false)}>Sign Up</Link>
         </div>
       </div>
     </nav>

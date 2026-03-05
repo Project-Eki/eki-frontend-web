@@ -1,22 +1,21 @@
 import axios from 'axios';
 
-// 1. Centralized Axios Instance
-// Using a relative baseURL allows Vite's proxy to bridge the gap to your Django backend
+
 const api = axios.create({
-  baseURL: "/api/v1/accounts", 
+  baseURL: "http://localhost:8000/api", 
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-/**
- * AUTHENTICATION ENDPOINTS
- */
 
-// Matches your "sign in" file naming convention
-export const signInUser = async (credentials) => {
+
+
+
+
+export const loginUser = async (credentials) => {
   try {
-    const response = await api.post("/login/", credentials);
+    const response = await api.post("/auth/login/", credentials);
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.detail || "Sign in failed");
@@ -41,9 +40,8 @@ export const verifyEmail = async (token) => {
   }
 };
 
-/**
- * VENDOR & BUSINESS ENDPOINTS
- */
+
+
 
 export const submitBusinessIdentity = async (data) => {
   try {
@@ -54,8 +52,7 @@ export const submitBusinessIdentity = async (data) => {
   }
 };
 
-// Handles both Contact/Location and Operations/Compliance 
-// since they share the same endpoint
+
 export const submitVendorProfile = async (data) => {
   try {
     const response = await api.post("/vendor/profile/", data);

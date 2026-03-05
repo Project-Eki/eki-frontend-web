@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { HiOutlineLocationMarker } from "react-icons/hi";
-// FIXED: Proper relative path to the utils folder
+
 import { validateContactLocation } from "../utils/onboardingValidation";
 
 const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
   const [errors, setErrors] = useState({});
 
   const handleChange = (field, value) => {
-    // Update the parent state
+
     updateFormData({ [field]: value });
-    
-    // Validate on the fly to provide instant feedback
+
+
     const validationErrors = validateContactLocation({ ...formData, [field]: value });
     setErrors(validationErrors);
   };
@@ -18,7 +18,7 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
   const handleContinue = () => {
     const validationErrors = validateContactLocation(formData);
     setErrors(validationErrors);
-    
+
     if (Object.keys(validationErrors).length === 0) {
       onNext();
     }
@@ -28,7 +28,7 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
     <div className="w-full animate-fadeIn pb-4">
       <div className="flex items-center gap-3 mb-5">
         <div className="w-9 h-9 bg-[#FFF8ED] rounded-lg flex items-center justify-center shrink-0">
-           <HiOutlineLocationMarker className="text-[#F2B53D]" size={20} />
+          <HiOutlineLocationMarker className="text-[#F2B53D]" size={20} />
         </div>
         <div>
           <h3 className="font-bold text-[17px] text-gray-800 leading-tight">Contact & Location</h3>
@@ -37,76 +37,76 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-        {/* Business Email */}
+
         <div className="flex flex-col">
           <label className="text-[12px] font-bold text-gray-600 mb-1 ml-1">Business Email</label>
           <div className="relative">
-            <input 
-              type="email" 
+            <input
+              type="email"
               value={formData.business_email}
               onChange={(e) => handleChange('business_email', e.target.value)}
-              placeholder="contact@company.com" 
-              className={`w-full h-11 pl-4 pr-4 border ${errors.business_email ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
+              placeholder="contact@company.com"
+              className={`w-full h-11 pl-4 pr-4 border ${errors.business_email ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`}
             />
             {errors.business_email && <span className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.business_email}</span>}
           </div>
         </div>
 
-        {/* Business Phone */}
+
         <div className="flex flex-col">
           <label className="text-[12px] font-bold text-gray-600 mb-1 ml-1">Phone Number</label>
           <div className="relative">
-            <input 
-              type="tel" 
+            <input
+              type="tel"
               value={formData.business_phone}
               onChange={(e) => handleChange('business_phone', e.target.value)}
-              placeholder="+1 (555) 000-0000" 
-              className={`w-full h-11 pl-4 pr-4 border ${errors.business_phone ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
+              placeholder="+1 (555) 000-0000"
+              className={`w-full h-11 pl-4 pr-4 border ${errors.business_phone ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`}
             />
             {errors.business_phone && <span className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.business_phone}</span>}
           </div>
         </div>
 
-        {/* Street Address */}
+
         <div className="flex flex-col md:col-span-2">
           <label className="text-[12px] font-bold text-gray-600 mb-1 ml-1">Street Address</label>
           <div className="relative">
-            <input 
+            <input
               type="text"
               value={formData.address}
               onChange={(e) => handleChange('address', e.target.value)}
-              placeholder="123 Business Way, Suite 4" 
-              className={`w-full h-11 pl-4 pr-4 border ${errors.address ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
+              placeholder="123 Business Way, Suite 4"
+              className={`w-full h-11 pl-4 pr-4 border ${errors.address ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`}
             />
             {errors.address && <span className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.address}</span>}
           </div>
         </div>
 
-        {/* City */}
+
         <div className="flex flex-col">
           <label className="text-[12px] font-bold text-gray-600 mb-1 ml-1">City</label>
           <div className="relative">
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={formData.city}
               onChange={(e) => handleChange('city', e.target.value)}
-              placeholder="e.g. New York" 
-              className={`w-full h-11 pl-4 pr-4 border ${errors.city ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
+              placeholder="e.g. New York"
+              className={`w-full h-11 pl-4 pr-4 border ${errors.city ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`}
             />
             {errors.city && <span className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.city}</span>}
           </div>
         </div>
 
-        {/* Country */}
+
         <div className="flex flex-col">
           <label className="text-[12px] font-bold text-gray-600 mb-1 ml-1">Country</label>
           <div className="relative">
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={formData.country}
               onChange={(e) => handleChange('country', e.target.value)}
-              placeholder="e.g. United States" 
-              className={`w-full h-11 pl-4 pr-4 border ${errors.country ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
+              placeholder="e.g. United States"
+              className={`w-full h-11 pl-4 pr-4 border ${errors.country ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`}
             />
             {errors.country && <span className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.country}</span>}
           </div>
