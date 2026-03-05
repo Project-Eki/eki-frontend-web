@@ -1,10 +1,12 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-body {
-  font-family: 'Inter', sans-serif;
-  line-height: 1.6;
-  color: #333;
-  overflow-x: hidden;
+
+/* Add this to src/index.css */
+.bg-dots {
+  background-image: radial-gradient(#171a1f1F 1px, transparent 1px);
+  background-size: 24px 24px;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.4;
 }
- 

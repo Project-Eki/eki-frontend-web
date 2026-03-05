@@ -1,60 +1,25 @@
-import React, { useState } from "react";
-import { Routes, Route, useNavigate } from "react-router-dom";
-import SignInPage from "./pages/SignIn";
-import ForgotPasswordPage from "./pages/ForgotPassword";
-import ResetPasswordPage from "./pages/ResetPassword"; 
+import React from 'react';
+import { Routes, Route } from 'react-router-dom';
+import Home from './pages/Home';
+
+// Using your specific file name "sign in"
+import SignIn from './pages/SignIn'; 
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+
+import './App.css';
 
 function App() {
-  const navigate = useNavigate();
-
-  
-  const goToSignUp = () => navigate("/signup");
-  const goToForgotPassword = () => navigate("/forgot-password");
-  const goToSignIn = () => navigate("/signin");
-  
- 
-  const handleSignIn = (data) => {
-    console.log("Signing in with:", data);
-   
-  };
-
   return (
-    <Routes>
-
-      <Route 
-        path="/" 
-        element={
-          <SignInPage 
-            onSignUpClick={goToSignUp}
-            onForgotPasswordClick={goToForgotPassword}
-            onSignIn={handleSignIn}
-          />
-        } 
-      />
-      <Route 
-        path="/signin" 
-        element={
-          <SignInPage 
-            onSignUpClick={goToSignUp}
-            onForgotPasswordClick={goToForgotPassword}
-            onSignIn={handleSignIn}
-          />
-        } 
-      />
-
-      
-      <Route 
-        path="/forgot-password" 
-        element={
-          <ForgotPasswordPage 
-            onBackToLogin={goToSignIn}
-          />
-        } 
-      />
-      
-      
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
-    </Routes>
+    <div className="App">
+      <Routes>
+        <Route path="/" element={<Home />} />
+        {/* URL paths are case-sensitive; usually lowercase is safer */}
+        <Route path="/signIn" element={<SignIn />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+      </Routes>
+    </div>
   );
 }
 
