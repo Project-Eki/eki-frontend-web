@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import logoImage from '../image/logo.jpeg';
-import sideImage from '../image/login.jpeg';
+import sideImage from '../image/signin.jpeg';
 
 const SignInPage = ({
   logoUrl = logoImage,
