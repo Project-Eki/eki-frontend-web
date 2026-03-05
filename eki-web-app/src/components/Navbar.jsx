@@ -124,6 +124,47 @@ const Navbar = () => {
           <Link to="/signup" className="block w-full text-center bg-[#efb034] text-white py-3 rounded-lg font-bold" onClick={() => setIsOpen(false)}>Sign Up</Link>
         </div>
       </div>
+      <div className="flex items-center gap-8">
+        {/* Home Link */}
+        <Link 
+          to="/" 
+          className="text-[14px] font-semibold text-gray-800 hover:text-[#235E5D] transition-all cursor-pointer"
+        >
+          Home
+        </Link>
+
+        {/* Help Link (if you have a help page) */}
+        <Link 
+          to="/help" 
+          className="text-[14px] font-medium text-gray-500 hover:text-gray-800 transition-all cursor-pointer"
+        >
+          Help
+        </Link>
+
+        <div className="h-4 w-[1px] bg-gray-200"></div>
+
+        {/* Signin Link */}
+        <Link 
+          to="/signIn" 
+          className="text-[14px] font-bold text-[#1A1A1A] hover:text-[#235E5D] transition-colors cursor-pointer"
+        >
+          Signin
+        </Link>
+      </div>
+
+      {/* <div className="flex items-center gap-8">
+        <button className="text-[14px] font-semibold  cursor-default">
+          Home
+        </button>
+        <button className="text-[14px] font-medium text-gray-500 hover:text-gray-800 transition-all cursor-pointer">
+          Help
+        </button>
+        <div className="h-4 w-[1px] bg-gray-200"></div>
+        <button className="text-[14px] font-bold text-[#1A1A1A] hover:text-[#235E5D] transition-colors cursor-pointer">
+          Signin
+        </button>
+      </div> */}
+>>>>>>> 8303053658f9f5efb3897143a14e6b31ade520c2
     </nav>
   )
 }
