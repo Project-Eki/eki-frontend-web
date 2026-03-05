@@ -6,7 +6,7 @@
 //   submitOperationCompliance 
 // } from "../services/api";
 import { useState } from "react";
-import Navbar from "../components/Navbar";
+import Navbar from "../components/Navbar2";
 import AccountBasics from "../components/AccountBasics";
 import VerifyIdentity from "../components/VerifyIdentity";
 import BusinessIdentity from "../components/BusinessIdentity";
