@@ -53,7 +53,7 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
               type="tel" 
               value={formData.business_phone}
               onChange={(e) => handleChange('business_phone', e.target.value)}
-              placeholder="+1 (555) 000-0000" 
+              placeholder="+256........" 
               className={`w-full h-11 pl-4 pr-16 border ${errors.business_phone ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
             />
             {errors.business_phone && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">{errors.business_phone}</span>}
@@ -83,7 +83,7 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
               type="text" 
               value={formData.city}
               onChange={(e) => handleChange('city', e.target.value)}
-              placeholder="e.g. New York" 
+              placeholder="e.g. Kampala" 
               className={`w-full h-11 pl-4 pr-16 border ${errors.city ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
             />
             {errors.city && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">{errors.city}</span>}
@@ -98,7 +98,7 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
               type="text" 
               value={formData.country}
               onChange={(e) => handleChange('country', e.target.value)}
-              placeholder="e.g. United States" 
+              placeholder="e.g. Uganda" 
               className={`w-full h-11 pl-4 pr-16 border ${errors.country ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
             />
             {errors.country && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">{errors.country}</span>}
