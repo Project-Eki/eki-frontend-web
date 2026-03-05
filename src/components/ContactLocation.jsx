@@ -90,8 +90,8 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
               type="text"
               value={formData.city}
               onChange={(e) => handleChange('city', e.target.value)}
-              placeholder="e.g. New York"
-              className={`w-full h-11 pl-4 pr-4 border ${errors.city ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`}
+              placeholder="e.g. Kampala" 
+              className={`w-full h-11 pl-4 pr-16 border ${errors.city ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
             />
             {errors.city && <span className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.city}</span>}
           </div>
