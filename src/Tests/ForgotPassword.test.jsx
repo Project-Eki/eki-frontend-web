@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import ForgotPassword from './ForgotPassword'; 
+import ForgotPassword from '../pages/ForgotPassword'; 
 
 
 vi.mock('../assets/logo.jpeg', () => ({ default: 'logo.jpeg' }));

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 
-/* Add this to src/index.css */
+
 .bg-dots {
   background-image: radial-gradient(#171a1f1F 1px, transparent 1px);
   background-size: 24px 24px;

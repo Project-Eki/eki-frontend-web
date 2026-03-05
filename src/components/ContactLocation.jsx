@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { HiOutlineLocationMarker } from "react-icons/hi";
+// FIXED: Proper relative path to the utils folder
 import { validateContactLocation } from "../utils/onboardingValidation";
 
 const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
   const [errors, setErrors] = useState({});
 
   const handleChange = (field, value) => {
+    // Update the parent state
     updateFormData({ [field]: value });
+    
+    // Validate on the fly to provide instant feedback
     const validationErrors = validateContactLocation({ ...formData, [field]: value });
     setErrors(validationErrors);
   };
@@ -14,7 +18,10 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
   const handleContinue = () => {
     const validationErrors = validateContactLocation(formData);
     setErrors(validationErrors);
-    if (Object.keys(validationErrors).length === 0) onNext();
+    
+    if (Object.keys(validationErrors).length === 0) {
+      onNext();
+    }
   };
 
   return (
@@ -39,9 +46,9 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
               value={formData.business_email}
               onChange={(e) => handleChange('business_email', e.target.value)}
               placeholder="contact@company.com" 
-              className={`w-full h-11 pl-4 pr-20 border ${errors.business_email ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
+              className={`w-full h-11 pl-4 pr-4 border ${errors.business_email ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
             />
-            {errors.business_email && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">{errors.business_email}</span>}
+            {errors.business_email && <span className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.business_email}</span>}
           </div>
         </div>
 
@@ -54,9 +61,9 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
               value={formData.business_phone}
               onChange={(e) => handleChange('business_phone', e.target.value)}
               placeholder="+1 (555) 000-0000" 
-              className={`w-full h-11 pl-4 pr-16 border ${errors.business_phone ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
+              className={`w-full h-11 pl-4 pr-4 border ${errors.business_phone ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
             />
-            {errors.business_phone && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">{errors.business_phone}</span>}
+            {errors.business_phone && <span className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.business_phone}</span>}
           </div>
         </div>
 
@@ -69,9 +76,9 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
               value={formData.address}
               onChange={(e) => handleChange('address', e.target.value)}
               placeholder="123 Business Way, Suite 4" 
-              className={`w-full h-11 pl-4 pr-16 border ${errors.address ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
+              className={`w-full h-11 pl-4 pr-4 border ${errors.address ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
             />
-            {errors.address && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">{errors.address}</span>}
+            {errors.address && <span className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.address}</span>}
           </div>
         </div>
 
@@ -84,9 +91,9 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
               value={formData.city}
               onChange={(e) => handleChange('city', e.target.value)}
               placeholder="e.g. New York" 
-              className={`w-full h-11 pl-4 pr-16 border ${errors.city ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
+              className={`w-full h-11 pl-4 pr-4 border ${errors.city ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
             />
-            {errors.city && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">{errors.city}</span>}
+            {errors.city && <span className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.city}</span>}
           </div>
         </div>
 
@@ -99,9 +106,9 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
               value={formData.country}
               onChange={(e) => handleChange('country', e.target.value)}
               placeholder="e.g. United States" 
-              className={`w-full h-11 pl-4 pr-16 border ${errors.country ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
+              className={`w-full h-11 pl-4 pr-4 border ${errors.country ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
             />
-            {errors.country && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">{errors.country}</span>}
+            {errors.country && <span className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.country}</span>}
           </div>
         </div>
       </div>

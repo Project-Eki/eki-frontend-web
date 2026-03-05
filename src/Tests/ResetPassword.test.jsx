@@ -2,9 +2,9 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import ResetPassword from './ResetPassword';
+import ResetPassword from '../pages/ResetPassword';
 
-// Mock image imports (avoids Vite issues)
+
 vi.mock('../assets/logo.jpeg', () => ({ default: 'logo.jpeg' }));
 vi.mock('../assets/reset.jpeg', () => ({ default: 'reset.jpeg' }));
 

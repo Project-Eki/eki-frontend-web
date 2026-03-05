@@ -33,7 +33,7 @@ const TrustIndicators = () => {
         <h2 className="text-4xl md:text-3xl sm:text-2xl font-bold text-center mb-4 text-white max-w-4xl mx-auto px-4">
           Built on Trust, Powered by Technology
         </h2>
-        <p className="text-lg md:text-base text-center text-[#E0E7FF] mb-12 max-w-3xl mx-auto leading-relaxed px-4">
+        <p className="text-lg md:text-base text-center text-[#1A1A1A] mb-12 max-w-3xl mx-auto leading-relaxed px-4">
           Our payment-first, on-site fulfillment model ensures secure transactions and accountability for both buyers and vendors
         </p>
         

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // 1. Import useNavigate
+import { useNavigate } from 'react-router-dom'; 
 import logoImage from '../assets/logo.jpeg';
 import resetIllustration from '../assets/reset.jpeg';
 
@@ -9,7 +9,7 @@ const ForgotPassword = ({
 }) => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
-  const navigate = useNavigate(); // 2. Initialize navigate hook
+  const navigate = useNavigate(); 
 
   const validateEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
@@ -26,19 +26,19 @@ const ForgotPassword = ({
     }
     setError('');
     console.log('Reset link sent');
-    // You could also navigate to a "Success" page here if you have one
+   
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 font-sans text-sm">
       <div className="flex flex-grow h-[calc(100vh-96px)] overflow-hidden">
         
-        {/* Illustration */}
+       
         <div className="hidden md:flex w-2/5 h-full">
           <img src={illustrationUrl} alt="Forgot Password" title="Forgot Password" className="h-full w-full object-cover" />
         </div>
 
-        {/* Form Content */}
+       
         <div className="flex w-full md:w-3/5 h-full flex-col justify-center items-center p-12 bg-white">
           <div className="mb-10 flex flex-col items-center">
             <div className="flex h-60 w-60 mt-10 items-center justify-center overflow-hidden -translate-y-12">
@@ -65,7 +65,7 @@ const ForgotPassword = ({
             </button>
 
             <div className="text-center mt-4">
-              {/* 3. Updated Button to trigger Navigation */}
+             
               <button 
                 type="button"
                 onClick={() => navigate('/signin')} 
@@ -78,7 +78,7 @@ const ForgotPassword = ({
         </div>
       </div>
       
-      {/* Footer */}
+     
       <footer className="w-full font-sans">
         <div className="w-full bg-[#234E4D] text-white py-3 px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] tracking-wide">

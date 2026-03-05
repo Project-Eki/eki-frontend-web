@@ -1,13 +1,13 @@
 import { loginUser } from '../services/api';
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; 
+import { useNavigate } from 'react-router-dom';
 import logoImage from '../assets/logo.jpeg';
 import sideImage from '../assets/signin.jpeg';
 
 const SignInPage = ({
   logoUrl = logoImage,
   sideImageUrl = sideImage,
-  welcomeMessage = "Welcome back! ready to sell?",
+  welcomeMessage = "Welcome Admin! ready to manage?",
   onSignIn = (data) => console.log("Sign in logic here:", data),
   onGoogleSignIn = () => console.log("Google sign in clicked"),
 }) => {
@@ -16,39 +16,39 @@ const SignInPage = ({
   const [password, setPassword] = useState('');
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
-  
+
   const navigate = useNavigate();
 
   const validateEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-  const handleSubmit = async(e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     let hasError = false;
-    
+
     if (!email.trim()) { setEmailError('Email required'); hasError = true; }
     else if (!validateEmail(email)) { setEmailError('Invalid email'); hasError = true; }
     else setEmailError('');
-    
+
     if (!password.trim()) { setPasswordError('Password required'); hasError = true; }
     else setPasswordError('');
-    
+
     if (!hasError) {
       try {
         const data = await loginUser({ email, password });
         console.log("Login Success:", data);
-        
+
         localStorage.setItem('token', data.token);
-        navigate('/dashboard'); 
+        navigate('/dashboard');
       } catch (err) {
         setEmailError(err.message || "Login failed");
       }
     }
-  }; 
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-white font-sans text-sm">
       <div className="flex flex-grow h-[calc(100vh-96px)] overflow-hidden">
-      
+
         <div className="hidden md:flex w-1/2 h-full">
           <img src={sideImageUrl} alt="Sign In Visual" className="h-full w-full object-cover" />
         </div>
@@ -96,11 +96,11 @@ const SignInPage = ({
             </div>
 
             <div className="flex items-center justify-between text-xs px-1">
-               <label className="flex items-center text-gray-600 cursor-pointer">
-                 <input type="checkbox" className="mr-2 h-3.5 w-3.5 rounded border-gray-300 accent-yellow-500" />
-                 Remember me
-               </label>
-               <button type="button" onClick={() => navigate('/forgot-password')} className="font-semibold text-yellow-500 hover:underline">Forgot Password?</button>
+              <label className="flex items-center text-gray-600 cursor-pointer">
+
+
+              </label>
+
             </div>
 
             <button type="submit" className="w-full rounded-full bg-yellow-500 py-3 font-bold text-white shadow-md hover:bg-yellow-600 transition-all active:scale-[0.98]">
@@ -108,30 +108,20 @@ const SignInPage = ({
             </button>
           </form>
 
-          <div className="flex items-center w-full max-w-md my-6">
-            <div className="flex-grow border-t border-gray-300"></div>
-            <span className="flex-shrink mx-4 text-gray-400 text-xs font-semibold">OR</span>
-            <div className="flex-grow border-t border-gray-300"></div>
-          </div>
 
-          <button type="button" onClick={onGoogleSignIn}
-            className="flex w-full max-w-md items-center justify-center rounded-full border border-gray-300 py-2.5 hover:bg-gray-50 transition-colors">
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="mr-2 h-4 w-4" />
-            <span className="text-xs font-semibold text-gray-700">Sign in with Google</span>
-          </button>
 
           <div className="mt-8 text-xs text-gray-600">
-            Don't have an account?{" "}
-            <button 
-              onClick={() => navigate('/signup')} 
-              className="font-semibold text-yellow-500 hover:underline"
+
+            <button
+
+
             >
-              Sign up
+
             </button>
           </div>
         </div>
       </div>
-      
+
       <footer className="w-full font-sans">
         <div className="w-full bg-[#234E4D] text-white py-3 px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] tracking-wide">
