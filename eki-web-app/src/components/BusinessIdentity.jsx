@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { HiOutlineBriefcase } from "react-icons/hi";
-import { validateBusinessIdentity } from "../utils/onboardingValidation"; 
+import { validateBusinessIdentity } from "../utils/onboardingValidation";
+import { submitBusinessIdentity } from "../services/api";
 
 const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
-  const [errors, setErrors] = useState({}); 
+  const [errors, setErrors] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (field, value) => {
     updateFormData({ [field]: value });
@@ -11,12 +13,41 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
     setErrors(validationErrors);
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     const validationErrors = validateBusinessIdentity(formData);
     setErrors(validationErrors);
 
     if (Object.keys(validationErrors).length === 0) {
-      onNext();
+      setIsLoading(true);
+      try {
+        const data = await submitBusinessIdentity({
+          business_name: formData.business_name,
+          business_type: formData.business_type,
+          owner_full_name: formData.owner_full_name,
+          tax_id: formData.tax_id,
+          registration_number: formData.registration_number,
+          business_description: formData.business_description,
+        });
+        console.log("Business Identity Saved:", data);
+        onNext();
+      } catch (error) {
+        console.error("Business Identity Error:", error.response?.data);
+        const errData = error.response?.data || {};
+        if (error.response?.status === 400) {
+          // Map backend field errors back into the UI
+          setErrors(prev => ({
+            ...prev,
+            business_name: errData.business_name?.[0] || prev.business_name,
+            business_type: errData.business_type?.[0] || prev.business_type,
+            owner_full_name: errData.owner_full_name?.[0] || prev.owner_full_name,
+            registration_number: errData.registration_number?.[0] || prev.registration_number,
+          }));
+        } else {
+          alert(errData.detail || "Server error. Please try again later.");
+        }
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -139,11 +170,11 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
       </div>
 
       <div className="w-full flex justify-center items-center gap-4 mt-4">
-        <button onClick={onBack} className="flex-1 max-w-[140px] h-11 border-2 border-gray-100 text-gray-500 font-bold rounded-full hover:bg-gray-50 transition-all text-[14px]">
+        <button onClick={onBack} disabled={isLoading} className="flex-1 max-w-[140px] h-11 border-2 border-gray-100 text-gray-500 font-bold rounded-full hover:bg-gray-50 transition-all text-[14px] disabled:opacity-50">
           Back
         </button>
-        <button onClick={handleContinue} className="flex-1 max-w-[200px] h-11 bg-[#F2B53D] text-white font-bold rounded-full shadow-lg hover:bg-[#e0a630] transition-all text-[14px]">
-          Continue
+        <button onClick={handleContinue} disabled={isLoading} className={`flex-1 max-w-[200px] h-11 text-white font-bold rounded-full shadow-lg transition-all text-[14px] ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#F2B53D] hover:bg-[#e0a630]'}`}>
+          {isLoading ? "Saving..." : "Continue"}
         </button>
       </div>
     </div>

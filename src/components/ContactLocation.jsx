@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { HiOutlineLocationMarker } from "react-icons/hi";
 
 import { validateContactLocation } from "../utils/onboardingValidation";
+import { submitContactLocation } from "../services/api";
 
 const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
   const [errors, setErrors] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (field, value) => {
 
@@ -15,12 +17,39 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
     setErrors(validationErrors);
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     const validationErrors = validateContactLocation(formData);
     setErrors(validationErrors);
-
     if (Object.keys(validationErrors).length === 0) {
-      onNext();
+      setIsLoading(true);
+      try {
+        const data = await submitContactLocation({
+          business_email: formData.business_email,
+          business_phone: formData.business_phone,
+          address: formData.address,
+          city: formData.city,
+          country: formData.country,
+        });
+        console.log("Contact & Location Saved:", data);
+        onNext();
+      } catch (error) {
+        console.error("Contact Location Error:", error.response?.data);
+        const errData = error.response?.data || {};
+        if (error.response?.status === 400) {
+          setErrors(prev => ({
+            ...prev,
+            business_email: errData.business_email?.[0] || prev.business_email,
+            business_phone: errData.business_phone?.[0] || prev.business_phone,
+            address: errData.address?.[0] || prev.address,
+            city: errData.city?.[0] || prev.city,
+            country: errData.country?.[0] || prev.country,
+          }));
+        } else {
+          alert(errData.detail || "Server error. Please try again later.");
+        }
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -114,8 +143,10 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
       </div>
 
       <div className="mt-8 flex items-center justify-center gap-4 w-full">
-        <button onClick={onBack} className="flex-1 max-w-[140px] h-11 border-2 border-gray-100 text-gray-400 font-bold rounded-full hover:bg-gray-50 transition-all text-[14px]">Back</button>
-        <button onClick={handleContinue} className="flex-1 max-w-[220px] h-11 bg-[#F2B53D] text-white font-bold rounded-full shadow-lg hover:bg-[#e0a630] transition-all text-[14px]">Continue</button>
+        <button onClick={onBack} disabled={isLoading} className="flex-1 max-w-[140px] h-11 border-2 border-gray-100 text-gray-400 font-bold rounded-full hover:bg-gray-50 transition-all text-[14px] disabled:opacity-50">Back</button>
+        <button onClick={handleContinue} disabled={isLoading} className={`flex-1 max-w-[220px] h-11 text-white font-bold rounded-full shadow-lg transition-all text-[14px] ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#F2B53D] hover:bg-[#e0a630]'}`}>
+          {isLoading ? "Saving..." : "Continue"}
+        </button>
       </div>
     </div>
   );

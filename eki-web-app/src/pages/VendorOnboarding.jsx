@@ -1,12 +1,5 @@
-// import { 
-//   registerUser, 
-//   verifyEmail,
-//   submitBusinessIdentity, 
-//   submitContactLocation, 
-//   submitOperationCompliance 
-// } from "../services/api";
 import { useState } from "react";
-import Navbar from "../components/Navbar2";
+import Navbar2 from "../components/Navbar2";
 import AccountBasics from "../components/AccountBasics";
 import VerifyIdentity from "../components/VerifyIdentity";
 import BusinessIdentity from "../components/BusinessIdentity";
@@ -29,6 +22,7 @@ const VendorOnboarding = () => {
     last_name: "",
     email: "",
     password: "",
+    confirmPassword: "",
     agreeToTerms: false,
 
     // Business identity
@@ -65,65 +59,21 @@ const VendorOnboarding = () => {
     setFormData(prev => ({ ...prev, ...newData }));
   };
 
-  const handleNextStep = async () => {
-  try {
-    if (currentStep === 1) {
-      // Register the user
-      // await registerUser({
-      //   first_name: formData.first_name,
-      //   last_name: formData.last_name,
-      //   email: formData.email,
-      //   password: formData.password,
-      //   agreeToTerms: formData.agreeToTerms,
-      // });
-    }
-
-    if (currentStep === 3) {
-      // Submit business info
-      // await submitBusinessIdentity({
-      //   business_name: formData.business_name,
-      //   business_type: formData.business_type,
-      //   owner_full_name: formData.owner_full_name,
-      //   tax_id: formData.tax_id,
-      //   registration_number: formData.registration_number,
-      //   business_description: formData.business_description,
-      // });
-    }
-
-    if (currentStep === 4) {
-      // Submit contact info
-      // await submitContactLocation({
-      //   business_email: formData.business_email,
-      //   business_phone: formData.business_phone,
-      //   address: formData.address,
-      //   city: formData.city,
-      //   country: formData.country,
-      // });
-    }
-
+  // Each step component calls its own API internally.
+  // This function is called by each component's onNext/onFinish prop
+  // after a successful API response, so we just advance the step counter.
+  const handleNextStep = () => {
     if (currentStep === 5) {
-      // Submit operations & compliance info (documents etc.)
-      await submitOperationCompliance({
-        opening_time: formData.opening_time,
-        closing_time: formData.closing_time,
-        documents: formData.documents,
-      });
-      setIsSubmitted(true); // Show success screen
+      setIsSubmitted(true);
       return;
     }
-
-    // Move to next step
-    setCurrentStep(currentStep + 1);
-  } catch (error) {
-    console.error(error.message);
-    alert(error.message); // optional: show error to user
-  }
-};
+    setCurrentStep(prev => prev + 1);
+  };
 
   return (
     <div className="h-screen w-full flex flex-col bg-[#F8F9FA]  font-sans">
       {/* navbar */}
-      <Navbar/>
+      <Navbar2/>
       <div className="flex flex-1 overflow-hidden">
         
         {/* SIDEBAR */}

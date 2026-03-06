@@ -1,6 +1,6 @@
-import { loginUser } from '../../../src/services/api';
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; 
+import { useNavigate } from 'react-router-dom';
+import { loginUser } from '../services/api';
 import logoImage from '../assets/logo.jpeg';
 import sideImage from '../assets/signin.jpeg';
 
@@ -36,9 +36,10 @@ const SignInPage = ({
       try {
         const data = await loginUser({ email, password });
         console.log("Login Success:", data);
-        
-        localStorage.setItem('token', data.token);
-        navigate('/dashboard'); 
+
+        if (data.access) localStorage.setItem('access_token', data.access);
+        if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
+        navigate('/dashboard');
       } catch (err) {
         setEmailError(err.message || "Login failed");
       }
@@ -123,7 +124,7 @@ const SignInPage = ({
           <div className="mt-8 text-xs text-gray-600">
             Don't have an account?{" "}
             <button 
-              onClick={() => navigate('/signup')} 
+              onClick={() => navigate('/vendorOnboarding')} 
               className="font-semibold text-yellow-500 hover:underline"
             >
               Sign up

@@ -1,35 +1,66 @@
 // Step1 Account Basics
-export const validateAccountBasics = (formData) => {
-  let errors = {};
+// export const validateAccountBasics = (formData) => {
+//   let errors = {};
 
-  if (!formData.first_name || !formData.first_name.trim()) {
-    errors.first_name = "First name is required";
-  }
+//   if (!formData.first_name || !formData.first_name.trim()) {
+//     errors.first_name = "First name is required";
+//   }
   
-  if (!formData.last_name || !formData.last_name.trim()) {
-    errors.last_name = "Last name is required";
+//   if (!formData.last_name || !formData.last_name.trim()) {
+//     errors.last_name = "Last name is required";
+//   }
+
+//   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+//   if (!formData.email) {
+//     errors.email = "Email is required";
+//   } else if (!emailRegex.test(formData.email)) {
+//     errors.email = "Please enter a valid email address";
+//   }
+
+//   if (!formData.password) {
+//     errors.password = "Password is required";
+//   } else if (formData.password.length < 6) {
+//     errors.password = "Must be at least 6 characters";
+//   }
+
+//   if (!formData.confirmPassword) {
+//     errors.confirmPassword = "Please confirm your password";
+//   } else if (formData.confirmPassword !== formData.password) {
+//     errors.confirmPassword = "Passwords do not match";
+//   }
+
+//   if (!formData.agreeToTerms) {
+//     errors.terms = "You must accept the terms";
+//   }
+
+//   return errors;
+// };
+export const validateAccountBasics = (formData) => {
+  const errors = {};
+  const { first_name, last_name, email, password, confirmPassword, agreeToTerms } = formData;
+
+  if (!first_name || first_name.trim() === '') errors.first_name = "First name is required.";
+  if (!last_name || last_name.trim() === '') errors.last_name = "Last name is required.";
+  if (!email || email.trim() === '') errors.email = "Email is required.";
+  else if (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) errors.email = "Invalid email format.";
+
+  // Password rules matching backend
+  if (!password) errors.password = "Password is required.";
+  else {
+    if (password.length < 8) errors.password = "Password must be at least 8 characters.";
+    if (password.toLowerCase() === password || password.toUpperCase() === password) 
+      errors.password = "Password must include both uppercase and lowercase letters.";
+    if (password === email) errors.password = "Password cannot be same as email.";
+    if (/^\d+$/.test(password)) errors.password = "Password cannot be entirely numeric.";
   }
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!formData.email) {
-    errors.email = "Email is required";
-  } else if (!emailRegex.test(formData.email)) {
-    errors.email = "Please enter a valid email address";
-  }
+  if (!confirmPassword) errors.confirmPassword = "Please confirm your password.";
+  else if (password && password !== confirmPassword) errors.confirmPassword = "Passwords must match.";
 
-  if (!formData.password) {
-    errors.password = "Password is required";
-  } else if (formData.password.length < 6) {
-    errors.password = "Must be at least 6 characters";
-  }
-
-  if (!formData.agreeToTerms) {
-    errors.terms = "You must accept the terms";
-  }
+  if (!agreeToTerms) errors.terms = "You must agree to the terms.";
 
   return errors;
 };
-
 // Step 3 Business Identity
 export const validateBusinessIdentity = (formData) => {
   let errors = {};

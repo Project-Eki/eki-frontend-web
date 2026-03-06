@@ -1,32 +1,47 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // 1. Import useNavigate
+import { useNavigate } from 'react-router-dom';
 import logoImage from '../assets/logo.jpeg';
 import resetIllustration from '../assets/reset.jpeg';
+import { passwordResetRequest } from '../services/api';
 
-const ForgotPassword = ({ 
-  logoUrl = logoImage, 
+const ForgotPassword = ({
+  logoUrl = logoImage,
   illustrationUrl = resetIllustration
 }) => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
-  const navigate = useNavigate(); // 2. Initialize navigate hook
+  const [isLoading, setIsLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const navigate = useNavigate();
 
   const validateEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email.trim()) { 
-      setError('Email is required'); 
-      return; 
+    if (!email.trim()) {
+      setError('Email is required');
+      return;
     }
-    if (!validateEmail(email)) { 
-      setError('Invalid email address'); 
-      setEmail(''); 
-      return; 
+    if (!validateEmail(email)) {
+      setError('Invalid email address');
+      setEmail('');
+      return;
     }
     setError('');
-    console.log('Reset link sent');
-    // You could also navigate to a "Success" page here if you have one
+    setIsLoading(true);
+    try {
+      await passwordResetRequest({ email });
+      setSuccessMessage('A password reset code has been sent to your email.');
+      navigate('/reset-password', { state: { email } });
+    } catch (err) {
+      const msg =
+        err.response?.data?.detail ||
+        err.response?.data?.email?.[0] ||
+        'Failed to send reset code. Please try again.';
+      setError(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -51,6 +66,9 @@ const ForgotPassword = ({
           </div>
 
           <form className="w-full max-w-sm space-y-6" onSubmit={handleSubmit} noValidate>
+            {successMessage && (
+              <p className="text-green-600 text-xs font-semibold text-center">{successMessage}</p>
+            )}
             <input
               type="email"
               value={email}
@@ -60,8 +78,12 @@ const ForgotPassword = ({
                 ${error ? 'border-red-500 placeholder-red-500 text-red-500' : 'border-gray-300 focus:border-gray-400 placeholder-gray-500'}`}
             />
             
-            <button type="submit" className="w-full rounded-full bg-yellow-500 py-3.5 font-bold text-white shadow-md hover:bg-yellow-600 transition-all active:scale-[0.98]">
-              Reset Password
+            <button
+              type="submit"
+              disabled={isLoading}
+              className={`w-full rounded-full py-3.5 font-bold text-white shadow-md transition-all active:scale-[0.98] ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-yellow-500 hover:bg-yellow-600'}`}
+            >
+              {isLoading ? 'Sending...' : 'Reset Password'}
             </button>
 
             <div className="text-center mt-4">

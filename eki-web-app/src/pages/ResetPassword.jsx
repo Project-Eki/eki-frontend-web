@@ -1,17 +1,47 @@
 import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import logoImage from '../assets/logo.jpeg';
 import resetIllustration from '../assets/reset.jpeg';
+import { passwordResetConfirm } from '../services/api';
 
 const ResetPasswordPage = () => {
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const emailFromState = location.state?.email || '';
 
-  const handleSubmit = (e) => {
+  const [otp_code, setOtpCode] = useState('');
+  const [new_password, setNewPassword] = useState('');
+  const [confirm_password, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (password.length < 8) setError('Min 8 chars');
-    else if (password !== confirmPassword) setError('Passwords must match');
-    else setError('');
+    if (new_password.length < 8) { setError('Min 8 chars'); return; }
+    if (new_password !== confirm_password) { setError('Passwords must match'); return; }
+    if (!otp_code.trim()) { setError('OTP code is required'); return; }
+    setError('');
+    setIsLoading(true);
+    try {
+      await passwordResetConfirm({
+        email: emailFromState,
+        otp_code,
+        new_password,
+        confirm_password,
+      });
+      navigate('/signin');
+    } catch (err) {
+      const data = err.response?.data;
+      setError(
+        data?.detail ||
+        data?.otp_code?.[0] ||
+        data?.new_password?.[0] ||
+        data?.non_field_errors?.[0] ||
+        'Password reset failed. Please try again.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -26,29 +56,45 @@ const ResetPasswordPage = () => {
               <img src={logoImage} alt="Logo" className="h-full w-full object-contain" />
             </div>
             <h2 className="text-2xl font-bold text-gray-800 mb-0 text-center -mt-24">Reset Password</h2>
+            {emailFromState && (
+              <p className="text-xs text-gray-500 mt-1">for {emailFromState}</p>
+            )}
           </div>
           
           <form className="w-full max-w-md space-y-6" onSubmit={handleSubmit}>
-          
+
+            <input
+              type="text"
+              value={otp_code}
+              onChange={(e) => { setOtpCode(e.target.value); setError(''); }}
+              placeholder="Enter 6-digit OTP code"
+              maxLength={6}
+              aria-label="OTP Code"
+              className={`w-full rounded-md border py-3 pl-3 pr-4 focus:outline-none bg-gray-50/30
+                ${error && !otp_code ? 'border-red-500 placeholder-red-500' : 'border-gray-300 focus:border-yellow-500 placeholder-black'}`}
+            />
+
             <input
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={new_password}
+              onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Enter new password"
               aria-label="New Password"
-              className={`w-full rounded-md border py-3 pl-3 pr-4 focus:outline-none bg-gray-50/30 mb-6
-                ${error && password.length < 8 ? 'border-red-500 placeholder-red-500 text-red-500' : 'border-gray-300 focus:border-yellow-500 placeholder-black'}`}
+              className={`w-full rounded-md border py-3 pl-3 pr-4 focus:outline-none bg-gray-50/30
+                ${error && new_password.length < 8 ? 'border-red-500 placeholder-red-500 text-red-500' : 'border-gray-300 focus:border-yellow-500 placeholder-black'}`}
             />
             
             <input
               type="password"
-              value={confirmPassword}
-              onChange={(e) => { setConfirmPassword(e.target.value); if (password === e.target.value) setError(''); }}
-              placeholder={error && confirmPassword !== password ? 'Passwords must match' : "Confirm new password"}
+              value={confirm_password}
+              onChange={(e) => { setConfirmPassword(e.target.value); if (new_password === e.target.value) setError(''); }}
+              placeholder={error && confirm_password !== new_password ? 'Passwords must match' : "Confirm new password"}
               aria-label="Confirm Password"
-              className={`w-full rounded-md border py-3 pl-3 pr-4 focus:outline-none bg-gray-50/30 mb-6
-                ${error && confirmPassword !== password ? 'border-red-500 placeholder-red-500 text-red-500' : 'border-gray-300 focus:border-yellow-500 placeholder-black'}`}
+              className={`w-full rounded-md border py-3 pl-3 pr-4 focus:outline-none bg-gray-50/30
+                ${error && confirm_password !== new_password ? 'border-red-500 placeholder-red-500 text-red-500' : 'border-gray-300 focus:border-yellow-500 placeholder-black'}`}
             />
+
+            {error && <p className="text-red-500 text-xs font-semibold">{error}</p>}
 
             <div className="text-gray-600 text-xs">
               <div className="flex items-center gap-2 mb-2 font-semibold text-emerald-600">
@@ -75,9 +121,10 @@ const ResetPasswordPage = () => {
 
             <button
               type="submit"
-              className="w-full rounded-full bg-yellow-500 py-3 font-bold text-white shadow-md hover:bg-yellow-600 transition-all active:scale-[0.98]"
+              disabled={isLoading}
+              className={`w-full rounded-full py-3 font-bold text-white shadow-md transition-all active:scale-[0.98] ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-yellow-500 hover:bg-yellow-600'}`}
             >
-              Reset Password
+              {isLoading ? 'Resetting...' : 'Reset Password'}
             </button>
           </form>
         </div>
