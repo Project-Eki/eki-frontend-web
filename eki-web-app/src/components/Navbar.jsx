@@ -164,10 +164,6 @@ const Navbar = () => {
           Signin
         </button>
       </div> */}
-<<<<<<< HEAD
->>>>>>> 8303053658f9f5efb3897143a14e6b31ade520c2
-=======
->>>>>>> 2fdcb76 (Restore deleted project files after failed pull)
     </nav>
   )
 }

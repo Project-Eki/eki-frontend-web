@@ -37,12 +37,14 @@
 // };
 export const validateAccountBasics = (formData) => {
   const errors = {};
-  const { first_name, last_name, email, password, confirmPassword, agreeToTerms } = formData;
+  const { first_name, last_name, email, phone_number, password, confirmPassword, agreeToTerms } = formData;
 
   if (!first_name || first_name.trim() === '') errors.first_name = "First name is required.";
   if (!last_name || last_name.trim() === '') errors.last_name = "Last name is required.";
   if (!email || email.trim() === '') errors.email = "Email is required.";
   else if (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) errors.email = "Invalid email format.";
+  if (!phone_number || phone_number.trim() === '') errors.phone_number = "Phone number is required.";
+  else if (!/^\+?[0-9\s\-()]{7,20}$/.test(phone_number.trim())) errors.phone_number = "Invalid phone number.";
 
   // Password rules matching backend
   if (!password) errors.password = "Password is required.";

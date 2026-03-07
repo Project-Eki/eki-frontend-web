@@ -21,6 +21,7 @@ const VendorOnboarding = () => {
     first_name: "",
     last_name: "",
     email: "",
+    phone_number: "",
     password: "",
     confirmPassword: "",
     agreeToTerms: false,

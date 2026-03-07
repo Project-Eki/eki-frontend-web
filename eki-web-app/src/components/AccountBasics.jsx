@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { FcGoogle } from "react-icons/fc";
-import { FaRegUser, FaRegEnvelope, FaRegEye, FaRegEyeSlash } from "react-icons/fa6"; 
-import { FiLock } from "react-icons/fi"; 
+import { FaRegUser, FaRegEnvelope, FaRegEye, FaRegEyeSlash, FaPhone } from "react-icons/fa6";
+import { FiLock } from "react-icons/fi";
 import { validateAccountBasics } from "../utils/onboardingValidation";
 import { registerVendor } from '../services/api';
 
@@ -60,6 +60,7 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
           first_name: formData.first_name,
           last_name: formData.last_name,
           email: formData.email,
+          phone_number: formData.phone_number,
           password: formData.password,
           confirm_password: formData.confirmPassword,
           password2: formData.confirmPassword,
@@ -93,7 +94,8 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
             ...(fields.first_name && { first_name: Array.isArray(fields.first_name) ? fields.first_name[0] : fields.first_name }),
             ...(fields.last_name && { last_name: Array.isArray(fields.last_name) ? fields.last_name[0] : fields.last_name }),
             ...(fields.non_field_errors && { general: Array.isArray(fields.non_field_errors) ? fields.non_field_errors[0] : fields.non_field_errors }),
-            ...(!fields.email && errData.message && { email: errData.message }),
+            ...(fields.phone_number && { phone_number: Array.isArray(fields.phone_number) ? fields.phone_number[0] : fields.phone_number }),
+            ...(!fields.email && errData.message && { general: errData.message }),
           }));
         } else if (error.response?.status === 500) {
           setErrors(prev => ({
@@ -155,14 +157,29 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
         {/* Email */}
         <div className="relative">
           <FaRegEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-          <input 
-            type="email" 
-            placeholder="john@example.com" 
+          <input
+            type="email"
+            placeholder="john@example.com"
             value={formData.email}
             onChange={(e) => handleChange('email', e.target.value)}
-            className={`w-full h-11 pl-11 pr-4 bg-white border ${errors.email ? 'border-red-400' : 'border-gray-200'} rounded-2xl focus:border-[#F2B53D] outline-none text-[14px] transition-all`} 
+            autoComplete="email"
+            className={`w-full h-11 pl-11 pr-4 bg-white border ${errors.email ? 'border-red-400' : 'border-gray-200'} rounded-2xl focus:border-[#F2B53D] outline-none text-[14px] transition-all`}
           />
           {errors.email && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">{errors.email}</span>}
+        </div>
+
+        {/* Phone Number */}
+        <div className="relative">
+          <FaPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+          <input
+            type="tel"
+            placeholder="+256 700 000 000"
+            value={formData.phone_number}
+            onChange={(e) => handleChange('phone_number', e.target.value)}
+            autoComplete="tel"
+            className={`w-full h-11 pl-11 pr-4 bg-white border ${errors.phone_number ? 'border-red-400' : 'border-gray-200'} rounded-2xl focus:border-[#F2B53D] outline-none text-[14px] transition-all`}
+          />
+          {errors.phone_number && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">{errors.phone_number}</span>}
         </div>
 
         {/* Password */}
