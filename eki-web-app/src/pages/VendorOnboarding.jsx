@@ -72,7 +72,7 @@ const VendorOnboarding = () => {
   };
 
   return (
-    <div className="h-screen w-full flex flex-col bg-[#F8F9FA]  font-sans">
+    <div className="h-screen w-full flex flex-col bg-[#F8F9FA] font-sans overflow-hidden">
       {/* navbar */}
       <Navbar2/>
       <div className="flex flex-1 overflow-hidden">
@@ -197,5 +197,6 @@ const StepCard = ({ title, subtitle, isActive, isCompleted }) => (
 );
 
 export default VendorOnboarding;
+
 
 

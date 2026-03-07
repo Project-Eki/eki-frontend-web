@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { describe, test, expect, beforeEach, vi } from 'vitest'; 
-import SignIn from '../../../src/pages/SignIn';
+import SignIn from '../pages/SignIn';
 
 describe('SignIn Component', () => {
  
