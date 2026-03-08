@@ -1,6 +1,6 @@
 import { Search, Settings } from 'lucide-react';
 // 1. Keep this import! This is the correct way to handle assets.
-import adaefe from "../assets/adaefe.jpg";
+import adaefe from "../../assets/adaefe.jpg";
 
 const Navbar = () => {
   return (

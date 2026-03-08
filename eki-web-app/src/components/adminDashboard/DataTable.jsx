@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FaEye } from 'react-icons/fa';
-import ViewDetailsModal from './adminDashboard/ViewDetailsModal';
+import ViewDetailsModal from './ViewDetailsModal';
 
 const statusStyles = {
   // User statuses

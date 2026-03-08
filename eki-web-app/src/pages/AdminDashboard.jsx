@@ -1,12 +1,12 @@
 import React from 'react';
 import { Users, Box, ShieldCheck, ArrowLeftRight } from 'lucide-react';
-import Navbar3 from '../components/Navbar3';
+import Navbar3 from '../components/adminDashboard/Navbar3';
 import Footer from '../components/Footer';
-import Sidebar from '../components/Sidebar';
-import StatCard from '../components/StatCard';
-import ChartCard from '../components/ChartCard';
-import ActivityPanel from '../components/ActivityPanel';
-import DataTable from '../components/DataTable';
+import Sidebar from '../components/adminDashboard/Sidebar';
+import StatCard from '../components/adminDashboard/StatCard';
+import ChartCard from '../components/adminDashboard/ChartCard';
+import ActivityPanel from '../components/adminDashboard/ActivityPanel';
+import DataTable from '../components/adminDashboard/DataTable';
 
 // Helper component for colorful table badges
 const StatusBadge = ({ status }) => {
@@ -129,6 +129,7 @@ const AdminDashboard = () => {
       title="Recent Users"
       columns={userManagementColumns}
       data={userManagementData}
+      tableType="userManagement"
     />
   </div>
 
@@ -142,6 +143,7 @@ const AdminDashboard = () => {
       title="Flagged Content"
       columns={contentModerationColumns}
       data={contentModerationData}
+      tableType="contentModeration"
     />
   </div>
 
@@ -155,6 +157,7 @@ const AdminDashboard = () => {
       title="Recent Transactions"
       columns={transactionColumns}
       data={transactionData}
+      tableType="transaction"
     />
   </div>
 
@@ -168,6 +171,7 @@ const AdminDashboard = () => {
       title="Vendor Verification"
       columns={verificationWorkflowsColumns}
       data={verificationWorkflowsData}
+      tableType="verificationWorkflows"
     />
   </div>
 
