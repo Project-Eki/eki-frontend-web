@@ -46,7 +46,7 @@ const Sidebar = () => {
         </div>
 
         {/* Bottom Section */}
-        <div className="px-2 border-t border-gray-100 pt-42">
+        <div className="px-2 border-t border-gray-100 pt-30">
           <ul className="space-y-2">
             {/* Settings - Normal Styling */}
             <li>

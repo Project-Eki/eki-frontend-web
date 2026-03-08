@@ -82,14 +82,14 @@ const AdminDashboard = () => {
 
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F9FAFB]">
+    <div className="flex flex-col h-screen bg-[#F9FAFB]">
       
       {/* 1. NAVBAR: Fixed at top, full width */}
       <Navbar3 />
 
       {/* 2. MAIN LAYOUT: Sidebar + Content */}
-      <div className="flex flex-1">
-        {/* Sidebar: Fixed width, starts below navbar */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar: Fixed width, stays in place */}
         <Sidebar />
 
         {/* Main Content Area */}
@@ -182,8 +182,8 @@ const AdminDashboard = () => {
         </main>
       </div>
 
-      {/* Fixed Footer - runs from sidebar to right */}
-      <footer className="fixed bottom-0 left-[240px] right-0 bg-[#1D4D4C] text-white py-4 px-10 flex justify-between items-center text-[11px] z-10">
+      {/* Footer - now appears naturally at bottom of content */}
+      <footer className="bg-[#1D4D4C] text-white py-4 px-10 flex justify-between items-center text-[11px]">
         <div>Buy Smart. Sell Fast. Grow Together...</div>
         <div>© 2026 Vendor Portal. All rights reserved.</div>
         <div className="flex gap-4">
