@@ -82,15 +82,17 @@ const AdminDashboard = () => {
 
 
   return (
-    <div className="flex h-screen w-full bg-[#F9FAFB] overflow-hidden">
+    <div className="flex flex-col min-h-screen bg-[#F9FAFB]">
       
-      {/* 1. SIDEBAR: Spans full vertical height */}
-      <Sidebar />
+      {/* 1. NAVBAR: Fixed at top, full width */}
+      <Navbar3 />
 
-      {/* 2. RIGHT COLUMN: Navbar + Content */}
-      <div className="flex flex-col flex-1 min-w-0 h-full">
-        <Navbar3 />
+      {/* 2. MAIN LAYOUT: Sidebar + Content */}
+      <div className="flex flex-1">
+        {/* Sidebar: Fixed width, starts below navbar */}
+        <Sidebar />
 
+        {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto p-8">
           <div className="max-w-[1600px] mx-auto space-y-8">
             

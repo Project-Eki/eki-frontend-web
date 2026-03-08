@@ -14,10 +14,7 @@ import {
 const menuItems = [
   { icon: Users, label: 'Users', active: true },
   { icon: Store, label: 'Vendors' },
-  { icon: Box, label: 'Listings' }, // 'Box' matches the 'Listings' icon in your PNG better
-];
-
-const paymentItems = [
+  { icon: Box, label: 'Listings' },
   { icon: CreditCard, label: 'Payments' },
   { icon: ShoppingCart, label: 'Orders' },
   { icon: BarChart3, label: 'Analytics' },
@@ -48,43 +45,27 @@ const Sidebar = () => {
           </ul>
         </div>
 
-        {/* Payments Menu Group */}
-        <div className="mb-8">
+        {/* Bottom Section */}
+        <div className="px-2 border-t border-gray-100 pt-42">
           <ul className="space-y-2">
-            {paymentItems.map((item) => (
-              <li key={item.label}>
-                <button
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-black transition-all duration-200"
-                >
-                  <item.icon size={18} strokeWidth={1.5} />
-                  <span>{item.label}</span>
-                </button>
-              </li>
-            ))}
+            {/* Settings - Normal Styling */}
+            <li>
+              <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-black transition-all duration-200">
+                <Settings size={18} strokeWidth={1.5} />
+                <span>Settings</span>
+              </button>
+            </li>
+            
+            {/* Log Out - Red Styling */}
+            <li>
+              <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-all duration-200">
+                <LogOut size={18} strokeWidth={1.5} />
+                <span>Log out</span>
+              </button>
+            </li>
           </ul>
         </div>
       </nav>
-
-      {/* Bottom Section */}
-      <div className="px-4 border-t border-gray-100 pt-6">
-        <ul className="space-y-2">
-          {/* Settings - Normal Styling */}
-          <li>
-            <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-black transition-all duration-200">
-              <Settings size={18} strokeWidth={1.5} />
-              <span>Settings</span>
-            </button>
-          </li>
-          
-          {/* Log Out - Red Styling */}
-          <li>
-            <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-all duration-200">
-              <LogOut size={18} strokeWidth={1.5} />
-              <span>Log out</span>
-            </button>
-          </li>
-        </ul>
-      </div>
     </aside>
   );
 };
