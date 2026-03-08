@@ -1,7 +1,6 @@
 import React from 'react';
 import { Users, Box, ShieldCheck, ArrowLeftRight } from 'lucide-react';
 import Navbar3 from '../components/adminDashboard/Navbar3';
-import Footer from '../components/Footer';
 import Sidebar from '../components/adminDashboard/Sidebar';
 import StatCard from '../components/adminDashboard/StatCard';
 import ChartCard from '../components/adminDashboard/ChartCard';
@@ -177,10 +176,25 @@ const AdminDashboard = () => {
 
 </div>
 
-            <Footer />
           </div>
         </main>
       </div>
+
+      {/* Fixed Footer - runs from sidebar to right */}
+      <footer className="fixed bottom-0 left-[240px] right-0 bg-[#1D4D4C] text-white py-4 px-10 flex justify-between items-center text-[11px] z-10">
+        <div>Buy Smart. Sell Fast. Grow Together...</div>
+        <div>© 2026 Vendor Portal. All rights reserved.</div>
+        <div className="flex gap-4">
+          <span className="relative inline-block cursor-pointer hover:underline">
+            eki
+            <span className="absolute text-[5px] -bottom-0 -right-2">TM</span>
+          </span>
+          <span className="cursor-pointer hover:underline">Support</span>
+          <span className="cursor-pointer hover:underline">Privacy Policy</span>
+          <span className="cursor-pointer hover:underline">Terms of Service</span>
+          <span className="cursor-pointer hover:underline">Ijoema ltd</span>
+        </div>
+      </footer>
     </div>
   );
 };

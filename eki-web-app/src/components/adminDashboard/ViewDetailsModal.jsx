@@ -22,7 +22,11 @@ const ViewDetailsModal = ({
     }
   }, [isOpen]);
 
-  if (!isOpen || !data) return null;
+  // Don't render if modal is closed
+  if (!isOpen) return null;
+
+  // Get entries from data
+  const entries = data ? Object.entries(data) : [];
 
   const formatKey = (key) =>
     key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ')
@@ -33,8 +37,6 @@ const ViewDetailsModal = ({
     if (typeof value === 'boolean') return value ? 'Yes' : 'No';
     return String(value);
   };
-
-  const entries = Object.entries(data);
 
   return (
     <div
@@ -187,38 +189,4 @@ const ViewDetailsModal = ({
   );
 };
 
-// Demo
-export default function App() {
-  const [open, setOpen] = React.useState(true);
-  const sampleData = {
-    fullName: 'Amara Osei-Bonsu',
-    emailAddress: 'amara@example.com',
-    role: 'Product Designer',
-    department: 'Design',
-    joined_date: 'March 2, 2024',
-    status: 'Active',
-    location: 'Accra, Ghana',
-    notes: null,
-  };
-
-  return (
-    <div style={{ minHeight: '100vh', background: '#e8e7f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      {!open && (
-        <button
-          onClick={() => setOpen(true)}
-          style={{ padding: '12px 24px', background: '#635bff', color: 'white', border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
-        >
-          Open Modal
-        </button>
-      )}
-      <ViewDetailsModal
-        isOpen={open}
-        onClose={() => setOpen(false)}
-        data={sampleData}
-        title="Team Member"
-        onEdit={(d) => alert('Edit: ' + d.fullName)}
-        onDelete={(d) => alert('Delete: ' + d.fullName)}
-      />
-    </div>
-  );
-}
+export default ViewDetailsModal;
