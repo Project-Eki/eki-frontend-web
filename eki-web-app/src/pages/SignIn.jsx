@@ -44,8 +44,9 @@ const SignInPage = ({
         setEmailError(err.message || "Login failed");
       }
     }
-  }; // <--- Only ONE closing brace here
+  }; 
 
+  {/* Side Image */}
   return (
     <div className="flex flex-col min-h-screen bg-white font-sans text-sm">
       <div className="flex flex-grow h-[calc(100vh-96px)] overflow-hidden">
@@ -54,14 +55,16 @@ const SignInPage = ({
           <img src={sideImageUrl} alt="Sign In Visual" className="h-full w-full object-cover" />
         </div>
 
-        <div className="flex w-full md:w-1/2 h-full flex-col justify-center items-center p-12 bg-white">
-          <div className="mb-6 flex flex-col items-center">
-            <div className="flex h-40 w-60 mt-10 items-center justify-center overflow-hidden -translate-y-12">
-              <img src={logoUrl} alt="Logo" className="h-full w-full object-contain mt-10" />
+        {/* Logo */}
+          <div className="flex w-full md:w-1/2 h-full flex-col justify-center items-center p-12 bg-white">
+            <div className="mb-6 flex flex-col items-center">
+              <div className="flex h-30 w-30 mb-4 items-center justify-center overflow-hidden">
+                <img src={logoUrl} alt="Logo" className="h-full w-full object-contain" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800 text-center">{welcomeMessage}</h2>
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-0 text-center -mt-24">{welcomeMessage}</h2>
-          </div>
 
+             {/* Sign In Form */}
           <form className="w-full max-w-md space-y-4" onSubmit={handleSubmit}>
             <input
               type="text"
@@ -121,7 +124,7 @@ const SignInPage = ({
             <span className="text-xs font-semibold text-gray-700">Sign in with Google</span>
           </button>
 
-          <div className="mt-8 text-xs text-gray-600">
+          <div className="mt-2 text-xs text-gray-600">
             Don't have an account?{" "}
             <button 
               onClick={() => navigate('/vendorOnboarding')} 
