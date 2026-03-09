@@ -39,20 +39,20 @@ const Navbar = () => {
           </Link>
         </div>
 
-        {/* Search Bar */}
-        <div className="hidden sm:flex flex-1 justify-center px-6">
-          <div className="relative w-full max-w-[320px] lg:max-w-[420px] flex items-center">
-            <FontAwesomeIcon
-              icon={faSearch}
-              className="absolute left-4 top-7 -translate-y-1/2 text-gray-400 pointer-events-none"
-            />
-            <input
-              type="text"
-              placeholder="Search products..."
-              className="w-full pl-11 pr-4 py-2.5 border border-gray-300 rounded-full outline-none focus:border-[#efb034] focus:ring-1 focus:ring-[#efb034] transition-all text-sm"
-            />
-          </div>
-        </div>
+       {/* Search Bar */}
+<div className="hidden sm:flex flex-1 justify-center px-6">
+  <div className="relative w-full max-w-[320px] lg:max-w-[420px]">
+    <FontAwesomeIcon
+      icon={faSearch}
+      className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+    />
+    <input
+      type="text"
+      placeholder="Search products..."
+      className="w-full pl-11 pr-4 py-2.5 border border-gray-300 rounded-full outline-none focus:border-[#efb034] focus:ring-1 focus:ring-[#efb034] transition-all text-sm"
+    />
+  </div>
+</div>
 
         {/* Desktop Navigation */}
         <div className="hidden lg:flex items-center">
