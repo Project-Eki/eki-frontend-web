@@ -152,19 +152,19 @@ const Navbar = () => {
         </Link>
       </div>
 
-      {/* <div className="flex items-center gap-8">
-        <button className="text-[14px] font-semibold  cursor-default">
-          Home
-        </button>
-        <button className="text-[14px] font-medium text-gray-500 hover:text-gray-800 transition-all cursor-pointer">
-          Help
-        </button>
-        <div className="h-4 w-[1px] bg-gray-200"></div>
-        <button className="text-[14px] font-bold text-[#1A1A1A] hover:text-[#235E5D] transition-colors cursor-pointer">
-          Signin
-        </button>
-      </div> */}
-    </nav>
+  {/* <div className="flex items-center gap-8">
+    <button className="text-[14px] font-semibold  cursor-default">
+      Home
+    </button>
+    <button className="text-[14px] font-medium text-gray-500 hover:text-gray-800 transition-all cursor-pointer">
+      Help
+    </button>
+    <div className="h-4 w-[1px] bg-gray-200"></div>
+    <button className="text-[14px] font-bold text-[#1A1A1A] hover:text-[#235E5D] transition-colors cursor-pointer">
+      Signin
+    </button>
+  </div> */}
+</nav>
   )
 }
 
