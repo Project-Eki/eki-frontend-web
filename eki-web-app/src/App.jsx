@@ -1,15 +1,15 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import Home from '../eki-web-app/src/pages/Home';
-import SignIn from '../eki-web-app/src/pages/SignIn'; 
-import ForgotPassword from '../eki-web-app/src/pages/ForgotPassword';
-import ResetPassword from '../eki-web-app/src/pages/ResetPassword';
-import AdminSignin from './pages/AdminSignin';
-import AccountSettingsPage from './pages/AccountSetting';
-import VendorOnboarding from "../eki-web-app/src/pages/VendorOnboarding";
-import Settings from '../eki-web-app/src/pages/Settings';
-import AdminDashboard from '../eki-web-app/src/pages/AdminDashboard';
-import VendorDashboard from '../eki-web-app/src/pages/VendorDashboard';
+import Home from './pages/Home';
+import SignIn from './pages/SignIn'; 
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+// import AdminSignin from './pages/AdminSignin';
+// import AccountSettingsPage from './pages/AccountSetting';
+import VendorOnboarding from "./pages/VendorOnboarding";
+import Settings from './pages/Settings';
+import AdminDashboard from './pages/AdminDashboard';
+import VendorDashboard from './pages/VendorDashboard';
 
 import './App.css';
 
@@ -21,8 +21,8 @@ function App() {
         <Route path="/signIn" element={<SignIn />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/admin-signin" element={<AdminSignin />} />
-        <Route path="/account-settings" element={<AccountSettingsPage />} />
+        {/* <Route path="/admin-signin" element={<AdminSignin />} /> */}
+        {/* <Route path="/account-settings" element={<AccountSettingsPage />} /> */}
          <Route path="/VendorOnboarding" element={<VendorOnboarding />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admindashboard" element={<AdminDashboard />} />
