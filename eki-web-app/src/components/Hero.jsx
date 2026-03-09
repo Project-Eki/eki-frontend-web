@@ -1,5 +1,6 @@
 import React from 'react'
 import heroImage from '../assets/hero-image.jpg'
+import { Link } from 'react-router-dom';
 
 const Hero = () => {
   return (
@@ -18,10 +19,12 @@ const Hero = () => {
             Eki connects you to a thriving marketplace of local sellers and service providers,
             all with verified profiles for secure, pickup-based transactions.
           </p>
-          <div className="flex justify-center md:justify-start">
+         <div className="flex justify-center md:justify-start">
+          <Link to="/VendorOnboarding">
             <button className="bg-[#efb034] text-white px-10 py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:bg-[#d99c1c] hover:-translate-y-1 hover:shadow-lg">
               Become a Seller
             </button>
+          </Link>
           </div>
         </div>
 

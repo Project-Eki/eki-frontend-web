@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Users, Box, ShieldCheck, ArrowLeftRight } from 'lucide-react';
 import Navbar3 from '../components/adminDashboard/Navbar3';
@@ -197,6 +198,11 @@ const AdminDashboard = () => {
           <span className="cursor-pointer hover:underline">Ijoema ltd</span>
         </div>
       </footer>
+
+
+
+
+
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom' // 1. Import Link
+import { Link } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faSearch,
@@ -32,44 +32,51 @@ const Navbar = () => {
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">
       <div className="container mx-auto px-4 flex justify-between items-center h-20">
-
-
+        {/* Logo */}
         <div className="flex-shrink-0">
           <Link to="/">
             <img src={logoImage} alt="Eki Logo" className="h-16 w-auto object-contain" />
           </Link>
         </div>
 
+       {/* Search Bar */}
+<div className="hidden sm:flex flex-1 justify-center px-6">
+  <div className="relative w-full max-w-[320px] lg:max-w-[420px]">
+    <FontAwesomeIcon
+      icon={faSearch}
+      className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+    />
+    <input
+      type="text"
+      placeholder="Search products..."
+      className="w-full pl-11 pr-4 py-2.5 border border-gray-300 rounded-full outline-none focus:border-[#efb034] focus:ring-1 focus:ring-[#efb034] transition-all text-sm"
+    />
+  </div>
+</div>
 
-        <div className="hidden sm:flex flex-1 justify-center px-6">
-          <div className="relative w-full max-w-[320px] lg:max-w-[420px] flex items-center">
-            <FontAwesomeIcon
-              icon={faSearch}
-              className="absolute left-4 top-7 -translate-y-1/2 text-gray-400 pointer-events-none"
-            />
-            <input
-              type="text"
-              placeholder="Search products..."
-              className="w-full pl-11 pr-4 py-2.5 border border-gray-300 rounded-full outline-none focus:border-[#efb034] focus:ring-1 focus:ring-[#efb034] transition-all text-sm"
-            />
-          </div>
-        </div>
-
-
+        {/* Desktop Navigation */}
         <div className="hidden lg:flex items-center">
           <ul className="flex list-none gap-6 items-center">
-            <li><a href="#home" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">Home</a></li>
-            <li><a href="#products" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">Products</a></li>
-            <li><a href="#services" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">Services</a></li>
-
-
+            <li>
+              <a href="#home" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">
+                Home
+              </a>
+            </li>
+            <li>
+              <a href="#products" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">
+                Products
+              </a>
+            </li>
+            <li>
+              <a href="#services" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">
+                Services
+              </a>
+            </li>
             <li>
               <Link to="/signin" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">
                 Sign in
               </Link>
             </li>
-
-
             <li>
               <Link
                 to="/signup"
@@ -78,8 +85,6 @@ const Navbar = () => {
                 Sign Up
               </Link>
             </li>
-            
-           
             <li className="relative">
               <button
                 onClick={() => setIsLanguageOpen(!isLanguageOpen)}
@@ -99,8 +104,11 @@ const Navbar = () => {
                     <button
                       key={lang.code}
                       onClick={() => handleLanguageSelect(lang.code)}
-                      className={`block w-full text-left px-4 py-2 text-sm ${selectedLanguage === lang.code ? 'text-[#efb034] bg-orange-50' : 'text-gray-700 hover:bg-gray-50'
-                        }`}
+                      className={`block w-full text-left px-4 py-2 text-sm ${
+                        selectedLanguage === lang.code
+                          ? 'text-[#efb034] bg-orange-50'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
                     >
                       {lang.name}
                     </button>
@@ -111,60 +119,39 @@ const Navbar = () => {
           </ul>
         </div>
 
-
+        {/* Mobile Menu Button */}
         <div className="lg:hidden ml-4" onClick={() => setIsOpen(!isOpen)}>
-          <FontAwesomeIcon icon={isOpen ? faTimes : faBars} className="text-2xl text-gray-800 cursor-pointer" />
+          <FontAwesomeIcon
+            icon={isOpen ? faTimes : faBars}
+            className="text-2xl text-gray-800 cursor-pointer"
+          />
         </div>
       </div>
 
-
-      <div className={`lg:hidden overflow-hidden transition-all duration-300 bg-white ${isOpen ? 'max-h-screen border-t' : 'max-h-0'}`}>
+      {/* Mobile Menu */}
+      <div
+        className={`lg:hidden overflow-hidden transition-all duration-300 bg-white ${
+          isOpen ? 'max-h-screen border-t' : 'max-h-0'
+        }`}
+      >
         <div className="p-6 space-y-4">
-          <Link to="/signin" className="block font-medium text-gray-800" onClick={() => setIsOpen(false)}>Sign in</Link>
-          <Link to="/signup" className="block w-full text-center bg-[#efb034] text-white py-3 rounded-lg font-bold" onClick={() => setIsOpen(false)}>Sign Up</Link>
+          <Link
+            to="/signin"
+            className="block font-medium text-gray-800"
+            onClick={() => setIsOpen(false)}
+          >
+            Sign in
+          </Link>
+          <Link
+            to="/signup"
+            className="block w-full text-center bg-[#efb034] text-white py-3 rounded-lg font-bold"
+            onClick={() => setIsOpen(false)}
+          >
+            Sign Up
+          </Link>
         </div>
       </div>
-      <div className="flex items-center gap-8">
-        {/* Home Link */}
-        <Link 
-          to="/" 
-          className="text-[14px] font-semibold text-gray-800 hover:text-[#235E5D] transition-all cursor-pointer"
-        >
-          Home
-        </Link>
-
-        {/* Help Link (if you have a help page) */}
-        <Link 
-          to="/help" 
-          className="text-[14px] font-medium text-gray-500 hover:text-gray-800 transition-all cursor-pointer"
-        >
-          Help
-        </Link>
-
-        <div className="h-4 w-[1px] bg-gray-200"></div>
-
-        {/* Signin Link */}
-        <Link 
-          to="/signIn" 
-          className="text-[14px] font-bold text-[#1A1A1A] hover:text-[#235E5D] transition-colors cursor-pointer"
-        >
-          Signin
-        </Link>
-      </div>
-
-  {/* <div className="flex items-center gap-8">
-    <button className="text-[14px] font-semibold  cursor-default">
-      Home
-    </button>
-    <button className="text-[14px] font-medium text-gray-500 hover:text-gray-800 transition-all cursor-pointer">
-      Help
-    </button>
-    <div className="h-4 w-[1px] bg-gray-200"></div>
-    <button className="text-[14px] font-bold text-[#1A1A1A] hover:text-[#235E5D] transition-colors cursor-pointer">
-      Signin
-    </button>
-  </div> */}
-</nav>
+    </nav>
   )
 }
 

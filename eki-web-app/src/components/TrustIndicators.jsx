@@ -30,10 +30,10 @@ const TrustIndicators = () => {
     <section className="bg-[linear-gradient(0deg,#F3FBFAFF_0%,#A7E2DBFF_100%)] py-20 md:py-16 sm:py-12 w-full">
       <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
         
-        <h2 className="text-4xl md:text-3xl sm:text-2xl font-bold text-center mb-4 text-white max-w-4xl mx-auto px-4">
+        <h2 className="text-4xl md:text-3xl sm:text-2xl font-bold text-center mb-4 text-[#235E5DFF] max-w-4xl mx-auto px-4">
           Built on Trust, Powered by Technology
         </h2>
-        <p className="text-lg md:text-base text-center text-[#E0E7FF] mb-12 max-w-3xl mx-auto leading-relaxed px-4">
+        <p className="text-lg md:text-base text-center text-[#235E5DFF] mb-12 max-w-3xl mx-auto leading-relaxed px-4">
           Our payment-first, on-site fulfillment model ensures secure transactions and accountability for both buyers and vendors
         </p>
         
@@ -45,7 +45,7 @@ const TrustIndicators = () => {
             >
               {/* Icon inline with title */}
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-gradient-to-br from-[#235E5D] to-[#22365D] rounded-lg flex items-center justify-center text-white text-base flex-shrink-0">
+                <div className="w-10 h-10 bg-gradient-to-br from-[#235E5DFF] to-[#235E5DFF] rounded-lg flex items-center justify-center text-white text-base flex-shrink-0">
                   <FontAwesomeIcon icon={indicator.icon} />
                 </div>
                 <h3 className="text-xl md:text-lg font-semibold text-gray-800">
