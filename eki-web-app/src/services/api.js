@@ -76,9 +76,7 @@ export const registerVendor = async ({
   email,
   password,
   confirm_password,
-  password2,
   accepted_terms = true,
-  role = 'buyer',
 }) => {
   const payload = {
     first_name,
@@ -86,13 +84,11 @@ export const registerVendor = async ({
     email,
     password,
     accepted_terms,
-    role,
   };
   // Support both confirm_password and password2 field names
   if (confirm_password !== undefined) payload.confirm_password = confirm_password;
-  if (password2 !== undefined) payload.password2 = password2;
 
-  const response = await api.post('/accounts/register/', payload);
+  const response = await api.post('/accounts/register/vendor/', payload);
   return response.data;
 };
 
@@ -106,7 +102,7 @@ export const verifyEmail = async ({
   otp_code,
   otp_type = 'email_verification',
 }) => {
-  const response = await api.post('/accounts/verify-otp/', {
+  const response = await api.post('/accounts/verify-email/', {
     email,
     otp_code,
     otp_type,
