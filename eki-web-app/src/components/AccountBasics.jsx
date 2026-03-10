@@ -4,6 +4,7 @@ import { FaRegUser, FaRegEnvelope, FaRegEye, FaRegEyeSlash } from "react-icons/f
 import { FiLock } from "react-icons/fi";
 import { validateAccountBasics } from "../utils/onboardingValidation";
 import { registerVendor } from '../services/api';
+import MessageAlert from "../components/MessageAlert";
 
 const AccountBasics = ({ onNext, formData, updateFormData }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -39,9 +40,8 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
 
   // HELPER: Handles input changes AND clears errors in real-time
   const handleChange = (field, value) => {
-    // Update form data
-    updateFormData({ [field]: value });
-
+    updateFormData({ [field]: value }); // Update form data
+    
     // Run field validation
     const validationErrors = validateAccountBasics({ ...formData, [field]: value });
     setErrors(validationErrors);
@@ -56,6 +56,7 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
       });
     }
   };
+
 
   // Get placeholder text (error message or default placeholder without asterisk)
   const getPlaceholder = (field, defaultPlaceholder) => {
@@ -88,9 +89,7 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
           email: formData.email,
           password: formData.password,
           confirm_password: formData.confirmPassword,
-          password2: formData.confirmPassword,
           accepted_terms: formData.agreeToTerms,
-          role: 'vendor',
         });
 
         console.log("Registration Successful:", data);
@@ -101,8 +100,8 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
         onNext(); // Move to Step 2
       } catch (error) {
         const errData = error.response?.data;
-        console.error("Full Backend Error:", error);
-        console.log("Response Data:", errData);
+        console.error(" Backend Error:", error);
+        
 
         if (error.response?.status === 400 && errData) {
           // Handle both { errors: {...} } and flat { field: [...] } structures
@@ -146,18 +145,15 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
   return (
     <div className="w-full animate-slideUp max-w-[580px]">
       <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); handleContinue(); }}>
-        {errors.general && (
-          <div className="bg-red-50 border border-red-300 text-red-600 text-[12px] font-bold rounded-xl px-4 py-2 animate-fadeIn">
-            {errors.general}
-          </div>
-        )}
-        
+         {/* General error */}
+        {errors.general && <MessageAlert message={errors.general} type="error" />}
         {/* First & Last Name */}
         <div className="grid grid-cols-2 gap-4">
           <div className="relative">
             <FaRegUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={14} />
             <input 
               type="text" 
+              autoComplete="given-name"
               placeholder={getPlaceholder('first_name', 'First Name')}
               value={formData.first_name}
               onChange={(e) => handleChange('first_name', e.target.value)}
@@ -173,6 +169,7 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
           <div className="relative">
             <input 
               type="text" 
+              autoComplete="family-name"
               placeholder={getPlaceholder('last_name', 'Last Name')}
               value={formData.last_name}
               onChange={(e) => handleChange('last_name', e.target.value)}
@@ -278,7 +275,8 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
 
         {/* Continue Button - Dynamic State */}
         <button 
-          onClick={handleContinue}
+          type= "submit"
+          // onClick={handleContinue}
           disabled={isLoading || !isFormValid}
           className={`w-full h-10 rounded-full text-white font-bold text-[15px] transition-all mt-3 ${
             isLoading || !isFormValid 
