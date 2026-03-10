@@ -79,7 +79,7 @@ const Navbar = () => {
             </li>
             <li>
               <Link
-                to="/signup"
+                to="/vendorOnboarding"
                 className="bg-[#efb034] text-white px-6 py-2.5 rounded-lg font-bold hover:bg-[#d99c1c] transition-all active:scale-95"
               >
                 Sign Up
