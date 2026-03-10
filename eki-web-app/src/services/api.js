@@ -76,9 +76,11 @@ export const registerVendor = async ({
   email,
   password,
   confirm_password,
-  password2,
   accepted_terms = true,
+<<<<<<< HEAD
   role = 'vendor', // Changed default to 'vendor'
+=======
+>>>>>>> 39f0843d9cc5b2916bfdaf41341650369433cc94
 }) => {
   const payload = {
     first_name,
@@ -86,14 +88,15 @@ export const registerVendor = async ({
     email,
     password,
     accepted_terms,
-    role,
   };
 
   // Support both confirm_password and password2 field names
   if (confirm_password !== undefined) payload.confirm_password = confirm_password;
-  if (password2 !== undefined) payload.password2 = password2;
 
+<<<<<<< HEAD
   // IMPORTANT: The URL must match the backend exactly (lowercase and trailing slash)
+=======
+>>>>>>> 39f0843d9cc5b2916bfdaf41341650369433cc94
   const response = await api.post('/accounts/register/vendor/', payload);
   return response.data;
 };
@@ -107,7 +110,7 @@ export const verifyEmail = async ({
   otp_code,
   otp_type = 'email_verification',
 }) => {
-  const response = await api.post('/accounts/verify-otp/', {
+  const response = await api.post('/accounts/verify-email/', {
     email,
     otp_code,
     otp_type,

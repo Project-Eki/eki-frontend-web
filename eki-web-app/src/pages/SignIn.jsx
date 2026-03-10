@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
-import { signInUser } from '../services/authService';
-import { googleAuthService } from '../services/GoogleAuth';
+import { signInUser } from "../services/authService"; 
 
 const SignIn = () => {
   const navigate = useNavigate();
