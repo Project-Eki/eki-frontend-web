@@ -21,8 +21,8 @@ function App() {
         <Route path="/signIn" element={<SignIn />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        {/* <Route path="/admin-signin" element={<AdminSignin />} /> */}
-        {/* <Route path="/account-settings" element={<AccountSettingsPage />} /> */}
+        { <Route path="/admin-signin" element={<AdminSignin />} /> }
+        { <Route path="/account-settings" element={<AccountSettingsPage />} /> }
          <Route path="/VendorOnboarding" element={<VendorOnboarding />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admindashboard" element={<AdminDashboard />} />

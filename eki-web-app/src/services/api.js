@@ -48,7 +48,7 @@ export default api;
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 /**
- * Login — CustomTokenObtainPairSerializer
+ * Sign In — CustomTokenObtainPairSerializer
  * POST /accounts/token/
  */
 export const loginUser = async ({ email, password }) => {
@@ -66,9 +66,9 @@ export const refreshToken = async ({ refresh }) => {
 };
 
 /**
- * Register new user — RegisterSerializer
- * POST /accounts/register/
- * Fields: first_name, last_name, email, password, confirm_password, accepted_terms, role
+ * Register new vendor — RegisterSerializer
+ * POST /accounts/register/vendor/
+ * FIX: Lowercase 'vendor' and trailing slash added to match backend requirements.
  */
 export const registerVendor = async ({
   first_name,
@@ -85,6 +85,7 @@ export const registerVendor = async ({
     password,
     accepted_terms,
   };
+
   // Support both confirm_password and password2 field names
   if (confirm_password !== undefined) payload.confirm_password = confirm_password;
 
@@ -95,7 +96,6 @@ export const registerVendor = async ({
 /**
  * Verify OTP — VerifyOTPSerializer
  * POST /accounts/verify-otp/
- * Fields: email, otp_code, otp_type (default: email_verification)
  */
 export const verifyEmail = async ({
   email,
@@ -112,8 +112,6 @@ export const verifyEmail = async ({
 
 /**
  * Resend OTP — ResendOTPSerializer
- * POST /accounts/resend-otp/
- * Fields: email, otp_type (default: email_verification)
  */
 export const resendOtp = async ({
   email,
@@ -127,9 +125,7 @@ export const resendOtp = async ({
 };
 
 /**
- * Request password reset OTP — PasswordResetRequestSerializer
- * POST /accounts/password-reset/
- * Fields: email
+ * Request password reset OTP
  */
 export const passwordResetRequest = async ({ email }) => {
   const response = await api.post('/accounts/password-reset/', { email });
@@ -137,9 +133,7 @@ export const passwordResetRequest = async ({ email }) => {
 };
 
 /**
- * Confirm password reset — PasswordResetConfirmSerializer
- * POST /accounts/password-reset/confirm/
- * Fields: email, otp_code, new_password, confirm_password
+ * Confirm password reset
  */
 export const passwordResetConfirm = async ({
   email,
@@ -157,9 +151,7 @@ export const passwordResetConfirm = async ({
 };
 
 /**
- * Change password (authenticated) — ChangePasswordSerializer
- * POST /accounts/change-password/
- * Fields: current_password, new_password, confirm_password
+ * Change password (authenticated)
  */
 export const changePassword = async ({
   current_password,
@@ -175,11 +167,9 @@ export const changePassword = async ({
 };
 
 /**
- * Google OAuth sign-in — GoogleAuthSerializer
- * POST /accounts/google-auth/
- * Fields: access_token, requested_role (default: buyer)
+ * Google OAuth sign-in
  */
-export const googleAuth = async ({ access_token, requested_role = 'buyer' }) => {
+export const googleAuth = async ({ access_token, requested_role = 'vendor' }) => {
   const response = await api.post('/accounts/google-auth/', {
     access_token,
     requested_role,
@@ -188,9 +178,7 @@ export const googleAuth = async ({ access_token, requested_role = 'buyer' }) => 
 };
 
 /**
- * Logout — LogoutSerializer
- * POST /accounts/logout/
- * Fields: refresh_token
+ * Logout
  */
 export const logoutUser = async () => {
   const refresh_token = localStorage.getItem('refresh_token');
@@ -201,94 +189,35 @@ export const logoutUser = async () => {
 };
 
 /**
- * Validate current session — SessionValidateSerializer
- * GET /accounts/session/
+ * Validate current session
  */
 export const validateSession = async () => {
   const response = await api.get('/accounts/session/');
   return response.data;
 };
 
-// ─── Profile ─────────────────────────────────────────────────────────────────
+// ─── Profile & Vendor Details ────────────────────────────────────────────────
 
-/**
- * Update user profile — UpdateProfileSerializer
- * PATCH /accounts/profile/
- * Fields: first_name, last_name, phone_number, profile_picture, profile (nested)
- */
 export const updateProfile = async (profileData) => {
   const response = await api.patch('/accounts/profile/', profileData);
   return response.data;
 };
 
-// ─── Vendor Onboarding ───────────────────────────────────────────────────────
-
-/**
- * Register vendor profile — VendorRegistrationSerializer
- * POST /vendors/profile/
- * Fields: business_name, owner_full_name, business_email, business_phone,
- *         business_type, business_description, address, city, country,
- *         registration_number, tax_id
- */
-export const submitBusinessIdentity = async ({
-  business_name,
-  business_type,
-  owner_full_name,
-  tax_id,
-  registration_number,
-  business_description,
-}) => {
-  const response = await api.post('/vendors/profile/', {
-    business_name,
-    business_type,
-    owner_full_name,
-    tax_id,
-    registration_number,
-    business_description,
-  });
+export const submitBusinessIdentity = async (data) => {
+  const response = await api.post('/vendors/profile/', data);
   return response.data;
 };
 
-/**
- * Update vendor contact & location — VendorRegistrationSerializer (partial)
- * PATCH /vendors/profile/
- * Fields: business_email, business_phone, address, city, country
- */
-export const submitContactLocation = async ({
-  business_email,
-  business_phone,
-  address,
-  city,
-  country,
-}) => {
-  const response = await api.patch('/vendors/profile/', {
-    business_email,
-    business_phone,
-    address,
-    city,
-    country,
-  });
+export const submitContactLocation = async (data) => {
+  const response = await api.patch('/vendors/profile/', data);
   return response.data;
 };
 
-/**
- * Update operating hours — VendorRegistrationSerializer (partial)
- * PATCH /vendors/profile/
- * Fields: opening_time, closing_time
- */
-export const submitOperatingHours = async ({ opening_time, closing_time }) => {
-  const response = await api.patch('/vendors/profile/', {
-    opening_time,
-    closing_time,
-  });
+export const submitOperatingHours = async (data) => {
+  const response = await api.patch('/vendors/profile/', data);
   return response.data;
 };
 
-/**
- * Upload a single vendor compliance document — VendorDocumentUploadSerializer
- * POST /vendors/documents/
- * Fields: document_type, document_file
- */
 export const uploadVendorDocument = async ({ document_type, document_file }) => {
   const payload = new FormData();
   payload.append('document_type', document_type);
@@ -299,16 +228,11 @@ export const uploadVendorDocument = async ({ document_type, document_file }) => 
   return response.data;
 };
 
-/**
- * Submit operating hours + compliance documents  (convenience wrapper)
- * Uploads documents individually then patches operating hours.
- */
 export const submitOperationCompliance = async ({
   opening_time,
   closing_time,
   documents,
 }) => {
-  // Upload each document type if provided
   const docTypeMap = {
     incorporation_cert: 'incorporation_certificate',
     national_id: 'national_id',
@@ -323,14 +247,9 @@ export const submitOperationCompliance = async ({
     );
 
   await Promise.all(uploadPromises);
-
   return submitOperatingHours({ opening_time, closing_time });
 };
 
-/**
- * Get vendor profile
- * GET /vendors/profile/
- */
 export const getVendorProfile = async () => {
   const response = await api.get('/vendors/profile/');
   return response.data;
