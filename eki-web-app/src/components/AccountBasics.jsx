@@ -5,6 +5,7 @@ import { FiLock } from "react-icons/fi";
 import { validateAccountBasics } from "../utils/onboardingValidation";
 import { registerVendor } from '../services/api';
 import MessageAlert from "../components/MessageAlert";
+import { Link } from "react-router-dom";
 
 const AccountBasics = ({ onNext, formData, updateFormData }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -298,7 +299,13 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
         </button>
       </form>
       <p className="text-center text-[14px] text-gray-500 mt-4">
-        Already have an account? <span className="text-[#F2B53D] font-bold cursor-pointer hover:underline">Sign in</span>
+        Already have an account? {""}
+          <Link
+           to="/signin"
+           className="text-[#F2B53D] font-bold cursor-pointer hover:underline"
+  >
+    Sign in
+  </Link>
       </p>
     </div>
   );
