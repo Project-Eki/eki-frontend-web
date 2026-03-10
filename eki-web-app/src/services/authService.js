@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-
 const api = axios.create({
   baseURL: "https://api-7w8f.onrender.com",
   headers: {
@@ -8,54 +7,41 @@ const api = axios.create({
   },
 });
 
-
+// Logs for debugging
 api.interceptors.request.use(request => {
-  console.log('Starting Request:', request.baseURL + request.url);
+  console.log('Sending Request to:', request.baseURL + request.url);
   return request;
 });
 
-
-api.interceptors.response.use(
-  response => response,
-  error => {
-
-    console.error('API Error Response:', error.response?.data || error.message);
-    return Promise.reject(error);
-  }
-);
-
-
-
-
 export const signInUser = async (credentials) => {
-
-  console.log("PAYLOAD BEING SENT:", credentials);
-
   try {
+    // Ensure the trailing slash is present as per your backend screenshot
+    const response = await api.post('/api/v1/accounts/signin/', {
+      email: credentials.email.trim().toLowerCase(),
+      password: credentials.password
+    });
 
-    const response = await api.post('/api/v1/accounts/signin/', credentials);
-
-
-    console.log("SERVER SUCCESS:", response.data);
-
+    // Handle different token formats (access vs token)
     const token = response.data?.access || response.data?.token;
+    const refreshToken = response.data?.refresh;
 
     if (token) {
       localStorage.setItem('userToken', token);
-      console.log('Sign in successful! Token stored in LocalStorage.');
+      if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
     }
 
     return response.data;
   } catch (error) {
+    // This prevents the "HTML Alert" by catching the 500 status specifically
+    if (error.response?.status === 500) {
+      throw new Error("Server Error (500): The backend crashed. Check if this account exists.");
+    }
 
-    console.error("SERVER REJECTION DETAILS:", error.response?.data);
-
-    const message =
-      error.response?.data?.detail ||
-      error.response?.data?.message ||
-      error.response?.data?.error ||
-      "An error occurred during sign in";
-
+    const message = 
+      error.response?.data?.detail || 
+      error.response?.data?.message || 
+      "Invalid email or password";
+      
     throw new Error(message);
   }
 };
