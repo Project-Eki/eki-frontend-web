@@ -63,11 +63,18 @@ const VendorOnboarding = () => {
   // Each step component calls its own API internally.
   // This function is called by each component's onNext/onFinish prop
   // after a successful API response, so we just advance the step counter.
-  const handleNextStep = () => {
+  const handleNextStep = (targetStep) => {
+    // 1. If we provide a specific step (like step 3 for Google users), go there directly
+  if (typeof targetStep === 'number') {
+    setCurrentStep(targetStep);
+    return;
+  }
+  // 2.otherwise,handle the normal flow
     if (currentStep === 5) {
       setIsSubmitted(true);
       return;
     }
+    // normal increment for the "continue" button
     setCurrentStep(prev => prev + 1);
   };
 
@@ -136,7 +143,18 @@ const VendorOnboarding = () => {
               formData={formData} 
               updateFormData={handleUpdate} 
               onNext={handleNextStep} 
-              onBack={() => setCurrentStep(2)}  />
+              onBack={() =>{
+                // if they used google, go back to Step 1.
+                // we check if a token exists but Step 2 was never completed.
+                const isGoogleUser = localStorage.getItem('is_google_user'); // Tip: Set this during Google Success
+                if (isGoogleUser) {
+                  setCurrentStep(1);
+                } else {
+                     setCurrentStep(2);
+                }
+              }
+              
+             }  />
           </div>
         )}
 
