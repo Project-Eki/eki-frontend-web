@@ -77,10 +77,6 @@ export const registerVendor = async ({
   password,
   confirm_password,
   accepted_terms = true,
-<<<<<<< HEAD
-  role = 'vendor', // Changed default to 'vendor'
-=======
->>>>>>> 39f0843d9cc5b2916bfdaf41341650369433cc94
 }) => {
   const payload = {
     first_name,
@@ -93,10 +89,6 @@ export const registerVendor = async ({
   // Support both confirm_password and password2 field names
   if (confirm_password !== undefined) payload.confirm_password = confirm_password;
 
-<<<<<<< HEAD
-  // IMPORTANT: The URL must match the backend exactly (lowercase and trailing slash)
-=======
->>>>>>> 39f0843d9cc5b2916bfdaf41341650369433cc94
   const response = await api.post('/accounts/register/vendor/', payload);
   return response.data;
 };
