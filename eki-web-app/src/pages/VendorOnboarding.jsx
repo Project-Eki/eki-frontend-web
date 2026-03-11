@@ -13,18 +13,18 @@ const VendorOnboarding = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  // Centralized State
+  
   const [formData, setFormData] = useState({
-    // Step 1: Account Basics
+   
     first_name: "",
     last_name: "",
     email: "",
-    phone_number: "", // Critical for backend 
+    phone_number: "", 
     password: "",
     confirmPassword: "",
     agreeToTerms: false,
 
-    // Step 3: Business Identity
+  
     business_name: "",
     business_type: "", 
     owner_full_name: "",
@@ -32,18 +32,18 @@ const VendorOnboarding = () => {
     registration_number: "",
     business_description: "",
 
-    // Step 4: Contact & Location
+   
     business_email: "",
     business_phone: "",
     address: "",
     city: "",
     country: "",
 
-    // Step 5: Operations & Compliance
+   
     opening_time: "09:00",
     closing_time: "17:00",
 
-    // Step 5: Documents 
+   
     documents: {
       national_id: null,
       business_license: null,
@@ -75,10 +75,10 @@ const VendorOnboarding = () => {
       <Navbar2 />
       
       <div className="flex flex-1 overflow-hidden">
-        {/* SIDEBAR */}
+       
         <aside className="w-[320px] bg-[#235E5D] p-6 ml-10 my-6 rounded-[32px] flex flex-col shrink-0 shadow-xl border border-white/10 hidden lg:flex">
           <div className="relative w-full space-y-3 mt-10"> 
-            {/* Vertical progress line */}
+     
             <div className="absolute left-[28px] top-[30px] bottom-[30px] w-[1px] bg-white/20"></div>
 
             <StepCard title="Account Basics" subtitle="Personal info & credentials" isActive={currentStep === 1} isCompleted={currentStep > 1} />
@@ -89,7 +89,7 @@ const VendorOnboarding = () => {
           </div>
         </aside>
 
-        {/* MAIN CONTENT AREA */}
+      
         <main className="flex-1 overflow-y-auto px-6 md:px-12 lg:px-20 py-10">
           <div className={`mx-auto transition-all duration-300 ${currentStep >= 3 ? "max-w-[900px]" : "max-w-[580px]"}`}> 
             
@@ -97,14 +97,13 @@ const VendorOnboarding = () => {
               <OnboardingSuccess />
             ) : (
               <div className="animate-fadeIn">
-                {/* Step Indicator Badge */}
+               
                 <div className="mb-6">
                   <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20">
                     Step {currentStep} of 5
                   </span>
                 </div>
 
-                {/* Step 1: Account Basics */}
                 {currentStep === 1 && (
                   <>
                     <div className="mb-6">
@@ -119,7 +118,7 @@ const VendorOnboarding = () => {
                   </>
                 )}
 
-                {/* Step 2: Verify Identity (OTP) */}
+             
                 {currentStep === 2 && (
                   <VerifyIdentity 
                     formData={formData} 
@@ -128,7 +127,7 @@ const VendorOnboarding = () => {
                   />
                 )}
 
-                {/* Step 3: Business Identity */}
+               
                 {currentStep === 3 && (
                   <BusinessIdentity 
                     formData={formData} 
@@ -138,7 +137,7 @@ const VendorOnboarding = () => {
                   />
                 )}
 
-                {/* Step 4: Contact & Location */}
+             
                 {currentStep === 4 && (
                   <ContactLocation 
                     formData={formData} 
@@ -148,7 +147,7 @@ const VendorOnboarding = () => {
                   />
                 )}
 
-                {/* Step 5: Operations & Compliance */}
+              
                 {currentStep === 5 && (
                   <div className="mb-10">
                     <OperationCompliance 
@@ -170,7 +169,7 @@ const VendorOnboarding = () => {
   );
 };
 
-// Helper component for Sidebar Steps
+
 const StepCard = ({ title, subtitle, isActive, isCompleted }) => (
   <div className={`flex items-center gap-3 px-4 h-[60px] rounded-[15px] transition-all relative z-10 w-full 
     ${isActive ? "bg-white shadow-xl scale-105" : "bg-white/10 backdrop-blur-md border border-white/10"}`}>

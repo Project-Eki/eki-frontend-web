@@ -35,13 +35,8 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
   }, [formData, errors, passwordRules]);
 
   const handleChange = (field, value) => {
-<<<<<<< HEAD
     updateFormData({ [field]: value });
-=======
-    updateFormData({ [field]: value }); // Update form data
     
-    // Run field validation
->>>>>>> 39f0843d9cc5b2916bfdaf41341650369433cc94
     const validationErrors = validateAccountBasics({ ...formData, [field]: value });
     setErrors(validationErrors);
 
@@ -55,12 +50,6 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
     }
   };
 
-<<<<<<< HEAD
-  const handleContinue = async (e) => {
-    e.preventDefault();
-=======
-
-  // Get placeholder text (error message or default placeholder without asterisk)
   const getPlaceholder = (field, defaultPlaceholder) => {
     if (errors[field]) {
       return errors[field];
@@ -68,9 +57,8 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
     return defaultPlaceholder;
   };
 
-  // CONTINUE HANDLER
+  // CLEANED UP AND FIXED CONTINUE HANDLER
   const handleContinue = async () => {
->>>>>>> 39f0843d9cc5b2916bfdaf41341650369433cc94
     const validationErrors = validateAccountBasics(formData);
     
     if (!Object.values(passwordRules).every(Boolean)) {
@@ -82,32 +70,15 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
       return;
     }
 
-<<<<<<< HEAD
     setIsLoading(true);
-    setErrors({}); 
-=======
-    if (Object.keys(validationErrors).length === 0) {
-      setIsLoading(true);
-      try {
-        const data = await registerVendor({
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          email: formData.email,
-          password: formData.password,
-          confirm_password: formData.confirmPassword,
-          accepted_terms: formData.agreeToTerms,
-        });
->>>>>>> 39f0843d9cc5b2916bfdaf41341650369433cc94
+    setErrors({}); // Clear old errors before starting
 
     try {
-      // PRO TIP: If you keep getting 500, the email might be taken.
-      // You can append Date.now() to the email for testing: 
-      // const testEmail = `test${Date.now()}@gmail.com`;
-
+      // 1. Construct the payload
       const payload = {
-        first_name: formData.first_name.trim(),
-        last_name: formData.last_name.trim(),
-        email: formData.email.toLowerCase().trim(),
+        first_name: formData.first_name?.trim(),
+        last_name: formData.last_name?.trim(),
+        email: formData.email?.toLowerCase().trim(),
         password: formData.password,
         confirm_password: formData.confirmPassword,
         phone_number: formData.phone_number || "0700000000", 
@@ -115,33 +86,30 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
         role: 'vendor',
       };
 
-<<<<<<< HEAD
-      console.log("Submitting Payload:", payload);
-=======
-        onNext(); // Move to Step 2
-      } catch (error) {
-        const errData = error.response?.data;
-        console.error(" Backend Error:", error);
-        
->>>>>>> 39f0843d9cc5b2916bfdaf41341650369433cc94
-
+      // 2. Single API Call
       const response = await registerVendor(payload);
       
-      if (response?.access) localStorage.setItem('access_token', response.access);
+      // 3. Handle Success
+      if (response?.access) {
+        localStorage.setItem('access_token', response.access);
+      }
       
+      // Navigate to the next step
       onNext(); 
+
     } catch (error) {
       console.error("Registration Error Details:", error.response);
       
       const serverError = error.response?.data;
 
+      // Handle the 500 crash or specific field errors
       if (typeof serverError === 'string' && serverError.includes('<!doctype html>')) {
-        setErrors({ general: "Server crashed (500). The email might be taken or a field is invalid." });
+        setErrors({ general: "Server crashed (500). This usually means the email is already taken or the server had an internal error." });
       } else if (serverError && typeof serverError === 'object') {
-        // Map backend field errors to our state
+        // Map backend errors (e.g. {email: ["User with this email already exists"]})
         setErrors(serverError);
       } else {
-        setErrors({ general: "Registration failed. Check your connection or try a new email." });
+        setErrors({ general: "Registration failed. Please check your connection or use a different email." });
       }
     } finally {
       setIsLoading(false);
@@ -150,33 +118,23 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
 
   return (
     <div className="w-full animate-slideUp max-w-[580px]">
-<<<<<<< HEAD
-      <form className="space-y-3" onSubmit={handleContinue}>
-        {errors.general && (
-          <div className="bg-red-50 border border-red-300 text-red-600 text-[12px] font-bold rounded-xl px-4 py-2 mb-2">
-            {errors.general}
-          </div>
-        )}
-        
-=======
       <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); handleContinue(); }}>
-         {/* General error */}
-        {errors.general && <MessageAlert message={errors.general} type="error" />}
-        {/* First & Last Name */}
->>>>>>> 39f0843d9cc5b2916bfdaf41341650369433cc94
+        
+        {/* Error Alert Display */}
+        {(errors.general || errors.email || errors.password) && (
+          <MessageAlert 
+            message={errors.general || errors.email || errors.password || "Check the fields above."} 
+            type="error" 
+          />
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <div className="relative">
             <FaRegUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={14} />
             <input 
               type="text" 
-<<<<<<< HEAD
               placeholder={errors.first_name || 'First Name'}
               value={formData.first_name || ''}
-=======
-              autoComplete="given-name"
-              placeholder={getPlaceholder('first_name', 'First Name')}
-              value={formData.first_name}
->>>>>>> 39f0843d9cc5b2916bfdaf41341650369433cc94
               onChange={(e) => handleChange('first_name', e.target.value)}
               className={`w-full h-11 pl-11 pr-4 bg-white border ${errors.first_name ? 'border-red-500 placeholder-red-400' : 'border-gray-200'} rounded-2xl focus:outline-none text-[14px]`}
             />
@@ -185,14 +143,9 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
           <div className="relative">
             <input 
               type="text" 
-<<<<<<< HEAD
-              placeholder={errors.last_name || 'Last Name'}
-              value={formData.last_name || ''}
-=======
               autoComplete="family-name"
               placeholder={getPlaceholder('last_name', 'Last Name')}
-              value={formData.last_name}
->>>>>>> 39f0843d9cc5b2916bfdaf41341650369433cc94
+              value={formData.last_name || ''}
               onChange={(e) => handleChange('last_name', e.target.value)}
               className={`w-full h-11 px-4 bg-white border ${errors.last_name ? 'border-red-500 placeholder-red-400' : 'border-gray-200'} rounded-2xl focus:outline-none text-[14px]`}
             />
@@ -253,12 +206,7 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
         </div>
 
         <button 
-<<<<<<< HEAD
           type="submit"
-=======
-          type= "submit"
-          // onClick={handleContinue}
->>>>>>> 39f0843d9cc5b2916bfdaf41341650369433cc94
           disabled={isLoading || !isFormValid}
           className={`w-full h-11 rounded-full text-white font-bold transition-all mt-4 ${
             isLoading || !isFormValid ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#D99201] hover:bg-[#e0a630]'

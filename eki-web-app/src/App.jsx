@@ -4,12 +4,13 @@ import Home from './pages/Home';
 import SignIn from './pages/SignIn'; 
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
-// import AdminSignin from './pages/AdminSignin';
-// import AccountSettingsPage from './pages/AccountSetting';
+import AdminSignin from './pages/AdminSignin';
+import AccountSettingsPage from './pages/AccountSetting';
 import VendorOnboarding from "./pages/VendorOnboarding";
 import Settings from './pages/Settings';
 import AdminDashboard from './pages/AdminDashboard';
 import VendorDashboard from './pages/VendorDashboard';
+import AdminManagement from './pages/AdminManagement';
 
 import './App.css';
 
@@ -27,6 +28,7 @@ function App() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/admindashboard" element={<AdminDashboard />} />
           <Route path="/vendordashboard" element={<VendorDashboard />} />
+          <Route path="/admin-management" element={<AdminManagement />} />
          <Route path="*" element={<div className="p-10 text-center text-red-500">404 - Page Not Found</div>} />
       </Routes>
     </div>
