@@ -1,6 +1,6 @@
 import React from 'react';
-// 1. IMPORT YOUR LOGO HERE
-import logo from '../assets/logo.jpeg'; // Adjust the extension (.png, .svg, .jpg) if needed
+
+import logo from '../assets/logo.jpeg'; 
 
 import { 
   Search, Bell, Settings, LayoutDashboard, Package, 
@@ -20,15 +20,15 @@ const VendorDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-slate-800">
-      {/* 1. Global Navigation */}
+      
       <nav className="bg-white border-b px-6 py-3 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-8">
-          {/* LOGO REPLACEMENT: Removed 'eki' text and added image */}
+        
           <div className="flex items-center">
             <img 
               src={logo} 
               alt="Eki Logo" 
-              className="h-10 w-auto object-contain" // Adjust height 'h-10' to fit your logo's shape
+              className="h-10 w-auto object-contain" 
             />
           </div>
           
@@ -57,7 +57,7 @@ const VendorDashboard = () => {
             </div>
             <div className="flex items-center gap-2 cursor-pointer">
               <div className="w-8 h-8 bg-slate-200 rounded-full overflow-hidden">
-                {/* Optional: Add a profile image here too if you have one */}
+             
                 <div className="w-full h-full bg-slate-300 flex items-center justify-center text-[10px] text-white">VN</div>
               </div>
               <div className="hidden lg:block">
@@ -75,7 +75,7 @@ const VendorDashboard = () => {
           <p className="text-slate-500 text-sm">Welcome back. Here's what's happening with your store today.</p>
         </header>
 
-        {/* ... rest of the code remains the same ... */}
+       
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <MetricCard title="Gross Sales (30d)" value="$0.00" trend="+0.0%" icon={<LayoutDashboard className="text-teal-600" />} />
           <MetricCard title="Open Orders" value="0" subtext="No urgent orders" icon={<Package className="text-teal-600" />} />
@@ -197,7 +197,7 @@ const VendorDashboard = () => {
   );
 };
 
-// Helper Components
+
 const MetricCard = ({ title, value, trend, subtext, icon, color = "bg-white" }) => (
   <div className={`${color === "bg-white" ? "bg-white" : color} p-5 rounded-xl border border-slate-100 shadow-sm flex items-start gap-4`}>
     <div className="p-2 bg-white rounded-lg border shadow-sm">{icon}</div>
