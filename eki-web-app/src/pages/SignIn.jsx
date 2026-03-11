@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 
+// CORRECT: Import images so Vite bundles them for Render
+import resetIllustration from '../assets/signin.jpeg';
+import logoImage from '../assets/logo.jpeg';
+
 import { signInUser as manualSignIn } from "../services/authService"; 
 import { googleAuthService } from "../services/GoogleAuth";
 
@@ -56,14 +60,7 @@ const SignIn = () => {
   const handleGoogleResponse = async (response) => {
     setIsLoading(true);
     try {
-      // Safe JSON parsing
-      const data = await googleAuthService.sendTokenToBackend(response.credential, 'vendor').catch(async (err) => {
-        if (err.response) {
-          const text = await err.response.text();
-          throw new Error(text || "Server returned invalid JSON");
-        }
-        throw err;
-      });
+      const data = await googleAuthService.sendTokenToBackend(response.credential, 'vendor');
       handleAuthSuccess(data);
     } catch (err) {
       setFieldErrors(prev => ({ 
@@ -96,15 +93,7 @@ const SignIn = () => {
 
     setIsLoading(true);
     try {
-      // Safe JSON parsing
-      const data = await manualSignIn(formData).catch(async (err) => {
-        if (err.response) {
-          const text = await err.response.text();
-          throw new Error(text || "Server returned invalid JSON");
-        }
-        throw err;
-      });
-
+      const data = await manualSignIn(formData);
       handleAuthSuccess(data);
     } catch (err) {
       setFieldErrors({ 
@@ -125,18 +114,24 @@ const SignIn = () => {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-gray-50 font-sans">
       <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
+        {/* Left Side: Visual Illustration */}
         <div className="hidden md:flex md:w-1/2 h-full">
           <img 
             alt="Sign In Visual" 
             className="h-full w-full object-cover" 
-            src="/src/assets/signin.jpeg" 
+            src={resetIllustration} // FIXED: Using imported variable
           />
         </div>
 
+        {/* Right Side: Form */}
         <div className="flex w-full md:w-1/2 h-full flex-col justify-center items-center p-8 lg:p-12 bg-white">
           <div className="mb-6 flex flex-col items-center text-center">
             <div className="h-40 w-40 mb-2 flex items-center justify-center">
-              <img alt="Logo" className="h-full w-full object-contain" src="/src/assets/logo.jpeg" />
+              <img 
+                alt="Logo" 
+                className="h-full w-full object-contain" 
+                src={logoImage} // FIXED: Using imported variable
+              />
             </div>
             <h2 className="text-2xl font-bold text-gray-800">Welcome back!</h2>
             <p className="text-gray-500 text-sm mt-1">Ready to start selling today?</p>
