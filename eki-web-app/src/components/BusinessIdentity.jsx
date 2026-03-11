@@ -2,18 +2,22 @@ import React, { useState } from 'react';
 import { HiOutlineBriefcase } from "react-icons/hi";
 import { validateBusinessIdentity } from "../utils/onboardingValidation";
 import { submitBusinessIdentity } from "../services/api";
+import MessageAlert from './MessageAlert';
 
 const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [generalError, setGeneralError] = useState("");
 
   const handleChange = (field, value) => {
     updateFormData({ [field]: value });
+    // Real-time validation
     const validationErrors = validateBusinessIdentity({ ...formData, [field]: value });
     setErrors(validationErrors);
   };
 
   const handleContinue = async () => {
+    setGeneralError("");
     const validationErrors = validateBusinessIdentity(formData);
     setErrors(validationErrors);
 
@@ -28,22 +32,24 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
           registration_number: formData.registration_number,
           business_description: formData.business_description,
         });
+        
         console.log("Business Identity Saved:", data);
-        onNext();
+        onNext(); // Move to Step 4
       } catch (error) {
         console.error("Business Identity Error:", error.response?.data);
         const errData = error.response?.data || {};
+        
         if (error.response?.status === 400) {
-          // Map backend field errors back into the UI
+          // Map backend field errors
           setErrors(prev => ({
             ...prev,
-            business_name: errData.business_name?.[0] || prev.business_name,
-            business_type: errData.business_type?.[0] || prev.business_type,
-            owner_full_name: errData.owner_full_name?.[0] || prev.owner_full_name,
-            registration_number: errData.registration_number?.[0] || prev.registration_number,
+            business_name: errData.business_name?.[0],
+            business_type: errData.business_type?.[0],
+            owner_full_name: errData.owner_full_name?.[0],
+            registration_number: errData.registration_number?.[0],
           }));
         } else {
-          alert(errData.detail || "Server error. Please try again later.");
+          setGeneralError(errData.detail || "Server error. Please try again later.");
         }
       } finally {
         setIsLoading(false);
@@ -63,8 +69,9 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
         </div>
       </div>
 
+      {generalError && <MessageAlert message={generalError} type="error" className="mb-4" />}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
-        
         {/* Business Name */}
         <div className="flex flex-col">
           <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Legal Business Name</label>
@@ -98,7 +105,6 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
               <option value="WHOLESALE">Wholesaler</option>
               <option value="MANUFACTURER">Manufacturer</option>
             </select>
-            {/* Positioning error slightly to the left of the dropdown arrow */}
             {errors.business_type && (
               <span className="absolute right-8 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">
                 {errors.business_type}
@@ -128,7 +134,7 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
 
         {/* Registration Number */}
         <div className="flex flex-col">
-          <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Business Registration Number</label>
+          <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Registration Number</label>
           <div className="relative">
             <input 
               type="text" 
@@ -145,7 +151,7 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
           </div>
         </div>
 
-        {/* Tax ID (Optional) */}
+        {/* Tax ID */}
         <div className="flex flex-col">
           <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Tax ID (TIN)</label>
           <input 
@@ -170,10 +176,18 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
       </div>
 
       <div className="w-full flex justify-center items-center gap-4 mt-4">
-        <button onClick={onBack} disabled={isLoading} className="flex-1 max-w-[140px] h-11 border-2 border-gray-100 text-gray-500 font-bold rounded-full hover:bg-gray-50 transition-all text-[14px] disabled:opacity-50">
+        <button 
+          onClick={onBack} 
+          disabled={isLoading} 
+          className="flex-1 max-w-[140px] h-11 border-2 border-gray-100 text-gray-500 font-bold rounded-full hover:bg-gray-50 transition-all text-[14px] disabled:opacity-50"
+        >
           Back
         </button>
-        <button onClick={handleContinue} disabled={isLoading} className={`flex-1 max-w-[200px] h-11 text-white font-bold rounded-full shadow-lg transition-all text-[14px] ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#F2B53D] hover:bg-[#e0a630]'}`}>
+        <button 
+          onClick={handleContinue} 
+          disabled={isLoading} 
+          className={`flex-1 max-w-[200px] h-11 text-white font-bold rounded-full shadow-lg transition-all text-[14px] ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#F2B53D] hover:bg-[#e0a630]'}`}
+        >
           {isLoading ? "Saving..." : "Continue"}
         </button>
       </div>
@@ -184,28 +198,57 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
 export default BusinessIdentity;
 
 
-// import React, { useState } from 'react'; // Added { useState }
+// import React, { useState } from 'react';
 // import { HiOutlineBriefcase } from "react-icons/hi";
-// // Import your validation function (Assuming it's in your validation.js file)
-// import { validateBusinessIdentity } from "../utils/onboardingValidation"; 
+// import { validateBusinessIdentity } from "../utils/onboardingValidation";
+// import { submitBusinessIdentity } from "../services/api";
+// import MessageAlert from './MessageAlert';
 
 // const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
-//   const [errors, setErrors] = useState({}); 
+//   const [errors, setErrors] = useState({});
+//   const [isLoading, setIsLoading] = useState(false);
 
 //   const handleChange = (field, value) => {
 //     updateFormData({ [field]: value });
-    
-//     // Validate as they type
 //     const validationErrors = validateBusinessIdentity({ ...formData, [field]: value });
 //     setErrors(validationErrors);
 //   };
 
-//   const handleContinue = () => {
+//   const handleContinue = async () => {
 //     const validationErrors = validateBusinessIdentity(formData);
 //     setErrors(validationErrors);
 
 //     if (Object.keys(validationErrors).length === 0) {
-//       onNext();
+//       setIsLoading(true);
+//       try {
+//         const data = await submitBusinessIdentity({
+//           business_name: formData.business_name,
+//           business_type: formData.business_type,
+//           owner_full_name: formData.owner_full_name,
+//           tax_id: formData.tax_id,
+//           registration_number: formData.registration_number,
+//           business_description: formData.business_description,
+//         });
+//         console.log("Business Identity Saved:", data);
+//         onNext();
+//       } catch (error) {
+//         console.error("Business Identity Error:", error.response?.data);
+//         const errData = error.response?.data || {};
+//         if (error.response?.status === 400) {
+//           // Map backend field errors back into the UI
+//           setErrors(prev => ({
+//             ...prev,
+//             business_name: errData.business_name?.[0] || prev.business_name,
+//             business_type: errData.business_type?.[0] || prev.business_type,
+//             owner_full_name: errData.owner_full_name?.[0] || prev.owner_full_name,
+//             registration_number: errData.registration_number?.[0] || prev.registration_number,
+//           }));
+//         } else {
+//           alert(errData.detail || "Server error. Please try again later.");
+//         }
+//       } finally {
+//         setIsLoading(false);
+//       }
 //     }
 //   };
 
@@ -221,65 +264,89 @@ export default BusinessIdentity;
 //         </div>
 //       </div>
 
-//       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+//       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+        
 //         {/* Business Name */}
 //         <div className="flex flex-col">
 //           <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Legal Business Name</label>
-//           <input 
-//             type="text" 
-//             value={formData.business_name}
-//             onChange={(e) => handleChange('business_name', e.target.value)}
-//             placeholder="e.g. Global Tech Solutions Ltd." 
-//             // FIXED: Backticks and Curly Braces
-//             className={`h-11 px-4 border ${errors.business_name ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
-//           />
-//           {errors.business_name && <span className="text-red-500 text-[10px] mt-1 ml-1">{errors.business_name}</span>}
+//           <div className="relative">
+//             <input 
+//               type="text" 
+//               value={formData.business_name}
+//               onChange={(e) => handleChange('business_name', e.target.value)}
+//               placeholder="e.g. Global Tech Solutions Ltd." 
+//               className={`w-full h-10 pl-4 pr-16 border ${errors.business_name ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
+//             />
+//             {errors.business_name && (
+//               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">
+//                 {errors.business_name}
+//               </span>
+//             )}
+//           </div>
 //         </div>
 
 //         {/* Business Type */}
 //         <div className="flex flex-col">
 //           <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Business Type</label>
-//           <select 
-//             value={formData.business_type}
-//             onChange={(e) => handleChange('business_type', e.target.value)}
-            
-//             className={`h-11 px-4 border ${errors.business_type ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none bg-white cursor-pointer`}
-//           >
-//             <option value="">Select type</option>
-//             <option value="RETAIL">Retailer</option>
-//             <option value="WHOLESALE">Wholesaler</option>
-//             <option value="MANUFACTURER">Manufacturer</option>
-//           </select>
-//           {errors.business_type && <span className="text-red-500 text-[10px] mt-1 ml-1">{errors.business_type}</span>}
+//           <div className="relative">
+//             <select 
+//               value={formData.business_type}
+//               onChange={(e) => handleChange('business_type', e.target.value)}
+//               className={`w-full h-10 pl-4 pr-10 border ${errors.business_type ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none bg-white cursor-pointer appearance-none`}
+//             >
+//               <option value="">Select type</option>
+//               <option value="RETAIL">Retailer</option>
+//               <option value="WHOLESALE">Wholesaler</option>
+//               <option value="MANUFACTURER">Manufacturer</option>
+//             </select>
+//             {/* Positioning error slightly to the left of the dropdown arrow */}
+//             {errors.business_type && (
+//               <span className="absolute right-8 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">
+//                 {errors.business_type}
+//               </span>
+//             )}
+//           </div>
 //         </div>
 
 //         {/* Owner Name */}
 //         <div className="flex flex-col">
 //           <label className="text-[13px] font-bold text-gray-600 mb-1 ml-1">Owner Full Name</label>
-//           <input 
-//             type="text" 
-//             value={formData.owner_full_name}
-//             onChange={(e) => handleChange('owner_full_name', e.target.value)}
-//             placeholder="Enter full legal name" 
-//             className={`h-11 px-4 border ${errors.owner_full_name ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
-//           />
-//           {errors.owner_full_name && <span className="text-red-500 text-[10px] mt-1 ml-1">{errors.owner_full_name}</span>}
+//           <div className="relative">
+//             <input 
+//               type="text" 
+//               value={formData.owner_full_name}
+//               onChange={(e) => handleChange('owner_full_name', e.target.value)}
+//               placeholder="Enter full legal name" 
+//               className={`w-full h-10 pl-4 pr-16 border ${errors.owner_full_name ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
+//             />
+//             {errors.owner_full_name && (
+//               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">
+//                 {errors.owner_full_name}
+//               </span>
+//             )}
+//           </div>
 //         </div>
 
 //         {/* Registration Number */}
 //         <div className="flex flex-col">
 //           <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Business Registration Number</label>
-//           <input 
-//             type="text" 
-//             value={formData.registration_number}
-//             onChange={(e) => handleChange('registration_number', e.target.value)}
-//             placeholder="RC / BN Number" 
-//             className={`h-11 px-4 border ${errors.registration_number ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none`} 
-//           />
-//           {errors.registration_number && <span className="text-red-500 text-[10px] mt-1 ml-1">{errors.registration_number}</span>}
+//           <div className="relative">
+//             <input 
+//               type="text" 
+//               value={formData.registration_number}
+//               onChange={(e) => handleChange('registration_number', e.target.value)}
+//               placeholder="RC / BN Number" 
+//               className={`w-full h-10 pl-4 pr-16 border ${errors.registration_number ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none`} 
+//             />
+//             {errors.registration_number && (
+//               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">
+//                 {errors.registration_number}
+//               </span>
+//             )}
+//           </div>
 //         </div>
 
-//         {/* Tax ID */}
+//         {/* Tax ID (Optional) */}
 //         <div className="flex flex-col">
 //           <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Tax ID (TIN)</label>
 //           <input 
@@ -287,7 +354,7 @@ export default BusinessIdentity;
 //             value={formData.tax_id}
 //             onChange={(e) => handleChange('tax_id', e.target.value)}
 //             placeholder="VAT / TIN Number" 
-//             className="h-11 px-4 border border-gray-200 rounded-xl text-[14px] focus:border-[#F2B53D] outline-none" 
+//             className="h-10 px-4 border border-gray-200 rounded-xl text-[14px] focus:border-[#F2B53D] outline-none" 
 //           />
 //         </div>
 
@@ -298,17 +365,17 @@ export default BusinessIdentity;
 //             value={formData.business_description}
 //             onChange={(e) => handleChange('business_description', e.target.value)}
 //             placeholder="Describe what you sell or your business mission..." 
-//             className="h-16 p-3 border border-gray-200 rounded-xl text-[14px] focus:border-[#F2B53D] outline-none resize-none"
+//             className="h-12 p-2 border border-gray-200 rounded-xl text-[14px] focus:border-[#F2B53D] outline-none resize-none"
 //           ></textarea>
 //         </div>
 //       </div>
 
-//       <div className="w-full flex justify-center items-center gap-4 mt-6">
-//         <button onClick={onBack} className="flex-1 max-w-[140px] h-11 border-2 border-gray-100 text-gray-500 font-bold rounded-full hover:bg-gray-50 transition-all text-[14px]">
+//       <div className="w-full flex justify-center items-center gap-4 mt-4">
+//         <button onClick={onBack} disabled={isLoading} className="flex-1 max-w-[140px] h-11 border-2 border-gray-100 text-gray-500 font-bold rounded-full hover:bg-gray-50 transition-all text-[14px] disabled:opacity-50">
 //           Back
 //         </button>
-//         <button onClick={handleContinue} className="flex-1 max-w-[200px] h-11 bg-[#F2B53D] text-white font-bold rounded-full shadow-lg hover:bg-[#e0a630] transition-all text-[14px]">
-//           Continue
+//         <button onClick={handleContinue} disabled={isLoading} className={`flex-1 max-w-[200px] h-11 text-white font-bold rounded-full shadow-lg transition-all text-[14px] ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#F2B53D] hover:bg-[#e0a630]'}`}>
+//           {isLoading ? "Saving..." : "Continue"}
 //         </button>
 //       </div>
 //     </div>
@@ -316,4 +383,5 @@ export default BusinessIdentity;
 // };
 
 // export default BusinessIdentity;
+
 
