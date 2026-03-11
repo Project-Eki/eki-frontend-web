@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 
-// CORRECT: Import images so Vite bundles them for Render
 import resetIllustration from '../assets/signin.jpeg';
 import logoImage from '../assets/logo.jpeg';
 
@@ -35,10 +34,14 @@ const SignIn = () => {
     init();
   }, [GOOGLE_CLIENT_ID]);
 
+  // ✅ FIX 1: improved error matching with lowercase checks
   const formatErrorMessage = (err) => {
     const rawMessage = err.message || "";
-    if (rawMessage.includes("verify your email")) {
+    if (rawMessage.toLowerCase().includes("verify")) {
       return "Please verify your email before signing in.";
+    }
+    if (rawMessage.toLowerCase().includes("expired")) {
+      return "Your verification link has expired. Please request a new one.";
     }
     return rawMessage || "Invalid email or password";
   };
@@ -51,9 +54,9 @@ const SignIn = () => {
     if (role) localStorage.setItem('userRole', role);
 
     if (role === 'vendor') {
-      navigate('/vendorDashboard');
+      navigate('/VendorDashboard');
     } else {
-      navigate('/dashboard');
+      navigate('/Home');
     }
   };
 
@@ -114,23 +117,22 @@ const SignIn = () => {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-gray-50 font-sans">
       <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
-        {/* Left Side: Visual Illustration */}
+     
         <div className="hidden md:flex md:w-1/2 h-full">
           <img 
             alt="Sign In Visual" 
             className="h-full w-full object-cover" 
-            src={resetIllustration} // FIXED: Using imported variable
+            src={resetIllustration}
           />
         </div>
 
-        {/* Right Side: Form */}
         <div className="flex w-full md:w-1/2 h-full flex-col justify-center items-center p-8 lg:p-12 bg-white">
           <div className="mb-6 flex flex-col items-center text-center">
             <div className="h-40 w-40 mb-2 flex items-center justify-center">
               <img 
                 alt="Logo" 
                 className="h-full w-full object-contain" 
-                src={logoImage} // FIXED: Using imported variable
+                src={logoImage} 
               />
             </div>
             <h2 className="text-2xl font-bold text-gray-800">Welcome back!</h2>
