@@ -66,7 +66,7 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
     return defaultPlaceholder;
   };
 
-  // CONTINUE HANDLER
+  // CLEANED UP AND FIXED CONTINUE HANDLER
   const handleContinue = async () => {
     const validationErrors = validateAccountBasics(formData);
     setErrors(validationErrors);

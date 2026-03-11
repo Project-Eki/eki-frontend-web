@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
-import { signInUser } from "../services/authService"; 
+
+import { signInUser as manualSignIn } from "../services/authService"; 
+import { googleAuthService } from "../services/GoogleAuth";
 
 const SignIn = () => {
   const navigate = useNavigate();
@@ -12,7 +14,6 @@ const SignIn = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({ email: '', password: '', general: '' });
 
-  // 1. Initialize Google Sign-In on Page Load
   useEffect(() => {
     const init = async () => {
       try {
@@ -30,35 +31,45 @@ const SignIn = () => {
     init();
   }, [GOOGLE_CLIENT_ID]);
 
-  /**
-   * Helper function to handle redirection based on user role
-   * @param {Object} data - The response from your Django backend
-   */
+  const formatErrorMessage = (err) => {
+    const rawMessage = err.message || "";
+    if (rawMessage.includes("verify your email")) {
+      return "Please verify your email before signing in.";
+    }
+    return rawMessage || "Invalid email or password";
+  };
+
   const handleAuthSuccess = (data) => {
     const token = data.access || data.token;
-    const role = data.role?.toLowerCase(); // Ensure case-insensitive check
+    const role = data.role?.toLowerCase(); 
 
     if (token) localStorage.setItem('access_token', token);
     if (role) localStorage.setItem('userRole', role);
 
-    // Redirection Logic
     if (role === 'vendor') {
       navigate('/vendorDashboard');
     } else {
-      // Fallback for other roles (e.g., buyer or general dashboard)
       navigate('/dashboard');
     }
   };
 
-  // 2. Handle the response from Google
   const handleGoogleResponse = async (response) => {
     setIsLoading(true);
     try {
-      // We pass 'vendor' here if you want Google sign-ins to default to Vendor role
-      const data = await googleAuthService.sendTokenToBackend(response.credential, 'vendor');
+      // Safe JSON parsing
+      const data = await googleAuthService.sendTokenToBackend(response.credential, 'vendor').catch(async (err) => {
+        if (err.response) {
+          const text = await err.response.text();
+          throw new Error(text || "Server returned invalid JSON");
+        }
+        throw err;
+      });
       handleAuthSuccess(data);
     } catch (err) {
-      setFieldErrors(prev => ({ ...prev, general: "Google authentication failed with our server." }));
+      setFieldErrors(prev => ({ 
+        ...prev, 
+        general: formatErrorMessage(err) 
+      }));
     } finally {
       setIsLoading(false);
     }
@@ -85,13 +96,21 @@ const SignIn = () => {
 
     setIsLoading(true);
     try {
-      const data = await signInUser(formData);
+      // Safe JSON parsing
+      const data = await manualSignIn(formData).catch(async (err) => {
+        if (err.response) {
+          const text = await err.response.text();
+          throw new Error(text || "Server returned invalid JSON");
+        }
+        throw err;
+      });
+
       handleAuthSuccess(data);
     } catch (err) {
       setFieldErrors({ 
         email: "", 
         password: "", 
-        general: err.message || "Invalid email or password" 
+        general: formatErrorMessage(err) 
       });
       setFormData(prev => ({ ...prev, password: '' })); 
     } finally {
@@ -106,8 +125,6 @@ const SignIn = () => {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-gray-50 font-sans">
       <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
-        
-        {/* Left Side: Visual */}
         <div className="hidden md:flex md:w-1/2 h-full">
           <img 
             alt="Sign In Visual" 
@@ -116,7 +133,6 @@ const SignIn = () => {
           />
         </div>
 
-        {/* Right Side: Form */}
         <div className="flex w-full md:w-1/2 h-full flex-col justify-center items-center p-8 lg:p-12 bg-white">
           <div className="mb-6 flex flex-col items-center text-center">
             <div className="h-40 w-40 mb-2 flex items-center justify-center">
@@ -227,14 +243,20 @@ const SignIn = () => {
         </div>
       </div>
 
-      <footer className="w-full flex-shrink-0 bg-[#234E4D] text-white py-3 px-6">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] tracking-wide opacity-90">
-          <div className="font-bold italic uppercase tracking-widest">Buy Smart. Sell Fast. Grow Together...</div>
-          <div>© 2026 Vendor Portal. eki™</div>
-          <div className="flex gap-6">
-            <a href="#" className="hover:text-yellow-400 transition-colors">Support</a>
-            <a href="#" className="hover:text-yellow-400 transition-colors">Privacy Policy</a>
-            <span className="font-bold border-l border-white/20 pl-6 uppercase">Ijoema ltd</span>
+      <footer className="w-full font-sans">
+        <div className="w-full bg-[#234E4D] text-white py-3 px-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] tracking-wide">
+            <div className="flex-shrink-0 font-bold">Buy Smart. Sell Fast. Grow Together...</div>
+            <div className="flex items-center gap-1 text-center">
+              <span>© 2026 Vendor Portal. All rights reserved.</span>
+              <span className="ml-1 font-bold">eki<span className="text-[8px] font-normal ml-0.5">TM</span></span>
+            </div>
+            <div className="flex items-center gap-6">
+              <a href="#" className="hover:opacity-80">Support</a>
+              <a href="#" className="hover:opacity-80">Privacy Policy</a>
+              <a href="#" className="hover:text-yellow-400">Terms of Service</a>
+              <span className="font-bold border-l border-white/30 pl-6">Ijoema ltd</span>
+            </div>
           </div>
         </div>
       </footer>
