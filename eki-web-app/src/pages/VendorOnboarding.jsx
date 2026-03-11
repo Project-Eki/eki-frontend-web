@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import Navbar2 from "../components/Navbar2";
 import AccountBasics from "../components/AccountBasics";
 import VerifyIdentity from "../components/VerifyIdentity";
@@ -10,21 +10,23 @@ import Footer from "../components/Footer";
 import { HiCheck } from "react-icons/hi"; 
 
 const VendorOnboarding = () => {
+  // change state back to 1 from 2
   const [currentStep, setCurrentStep] = useState(1);
-  const [isSubmitted, setIsSubmitted] = useState(false);
 
-  
+  // NEW: State for tracking if the final "Submit" was clicked
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  // 1. Centralized State
   const [formData, setFormData] = useState({
-   
+    // Account Basics(User Model)
     first_name: "",
     last_name: "",
     email: "",
-    phone_number: "", 
+    phone_number: "",
     password: "",
     confirmPassword: "",
     agreeToTerms: false,
 
-  
+    // Business identity
     business_name: "",
     business_type: "", 
     owner_full_name: "",
@@ -32,30 +34,35 @@ const VendorOnboarding = () => {
     registration_number: "",
     business_description: "",
 
-   
+    // Contact and location
     business_email: "",
     business_phone: "",
     address: "",
     city: "",
     country: "",
 
-   
+    // Operations and compliance
     opening_time: "09:00",
     closing_time: "17:00",
 
-   
+    // Documents 
     documents: {
-      national_id: null,
-      business_license: null,
-      tax_certificate: null,
-      incorporation_cert: null,
-    }
+    national_id: null,
+    business_license: null,
+    tax_certificate: null,
+    incorporation_cert: null,
+  }
+
   });
 
+  // 2. Update Function
   const handleUpdate = (newData) => {
     setFormData(prev => ({ ...prev, ...newData }));
   };
 
+  // Each step component calls its own API internally.
+  // This function is called by each component's onNext/onFinish prop
+  // after a successful API response, so we just advance the step counter.
   const handleNextStep = () => {
     if (currentStep === 5) {
       setIsSubmitted(true);
@@ -64,130 +71,132 @@ const VendorOnboarding = () => {
     setCurrentStep(prev => prev + 1);
   };
 
-  const handleBackStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(prev => prev - 1);
-    }
-  };
-
   return (
     <div className="h-screen w-full flex flex-col bg-[#F8F9FA] font-sans overflow-hidden">
-      <Navbar2 />
-      
+      {/* navbar */}
+      <Navbar2/>
       <div className="flex flex-1 overflow-hidden">
-       
-        <aside className="w-[320px] bg-[#235E5D] p-6 ml-10 my-6 rounded-[32px] flex flex-col shrink-0 shadow-xl border border-white/10 hidden lg:flex">
+        
+        {/* SIDEBAR */}
+<aside className="w-[320px] bg-[#235E5D] p-6 ml-10 my-6 rounded-[32px] flex flex-col shrink-0 shadow-xl border border-white/10">
           <div className="relative w-full space-y-3 mt-10"> 
-     
+            {/* The vertical progress line */}
             <div className="absolute left-[28px] top-[30px] bottom-[30px] w-[1px] bg-white/20"></div>
 
-            <StepCard title="Account Basics" subtitle="Personal info & credentials" isActive={currentStep === 1} isCompleted={currentStep > 1} />
-            <StepCard title="Verify Identity" subtitle="Confirm your email" isActive={currentStep === 2} isCompleted={currentStep > 2} />
-            <StepCard title="Business Identity" subtitle="Legal name & registration" isActive={currentStep === 3} isCompleted={currentStep > 3} />
-            <StepCard title="Contact & Location" subtitle="Operational address" isActive={currentStep === 4} isCompleted={currentStep > 4} />
-            <StepCard title="Final Review" subtitle="Compliance & Documents" isActive={currentStep === 5} />
+            <StepCard title="Account Basics" subtitle="Personal information & credentials" isActive={currentStep === 1} isCompleted={currentStep > 1} />
+            <StepCard title="Verify Identity" subtitle="Confirm your email address" isActive={currentStep === 2} isCompleted={currentStep > 2} />
+            <StepCard title="Business Identity" subtitle="Legal name & registration type" isActive={currentStep === 3} isCompleted={currentStep > 3} />
+            <StepCard title="Contact & Location" subtitle="Where you operate from" isActive={currentStep === 4} isCompleted={currentStep > 4} />
+            <StepCard title="Secure Account" subtitle="Protect your merchant profile" isActive={currentStep === 5} />
           </div>
         </aside>
+<main className="flex-1 flex flex-col items-center px-20 px-12">
+  {/* NOTICE THE UPDATED TERNARY LOGIC: currentStep >= 3 */}
+  <div className={`w-full transition-all duration-300 ${currentStep >= 3 ? "max-w-[900px]" : "max-w-[600px]"}`}> 
+    
+    {isSubmitted ? (
+      // Show Success Screen if submitted
+      <OnboardingSuccess />
+    ) : (
+      // Show the steps if NOT submitted
+      <>
+        {/* STEP 1 */}
+        {currentStep === 1 && (
+          <>
+            <div className="mb-4">
+              <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20">Step 1 of 5</span>
+              <h2 className="text-[28px] font-black text-gray-900 mt-2 leading-tight">Join to enjoy faster Sales</h2>
+              <p className="text-gray-500 text-[14px]">Let's start with the basics to get your account ready.</p>
+            </div>
+            <AccountBasics 
+              formData={formData}
+              updateFormData={handleUpdate}
+              onNext={handleNextStep} />
+          </>
+        )}
 
-      
-        <main className="flex-1 overflow-y-auto px-6 md:px-12 lg:px-20 py-10">
-          <div className={`mx-auto transition-all duration-300 ${currentStep >= 3 ? "max-w-[900px]" : "max-w-[580px]"}`}> 
-            
-            {isSubmitted ? (
-              <OnboardingSuccess />
-            ) : (
-              <div className="animate-fadeIn">
-               
-                <div className="mb-6">
-                  <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20">
-                    Step {currentStep} of 5
-                  </span>
-                </div>
-
-                {currentStep === 1 && (
-                  <>
-                    <div className="mb-6">
-                      <h2 className="text-[28px] font-black text-gray-900 leading-tight">Join to enjoy faster Sales</h2>
-                      <p className="text-gray-500 text-[14px]">Let's start with the basics to get your account ready.</p>
-                    </div>
-                    <AccountBasics 
-                      formData={formData}
-                      updateFormData={handleUpdate}
-                      onNext={handleNextStep} 
-                    />
-                  </>
-                )}
-
-             
-                {currentStep === 2 && (
-                  <VerifyIdentity 
-                    formData={formData} 
-                    onNext={handleNextStep} 
-                    onBack={handleBackStep}
-                  />
-                )}
-
-               
-                {currentStep === 3 && (
-                  <BusinessIdentity 
-                    formData={formData} 
-                    updateFormData={handleUpdate} 
-                    onNext={handleNextStep} 
-                    onBack={handleBackStep} 
-                  />
-                )}
-
-             
-                {currentStep === 4 && (
-                  <ContactLocation 
-                    formData={formData} 
-                    updateFormData={handleUpdate} 
-                    onNext={handleNextStep} 
-                    onBack={handleBackStep}
-                  />
-                )}
-
-              
-                {currentStep === 5 && (
-                  <div className="mb-10">
-                    <OperationCompliance 
-                      formData={formData} 
-                      updateFormData={handleUpdate} 
-                      onFinish={handleNextStep} 
-                      onBack={handleBackStep} 
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+        {/* STEP 2 */}
+        {currentStep === 2 && (
+          <div className="flex flex-col items-start w-full">
+            <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">Step 2 of 5</span>
+            <div className="w-full flex justify-center">
+              <VerifyIdentity 
+                formData={formData} 
+                onNext={() => setCurrentStep(3)} 
+                onBack={()=> setCurrentStep(1)}/>
+            </div>
           </div>
-        </main>
+        )}
+
+        {/* STEP 3 */}
+        {currentStep === 3 && (
+          <div className="flex flex-col items-start w-full">
+            <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">Step 3 of 5</span>
+            <BusinessIdentity 
+              formData={formData} 
+              updateFormData={handleUpdate} 
+              onNext={handleNextStep} 
+              onBack={() => setCurrentStep(2)}  />
+          </div>
+        )}
+
+        {/* STEP 4 */}
+        {currentStep === 4 && (
+          <div className="flex flex-col items-start w-full">
+            <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">Step 4 of 5</span>
+            <ContactLocation 
+              formData={formData} 
+              updateFormData={handleUpdate} 
+              onNext={handleNextStep} 
+              onBack={() => setCurrentStep(3)}/>
+          </div>
+        )}
+
+        {/* STEP 5 */}
+        {currentStep === 5 && (
+          <div className="flex flex-col items-start w-full mb-10"> {/* mb-10 added for bottom scrolling padding */}
+            <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">Step 5 of 5</span>
+            <OperationCompliance 
+              formData={formData} 
+              updateFormData={handleUpdate} 
+              onFinish={handleNextStep} 
+              onBack={() => setCurrentStep(4)} />
+          </div>
+        )}
+      </>
+    )}
+
+  </div>
+</main>
+
       </div>
 
+      {/*Footer */}
       <Footer />
     </div>
   );
 };
 
-
+// Helper component 
 const StepCard = ({ title, subtitle, isActive, isCompleted }) => (
+  //  stepcard
   <div className={`flex items-center gap-3 px-4 h-[60px] rounded-[15px] transition-all relative z-10 w-full 
-    ${isActive ? "bg-white shadow-xl scale-105" : "bg-white/10 backdrop-blur-md border border-white/10"}`}>
-    
+    ${isActive ? "bg-white shadow-xl" : "bg-white/40 backdrop-blur-md border border-white/40 shadow-lg"}`}>
+      {/* circle */}
     <div className={`w-6 h-6 shrink-0 rounded-full border-[1.5px] flex items-center justify-center 
-      ${(isActive || isCompleted) ? "border-[#235E5D] bg-[#F2B53D]" : "border-white/40 bg-white/20"}`}> 
-      {isCompleted ? (
-        <HiCheck className="text-white" size={14} />
-      ) : (
-        <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white' : 'bg-white/40'}`} />
-      )}
+      ${(isActive || isCompleted) ? "border-[#235E5D] bg-white"
+      : "border-white/40 bg-white/20 backdrop-blur-md"}`}> 
+      {/* Checkmark */}
+      {isCompleted && <HiCheck className="text-[#235E5D]" size={14} />}
     </div>
-    
-    <div className="overflow-hidden">
-      <p className={`font-semibold text-[13px] truncate ${isActive ? "text-gray-900" : "text-white"}`}>{title}</p>
-      <p className={`text-[11px] truncate ${isActive ? "text-gray-500" : "text-white/60"}`}>{subtitle}</p>
+    <div>
+      <p className={`font-semibold text-[14px] ${(isActive || isCompleted) ? "text-gray-800" : "text-gray-700"}`}>{title}</p>
+      <p className={`text-[12px] ${(isActive || isCompleted)? "text-gray-600" : "text-gray-600/80"}`}>{subtitle}</p>
     </div>
   </div>
 );
 
 export default VendorOnboarding;
+
+
+
