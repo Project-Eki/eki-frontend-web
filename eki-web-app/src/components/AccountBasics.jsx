@@ -5,6 +5,7 @@ import { FiLock } from "react-icons/fi";
 import { validateAccountBasics } from "../utils/onboardingValidation";
 import { registerVendor } from '../services/api';
 import MessageAlert from "../components/MessageAlert";
+import { Link } from "react-router-dom";
 
 const AccountBasics = ({ onNext, formData, updateFormData }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -106,19 +107,33 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
         if (error.response?.status === 400 && errData) {
           // Handle both { errors: {...} } and flat { field: [...] } structures
           const fields = errData.errors || errData;
+
+          // Debug logging - shows what data is being sent
+          console.log('Sending registration data:', {
+            first_name: formData.first_name,
+            last_name: formData.last_name,
+            email: formData.email,
+            password: formData.password,
+            confirm_password: formData.confirmPassword,
+            accepted_terms: formData.agreeToTerms,
+          });
+
+          console.error('Backend Validation:', fields);
           setErrors(prev => ({
             ...prev,
             ...(fields.password && { password: Array.isArray(fields.password) ? fields.password[0] : fields.password }),
-            ...((fields.confirm_password || fields.password2) && {
-              confirmPassword: Array.isArray(fields.confirm_password || fields.password2)
-                ? (fields.confirm_password || fields.password2)[0]
-                : (fields.confirm_password || fields.password2)
+            ...(fields.confirm_password && {
+              confirmPassword: Array.isArray(fields.confirm_password) 
+                ? fields.confirm_password[0] 
+                : fields.confirm_password
             }),
             ...(fields.email && { email: Array.isArray(fields.email) ? fields.email[0] : fields.email }),
             ...(fields.first_name && { first_name: Array.isArray(fields.first_name) ? fields.first_name[0] : fields.first_name }),
             ...(fields.last_name && { last_name: Array.isArray(fields.last_name) ? fields.last_name[0] : fields.last_name }),
             ...(fields.non_field_errors && { general: Array.isArray(fields.non_field_errors) ? fields.non_field_errors[0] : fields.non_field_errors }),
             ...(!fields.email && errData.message && { general: errData.message }),
+            //  unknown errors
+            ...(Object.keys(fields).length > 0 && !fields.password && !fields.email && { general: 'Please check all fields and try again.' }),
           }));
         } else if (error.response?.status === 500) {
           setErrors(prev => ({
@@ -298,7 +313,13 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
         </button>
       </form>
       <p className="text-center text-[14px] text-gray-500 mt-4">
-        Already have an account? <span className="text-[#F2B53D] font-bold cursor-pointer hover:underline">Sign in</span>
+        Already have an account? {""}
+        <Link 
+          to="/signin" 
+          className="text-[#F2B53D] font-bold cursor-pointer hover:underline"
+        >
+          Sign in
+        </Link>
       </p>
     </div>
   );
