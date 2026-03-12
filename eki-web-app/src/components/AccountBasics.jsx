@@ -25,35 +25,33 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
   });
 
   // --- GOOGLE SIGN IN LOGIC (PATH A: SKIPS STEP 2) ---
-  const loginWithGoogle = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      setIsLoading(true);
-      try {
-        const data = await googleAuth({
-          access_token: tokenResponse.access_token,
-          requested_role: 'vendor',
-        });
+ const loginWithGoogle = useGoogleLogin({
+  onSuccess: async (tokenResponse) => {
+    setIsLoading(true);
+    try {
+      const data = await googleAuth({
+        access_token: tokenResponse.access_token,
+        requested_role: 'vendor',
+      });
 
-        // Store tokens for Axios interceptors
-       if (data.access) {
-          localStorage.setItem('access_token', data.access);
-          localStorage.setItem('refresh_token', data.refresh);
-          // Set this flag so BusinessIdentity knows how to handle the "Back" button
-          localStorage.setItem('is_google_user', 'true');
-        }
-        // SUCCESS: Jump straight to Step 3 (Business Identity) 
-        // because Google email is already verified.
-        onNext(3); 
+      if (data && (data.access || data.data?.access)) {
+        const tokens = data.access ? data : data.data;
+        localStorage.setItem('access_token', data.access);
+        localStorage.setItem('refresh_token', data.refresh);
+        localStorage.setItem('is_google_user', 'true');
         
-      } catch (error) {
-        console.error("Backend Google Auth Error:", error);
-        setErrors({ general: "Could not sync Google account. Please try manual registration." });
-      } finally {
-        setIsLoading(false);
+        // JUMP TO STEP 3
+        onNext(3); 
+      } else {
+        setErrors({ general: "Account created but session failed. Please sign in." });
       }
-    },
-    onError: () => setErrors({ general: "Google Signup Failed" }),
-  });
+    } catch (error) {
+      setErrors({ general: "Google Auth failed. Try manual registration." });
+    } finally {
+      setIsLoading(false);
+    }
+  },
+});
 
   // --- HELPERS ---
   const isFieldValid = (field) => {
