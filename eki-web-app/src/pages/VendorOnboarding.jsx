@@ -5,9 +5,9 @@ import VerifyIdentity from "../components/VerifyIdentity";
 import BusinessIdentity from "../components/BusinessIdentity";
 import ContactLocation from "../components/ContactLocation";
 import OperationCompliance from "../components/OperationCompliance";
-import OnboardingSuccess from '../components/OnboardingSuccess'; 
+import OnboardingSuccess from "../components/OnboardingSuccess";
 import Footer from "../components/Footer";
-import { HiCheck } from "react-icons/hi"; 
+import { HiCheck } from "react-icons/hi";
 
 const VendorOnboarding = () => {
   // change state back to 1 from 2
@@ -28,7 +28,7 @@ const VendorOnboarding = () => {
 
     // Business identity
     business_name: "",
-    business_type: "", 
+    business_type: "",
     owner_full_name: "",
     tax_id: "",
     registration_number: "",
@@ -45,148 +45,205 @@ const VendorOnboarding = () => {
     opening_time: "09:00",
     closing_time: "17:00",
 
-    // Documents 
+    // Documents
     documents: {
-    national_id: null,
-    business_license: null,
-    tax_certificate: null,
-    incorporation_cert: null,
-  }
-
+      national_id: null,
+      business_license: null,
+      tax_certificate: null,
+      incorporation_cert: null,
+    },
   });
 
   // 2. Update Function
   const handleUpdate = (newData) => {
-    setFormData(prev => ({ ...prev, ...newData }));
+    setFormData((prev) => ({ ...prev, ...newData }));
   };
 
   // Each step component calls its own API internally.
   // This function is called by each component's onNext/onFinish prop
   // after a successful API response, so we just advance the step counter.
   const handleNextStep = (targetStep) => {
+    console.log("Next step requested:", targetStep);
     // 1. If we provide a specific step (like step 3 for Google users), go there directly
-  if (typeof targetStep === 'number') {
-    setCurrentStep(targetStep);
-    return;
-  }
-  // 2.otherwise,handle the normal flow
+    if (typeof targetStep === "number") {
+      setCurrentStep(targetStep);
+      return;
+    }
+    // 2.otherwise,handle the normal flow
     if (currentStep === 5) {
       setIsSubmitted(true);
       return;
     }
     // normal increment for the "continue" button
-    setCurrentStep(prev => prev + 1);
+    setCurrentStep((prev) => prev + 1);
   };
+  // Inside VendorOnboarding.jsx
+
+  const handleBackStep = () => {
+    const isGoogleUser = localStorage.getItem("is_google_user") === "true";
+
+    // If we are at Business Identity (Step 3) and it's a Google user, jump to Step 1
+    if (currentStep === 3 && isGoogleUser) {
+      setCurrentStep(1);
+    } else {
+      // Otherwise, just go back one step normally
+      setCurrentStep((prev) => prev - 1);
+    }
+  };
+
+  // ... inside your return/render logic, pass handleBackStep as a prop:
+  {
+    currentStep === 3 && (
+      <BusinessIdentity
+        onNext={handleNextStep}
+        onBack={handleBackStep} // Pass it here
+        formData={formData}
+        updateFormData={handleUpdate}
+      />
+    );
+  }
 
   return (
     <div className="h-screen w-full flex flex-col bg-[#F8F9FA] font-sans overflow-hidden">
       {/* navbar */}
-      <Navbar2/>
+      <Navbar2 />
       <div className="flex flex-1 overflow-hidden">
-        
         {/* SIDEBAR */}
-<aside className="w-[320px] bg-[#235E5D] p-6 ml-10 my-6 rounded-[32px] flex flex-col shrink-0 shadow-xl border border-white/10">
-          <div className="relative w-full space-y-3 mt-10"> 
+        <aside className="w-[320px] bg-[#235E5D] p-6 ml-10 my-6 rounded-[32px] flex flex-col shrink-0 shadow-xl border border-white/10">
+          <div className="relative w-full space-y-3 mt-10">
             {/* The vertical progress line */}
             <div className="absolute left-[28px] top-[30px] bottom-[30px] w-[1px] bg-white/20"></div>
 
-            <StepCard title="Account Basics" subtitle="Personal information & credentials" isActive={currentStep === 1} isCompleted={currentStep > 1} />
-            <StepCard title="Verify Identity" subtitle="Confirm your email address" isActive={currentStep === 2} isCompleted={currentStep > 2} />
-            <StepCard title="Business Identity" subtitle="Legal name & registration type" isActive={currentStep === 3} isCompleted={currentStep > 3} />
-            <StepCard title="Contact & Location" subtitle="Where you operate from" isActive={currentStep === 4} isCompleted={currentStep > 4} />
-            <StepCard title="Secure Account" subtitle="Protect your merchant profile" isActive={currentStep === 5} />
+            <StepCard
+              title="Account Basics"
+              subtitle="Personal information & credentials"
+              isActive={currentStep === 1}
+              isCompleted={currentStep > 1}
+            />
+            <StepCard
+              title="Verify Identity"
+              subtitle="Confirm your email address"
+              isActive={currentStep === 2}
+              isCompleted={currentStep > 2}
+            />
+            <StepCard
+              title="Business Identity"
+              subtitle="Legal name & registration type"
+              isActive={currentStep === 3}
+              isCompleted={currentStep > 3}
+            />
+            <StepCard
+              title="Contact & Location"
+              subtitle="Where you operate from"
+              isActive={currentStep === 4}
+              isCompleted={currentStep > 4}
+            />
+            <StepCard
+              title="Secure Account"
+              subtitle="Protect your merchant profile"
+              isActive={currentStep === 5}
+            />
           </div>
         </aside>
-<main className="flex-1 flex flex-col items-center px-20 px-12">
-  {/* NOTICE THE UPDATED TERNARY LOGIC: currentStep >= 3 */}
-  <div className={`w-full transition-all duration-300 ${currentStep >= 3 ? "max-w-[900px]" : "max-w-[600px]"}`}> 
-    
-    {isSubmitted ? (
-      // Show Success Screen if submitted
-      <OnboardingSuccess />
-    ) : (
-      // Show the steps if NOT submitted
-      <>
-        {/* STEP 1 */}
-        {currentStep === 1 && (
-          <>
-            <div className="mb-4">
-              <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20">Step 1 of 5</span>
-              <h2 className="text-[28px] font-black text-gray-900 mt-2 leading-tight">Join to enjoy faster Sales</h2>
-              <p className="text-gray-500 text-[14px]">Let's start with the basics to get your account ready.</p>
-            </div>
-            <AccountBasics 
-              formData={formData}
-              updateFormData={handleUpdate}
-              onNext={handleNextStep} />
-          </>
-        )}
+        <main className="flex-1 flex flex-col items-center px-20 px-12">
+          {/* NOTICE THE UPDATED TERNARY LOGIC: currentStep >= 3 */}
+          <div
+            className={`w-full transition-all duration-300 ${currentStep >= 3 ? "max-w-[900px]" : "max-w-[600px]"}`}
+          >
+            {isSubmitted ? (
+              // Show Success Screen if submitted
+              <OnboardingSuccess />
+            ) : (
+              // Show the steps if NOT submitted
+              <>
+                {/* STEP 1 */}
+                {currentStep === 1 && (
+                  <>
+                    <div className="mb-4">
+                      <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20">
+                        Step 1 of 5
+                      </span>
+                      <h2 className="text-[28px] font-black text-gray-900 mt-2 leading-tight">
+                        Join to enjoy faster Sales
+                      </h2>
+                      <p className="text-gray-500 text-[14px]">
+                        Let's start with the basics to get your account ready.
+                      </p>
+                    </div>
+                    <AccountBasics
+                      formData={formData}
+                      updateFormData={handleUpdate}
+                      onNext={handleNextStep}
+                    />
+                  </>
+                )}
 
-        {/* STEP 2 */}
-        {currentStep === 2 && (
-          <div className="flex flex-col items-start w-full">
-            <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">Step 2 of 5</span>
-            <div className="w-full flex justify-center">
-              <VerifyIdentity 
-                formData={formData} 
-                onNext={() => setCurrentStep(3)} 
-                onBack={()=> setCurrentStep(1)}/>
-            </div>
+                {/* STEP 2 */}
+                {currentStep === 2 && (
+                  <div className="flex flex-col items-start w-full">
+                    <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">
+                      Step 2 of 5
+                    </span>
+                    <div className="w-full flex justify-center">
+                      <VerifyIdentity
+                        formData={formData}
+                        onNext={handleNextStep}
+                        onBack={handleBackStep}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 3 */}
+                {currentStep === 3 && (
+                  <div className="flex flex-col items-start w-full">
+                    <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">
+                      Step 3 of 5
+                    </span>
+                    <BusinessIdentity
+                      formData={formData}
+                      updateFormData={handleUpdate}
+                      onNext={handleNextStep}
+                      onBack={handleBackStep} // Use the function you defined above!
+                    />
+                  </div>
+                )}
+
+                {/* STEP 4 */}
+                {currentStep === 4 && (
+                  <div className="flex flex-col items-start w-full">
+                    <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">
+                      Step 4 of 5
+                    </span>
+                    <ContactLocation
+                      formData={formData}
+                      updateFormData={handleUpdate}
+                      onNext={handleNextStep}
+                      onBack={() => setCurrentStep(3)}
+                    />
+                  </div>
+                )}
+
+                {/* STEP 5 */}
+                {currentStep === 5 && (
+                  <div className="flex flex-col items-start w-full mb-10">
+                    {" "}
+                    {/* mb-10 added for bottom scrolling padding */}
+                    <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">
+                      Step 5 of 5
+                    </span>
+                    <OperationCompliance
+                      formData={formData}
+                      updateFormData={handleUpdate}
+                      onFinish={handleNextStep}
+                      onBack={() => setCurrentStep(4)}
+                    />
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        )}
-
-        {/* STEP 3 */}
-        {currentStep === 3 && (
-          <div className="flex flex-col items-start w-full">
-            <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">Step 3 of 5</span>
-            <BusinessIdentity 
-              formData={formData} 
-              updateFormData={handleUpdate} 
-              onNext={handleNextStep} 
-              onBack={() =>{
-                // if they used google, go back to Step 1.
-                // we check if a token exists but Step 2 was never completed.
-                const isGoogleUser = localStorage.getItem('is_google_user'); // Tip: Set this during Google Success
-                if (isGoogleUser) {
-                  setCurrentStep(1);
-                } else {
-                     setCurrentStep(2);
-                }
-              }
-              
-             }  />
-          </div>
-        )}
-
-        {/* STEP 4 */}
-        {currentStep === 4 && (
-          <div className="flex flex-col items-start w-full">
-            <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">Step 4 of 5</span>
-            <ContactLocation 
-              formData={formData} 
-              updateFormData={handleUpdate} 
-              onNext={handleNextStep} 
-              onBack={() => setCurrentStep(3)}/>
-          </div>
-        )}
-
-        {/* STEP 5 */}
-        {currentStep === 5 && (
-          <div className="flex flex-col items-start w-full mb-10"> {/* mb-10 added for bottom scrolling padding */}
-            <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">Step 5 of 5</span>
-            <OperationCompliance 
-              formData={formData} 
-              updateFormData={handleUpdate} 
-              onFinish={handleNextStep} 
-              onBack={() => setCurrentStep(4)} />
-          </div>
-        )}
-      </>
-    )}
-
-  </div>
-</main>
-
+        </main>
       </div>
 
       {/*Footer */}
@@ -195,26 +252,38 @@ const VendorOnboarding = () => {
   );
 };
 
-// Helper component 
+// Helper component
 const StepCard = ({ title, subtitle, isActive, isCompleted }) => (
   //  stepcard
-  <div className={`flex items-center gap-3 px-4 h-[60px] rounded-[15px] transition-all relative z-10 w-full 
-    ${isActive ? "bg-white shadow-xl" : "bg-white/40 backdrop-blur-md border border-white/40 shadow-lg"}`}>
-      {/* circle */}
-    <div className={`w-6 h-6 shrink-0 rounded-full border-[1.5px] flex items-center justify-center 
-      ${(isActive || isCompleted) ? "border-[#235E5D] bg-white"
-      : "border-white/40 bg-white/20 backdrop-blur-md"}`}> 
+  <div
+    className={`flex items-center gap-3 px-4 h-[60px] rounded-[15px] transition-all relative z-10 w-full 
+    ${isActive ? "bg-white shadow-xl" : "bg-white/40 backdrop-blur-md border border-white/40 shadow-lg"}`}
+  >
+    {/* circle */}
+    <div
+      className={`w-6 h-6 shrink-0 rounded-full border-[1.5px] flex items-center justify-center 
+      ${
+        isActive || isCompleted
+          ? "border-[#235E5D] bg-white"
+          : "border-white/40 bg-white/20 backdrop-blur-md"
+      }`}
+    >
       {/* Checkmark */}
       {isCompleted && <HiCheck className="text-[#235E5D]" size={14} />}
     </div>
     <div>
-      <p className={`font-semibold text-[14px] ${(isActive || isCompleted) ? "text-gray-800" : "text-gray-700"}`}>{title}</p>
-      <p className={`text-[12px] ${(isActive || isCompleted)? "text-gray-600" : "text-gray-600/80"}`}>{subtitle}</p>
+      <p
+        className={`font-semibold text-[14px] ${isActive || isCompleted ? "text-gray-800" : "text-gray-700"}`}
+      >
+        {title}
+      </p>
+      <p
+        className={`text-[12px] ${isActive || isCompleted ? "text-gray-600" : "text-gray-600/80"}`}
+      >
+        {subtitle}
+      </p>
     </div>
   </div>
 );
 
 export default VendorOnboarding;
-
-
-

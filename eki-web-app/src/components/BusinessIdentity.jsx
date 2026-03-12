@@ -16,46 +16,73 @@ const BusinessIdentity = ({ onNext, onBack, formData, updateFormData }) => {
     setErrors(validationErrors);
   };
 
-  const handleContinue = async () => {
-    setGeneralError("");
-    const validationErrors = validateBusinessIdentity(formData);
-    setErrors(validationErrors);
+  
+const handleContinue = async () => {
+  setGeneralError("");
+  const validationErrors = validateBusinessIdentity(formData);
+  setErrors(validationErrors);
 
-    if (Object.keys(validationErrors).length === 0) {
-      setIsLoading(true);
-      try {
-        const data = await submitBusinessIdentity({
-          business_name: formData.business_name,
-          business_type: formData.business_type,
-          owner_full_name: formData.owner_full_name,
-          tax_id: formData.tax_id,
-          registration_number: formData.registration_number,
-          business_description: formData.business_description,
+  if (Object.keys(validationErrors).length === 0) {
+    setIsLoading(true);
+    try {
+      const data = await submitBusinessIdentity(formData); 
+      onNext(); 
+    } catch (error) {
+      const errData = error.response?.data || {};
+      if (error.response?.status === 400) {
+        // Map backend errors. If backend returns a field not in this list, 
+        // it falls back to the local validation error or empty.
+        setErrors({
+          business_name: errData.business_name?.[0],
+          business_type: errData.business_type?.[0],
+          owner_full_name: errData.owner_full_name?.[0],
+          registration_number: errData.registration_number?.[0],
+          tax_id: errData.tax_id?.[0], // Added this
         });
-        
-        console.log("Business Identity Saved:", data);
-        onNext(); // Move to Step 4
-      } catch (error) {
-        console.error("Business Identity Error:", error.response?.data);
-        const errData = error.response?.data || {};
-        
-        if (error.response?.status === 400) {
-          // Map backend field errors
-          setErrors(prev => ({
-            ...prev,
-            business_name: errData.business_name?.[0],
-            business_type: errData.business_type?.[0],
-            owner_full_name: errData.owner_full_name?.[0],
-            registration_number: errData.registration_number?.[0],
-          }));
-        } else {
-          setGeneralError(errData.detail || "Server error. Please try again later.");
-        }
-      } finally {
-        setIsLoading(false);
+      } else {
+        setGeneralError(errData.detail || "Server error. Please try again later.");
       }
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }
+};
+  // const handleContinue = async () => {
+  //   setGeneralError("");
+  //   const validationErrors = validateBusinessIdentity(formData);
+  //   setErrors(validationErrors);
+
+  //   if (Object.keys(validationErrors).length === 0) {
+  //     setIsLoading(true);
+  //     try {
+  //       const data = await submitBusinessIdentity(formData);
+  //       onNext ();
+  //     } 
+         
+        
+  //       console.log("Business Identity Saved:", data);
+  //       onNext(); // Move to Step 4
+  //     } catch (error) {
+  //       console.error("Business Identity Error:", error.response?.data);
+  //       const errData = error.response?.data || {};
+        
+  //       if (error.response?.status === 400) {
+  //         // Map backend field errors
+  //         setErrors(prev => ({
+  //           ...prev,
+  //           business_name: errData.business_name?.[0],
+  //           business_type: errData.business_type?.[0],
+  //           owner_full_name: errData.owner_full_name?.[0],
+  //           registration_number: errData.registration_number?.[0],
+  //         }));
+  //       } else {
+  //         setGeneralError(errData.detail || "Server error. Please try again later.");
+  //       }
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   }
+  // };
 
   return (
     <div className="w-full animate-fadeIn">
