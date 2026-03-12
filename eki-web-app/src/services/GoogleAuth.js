@@ -37,7 +37,6 @@ export const googleAuthService = {
       const contentType = response.headers.get('content-type') || '';
       let data;
 
-      // Try to parse JSON, fallback for HTML or invalid JSON
       if (contentType.toLowerCase().includes('application/json')) {
         data = await response.json();
       } else {
@@ -52,7 +51,6 @@ export const googleAuthService = {
       return data;
 
     } catch (err) {
-      // Network errors or parsing issues
       throw new Error(err.message || 'Google sign-in failed. Please try again.');
     }
   },

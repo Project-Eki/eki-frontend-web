@@ -1,75 +1,64 @@
-import axios from 'axios';
+import axios from "axios";
 
 const api = axios.create({
-  baseURL: 'https://api-7w8f.onrender.com/api/v1',
+  baseURL: "https://api-7w8f.onrender.com/api/v1",
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
-// ─── Request Interceptor: Attach JWT access token ───────────────────────────
+//  Request Interceptor: Attach JWT access token
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
+  const token = localStorage.getItem("access_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// ─── Response Interceptor: Auto-refresh access token on 401 ─────────────────
+// Response Interceptor: Auto-refresh access token on 401
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      const refresh = localStorage.getItem('refresh_token');
+      const refresh = localStorage.getItem("refresh_token");
       if (refresh) {
         try {
           const { data } = await axios.post(
-            'https://api-7w8f.onrender.com/api/v1/accounts/token/refresh/',
-            { refresh }
+            "https://api-7w8f.onrender.com/api/v1/accounts/token/refresh/",
+            { refresh },
           );
-          localStorage.setItem('access_token', data.access);
+          localStorage.setItem("access_token", data.access);
           originalRequest.headers.Authorization = `Bearer ${data.access}`;
           return api(originalRequest);
         } catch {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
         }
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;
 
-// ─── Auth ────────────────────────────────────────────────────────────────────
-
-/**
- * Sign In — CustomTokenObtainPairSerializer
- * POST /accounts/token/
- */
-export const loginUser = async ({ email, password }) => {
-  const response = await api.post('/accounts/token/', { email, password });
-  return response.data;
+// Auth
+// Sign In — CustomTokenObtainPairSerializer
+export const SigninUser = async ({ email, password }) => {
+  const response = await api.post("/accounts/signin/", { email, password });
+  return response.data; // returns { access: "...", refresh: "..." }
 };
 
-/**
- * Refresh access token — TokenRefreshSerializer
- * POST /accounts/token/refresh/
- */
+// Refresh access and refresh JWT tokens
 export const refreshToken = async ({ refresh }) => {
-  const response = await api.post('/accounts/token/refresh/', { refresh });
+  const response = await api.post("/accounts/token/refresh/", { refresh });
   return response.data;
 };
 
-/**
- * Register new vendor — RegisterSerializer
- * POST /accounts/register/vendor/
- * FIX: Lowercase 'vendor' and trailing slash added to match backend requirements.
- */
+// Register new vendor
 export const registerVendor = async ({
   first_name,
   last_name,
@@ -78,87 +67,95 @@ export const registerVendor = async ({
   confirm_password,
   accepted_terms = true,
 }) => {
-  const payload = {
-    first_name,
-    last_name,
-    email,
-    password,
-    accepted_terms,
-  };
+  // request body
+  const payload = { first_name, last_name, email, password, accepted_terms };
+  if (confirm_password !== undefined)
+    payload.confirm_password = confirm_password;
 
-  // Support both confirm_password and password2 field names
-  if (confirm_password !== undefined) payload.confirm_password = confirm_password;
-
-  const response = await api.post('/accounts/register/vendor/', payload);
+  const response = await api.post("/accounts/register/vendor/", payload);
   return response.data;
 };
 
-/**
- * Verify OTP — VerifyOTPSerializer
- * POST /accounts/verify-otp/
- */
+// Verify email with otp
 export const verifyEmail = async ({
   email,
   otp_code,
-  otp_type = 'email_verification',
+  otp_type = "email_verification",
 }) => {
-  const response = await api.post('/accounts/verify-email/', {
-    email,
-    otp_code,
-    otp_type,
-  });
-  return response.data;
+  try {
+    const response = await api.post("/accounts/verify-email/", {
+      email,
+      otp_code,
+      otp_type,
+    });
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      throw {
+        message:
+          error.response.data.otp_code?.[0] ||
+          error.response.data.message ||
+          "Something went wrong.",
+      };
+    }
+    throw { message: "Unable to verify OTP. Please check your connection." };
+  }
 };
 
-/**
- * Resend OTP — ResendOTPSerializer
- */
-export const resendOtp = async ({
-  email,
-  otp_type = 'email_verification',
-}) => {
-  const response = await api.post('/accounts/resend-otp/', {
-    email,
-    otp_type,
-  });
-  return response.data;
+// Resend OTP
+export const resendOtp = async ({ email, otp_type = "email_verification" }) => {
+  try {
+    const response = await api.post("/accounts/resend-code/", {
+      email,
+      otp_type,
+    });
+    return response.data;
+  } catch (error) {
+    if (error.response)
+      throw { message: error.response.data.message || "Unable to resend OTP." };
+    throw {
+      message: "Cannot resend OTP. Please check your internet connection.",
+    };
+  }
 };
 
-/**
- * Request password reset OTP
- */
+// Request password reset OTP
 export const passwordResetRequest = async ({ email }) => {
-  const response = await api.post('/accounts/password-reset/', { email });
+  const response = await api.post("/accounts/password/reset/", { email });
   return response.data;
 };
 
-/**
- * Confirm password reset
- */
+// Confirm password reset
 export const passwordResetConfirm = async ({
   email,
   otp_code,
   new_password,
   confirm_password,
 }) => {
-  const response = await api.post('/accounts/password-reset/confirm/', {
-    email,
-    otp_code,
-    new_password,
-    confirm_password,
-  });
-  return response.data;
+  try {
+    const response = await api.post("/accounts/password/reset/confirm/", {
+      email,
+      otp_code,
+      new_password,
+      confirm_password,
+    });
+    return response.data;
+  } catch (error) {
+    if (error.response)
+      throw {
+        message: error.response.data.message || "Failed to reset password.",
+      };
+    throw { message: "Cannot reset password. Check your internet connection." };
+  }
 };
 
-/**
- * Change password (authenticated)
- */
+// Change password 
 export const changePassword = async ({
   current_password,
   new_password,
   confirm_password,
 }) => {
-  const response = await api.post('/accounts/change-password/', {
+  const response = await api.post("/accounts/password/change/", {
     current_password,
     new_password,
     confirm_password,
@@ -166,91 +163,146 @@ export const changePassword = async ({
   return response.data;
 };
 
-/**
- * Google OAuth sign-in
- */
-export const googleAuth = async ({ access_token, requested_role = 'vendor' }) => {
-  const response = await api.post('/accounts/google-auth/', {
+// Google OAuth sign-in
+export const googleAuth = async ({
+  access_token,
+  requested_role = 'vendor',
+}) => {
+  const response = await api.post("/accounts/google/", {
     access_token,
     requested_role,
   });
   return response.data;
 };
 
-/**
- * Logout
- */
+// Logout
 export const logoutUser = async () => {
-  const refresh_token = localStorage.getItem('refresh_token');
-  const response = await api.post('/accounts/logout/', { refresh_token });
-  localStorage.removeItem('access_token');
-  localStorage.removeItem('refresh_token');
-  return response.data;
+  const refresh_token = localStorage.getItem("refresh_token");
+  try {
+    const response = await api.post("/accounts/logout/", { refresh_token });
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    return response.data;
+  } catch (error) {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    if (error.response)
+      throw { message: error.response.data.message || "Failed to logout." };
+    throw { message: "Cannot logout. Please check your internet connection." };
+  }
 };
 
-/**
- * Validate current session
- */
+// Validate current session
 export const validateSession = async () => {
-  const response = await api.get('/accounts/session/');
+  const response = await api.get("/accounts/session/");
   return response.data;
 };
 
-// ─── Profile & Vendor Details ────────────────────────────────────────────────
+// Profile & Vendor Details 
 
+// Update vendor profile
 export const updateProfile = async (profileData) => {
-  const response = await api.patch('/accounts/profile/', profileData);
-  return response.data;
+  try {
+    const response = await api.patch(
+      "/accounts/vendor/vendorprofile/",
+      profileData,
+    );
+    return response.data;
+  } catch (error) {
+    if (error.response)
+      throw {
+        message: error.response.data.message || "Failed to update profile.",
+      };
+    throw {
+      message: "Cannot update profile. Please check your internet connection.",
+    };
+  }
 };
 
+// Submit business identity
 export const submitBusinessIdentity = async (data) => {
-  const response = await api.post('/vendors/profile/', data);
-  return response.data;
+  try {
+    const response = await api.post("/accounts/vendor/business-identity", data);
+    return response.data;
+  } catch (error) {
+    if (error.response)
+      throw {
+        message:
+          error.response.data.message || "Failed to submit business identity.",
+      };
+    throw {
+      message: "Cannot submit business identity. Please check your connection.",
+    };
+  }
 };
 
+// Submit vendor contact and location
 export const submitContactLocation = async (data) => {
-  const response = await api.patch('/vendors/profile/', data);
-  return response.data;
+  try {
+    const response = await api.patch("/accounts/vendor/location/", data);
+    return response.data;
+  } catch (error) {
+    if (error.response)
+      throw {
+        message:
+          error.response.data.message || "Failed to submit contact/location.",
+      };
+    throw {
+      message:
+        "Cannot submit contact/location. Please check your internet connection.",
+    };
+  }
 };
 
-export const submitOperatingHours = async (data) => {
-  const response = await api.patch('/vendors/profile/', data);
-  return response.data;
+export const uploadVendorDocument = async ({
+  document_type,
+  document_file,
+}) => {
+  try {
+    const payload = new FormData();
+    payload.append("document_type", document_type);
+    payload.append("document_file", document_file);
+
+    const response = await api.post("/accounts/vendor/documents/", payload, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  } catch (error) {
+    if (error.response)
+      throw {
+        message: error.response.data.message || "Failed to upload document.",
+      };
+    throw {
+      message: "Cannot upload document. Check your internet connection.",
+    };
+  }
 };
 
-export const uploadVendorDocument = async ({ document_type, document_file }) => {
-  const payload = new FormData();
-  payload.append('document_type', document_type);
-  payload.append('document_file', document_file);
-  const response = await api.post('/vendors/documents/', payload, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-  return response.data;
-};
-
+// Submit compliance 
 export const submitOperationCompliance = async ({
+  registration_number,
   opening_time,
   closing_time,
-  documents,
 }) => {
-  const docTypeMap = {
-    incorporation_cert: 'incorporation_certificate',
-    national_id: 'national_id',
-    business_license: 'business_license',
-    tax_certificate: 'tax_certificate',
-  };
-
-  const uploadPromises = Object.entries(docTypeMap)
-    .filter(([key]) => documents[key])
-    .map(([key, document_type]) =>
-      uploadVendorDocument({ document_type, document_file: documents[key] })
-    );
-
-  await Promise.all(uploadPromises);
-  return submitOperatingHours({ opening_time, closing_time });
+  try {
+    const response = await api.post("/accounts/vendor/compliance/", {
+      registration_number,
+      opening_time,
+      closing_time,
+    });
+    return response.data;
+  } catch (error) {
+    if (error.response)
+      throw {
+        message: error.response.data.message || "Failed to submit compliance.",
+      };
+    throw {
+      message: "Cannot submit compliance. Check your internet connection.",
+    };
+  }
 };
 
 export const getVendorProfile = async () => {
-  const response = await api.get('/vendors/profile/');
+  const response = await api.get("/accounts/vendor/vendorprofile/");
   return response.data;
 };

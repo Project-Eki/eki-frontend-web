@@ -2,73 +2,77 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import ResetPassword from '../pages/ResetPassword';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import ResetPasswordPage from '../pages/ResetPassword'; // <-- CHECK THIS FILENAME
+import { passwordResetConfirm } from '../services/api';
 
-// Mock image imports (avoids Vite issues)
-vi.mock('../assets/logo.jpeg', () => ({ default: 'logo.jpeg' }));
-vi.mock('../assets/reset.jpeg', () => ({ default: 'reset.jpeg' }));
+const mockNavigate = vi.fn();
 
-describe('ResetPassword Component', () => {
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
+
+vi.mock('../services/api', () => ({
+  passwordResetConfirm: vi.fn(),
+}));
+
+describe('ResetPasswordPage Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  test('renders all form elements correctly', () => {
-    render(<ResetPassword />);
-    
-    expect(screen.getByLabelText(/New Password/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Confirm Password/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Reset Password/i })).toBeInTheDocument();
-  });
+ 
+  const renderWithEmail = (email = 'test@vendor.com') => {
+    return render(
+      <MemoryRouter initialEntries={[{ pathname: '/reset', state: { email } }]}>
+        <Routes>
+          <Route path="/reset" element={<ResetPasswordPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+  };
 
-  test('shows error style when password is less than 8 characters', async () => {
-    render(<ResetPassword />);
-
-    const newPassword = screen.getByLabelText(/New Password/i);
-    fireEvent.change(newPassword, { target: { value: '123' } });
-
-    const submitButton = screen.getByRole('button', { name: /Reset Password/i });
-    fireEvent.click(submitButton);
-
-    await waitFor(() => {
-      expect(newPassword).toHaveClass('border-red-500');
-      expect(newPassword).toHaveAttribute('placeholder', 'Min. 8 characters');
-    });
+  test('renders email from state and input fields', () => {
+    renderWithEmail('user@example.com');
+    expect(screen.getByText(/for user@example.com/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/OTP Code/i)).toBeInTheDocument();
   });
 
   test('shows error when passwords do not match', async () => {
-    render(<ResetPassword />);
-
-    const newPassword = screen.getByLabelText(/New Password/i);
-    const confirmPassword = screen.getByLabelText(/Confirm Password/i);
-
-    fireEvent.change(newPassword, { target: { value: 'Password123' } });
-    fireEvent.change(confirmPassword, { target: { value: 'Password456' } });
-
-    const submitButton = screen.getByRole('button', { name: /Reset Password/i });
-    fireEvent.click(submitButton);
+    renderWithEmail();
+    
+    fireEvent.change(screen.getByLabelText(/New Password/i), { target: { value: 'Password123!' } });
+    fireEvent.change(screen.getByLabelText(/Confirm Password/i), { target: { value: 'WrongMatch123' } });
+    
+    fireEvent.click(screen.getByRole('button', { name: /^Reset Password$/i }));
 
     await waitFor(() => {
-      expect(confirmPassword).toHaveClass('border-red-500');
-      expect(confirmPassword).toHaveAttribute('placeholder', 'Passwords must match');
+      expect(screen.getByText(/Passwords must match/i)).toBeInTheDocument();
     });
   });
 
-  test('removes error when passwords match and meet requirements', async () => {
-    render(<ResetPassword />);
+  test('successful API call navigates to signin', async () => {
+    passwordResetConfirm.mockResolvedValueOnce({ data: { detail: 'Success' } });
+    renderWithEmail();
 
-    const newPassword = screen.getByLabelText(/New Password/i);
-    const confirmPassword = screen.getByLabelText(/Confirm Password/i);
+    fireEvent.change(screen.getByLabelText(/OTP Code/i), { target: { value: '123456' } });
+    fireEvent.change(screen.getByLabelText(/New Password/i), { target: { value: 'NewPass123!' } });
+    fireEvent.change(screen.getByLabelText(/Confirm Password/i), { target: { value: 'NewPass123!' } });
 
-    fireEvent.change(newPassword, { target: { value: 'Password123' } });
-    fireEvent.change(confirmPassword, { target: { value: 'Password123' } });
-
-    const submitButton = screen.getByRole('button', { name: /Reset Password/i });
-    fireEvent.click(submitButton);
+    fireEvent.click(screen.getByRole('button', { name: /^Reset Password$/i }));
 
     await waitFor(() => {
-      expect(newPassword).not.toHaveClass('border-red-500');
-      expect(confirmPassword).not.toHaveClass('border-red-500');
+      expect(passwordResetConfirm).toHaveBeenCalledWith(expect.objectContaining({
+        otp_code: '123456',
+        new_password: 'NewPass123!'
+      }));
+      expect(mockNavigate).toHaveBeenCalledWith('/signin');
     });
   });
 });
