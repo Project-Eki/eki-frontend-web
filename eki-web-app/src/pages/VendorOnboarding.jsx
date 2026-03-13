@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState } from "react";   
 import Navbar2 from "../components/Navbar2";
 import AccountBasics from "../components/AccountBasics";
 import VerifyIdentity from "../components/VerifyIdentity";

@@ -164,16 +164,16 @@ export const changePassword = async ({
 };
 
 // Google OAuth sign-in
-export const googleAuth = async ({
-  access_token,
-  requested_role = 'vendor',
-}) => {
-  const response = await api.post("/accounts/google/", {
-    access_token,
-    requested_role,
-  });
-  return response.data;
-};
+// export const googleAuth = async ({
+//   access_token,
+//   requested_role = 'vendor',
+// }) => {
+//   const response = await api.post("/accounts/google/", {
+//     access_token,
+//     requested_role,
+//   });
+//   return response.data;
+// };
 
 // Logout
 export const logoutUser = async () => {
