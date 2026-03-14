@@ -1,57 +1,30 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from "react-router-dom";
-// import { FcGoogle } from "react-icons/fc";
 import { FaRegUser, FaRegEnvelope, FaRegEye, FaRegEyeSlash } from "react-icons/fa6";
 import { FiLock } from "react-icons/fi";
-// import { useGoogleLogin } from '@react-oauth/google';
 
+// Import Context and Actions
+import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
 import { validateAccountBasics } from "../utils/onboardingValidation";
-// import { registerVendor, googleAuth } from '../services/api'; // Centralized API
-import { registerVendor} from '../services/api';
+import { registerVendor } from '../services/api';
 import MessageAlert from "../components/MessageAlert";
 
-const AccountBasics = ({ onNext, formData, updateFormData }) => {
+const AccountBasics = () => {
+  // Access Global State and Dispatch
+  const { state, dispatch } = useOnboarding();
+  const { formData } = state;
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 
-  // Password rules state tracking
   const [passwordRules, setPasswordRules] = useState({
     length: false,
     upperLower: false,
     notEmail: false,
     notNumeric: false,
   });
-
-  // --- GOOGLE SIGN IN LOGIC (PATH A: SKIPS STEP 2) ---
-//  const loginWithGoogle = useGoogleLogin({
-//   onSuccess: async (tokenResponse) => {
-//     setIsLoading(true);
-//     try {
-//       const data = await googleAuth({
-//         access_token: tokenResponse.access_token,
-//         requested_role: 'vendor',
-//       });
-
-//       if (data && (data.access || data.data?.access)) {
-//         const tokens = data.access ? data : data.data;
-//         localStorage.setItem('access_token', data.access);
-//         localStorage.setItem('refresh_token', data.refresh);
-//         localStorage.setItem('is_google_user', 'true');
-        
-//         // JUMP TO STEP 3
-//         onNext(3); 
-//       } else {
-//         setErrors({ general: "Account created but session failed. Please sign in." });
-//       }
-//     } catch (error) {
-//       setErrors({ general: "Google Auth failed. Try manual registration." });
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   },
-// });
 
   // --- HELPERS ---
   const isFieldValid = (field) => {
@@ -70,8 +43,12 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
     );
   }, [formData, errors, passwordRules]);
 
+  // Update handleChange to use dispatch
   const handleChange = (field, value) => {
-    updateFormData({ [field]: value });
+    dispatch({
+      type: ACTIONS.UPDATE_FORM,
+      payload: { [field]: value }
+    });
     
     const validationErrors = validateAccountBasics({ ...formData, [field]: value });
     setErrors(validationErrors);
@@ -90,7 +67,7 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
     return errors[field] ? errors[field] : defaultPlaceholder;
   };
 
-  // --- MANUAL REGISTRATION LOGIC (PATH B: GOES TO STEP 2) ---
+  // Manual Registration Logic
   const handleContinue = async (e) => {
     if (e) e.preventDefault();
     
@@ -105,8 +82,8 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
     if (Object.keys(validationErrors).length === 0) {
       setIsLoading(true);
       try {
-        const data = await 
-        r({
+        // API CALL: Creates the user and triggers the OTP email
+        await registerVendor({
           first_name: formData.first_name,
           last_name: formData.last_name,
           email: formData.email,
@@ -115,15 +92,10 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
           accepted_terms: formData.agreeToTerms,
         });
 
-  //      if (data.access) {
-  // localStorage.setItem('access_token', data.access);
-  // if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
-  
-  // CLEANUP: Ensure manual users are NOT flagged as Google users
-  localStorage.removeItem('is_google_user'); 
-  
-  // SUCCESS: Move to Step 2 (Verify Identity / OTP)
-  onNext();
+        localStorage.removeItem('is_google_user'); 
+        
+        // Success: Move to Step 2 (Verify Identity) via Global Dispatch
+        dispatch({ type: ACTIONS.NEXT_STEP });
        
       } catch (error) {
         const errData = error.response?.data;
@@ -239,20 +211,6 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
         >
           {isLoading ? "Creating Account..." : "Continue"}
         </button>
-
-        {/* <div className="flex items-center py-2">
-          <div className="flex-grow border-t border-gray-100"></div>
-          <span className="px-2 text-gray-400 text-[11px] font-bold uppercase tracking-widest">OR</span>
-          <div className="flex-grow border-t border-gray-100"></div>
-        </div> */}
-
-        {/* <button 
-          type="button" 
-          onClick={() => loginWithGoogle()}
-          className="w-full h-9 border border-gray-200 rounded-full flex justify-center items-center gap-3 bg-white hover:bg-gray-50 transition font-bold text-[14px] text-gray-700"
-        >
-          <FcGoogle size={18} /> Sign up with Google
-        </button> */}
       </form>
       
       <p className="text-center text-[14px] text-gray-500 mt-4">
@@ -263,4 +221,3 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
 };
 
 export default AccountBasics;
-

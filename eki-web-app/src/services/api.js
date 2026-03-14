@@ -72,7 +72,7 @@ export const registerVendor = async ({
   if (confirm_password !== undefined)
     payload.confirm_password = confirm_password;
 
-  const response = await api.post("/accounts/register/vendor/", payload);
+  const response = await api.post("/accounts/register-vendor", payload);
   return response.data;
 };
 
