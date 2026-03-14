@@ -216,6 +216,21 @@ const VendorOnboarding = () => {
 
       {/* Footer */}
       <Footer />
+     {/*  PASTING THE DEV TOOLS TO HELP ME WITH NAVIGATION  */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed bottom-4 right-4 bg-black/80 p-4 rounded-2xl flex gap-2 z-50">
+          <p className="text-white text-xs self-center mr-2">Dev Tools:</p>
+          {[1, 2, 3, 4, 5, 6].map((num) => (
+            <button 
+              key={num}
+              onClick={() => dispatch({ type: ACTIONS.SET_STEP, payload: num })}
+              className="w-8 h-8 bg-white/20 text-white rounded-lg hover:bg-[#F2B53D] transition-colors"
+            >
+              {num}
+            </button>
+          ))}
+        </div>
+      )} 
     </div>
   );
 };

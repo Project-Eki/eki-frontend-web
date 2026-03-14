@@ -74,7 +74,9 @@ const onboardingReducer = (state, action) => {
     case ACTIONS.SET_STEP:
       return {
         ...state,
-        currentStep: action.payload
+        currentStep: action.payload,
+        // If jumping to 6, set isSubmitted to true; otherwise false so we can go back
+        isSubmitted: action.payload === 6
       };
 
     case ACTIONS.SUBMIT_FORM:
