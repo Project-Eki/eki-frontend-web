@@ -161,7 +161,7 @@ const VerifyIdentity = () => {
         <p className="text-green-600 text-[13px] font-bold mb-4">{resendMessage}</p>
       )}
 
-      <div className="w-full max-w-[340px] flex flex-col items-center gap-4 mt-2">
+      <div className="w-full max-width:340px; flex flex-col items-center gap-4 mt-2">
         <p className="text-gray-500 text-[13px]">
           Didn't receive the email?{" "}
           <button

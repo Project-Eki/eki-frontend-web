@@ -30,3 +30,31 @@
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-in;
 }
+
+/* Make the PhoneInput container invisible so our wrapper handles the styling */
+.PhoneInput {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+/* Style the actual text input inside the library */
+.PhoneInputInput {
+  border: none !important;
+  outline: none !important;
+  font-size: 14px;
+  background: transparent;
+  width: 100%;
+  padding-left: 8px;
+}
+
+/* Style the flag dropdown select */
+.PhoneInputCountry {
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+}
+
+.PhoneInputCountrySelect {
+  cursor: pointer;
+}
