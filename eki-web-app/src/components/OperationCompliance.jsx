@@ -6,6 +6,7 @@ import {
   HiOutlineShieldCheck,
   HiOutlineDocumentText
 } from "react-icons/hi";
+import ReviewPhase from "./Review all details"
 import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
 
 const OperationCompliance = () => {
