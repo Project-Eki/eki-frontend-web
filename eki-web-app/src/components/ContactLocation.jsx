@@ -1,51 +1,37 @@
 import React, { useState } from 'react';
 import { HiOutlineLocationMarker } from "react-icons/hi";
 import { validateContactLocation } from "../utils/onboardingValidation";
-import { submitContactLocation } from "../services/api";
+// Removed submitContactLocation import to save all data in the final step instead
+import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
 
-const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
+const ContactLocation = () => {
+  // 1. Connect to Global State and Dispatch
+  const { state, dispatch } = useOnboarding();
+  const { formData } = state;
+
   const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
+  // Removed isLoading because we aren't hitting the API in this step anymore
 
   const handleChange = (field, value) => {
-    updateFormData({ [field]: value });
+    // 2. Update the Global Context immediately
+    dispatch({
+      type: ACTIONS.UPDATE_FORM,
+      payload: { [field]: value }
+    });
+
+    // Real-time validation against the new value
     const validationErrors = validateContactLocation({ ...formData, [field]: value });
     setErrors(validationErrors);
   };
 
-  const handleContinue = async () => {
+  const handleContinue = () => {
+    // 3. Final validation before moving to the last step
     const validationErrors = validateContactLocation(formData);
     setErrors(validationErrors);
+
     if (Object.keys(validationErrors).length === 0) {
-      setIsLoading(true);
-      try {
-        const data = await submitContactLocation({
-          business_email: formData.business_email,
-          business_phone: formData.business_phone,
-          address: formData.address,
-          city: formData.city,
-          country: formData.country,
-        });
-        console.log("Contact & Location Saved:", data);
-        onNext();
-      } catch (error) {
-        console.error("Contact Location Error:", error.response?.data);
-        const errData = error.response?.data || {};
-        if (error.response?.status === 400) {
-          setErrors(prev => ({
-            ...prev,
-            business_email: errData.business_email?.[0] || prev.business_email,
-            business_phone: errData.business_phone?.[0] || prev.business_phone,
-            address: errData.address?.[0] || prev.address,
-            city: errData.city?.[0] || prev.city,
-            country: errData.country?.[0] || prev.country,
-          }));
-        } else {
-          alert(errData.detail || "Server error. Please try again later.");
-        }
-      } finally {
-        setIsLoading(false);
-      }
+      // 4. Move to Step 5 locally
+      dispatch({ type: ACTIONS.NEXT_STEP });
     }
   };
 
@@ -68,7 +54,7 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
           <div className="relative">
             <input 
               type="email" 
-              value={formData.business_email}
+              value={formData.business_email || ""} // Use context value
               onChange={(e) => handleChange('business_email', e.target.value)}
               placeholder="contact@company.com" 
               className={`w-full h-11 pl-4 pr-20 border ${errors.business_email ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
@@ -83,7 +69,7 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
           <div className="relative">
             <input 
               type="tel" 
-              value={formData.business_phone}
+              value={formData.business_phone || ""}
               onChange={(e) => handleChange('business_phone', e.target.value)}
               placeholder="+256........" 
               className={`w-full h-11 pl-4 pr-16 border ${errors.business_phone ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
@@ -98,7 +84,7 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
           <div className="relative">
             <input 
               type="text"
-              value={formData.address}
+              value={formData.address || ""}
               onChange={(e) => handleChange('address', e.target.value)}
               placeholder="123 Business Way, Suite 4" 
               className={`w-full h-11 pl-4 pr-16 border ${errors.address ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
@@ -113,7 +99,7 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
           <div className="relative">
             <input 
               type="text" 
-              value={formData.city}
+              value={formData.city || ""}
               onChange={(e) => handleChange('city', e.target.value)}
               placeholder="e.g. Kampala" 
               className={`w-full h-11 pl-4 pr-16 border ${errors.city ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
@@ -128,7 +114,7 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
           <div className="relative">
             <input 
               type="text" 
-              value={formData.country}
+              value={formData.country || ""}
               onChange={(e) => handleChange('country', e.target.value)}
               placeholder="e.g. Uganda" 
               className={`w-full h-11 pl-4 pr-16 border ${errors.country ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`} 
@@ -139,9 +125,17 @@ const ContactLocation = ({ onNext, onBack, formData, updateFormData }) => {
       </div>
 
       <div className="mt-8 flex items-center justify-center gap-4 w-full">
-        <button onClick={onBack} disabled={isLoading} className="flex-1 max-w-[140px] h-11 border-2 border-gray-100 text-gray-400 font-bold rounded-full hover:bg-gray-50 transition-all text-[14px] disabled:opacity-50">Back</button>
-        <button onClick={handleContinue} disabled={isLoading} className={`flex-1 max-w-[220px] h-11 text-white font-bold rounded-full shadow-lg transition-all text-[14px] ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#F2B53D] hover:bg-[#e0a630]'}`}>
-          {isLoading ? "Saving..." : "Continue"}
+        <button 
+          onClick={() => dispatch({ type: ACTIONS.PREV_STEP })} 
+          className="flex-1 max-w-[140px] h-11 border-2 border-gray-100 text-gray-400 font-bold rounded-full hover:bg-gray-50 transition-all text-[14px]"
+        >
+          Back
+        </button>
+        <button 
+          onClick={handleContinue} 
+          className="flex-1 max-w-[220px] h-11 text-white font-bold rounded-full shadow-lg transition-all text-[14px] bg-[#F2B53D] hover:bg-[#e0a630]"
+        >
+          Continue
         </button>
       </div>
     </div>
