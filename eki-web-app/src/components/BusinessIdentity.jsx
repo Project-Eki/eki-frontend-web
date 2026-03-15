@@ -187,14 +187,14 @@ const BusinessIdentity = () => {
         <button 
           type="button"
           onClick={() => dispatch({ type: ACTIONS.PREV_STEP })} 
-          className="flex-1 max-w-[140px] h-11 border-2 border-gray-100 text-gray-500 font-bold rounded-full hover:bg-gray-50 transition-all text-[14px]"
+          className="flex-1 max-w-35 h-11 border-2 border-gray-100 text-gray-500 font-bold rounded-full hover:bg-gray-50 transition-all text-[14px]"
         >
           Back
         </button>
         <button 
           type="button"
           onClick={handleContinue} 
-          className="flex-1 max-w-[200px] h-11 text-white font-bold rounded-full shadow-lg transition-all text-[14px] bg-[#F2B53D] hover:bg-[#e0a630]"
+          className="flex-1 max-w-50 h-11 text-white font-bold rounded-full shadow-lg transition-all text-[14px] bg-[#F2B53D] hover:bg-[#e0a630]"
         >
           Continue
         </button>
