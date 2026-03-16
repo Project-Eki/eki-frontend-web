@@ -17,6 +17,7 @@ import ProductManagement from "./pages/ProductDashboard";
 
 import "./App.css";
 import ProductDashboard from "./pages/ProductDashboard";
+import OrderManagement from "./pages/OrderManagement";
 
 function App() {
   return (
@@ -42,6 +43,7 @@ function App() {
         <Route path="/admin-management" element={<AdminManagement />} />
         {/* This now has the correct reference */}
         <Route path="/product-dashboard" element={<ProductDashboard />} />
+        <Route path="/order-management" element={<OrderManagement />} />
         <Route
           path="*"
           element={
