@@ -66,7 +66,7 @@ const AdminSignIn = () => {
             <div className="h-40 w-40 mb-4 flex items-center justify-center">
               <img alt="Logo" className="h-full w-full object-contain" src="/src/assets/logo.jpeg" />
             </div>
-            <h2 className="text-2xl font-black text-[#234E4D] uppercase tracking-tight">Admin Console</h2>
+            <h2 className="text-2xl font-black text-[#234E4D] uppercase tracking-tight">Admin sign in</h2>
             <p className="text-gray-400 text-[10px] mt-1 font-bold uppercase tracking-[0.2em]">Authorized Personnel Only</p>
           </div>
 

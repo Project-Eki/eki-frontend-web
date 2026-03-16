@@ -20,7 +20,7 @@ export const signInUser = async (credentials) => {
     });
     return response.data;
   } catch (error) {
-    console.log("SIGNIN RAW ERROR:", error.response?.data); // ✅ temporary debug — remove after confirming error shape
+    console.log("SIGNIN RAW ERROR:", error.response?.data); // 
     handleAxiosError(error);
   }
 };
@@ -42,7 +42,7 @@ const handleAxiosError = (error) => {
     throw new Error("The server returned an invalid HTML page. Check if the API path is correct.");
   }
 
-  // ✅ FIX 2: friendlier 500 message accounting for partial signup success
+ 
   if (error.response?.status === 500) {
     throw new Error("Account may have been created. Please check your email or try signing in.");
   }
