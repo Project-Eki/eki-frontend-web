@@ -117,7 +117,7 @@ const AccountBasics = () => {
   };
 
   return (
-    <div className="w-full animate-slideUp max-w-[580px]">
+    <div className="w-full animate-slideUp max-width:580px;">
       <form className="space-y-3" onSubmit={handleContinue}>
         {errors.general && <MessageAlert message={errors.general} type="error" />}
 
