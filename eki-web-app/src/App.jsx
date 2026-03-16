@@ -12,8 +12,11 @@ import Settings from "./pages/Settings";
 import AdminDashboard from "./pages/AdminDashboard";
 import VendorDashboard from "./pages/VendorDashboard";
 import AdminManagement from "./pages/AdminManagement";
+// ADD THIS LINE BELOW:
+import ProductManagement from "./pages/ProductDashboard"; 
 
 import "./App.css";
+import ProductDashboard from "./pages/ProductDashboard";
 
 function App() {
   return (
@@ -23,8 +26,8 @@ function App() {
         <Route path="/signIn" element={<SignIn />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        {<Route path="/admin-signin" element={<AdminSignin />} />}
-        {<Route path="/account-settings" element={<AccountSettingsPage />} />}
+        <Route path="/admin-signin" element={<AdminSignin />} />
+        <Route path="/account-settings" element={<AccountSettingsPage />} />
         <Route
           path="/VendorOnboarding"
           element={
@@ -37,6 +40,8 @@ function App() {
         <Route path="/admindashboard" element={<AdminDashboard />} />
         <Route path="/vendordashboard" element={<VendorDashboard />} />
         <Route path="/admin-management" element={<AdminManagement />} />
+        {/* This now has the correct reference */}
+        <Route path="/product-dashboard" element={<ProductDashboard />} />
         <Route
           path="*"
           element={
