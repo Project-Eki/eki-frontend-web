@@ -13,6 +13,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import VendorDashboard from "./pages/VendorDashboard";
 import AdminManagement from "./pages/AdminManagement";
 import payment from "./pages/PaymentSystem";
+import PaymentAndPayout from "./pages/PaymentAndPayout";
 // ADD THIS LINE BELOW:
  
 
@@ -47,6 +48,7 @@ function App() {
         <Route path="/product-dashboard" element={<ProductDashboard />} />
         <Route path="/order-management" element={<OrderManagement />} />
         <Route path="/payment" element={<PaymentSystem />} />
+        <Route path="/admin-payments" element={<PaymentAndPayout />} />
         <Route
           path="*"
           element={
