@@ -12,12 +12,14 @@ import Settings from "./pages/Settings";
 import AdminDashboard from "./pages/AdminDashboard";
 import VendorDashboard from "./pages/VendorDashboard";
 import AdminManagement from "./pages/AdminManagement";
+import payment from "./pages/PaymentSystem";
 // ADD THIS LINE BELOW:
-import ProductManagement from "./pages/ProductDashboard"; 
+ 
 
 import "./App.css";
 import ProductDashboard from "./pages/ProductDashboard";
-import OrderManagement from "./pages/OrderManagement";
+import OrderManagement from "./pages/OrderManagement"
+import PaymentSystem from "./pages/PaymentSystem";
 
 function App() {
   return (
@@ -44,6 +46,7 @@ function App() {
         {/* This now has the correct reference */}
         <Route path="/product-dashboard" element={<ProductDashboard />} />
         <Route path="/order-management" element={<OrderManagement />} />
+        <Route path="/payment" element={<PaymentSystem />} />
         <Route
           path="*"
           element={
