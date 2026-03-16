@@ -3,7 +3,14 @@ import { HiOutlineShieldCheck, HiMinus } from "react-icons/hi";
 import { MdOutlineMail } from "react-icons/md";
 import { verifyEmail, resendOtp } from '../services/api';
 
-const VerifyIdentity = ({ onNext, onBack, formData }) => {
+//  Import Context and Actions
+import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
+
+const VerifyIdentity = () => {
+  //  Access Global State and Dispatch
+  const { state, dispatch } = useOnboarding();
+  const { formData } = state;
+
   const [otp, setOtp] = useState(new Array(6).fill(""));
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -15,12 +22,10 @@ const VerifyIdentity = ({ onNext, onBack, formData }) => {
     ${otp.join("").length === 6 ? 'border-green-400' : 'border-gray-100'} 
     focus:border-[#F2B53D] focus:ring-2 focus:ring-[#F2B53D]/20`;
 
-  // Auto-focus first field on mount
   useEffect(() => {
     if (inputRefs.current[0]) inputRefs.current[0].focus();
   }, []);
 
-  // Auto-submit when all 6 digits are filled
   useEffect(() => {
     const fullCode = otp.join("");
     if (fullCode.length === 6) {
@@ -34,22 +39,21 @@ const VerifyIdentity = ({ onNext, onBack, formData }) => {
     setIsLoading(true);
     setError("");
     try {
+      // Use the email from our Global Context
       const data = await verifyEmail({ email: formData.email, otp_code: code });
-      console.log("Email Verified:", data);
-
-      // Save tokens if returned after verification
+      
       if (data.access) localStorage.setItem('access_token', data.access);
       if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
 
-      onNext();
+      //  Success: Tell the Global State to move to next step
+      dispatch({ type: ACTIONS.NEXT_STEP });
+      
     } catch (err) {
-      console.error("OTP Error:", err.response?.data);
       const msg =
         err.response?.data?.detail ||
         err.response?.data?.otp?.[0] ||
         "Invalid or expired code. Please try again.";
       setError(msg);
-      // Reset OTP fields so user can re-enter
       setOtp(new Array(6).fill(""));
       if (inputRefs.current[0]) inputRefs.current[0].focus();
     } finally {
@@ -111,7 +115,6 @@ const VerifyIdentity = ({ onNext, onBack, formData }) => {
         </span>
       </div>
 
-      {/* OTP inputs */}
       <div className="flex items-center gap-4 mt-10 mb-4" onPaste={handlePaste}>
         <div className="flex gap-3">
           {otp.slice(0, 3).map((data, index) => (
@@ -148,7 +151,6 @@ const VerifyIdentity = ({ onNext, onBack, formData }) => {
         </div>
       </div>
 
-      {/* Status messages */}
       {isLoading && (
         <p className="text-[#F2B53D] text-[13px] font-bold mb-4 animate-pulse">Verifying...</p>
       )}
@@ -159,7 +161,7 @@ const VerifyIdentity = ({ onNext, onBack, formData }) => {
         <p className="text-green-600 text-[13px] font-bold mb-4">{resendMessage}</p>
       )}
 
-      <div className="w-full max-w-[340px] flex flex-col items-center gap-4 mt-2">
+      <div className="w-full max-width:340px; flex flex-col items-center gap-4 mt-2">
         <p className="text-gray-500 text-[13px]">
           Didn't receive the email?{" "}
           <button
@@ -173,7 +175,8 @@ const VerifyIdentity = ({ onNext, onBack, formData }) => {
         </p>
 
         <button
-          onClick={onBack}
+          //  Back button uses dispatch now
+          onClick={() => dispatch({ type: ACTIONS.PREV_STEP })}
           className="text-[14px] font-bold text-gray-400 hover:text-gray-600 transition-all cursor-pointer"
         >
           Back
