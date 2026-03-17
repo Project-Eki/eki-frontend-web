@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from "react";
 import { HiOutlineShieldCheck, HiMinus } from "react-icons/hi";
 import { MdOutlineMail } from "react-icons/md";
-import { verifyEmail, resendOtp } from '../services/api';
+import { verifyEmail, resendOtp } from "../services/api";
 
 //  Import Context and Actions
 import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
@@ -19,7 +19,7 @@ const VerifyIdentity = () => {
   const inputRefs = useRef([]);
 
   const inputClass = `w-14 h-14 text-center text-2xl font-black border-2 bg-white text-gray-800 rounded-2xl outline-none transition-all shadow-sm 
-    ${otp.join("").length === 6 ? 'border-green-400' : 'border-gray-100'} 
+    ${otp.join("").length === 6 ? "border-green-400" : "border-gray-100"} 
     focus:border-[#F2B53D] focus:ring-2 focus:ring-[#F2B53D]/20`;
 
   useEffect(() => {
@@ -32,7 +32,7 @@ const VerifyIdentity = () => {
       const timer = setTimeout(() => handleVerify(fullCode), 500);
       return () => clearTimeout(timer);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [otp]);
 
   const handleVerify = async (code) => {
@@ -41,18 +41,18 @@ const VerifyIdentity = () => {
     try {
       // Use the email from our Global Context
       const data = await verifyEmail({ email: formData.email, otp_code: code });
-      
-      if (data.access) localStorage.setItem('access_token', data.access);
-      if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
+
+      if (data.data?.access)
+        localStorage.setItem("access_token", data.data.access);
+      if (data.data?.refresh)
+        localStorage.setItem("refresh_token", data.data.refresh);
 
       //  Success: Tell the Global State to move to next step
       dispatch({ type: ACTIONS.NEXT_STEP });
-      
     } catch (err) {
-      const msg =
-        err.response?.data?.detail ||
-        err.response?.data?.otp?.[0] ||
-        "Invalid or expired code. Please try again.";
+      const msg = setError(
+        err.message || "Invalid or expired code. Please try again.",
+      );
       setError(msg);
       setOtp(new Array(6).fill(""));
       if (inputRefs.current[0]) inputRefs.current[0].focus();
@@ -69,7 +69,10 @@ const VerifyIdentity = () => {
       await resendOtp({ email: formData.email });
       setResendMessage("A new code has been sent to your email.");
     } catch (err) {
-      setError(err.response?.data?.detail || "Failed to resend code. Please try again.");
+      setError(
+        err.response?.data?.detail ||
+          "Failed to resend code. Please try again.",
+      );
     } finally {
       setIsResending(false);
     }
@@ -105,8 +108,12 @@ const VerifyIdentity = () => {
         <HiOutlineShieldCheck className="text-[#F2B53D]" size={28} />
       </div>
 
-      <h2 className="text-[28px] font-black text-gray-900 leading-tight text-center">Verify your identity</h2>
-      <p className="text-gray-500 mt-2 text-[15px]">We've sent a 6-digit security code to</p>
+      <h2 className="text-[28px] font-black text-gray-900 leading-tight text-center">
+        Verify your identity
+      </h2>
+      <p className="text-gray-500 mt-2 text-[15px]">
+        We've sent a 6-digit security code to
+      </p>
 
       <div className="mt-3 flex items-center gap-2 bg-gray-50 px-4 py-1.5 rounded-full border border-gray-100">
         <MdOutlineMail className="text-[#F2B53D]" size={16} />
@@ -152,16 +159,20 @@ const VerifyIdentity = () => {
       </div>
 
       {isLoading && (
-        <p className="text-[#F2B53D] text-[13px] font-bold mb-4 animate-pulse">Verifying...</p>
+        <p className="text-[#F2B53D] text-[13px] font-bold mb-4 animate-pulse">
+          Verifying...
+        </p>
       )}
       {error && (
         <p className="text-red-500 text-[13px] font-bold mb-4">{error}</p>
       )}
       {resendMessage && !error && (
-        <p className="text-green-600 text-[13px] font-bold mb-4">{resendMessage}</p>
+        <p className="text-green-600 text-[13px] font-bold mb-4">
+          {resendMessage}
+        </p>
       )}
 
-      <div className="w-full max-w-[340px] flex flex-col items-center gap-4 mt-2">
+      <div className="w-full max-width:340px; flex flex-col items-center gap-4 mt-2">
         <p className="text-gray-500 text-[13px]">
           Didn't receive the email?{" "}
           <button

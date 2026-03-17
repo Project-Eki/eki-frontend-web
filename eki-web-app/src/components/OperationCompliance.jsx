@@ -6,6 +6,7 @@ import {
   HiOutlineShieldCheck,
   HiOutlineDocumentText
 } from "react-icons/hi";
+import ReviewPhase from "./Review all details"
 import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
 
 const OperationCompliance = () => {
@@ -167,26 +168,32 @@ const OperationCompliance = () => {
           {/* Documents Upload */}
           <div className="grid grid-cols-2 gap-4 mb-8">
             <UploadCard
-              label="Incorporation Cert."
-              field="incorporation_cert"
+              label="Government Issued ID"
+              field="government_issued_id"
+              icon={HiOutlineDocumentText}
+            />
+
+            <UploadCard
+              label="Country Issued ID"
+              field="country_issued_id"
+              icon={HiOutlineDocumentText}
+            />
+
+             <UploadCard
+              label="Business License"
+              field="business_license"
               icon={HiOutlineDocumentText}
             />
 
             <UploadCard
               label="Tax Certificate"
-              field="tax_certificate"
-              icon={HiOutlineDocumentText}
-            />
-
-            <UploadCard
-              label="National ID (Owner)"
-              field="government_issued_id"
+              field=" tax_certificate"
               icon={HiOutlineShieldCheck}
             />
 
             <UploadCard
-              label="Business License"
-              field="business_license"
+              label="Incorporation Certificate"
+              field="incorporation_cert"
               icon={HiOutlineDocumentText}
             />
           </div>

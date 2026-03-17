@@ -76,6 +76,28 @@ const BusinessIdentity = () => {
           </div>
         </div>
 
+
+                {/* Business Category */}
+        <div className="flex flex-col">
+          <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Business Category</label>
+          <div className="relative">
+            <select 
+              value={formData.business_category || ""} 
+              onChange={(e) => handleChange('business_category', e.target.value)}
+              className={`w-full h-10 pl-4 pr-10 border ${errors.business_category ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none bg-white cursor-pointer appearance-none`}
+            >
+              <option value="">Select category</option>
+              <option value="SERVICES">Services</option>
+              <option value="PRODUCTS">Products</option>
+            </select>
+            {errors.business_type && (
+              <span className="absolute right-8 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">
+                {errors.business_type}
+              </span>
+            )}
+          </div>
+        </div>
+
         {/* Business Type */}
         <div className="flex flex-col">
           <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Business Type</label>
@@ -165,14 +187,14 @@ const BusinessIdentity = () => {
         <button 
           type="button"
           onClick={() => dispatch({ type: ACTIONS.PREV_STEP })} 
-          className="flex-1 max-w-[140px] h-11 border-2 border-gray-100 text-gray-500 font-bold rounded-full hover:bg-gray-50 transition-all text-[14px]"
+          className="flex-1 max-w-35 h-11 border-2 border-gray-100 text-gray-500 font-bold rounded-full hover:bg-gray-50 transition-all text-[14px]"
         >
           Back
         </button>
         <button 
           type="button"
           onClick={handleContinue} 
-          className="flex-1 max-w-[200px] h-11 text-white font-bold rounded-full shadow-lg transition-all text-[14px] bg-[#F2B53D] hover:bg-[#e0a630]"
+          className="flex-1 max-w-50 h-11 text-white font-bold rounded-full shadow-lg transition-all text-[14px] bg-[#F2B53D] hover:bg-[#e0a630]"
         >
           Continue
         </button>

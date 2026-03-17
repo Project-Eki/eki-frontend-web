@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: "https://api-7w8f.onrender.com",
+  // FIX: Switched from Render to your local Django server
+  baseURL: "http://127.0.0.1:8000",
   headers: {
     "Content-Type": "application/json",
   },
@@ -12,8 +13,10 @@ api.interceptors.request.use(request => {
   return request;
 });
 
+// Sign In (Note: File name is sign in, path matches Django)
 export const signInUser = async (credentials) => {
   try {
+    // FIX: Updated path to /api/v1/accounts/signin/
     const response = await api.post('/api/v1/accounts/signin/', {
       email: credentials.email?.trim().toLowerCase() || "",
       password: credentials.password
@@ -42,9 +45,8 @@ const handleAxiosError = (error) => {
     throw new Error("The server returned an invalid HTML page. Check if the API path is correct.");
   }
 
-  
   if (error.response?.status === 500) {
-    throw new Error("Account may have been created. Please check your email or try signing in.");
+    throw new Error("Server error. Please check your Django terminal for logs.");
   }
 
   let message = "An error occurred. Please try again.";
@@ -58,7 +60,7 @@ const handleAxiosError = (error) => {
   }
 
   if (!error.response) {
-    message = "Network error: Unable to reach the server. Check your internet.";
+    message = "Network error: Unable to reach your local server. Is Django running?";
   }
 
   throw new Error(message);

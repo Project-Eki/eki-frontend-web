@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from "react-router-dom";
 import { FaRegUser, FaRegEnvelope, FaRegEye, FaRegEyeSlash } from "react-icons/fa6";
-import { FiLock } from "react-icons/fi";
+import { FiLock } from "react-icons/fi"; 
 
 // Import Context and Actions
 import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
@@ -74,11 +74,6 @@ const AccountBasics = () => {
     const validationErrors = validateAccountBasics(formData);
     setErrors(validationErrors);
 
-    if (!Object.values(passwordRules).every(Boolean)) {
-      setErrors(prev => ({ ...prev, password: "Password requirements not met." }));
-      return;
-    }
-
     if (Object.keys(validationErrors).length === 0) {
       setIsLoading(true);
       try {
@@ -88,7 +83,7 @@ const AccountBasics = () => {
           last_name: formData.last_name,
           email: formData.email,
           password: formData.password,
-          confirm_password: formData.confirmPassword,
+          confirm_password: formData.confirmPassword, // Matches Django expectations
           accepted_terms: formData.agreeToTerms,
         });
 
@@ -98,17 +93,21 @@ const AccountBasics = () => {
         dispatch({ type: ACTIONS.NEXT_STEP });
        
       } catch (error) {
+        console.error("FULL ERROR:", error.response?.data);
         const errData = error.response?.data;
-        if (error.response?.status === 400 && errData) {
-          const fields = errData.errors || errData;
+        
+        if (errData) {
+          // Flattening Django's error response for the UI
           setErrors(prev => ({
             ...prev,
-            ...(fields.email && { email: Array.isArray(fields.email) ? fields.email[0] : fields.email }),
-            ...(fields.non_field_errors && { general: Array.isArray(fields.non_field_errors) ? fields.non_field_errors[0] : fields.non_field_errors }),
+            ...(errData.email && { email: Array.isArray(errData.email) ? errData.email[0] : errData.email }),
+            ...(errData.password && { password: Array.isArray(errData.password) ? errData.password[0] : errData.password }),
+            ...(errData.non_field_errors && { general: errData.non_field_errors[0] }),
+            ...(errData.detail && { general: errData.detail }),
             ...(errData.message && { general: errData.message }),
           }));
         } else {
-          setErrors({ general: "Something went wrong. Please check your connection." });
+          setErrors({ general: "Connection failed. Please ensure Django is running on port 8000." });
         }
       } finally {
         setIsLoading(false);
@@ -119,7 +118,7 @@ const AccountBasics = () => {
   };
 
   return (
-    <div className="w-full animate-slideUp max-w-[580px]">
+    <div className="w-full animate-slideUp max-w-[580px] mx-auto">
       <form className="space-y-3" onSubmit={handleContinue}>
         {errors.general && <MessageAlert message={errors.general} type="error" />}
 
