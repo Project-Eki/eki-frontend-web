@@ -2,51 +2,61 @@ import axios from "axios";
 
 // Axios instance configured for Localhost development
 const api = axios.create({
-  baseURL: "https://api-7w8f.onrender.com/api/v1",
-  // baseURL: "http://134.122.22.45/api/v1",
+  baseURL: "http://127.0.0.1:8000/api/v1",
+  // baseURL: "https://api-7w8f.onrender.com/api/v1",
   headers: { "Content-Type": "application/json" },
 });
 
 // REQUEST INTERCEPTOR: Attach access token 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("access_token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+// api.interceptors.request.use((config) => {
+//   const token = localStorage.getItem("access_token");
+//   if (token) config.headers.Authorization = `Bearer ${token}`;
+//   return config;
+// });
 
-// RESPONSE INTERCEPTOR: Auto-refresh token on 401 
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
+// // RESPONSE INTERCEPTOR: Auto-refresh token on 401 
+// api.interceptors.response.use(
+//   (response) => response,
+//   async (error) => {
+//     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      const refresh = localStorage.getItem("refresh_token");
+//     // Only handle 401 once per request
+//     if (error.response?.status === 401 && !originalRequest._retry) {
+//       originalRequest._retry = true;
 
-      if (!refresh) {
-        localStorage.clear();
-        window.location.href = "/signin"; // Requirement: File name is sign in
-        return Promise.reject(error);
-      }
+//       const refresh = localStorage.getItem("refresh_token");
 
-      try {
-        const { data } = await axios.post(
-          `${api.defaults.baseURL}/api/v1/accounts/token/refresh/`,
-          { refresh }
-        );
+//       // If no refresh token, redirect immediately
+//       if (!refresh) {
+//         localStorage.clear();
+//         window.location.href = "/Signin";
+//         return Promise.reject(error);
+//       }
 
-        localStorage.setItem("access_token", data.access);
-        originalRequest.headers.Authorization = `Bearer ${data.access}`;
-        return api(originalRequest);
-      } catch {
-        localStorage.clear();
-        window.location.href = "/signin";
-      }
-    }
-    return Promise.reject(error);
-  }
-);
+//       try {
+//         // Refresh access token
+//         const { data } = await axios.post(
+//           `${api.defaults.baseURL}/accounts/token/refresh/`,
+//           { refresh }
+//         );
+
+//         // Save new access token
+//         localStorage.setItem("access_token", data.access);
+
+//         // Update original request with new token and retry
+//         originalRequest.headers.Authorization = `Bearer ${data.access}`;
+//         return api(originalRequest);
+//       } catch {
+//         // Refresh failed: clear storage and redirect
+//         localStorage.clear();
+//         window.location.href = "/signin";
+//       }
+//     }
+
+//     // Pass all other errors to the caller
+//     return Promise.reject(error);
+//   }
+// );
 
 export default api;
 
@@ -54,24 +64,24 @@ export default api;
 
 // Sign In (Your requirement: File name is "sign in")
 export const SigninUser = async ({ email, password }) => {
-  const response = await api.post("/api/v1/accounts/signin/", { email, password });
+  const response = await api.post("/accounts/signin/", { email, password });
   return response.data;
 };
 
 export const refreshToken = async ({ refresh }) => {
-  const response = await api.post("/api/v1/accounts/token/refresh/", { refresh });
+  const response = await api.post("/accounts/token/refresh/", { refresh });
   return response.data;
 };
 
 // FIX: Added trailing slash and api/v1/ to match Django routing
 export const registerVendor = async (payload) => {
-  const response = await api.post("/api/v1/accounts/register-vendor/", payload);
+  const response = await api.post("/accounts/register-vendor/", payload);
   return response.data;
 };
 
 export const verifyEmail = async ({ email, otp_code }) => {
   try {
-    const response = await api.post("/api/v1/accounts/verify-email/", {
+    const response = await api.post("/accounts/verify-email/", {
       email,
       otp_code,
       otp_type: "email_verification",
@@ -91,7 +101,7 @@ export const verifyEmail = async ({ email, otp_code }) => {
 
 export const resendOtp = async ({ email }) => {
   try {
-    const response = await api.post("/api/v1/accounts/resend-code/", {
+    const response = await api.post("/accounts/resend-code/", {
       email,
       otp_type: "email_verification",
     });
@@ -106,7 +116,7 @@ export const resendOtp = async ({ email }) => {
 };
 
 export const passwordResetRequest = async ({ email }) => {
-  const response = await api.post("/api/v1/accounts/password/reset/", { email });
+  const response = await api.post("/accounts/password/reset/", { email });
   return response.data;
 };
 
@@ -117,7 +127,7 @@ export const passwordResetConfirm = async ({
   confirm_password,
 }) => {
   try {
-    const response = await api.post("/api/v1/accounts/password/reset/confirm/", {
+    const response = await api.post("/accounts/password/reset/confirm/", {
       email,
       otp_code,
       new_password,
@@ -136,7 +146,7 @@ export const changePassword = async ({
   new_password,
   confirm_password,
 }) => {
-  const response = await api.post("/api/v1/accounts/password/change/", {
+  const response = await api.post("/accounts/password/change/", {
     current_password,
     new_password,
     confirm_password,
@@ -154,14 +164,14 @@ export const updateVendorProfile = async (formData) => {
     }
   });
 
-  const response = await api.patch("/api/v1/accounts/vendor/vendorprofile/", data, {
+  const response = await api.patch("/accounts/vendor/vendorprofile/", data, {
     headers: { "Content-Type": "multipart/form-data" },
   });
   return response.data;
 };
 
 export const getVendorProfile = async () => {
-  const response = await api.get("/api/v1/accounts/vendor/vendorprofile/");
+  const response = await api.get("/accounts/vendor/vendorprofile/");
   return response.data;
 };
 
@@ -172,7 +182,7 @@ export const logoutUser = async () => {
 
   if (refresh_token) {
     try {
-      await api.post("/api/v1/accounts/logout/", { refresh_token });
+      await api.post("/accounts/logout/", { refresh_token });
     } catch {
       // Ignore
     }
@@ -180,6 +190,6 @@ export const logoutUser = async () => {
 };
 
 export const validateSession = async () => {
-  const response = await api.get("/api/v1/accounts/session/");
+  const response = await api.get("/accounts/session/");
   return response.data;
 };

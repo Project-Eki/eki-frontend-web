@@ -51,11 +51,11 @@ const VendorOnboarding = () => {
       <div className="flex flex-1 overflow-hidden">
 
         {/* SIDEBAR */}
-        <aside className="w-[320px] bg-[#235E5D] p-6 ml-10 my-6 rounded-[32px] flex flex-col shrink-0 shadow-xl border border-white/10">
+        <aside className="w-[300px] bg-[#235E5D] p-4 ml-10 my-4 rounded-[32px] flex flex-col shrink-0 shadow-xl border border-white/10">
           
           <div className="relative w-full space-y-3 mt-10">
 
-            {/* vertical line */}
+            {/* vertical-line */}
             <div className="absolute left-[28px] top-[30px] bottom-[30px] w-[1px] bg-white/20"></div>
 
             <StepCard
@@ -95,7 +95,7 @@ const VendorOnboarding = () => {
         </aside>
 
         {/* MAIN CONTENT */}
-        <main className="flex-1 flex flex-col items-center px-20">
+        <main className="flex-1 flex flex-col items-center px-10">
 
           <div
             className={`w-full transition-all duration-300 ${
@@ -260,7 +260,7 @@ const StepCard = ({ title, subtitle, isActive, isCompleted }) => (
 
     <div>
       <p
-        className={`font-semibold text-[14px] ${
+        className={`font-semibold text-[13px] ${
           isActive || isCompleted ? "text-gray-800" : "text-gray-700"
         }`}
       >
@@ -268,7 +268,7 @@ const StepCard = ({ title, subtitle, isActive, isCompleted }) => (
       </p>
 
       <p
-        className={`text-[12px] ${
+        className={`text-[11px] ${
           isActive || isCompleted ? "text-gray-600" : "text-gray-600/80"
         }`}
       >
