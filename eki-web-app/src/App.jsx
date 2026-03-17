@@ -21,6 +21,9 @@ import ProductDashboard from "./pages/ProductDashboard";
 import OrderManagement from "./pages/OrderManagement";
 import PaymentSystem from "./pages/PaymentSystem";
 import PaymentAndPayout from "./pages/PaymentAndPayout";
+import BusinessSettings  from "./pages/BusinessSettings";
+// ADD THIS LINE BELOW:
+ 
 
 import "./App.css";
 

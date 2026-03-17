@@ -2,8 +2,8 @@ import axios from "axios";
 
 // Axios instance configured for Localhost development
 const api = axios.create({
-  // FIX: Updated to your active local Django server
-  baseURL: "http://127.0.0.1:8000", // Just the base address
+  baseURL: "https://api-7w8f.onrender.com/api/v1",
+  // baseURL: "http://134.122.22.45/api/v1",
   headers: { "Content-Type": "application/json" },
 });
 
