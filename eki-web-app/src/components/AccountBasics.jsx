@@ -1,8 +1,13 @@
 import React, { useState, useMemo } from 'react';
+import { Link } from "react-router-dom";
+import { FcGoogle } from "react-icons/fc";
 import { FaRegUser, FaRegEnvelope, FaRegEye, FaRegEyeSlash } from "react-icons/fa6";
 import { FiLock } from "react-icons/fi";
+import { useGoogleLogin } from '@react-oauth/google';
+
+// Internal Imports
 import { validateAccountBasics } from "../utils/onboardingValidation";
-import { registerVendor } from '../services/api';
+import { registerVendor, googleAuth } from '../services/api'; // Centralized API
 import MessageAlert from "../components/MessageAlert";
 
 const AccountBasics = ({ onNext, formData, updateFormData }) => {
@@ -11,6 +16,7 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 
+  // Password rules state tracking
   const [passwordRules, setPasswordRules] = useState({
     length: false,
     upperLower: false,
@@ -18,6 +24,38 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
     notNumeric: false,
   });
 
+  // --- GOOGLE SIGN IN LOGIC (PATH A: SKIPS STEP 2) ---
+  const loginWithGoogle = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setIsLoading(true);
+      try {
+        const data = await googleAuth({
+          access_token: tokenResponse.access_token,
+          requested_role: 'vendor',
+        });
+
+        // Store tokens for Axios interceptors
+       if (data.access) {
+          localStorage.setItem('access_token', data.access);
+          localStorage.setItem('refresh_token', data.refresh);
+          // Set this flag so BusinessIdentity knows how to handle the "Back" button
+          localStorage.setItem('is_google_user', 'true');
+        }
+        // SUCCESS: Jump straight to Step 3 (Business Identity)
+        // because Google email is already verified.
+        onNext(3);
+
+      } catch (error) {
+        console.error("Backend Google Auth Error:", error);
+        setErrors({ general: "Could not sync Google account. Please try manual registration." });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    onError: () => setErrors({ general: "Google Signup Failed" }),
+  });
+
+  // --- HELPERS ---
   const isFieldValid = (field) => {
     return formData[field] && formData[field].toString().trim() !== '' && !errors[field];
   };
@@ -35,13 +73,8 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
   }, [formData, errors, passwordRules]);
 
   const handleChange = (field, value) => {
-<<<<<<< HEAD
     updateFormData({ [field]: value });
-=======
-    updateFormData({ [field]: value }); // Update form data
-    
-    // Run field validation
->>>>>>> 39f0843d9cc5b2916bfdaf41341650369433cc94
+
     const validationErrors = validateAccountBasics({ ...formData, [field]: value });
     setErrors(validationErrors);
 
@@ -55,37 +88,22 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
     }
   };
 
-<<<<<<< HEAD
-  const handleContinue = async (e) => {
-    e.preventDefault();
-=======
-
-  // Get placeholder text (error message or default placeholder without asterisk)
   const getPlaceholder = (field, defaultPlaceholder) => {
-    if (errors[field]) {
-      return errors[field];
-    }
-    return defaultPlaceholder;
+    return errors[field] ? errors[field] : defaultPlaceholder;
   };
 
-  // CONTINUE HANDLER
-  const handleContinue = async () => {
->>>>>>> 39f0843d9cc5b2916bfdaf41341650369433cc94
-    const validationErrors = validateAccountBasics(formData);
-    
-    if (!Object.values(passwordRules).every(Boolean)) {
-      validationErrors.password = "Password requirements not met.";
-    }
+  // --- MANUAL REGISTRATION LOGIC (PATH B: GOES TO STEP 2) ---
+  const handleContinue = async (e) => {
+    if (e) e.preventDefault();
 
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
+    const validationErrors = validateAccountBasics(formData);
+    setErrors(validationErrors);
+
+    if (!Object.values(passwordRules).every(Boolean)) {
+      setErrors(prev => ({ ...prev, password: "Password requirements not met." }));
       return;
     }
 
-<<<<<<< HEAD
-    setIsLoading(true);
-    setErrors({}); 
-=======
     if (Object.keys(validationErrors).length === 0) {
       setIsLoading(true);
       try {
@@ -97,104 +115,60 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
           confirm_password: formData.confirmPassword,
           accepted_terms: formData.agreeToTerms,
         });
->>>>>>> 39f0843d9cc5b2916bfdaf41341650369433cc94
 
-    try {
-      // PRO TIP: If you keep getting 500, the email might be taken.
-      // You can append Date.now() to the email for testing: 
-      // const testEmail = `test${Date.now()}@gmail.com`;
+       if (data.access) {
+  localStorage.setItem('access_token', data.access);
+  if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
 
-      const payload = {
-        first_name: formData.first_name.trim(),
-        last_name: formData.last_name.trim(),
-        email: formData.email.toLowerCase().trim(),
-        password: formData.password,
-        confirm_password: formData.confirmPassword,
-        phone_number: formData.phone_number || "0700000000", 
-        accepted_terms: true, 
-        role: 'vendor',
-      };
+  // CLEANUP: Ensure manual users are NOT flagged as Google users
+  localStorage.removeItem('is_google_user');
 
-<<<<<<< HEAD
-      console.log("Submitting Payload:", payload);
-=======
-        onNext(); // Move to Step 2
+  // SUCCESS: Move to Step 2 (Verify Identity / OTP)
+  onNext();
+       }
       } catch (error) {
         const errData = error.response?.data;
-        console.error(" Backend Error:", error);
-        
->>>>>>> 39f0843d9cc5b2916bfdaf41341650369433cc94
-
-      const response = await registerVendor(payload);
-      
-      if (response?.access) localStorage.setItem('access_token', response.access);
-      
-      onNext(); 
-    } catch (error) {
-      console.error("Registration Error Details:", error.response);
-      
-      const serverError = error.response?.data;
-
-      if (typeof serverError === 'string' && serverError.includes('<!doctype html>')) {
-        setErrors({ general: "Server crashed (500). The email might be taken or a field is invalid." });
-      } else if (serverError && typeof serverError === 'object') {
-        // Map backend field errors to our state
-        setErrors(serverError);
-      } else {
-        setErrors({ general: "Registration failed. Check your connection or try a new email." });
+        if (error.response?.status === 400 && errData) {
+          const fields = errData.errors || errData;
+          setErrors(prev => ({
+            ...prev,
+            ...(fields.email && { email: Array.isArray(fields.email) ? fields.email[0] : fields.email }),
+            ...(fields.non_field_errors && { general: Array.isArray(fields.non_field_errors) ? fields.non_field_errors[0] : fields.non_field_errors }),
+            ...(errData.message && { general: errData.message }),
+          }));
+        } else {
+          setErrors({ general: "Something went wrong. Please check your connection." });
+        }
+      } finally {
+        setIsLoading(false);
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
   return (
     <div className="w-full animate-slideUp max-w-[580px]">
-<<<<<<< HEAD
       <form className="space-y-3" onSubmit={handleContinue}>
-        {errors.general && (
-          <div className="bg-red-50 border border-red-300 text-red-600 text-[12px] font-bold rounded-xl px-4 py-2 mb-2">
-            {errors.general}
-          </div>
-        )}
-        
-=======
-      <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); handleContinue(); }}>
-         {/* General error */}
         {errors.general && <MessageAlert message={errors.general} type="error" />}
-        {/* First & Last Name */}
->>>>>>> 39f0843d9cc5b2916bfdaf41341650369433cc94
+
         <div className="grid grid-cols-2 gap-4">
           <div className="relative">
             <FaRegUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={14} />
-            <input 
-              type="text" 
-<<<<<<< HEAD
-              placeholder={errors.first_name || 'First Name'}
-              value={formData.first_name || ''}
-=======
-              autoComplete="given-name"
+            <input
+              type="text"
               placeholder={getPlaceholder('first_name', 'First Name')}
               value={formData.first_name}
->>>>>>> 39f0843d9cc5b2916bfdaf41341650369433cc94
               onChange={(e) => handleChange('first_name', e.target.value)}
-              className={`w-full h-11 pl-11 pr-4 bg-white border ${errors.first_name ? 'border-red-500 placeholder-red-400' : 'border-gray-200'} rounded-2xl focus:outline-none text-[14px]`}
+              className={`w-full h-11 pl-11 pr-4 bg-white border border-gray-200 rounded-2xl focus:outline-none text-[14px] ${errors.first_name ? 'placeholder:text-red-500 border-red-200' : 'placeholder:text-gray-400'}`}
             />
           </div>
 
           <div className="relative">
-            <input 
-              type="text" 
-<<<<<<< HEAD
-              placeholder={errors.last_name || 'Last Name'}
-              value={formData.last_name || ''}
-=======
-              autoComplete="family-name"
+            <input
+              type="text"
               placeholder={getPlaceholder('last_name', 'Last Name')}
               value={formData.last_name}
->>>>>>> 39f0843d9cc5b2916bfdaf41341650369433cc94
               onChange={(e) => handleChange('last_name', e.target.value)}
-              className={`w-full h-11 px-4 bg-white border ${errors.last_name ? 'border-red-500 placeholder-red-400' : 'border-gray-200'} rounded-2xl focus:outline-none text-[14px]`}
+              className={`w-full h-11 px-4 bg-white border border-gray-200 rounded-2xl focus:outline-none text-[14px] ${errors.last_name ? 'placeholder:text-red-500 border-red-200' : 'placeholder:text-gray-400'}`}
             />
           </div>
         </div>
@@ -203,10 +177,10 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
           <FaRegEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={14} />
           <input
             type="email"
-            placeholder={errors.email || 'Email Address'}
-            value={formData.email || ''}
+            placeholder={getPlaceholder('email', 'Email Address')}
+            value={formData.email}
             onChange={(e) => handleChange('email', e.target.value)}
-            className={`w-full h-11 pl-11 pr-4 bg-white border ${errors.email ? 'border-red-500 placeholder-red-400' : 'border-gray-200'} rounded-2xl focus:outline-none text-[14px]`}
+            className={`w-full h-11 pl-11 pr-4 bg-white border border-gray-200 rounded-2xl focus:outline-none text-[14px] ${errors.email ? 'placeholder:text-red-500 border-red-200' : 'placeholder:text-gray-400'}`}
           />
         </div>
 
@@ -215,58 +189,76 @@ const AccountBasics = ({ onNext, formData, updateFormData }) => {
             <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={14}/>
             <input
               type={showPassword ? "text" : "password"}
-              placeholder="Password"
-              value={formData.password || ''}
+              placeholder={getPlaceholder('password', 'Password')}
+              value={formData.password}
               onChange={(e) => handleChange('password', e.target.value)}
-              className={`w-full h-11 pl-11 pr-12 bg-white border ${errors.password ? 'border-red-500' : 'border-gray-200'} rounded-2xl focus:outline-none text-[14px]`}
+              className={`w-full h-11 pl-11 pr-12 bg-white border border-gray-200 rounded-2xl focus:outline-none text-[14px] ${errors.password ? 'placeholder:text-red-500 border-red-200' : 'placeholder:text-gray-400'}`}
             />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+            <div onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer p-1 z-10">
               {showPassword ? <FaRegEyeSlash size={16}/> : <FaRegEye size={16}/>}
-            </button>
+            </div>
           </div>
 
           <div className="relative">
             <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={14}/>
             <input
               type={showConfirmPassword ? "text" : "password"}
-              placeholder="Confirm Password"
+              placeholder={getPlaceholder('confirmPassword', 'Confirm Password')}
               value={formData.confirmPassword || ''}
               onChange={(e) => handleChange('confirmPassword', e.target.value)}
-              className={`w-full h-11 pl-11 pr-12 bg-white border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-200'} rounded-2xl focus:outline-none text-[14px]`}
+              className={`w-full h-11 pl-11 pr-12 bg-white border border-gray-200 rounded-2xl focus:outline-none text-[14px] ${errors.confirmPassword ? 'placeholder:text-red-500 border-red-200' : 'placeholder:text-gray-400'}`}
             />
-            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+            <div onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer p-1 z-10">
               {showConfirmPassword ? <FaRegEyeSlash size={16}/> : <FaRegEye size={16}/>}
-            </button>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-start gap-3 pt-2">
-          <input 
-            type="checkbox" 
-            checked={formData.agreeToTerms || false}
-            onChange={(e) => handleChange('agreeToTerms', e.target.checked)}
-            className="mt-1 w-4 h-4 accent-[#235E5D] cursor-pointer"
-          />
-          <label className="text-[12px] text-gray-500 cursor-pointer">
-            I agree to the <span className="text-[#F2B53D] font-bold">Terms of Service</span> and <span className="text-[#F2B53D] font-bold">Privacy Policy</span>.
-          </label>
+        <p className="text-[11px] text-gray-500 leading-relaxed px-1">
+          At least 8 chars, upper/lower case, unique from email, and non-numeric.
+        </p>
+
+        <div className="flex flex-col gap-1 pt-1">
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              checked={formData.agreeToTerms}
+              onChange={(e) => handleChange('agreeToTerms', e.target.checked)}
+              className="w-4 h-4 rounded cursor-pointer accent-[#235E5D]"
+            />
+            <label className="text-[12px] text-gray-500">
+              I agree to the <span className="text-[#F2B53D] font-bold">Terms</span> and <span className="text-[#F2B53D] font-bold">Privacy Policy</span>.
+            </label>
+          </div>
+          {errors.terms && <span className="text-red-500 text-[10px] ml-7 font-bold">{errors.terms}</span>}
         </div>
 
-        <button 
-<<<<<<< HEAD
+        <button
           type="submit"
-=======
-          type= "submit"
-          // onClick={handleContinue}
->>>>>>> 39f0843d9cc5b2916bfdaf41341650369433cc94
           disabled={isLoading || !isFormValid}
-          className={`w-full h-11 rounded-full text-white font-bold transition-all mt-4 ${
-            isLoading || !isFormValid ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#D99201] hover:bg-[#e0a630]'
-          }`}
+          className={`w-full h-10 rounded-full text-white font-bold text-[15px] transition-all mt-3 ${isLoading || !isFormValid ? 'bg-gray-400' : 'bg-[#D99201] hover:bg-[#E0A630]'}`}
         >
           {isLoading ? "Creating Account..." : "Continue"}
         </button>
+
+        <div className="flex items-center py-2">
+          <div className="flex-grow border-t border-gray-100"></div>
+          <span className="px-2 text-gray-400 text-[11px] font-bold uppercase tracking-widest">OR</span>
+          <div className="flex-grow border-t border-gray-100"></div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => loginWithGoogle()}
+          className="w-full h-9 border border-gray-200 rounded-full flex justify-center items-center gap-3 bg-white hover:bg-gray-50 transition font-bold text-[14px] text-gray-700"
+        >
+          <FcGoogle size={18} /> Sign up with Google
+        </button>
       </form>
+
+      <p className="text-center text-[14px] text-gray-500 mt-4">
+        Already have an account? <Link to="/signin" className="text-[#F2B53D] font-bold hover:underline">Sign in</Link>
+      </p>
     </div>
   );
 };
