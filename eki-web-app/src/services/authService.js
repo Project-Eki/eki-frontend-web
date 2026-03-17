@@ -16,8 +16,8 @@ api.interceptors.request.use(request => {
 // Sign In (Note: File name is sign in, path matches Django)
 export const signInUser = async (credentials) => {
   try {
-    // FIX: Updated path to /api/v1/accounts/signin/
-    const response = await api.post('/api/v1/accounts/signin/', {
+    // FIX: Updated path to /api/v1/accounts/login/
+    const response = await api.post('/api/v1/accounts/login/', {
       email: credentials.email?.trim().toLowerCase() || "",
       password: credentials.password
     });

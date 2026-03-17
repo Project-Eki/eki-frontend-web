@@ -64,7 +64,7 @@ export default api;
 
 // Sign In (Your requirement: File name is "sign in")
 export const SigninUser = async ({ email, password }) => {
-  const response = await api.post("/accounts/signin/", { email, password });
+  const response = await api.post("/accounts/login/", { email, password });
   return response.data;
 };
 
