@@ -31,7 +31,7 @@ const Navbar = () => {
 
         <div className="flex items-center space-x-8 font-medium text-gray-600">
           <a href="/" className="hover:text-black transition-colors">Home</a>
-          <a href="/products" className="hover:text-black transition-colors">Products</a>
+          <a href="/product-dashboard" className="hover:text-black transition-colors">Products</a>
           <a href="/Services" className="hover:text-black transition-colors">Services</a>
         </div>
       </div>

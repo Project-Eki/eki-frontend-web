@@ -26,9 +26,9 @@ const Navbar2 = () => {
 
         <div className="h-4 w-[1px] bg-gray-200"></div>
 
-        <Link to="/signin">
+        <Link to="/Login">
           <button className="text-[14px] bg-[#efb034] rounded-lg  px-6 font-bold text-white hover:bg-[#d99c1c] transition-colors cursor-pointer px-4 py-2 rounded">
-            Sign in
+            Login
           </button>
         </Link>
 
