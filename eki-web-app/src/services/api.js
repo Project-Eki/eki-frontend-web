@@ -1,8 +1,8 @@
 import axios from "axios";
 // axios instance
 const api = axios.create({
-  // baseURL: "https://api-7w8f.onrender.com/api/v1",
-  baseURL: "http://134.122.22.45/api/v1",
+  baseURL: "https://api-7w8f.onrender.com/api/v1",
+  // baseURL: "http://134.122.22.45/api/v1",
   headers: { "Content-Type": "application/json" },
 });
 
