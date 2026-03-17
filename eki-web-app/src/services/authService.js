@@ -14,7 +14,7 @@ api.interceptors.request.use(request => {
 
 export const signInUser = async (credentials) => {
   try {
-    const response = await api.post('/api/v1/accounts/signin/', {
+    const response = await api.post('/api/v1/accounts/login/', {
       email: credentials.email?.trim().toLowerCase() || "",
       password: credentials.password
     });
