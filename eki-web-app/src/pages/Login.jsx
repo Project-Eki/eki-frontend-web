@@ -18,25 +18,39 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({ email: '', password: '', general: '' });
 
-  const handleAuthSuccess = (data) => {
-    const token = data?.access || data?.token || data?.access_token;
-    const role = data?.role?.toLowerCase() || '';
+  const handleAuthSuccess = (response) => {
+    // 1. UNWRAP: Because your Django view uses success_response, 
+    // the tokens are inside response.data
+    const authData = response?.data || response;
+    
+    const token = authData?.access || authData?.token;
+    // Extract role, defaulting to 'vendor' if not found
+    const role = authData?.role?.toLowerCase() || 'vendor'; 
 
-    if (token && role) {
+    if (token) {
+      // 2. Save token and role to AuthContext
       login(token, role); 
-      role.includes('vendor') ? navigate('/VendorDashboard') : navigate('/');
+      
+      // 3. Redirect
+      if (role.includes('vendor')) {
+        navigate('/VendorDashboard');
+      } else {
+        navigate('/');
+      }
+    } else {
+      console.error("Auth Success but tokens missing. Check console for structure.");
+      setFieldErrors(prev => ({ 
+        ...prev, 
+        general: "Authentication successful, but security tokens were not found in the response." 
+      }));
     }
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const newFormData = { ...formData, [name]: value };
-    setFormData(newFormData);
+    setFormData(prev => ({ ...prev, [name]: value }));
 
-    // REAL-TIME VALIDATION
-    const { errors } = validateLoginForm(newFormData);
-
-    // Only show "Invalid" message if the user has actually started typing (length > 0)
+    const { errors } = validateLoginForm({ ...formData, [name]: value });
     if (value.length > 0 && errors[name]) {
       setFieldErrors(prev => ({ ...prev, [name]: errors[name], general: '' }));
     } else {
@@ -63,11 +77,12 @@ const Login = () => {
 
     setIsLoading(true);
     try {
-      const data = await manualLogin(formData);
-      handleAuthSuccess(data);
+      const result = await manualLogin(formData);
+      handleAuthSuccess(result);
     } catch (err) {
-      const msg = err.response?.data?.detail || "Invalid email or password";
-      setFieldErrors({ email: '', password: '', general: msg });
+      // Handle the error_response structure from your Django views
+      const apiError = err.response?.data?.message || err.response?.data?.detail || "Invalid email or password";
+      setFieldErrors({ email: '', password: '', general: apiError });
       setFormData(prev => ({ ...prev, password: '' }));
     } finally {
       setIsLoading(false);
@@ -80,7 +95,7 @@ const Login = () => {
         
         {/* Left Side Illustration */}
         <div className="hidden lg:flex lg:w-1/2 h-full">
-          <img src={loginIllustration} alt="Login" className="h-full w-full object-cover" />
+          <img src={loginIllustration} alt="Sign In" className="h-full w-full object-cover" />
         </div>
 
         {/* Right Side Form */}
@@ -93,7 +108,7 @@ const Login = () => {
 
             <div className="text-center mb-8">
               <h2 className="text-2xl font-bold text-gray-800">Welcome back!</h2>
-              <p className="text-gray-500 mt-1 text-xs">Ready to start selling today?</p>
+              <p className="text-gray-500 mt-1 text-xs">Sign in to manage your store today</p>
             </div>
 
             <form className="w-full space-y-6" onSubmit={handleSubmit} noValidate>
@@ -104,28 +119,20 @@ const Login = () => {
                 </p>
               )}
 
-              {/* Email Input Group */}
               <div className="flex flex-col gap-1">
-                <div className="relative">
-                  <input
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    placeholder="Email Address"
-                    className={`w-full rounded-md border h-12 px-4 focus:outline-none transition-all text-sm text-gray-900
-                      ${fieldErrors.email ? 'border-red-500' : 'border-gray-300 focus:border-[#EFB034]'}`}
-                  />
-                </div>
-                {fieldErrors.email && (
-                  <span className="text-[10px] text-red-500 font-medium ml-1">
-                    {fieldErrors.email}
-                  </span>
-                )}
+                <input
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  placeholder="Email Address"
+                  className={`w-full rounded-md border h-12 px-4 focus:outline-none transition-all text-sm
+                    ${fieldErrors.email ? 'border-red-500' : 'border-gray-300 focus:border-[#EFB034]'}`}
+                />
+                {fieldErrors.email && <span className="text-[10px] text-red-500 font-medium ml-1">{fieldErrors.email}</span>}
               </div>
 
-              {/* Password Input Group */}
               <div className="flex flex-col gap-1">
                 <div className="relative">
                   <input
@@ -135,7 +142,7 @@ const Login = () => {
                     onChange={handleChange}
                     onBlur={handleBlur}
                     placeholder="Password"
-                    className={`w-full rounded-md border h-12 pl-4 pr-12 focus:outline-none transition-all text-sm text-gray-900
+                    className={`w-full rounded-md border h-12 pl-4 pr-12 focus:outline-none transition-all text-sm
                       ${fieldErrors.password ? 'border-red-500' : 'border-gray-300 focus:border-[#EFB034]'}`}
                   />
                   <button
@@ -146,14 +153,9 @@ const Login = () => {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                {fieldErrors.password && (
-                  <span className="text-[10px] text-red-500 font-medium ml-1">
-                    {fieldErrors.password}
-                  </span>
-                )}
+                {fieldErrors.password && <span className="text-[10px] text-red-500 font-medium ml-1">{fieldErrors.password}</span>}
               </div>
 
-              {/* Remember/Forgot options */}
               <div className="flex items-center justify-between text-[11px] px-1">
                 <label className="flex items-center text-gray-600 cursor-pointer">
                   <input className="mr-2 h-3.5 w-3.5 accent-[#234E4D]" type="checkbox" />
@@ -174,7 +176,7 @@ const Login = () => {
                 }}
                 className="flex items-center justify-center transition-all active:scale-[0.95]"
               >
-                {isLoading ? 'Processing...' : 'Login'}
+                {isLoading ? 'Processing...' : 'Sign In'}
               </button>
 
               <div className="text-center">
@@ -190,27 +192,19 @@ const Login = () => {
         </div>
       </div>
       
-      {/* Footer */}
-      <footer className="w-full font-sans">
-        <div className="w-full bg-[#234E4D] text-white py-3 px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] tracking-wide">
-            <div className="flex-shrink-0 font-bold">Buy Smart. Sell Fast. Grow Together...</div>
-            <div className="flex items-center gap-1 text-center">
-              <span>© 2026 Vendor Portal. All rights reserved.</span>
-              <span className="ml-1 font-bold">eki<span className="text-[8px] font-normal ml-0.5">TM</span></span>
-            </div>
-            <div className="flex items-center gap-6">
-              <a href="#" className="hover:opacity-80">Support</a>
-              <a href="#" className="hover:opacity-80">Privacy Policy</a>
-              <a href="#" className="hover:text-yellow-400">Terms of Service</a>
-              <span className="font-bold border-l border-white/30 pl-6">Ijoema ltd</span>
-            </div>
+      <footer className="w-full bg-[#234E4D] text-white py-3 px-6 text-[10px]">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="font-bold">Buy Smart. Sell Fast. Grow Together...</div>
+          <div>© 2026 Vendor Portal. All rights reserved. <span className="font-bold ml-1">eki</span></div>
+          <div className="flex gap-6">
+            <a href="#">Support</a>
+            <a href="#">Privacy Policy</a>
+            <span className="font-bold border-l border-white/30 pl-6">Ijoema ltd</span>
           </div>
         </div>
       </footer>
     </div>
   );
 };
-
 
 export default Login;
