@@ -90,6 +90,7 @@ const VendorOnboarding = () => {
               title="Secure Account"
               subtitle="Protect your merchant profile"
               isActive={currentStep === 5}
+              isCompleted={isSubmitted}
             />
           </div>
         </aside>
@@ -200,7 +201,6 @@ const VendorOnboarding = () => {
                     <OperationCompliance
                       formData={formData}
                       updateFormData={handleUpdate}
-                      onFinish={handleNextStep}
                       onBack={() =>
                         dispatch({ type: ACTIONS.SET_STEP, payload: 4 })
                       }

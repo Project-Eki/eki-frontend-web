@@ -67,7 +67,7 @@ function App() {
           {/* Payments */}
           <Route path="/payment" element={<PaymentSystem />} />
           <Route path="/admin-payments" element={<PaymentAndPayout />} />
-
+           <Route path="/business-settings" element={<BusinessSettings />} />  
           {/* 404 Fallback */}
           <Route
             path="*"
