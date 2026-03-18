@@ -2,138 +2,60 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logoImage from '../assets/logo.jpeg';
 import resetIllustration from '../assets/reset.jpeg';
-import { passwordResetRequest } from '../services/authService';
+import { passwordResetRequest } from '../services/authService'; 
 
-const ForgotPassword = ({
-  logoUrl = logoImage,
-  illustrationUrl = resetIllustration
-}) => {
+const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
   const navigate = useNavigate();
-
-  const validateEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // 1. Validation
     if (!email.trim()) {
       setError('Email is required');
-      return;
-    }
-    if (!validateEmail(email)) {
-      setError('Invalid email address');
       setEmail('');
       return;
     }
-
     setError('');
     setIsLoading(true);
-
     try {
-      // 2. API Call to your backend
-      await passwordResetRequest({ email });
-      
-      setSuccessMessage('A password reset code has been sent to your email.');
-
-      // 3. AUTOMATIC REDIRECTION
-      // We pass the email in the "state" so the OTP page can display it
-      setTimeout(() => {
-        navigate('/otp', { state: { email: email } });
-      }, 1500); // Short delay so they can see the success message
-
+      await passwordResetRequest(email);
+      // Link to OTP page and pass the email address
+      navigate('/otp', { state: { email: email.trim().toLowerCase() } });
     } catch (err) {
-      const msg =
-        err.response?.data?.detail ||
-        err.response?.data?.email?.[0] ||
-        'Failed to send reset code. Please try again.';
-      setError(msg);
-    } finally {
-      setIsLoading(false);
-    }
+      setError(err.message);
+      setEmail(''); 
+    } finally { setIsLoading(false); }
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100 font-sans text-sm">
-      <div className="flex flex-grow h-[calc(100vh-96px)] overflow-hidden">
-        
-        {/* Illustration */}
-        <div className="hidden md:flex w-2/5 h-full">
-          <img src={illustrationUrl} alt="Forgot Password" title="Forgot Password" className="h-full w-full object-cover" />
+    <div className="flex flex-col min-h-screen bg-white">
+      <div className="flex flex-grow h-[calc(100vh-60px)]">
+        <div className="hidden md:block w-2/5 h-full">
+          <img src={resetIllustration} alt="Reset" className="h-full w-full object-cover" />
         </div>
-
-        {/* Form Content */}
-        <div className="flex w-full md:w-3/5 h-full flex-col justify-center items-center p-12 bg-white">
-          <div className="mb-10 flex flex-col items-center">
-            <div className="flex h-60 w-60 mt-10 items-center justify-center overflow-hidden -translate-y-12">
-              <img src={logoUrl} alt="Logo" className="h-full w-full object-contain" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-800 text-center -mt-24">Forgot Password?</h2>
-            <p className="text-gray-500 text-center mt-3 text-xs max-w-sm">
-              Enter your email and we'll send you a recovery link.
-            </p>
-          </div>
-
-          <form className="w-full max-w-sm space-y-6" onSubmit={handleSubmit} noValidate>
-            {successMessage && (
-              <div className="bg-green-50 p-3 rounded-md border border-green-200">
-                 <p className="text-green-600 text-xs font-semibold text-center">{successMessage}</p>
-              </div>
-            )}
-            
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setError(''); }}
-              placeholder={error || "Enter email"}
-              className={`w-full rounded-md border py-3 pl-4 pr-4 focus:outline-none bg-white
-                ${error ? 'border-red-500 placeholder-red-500 text-red-500' : 'border-gray-300 focus:border-gray-400 placeholder-gray-500'}`}
+        <div className="w-full md:w-3/5 flex flex-col justify-center items-center p-8 text-center">
+          <img src={logoImage} alt="Logo" className="h-40 mb-10 object-contain" />
+          <h2 className="text-2xl font-bold mb-8 text-gray-800">Forgot Password?</h2>
+          <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-6">
+            <input 
+              type="email" placeholder={error || "Enter your email"} value={email}
+              onChange={(e) => { setEmail(e.target.value); if (error) setError(''); }}
+              className={`w-full p-4 border rounded-lg outline-none transition-all ${
+                error ? 'border-red-500 placeholder-red-500 bg-red-50' : 'border-gray-300 focus:border-yellow-500'
+              }`}
             />
-            
-            <button
-              type="submit"
-              disabled={isLoading}
-              className={`w-full rounded-full py-3.5 font-bold text-white shadow-md transition-all active:scale-[0.98] ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-yellow-500 hover:bg-yellow-600'}`}
-            >
-              {isLoading ? 'Sending...' : 'Reset Password'}
+            <button disabled={isLoading} className="w-full bg-yellow-500 text-white font-bold py-4 rounded-full shadow-md">
+              {isLoading ? "Sending..." : "Reset Password"}
             </button>
-
-            <div className="text-center mt-4">
-              <button 
-                type="button"
-                onClick={() => navigate('/signin')} 
-                className="text-xs font-semibold text-gray-600 hover:text-yellow-600 hover:underline"
-              >
-                 Sign in
-              </button>
-            </div>
+            <button type="button" onClick={() => navigate('/login')} className="text-xs font-semibold text-gray-400 hover:text-yellow-600">
+              Back to Login
+            </button>
           </form>
         </div>
       </div>
-      
-      {/* Footer (Dark Green Style) */}
-      <footer className="w-full font-sans">
-        <div className="w-full bg-[#234E4D] text-white py-3 px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] tracking-wide">
-            <div className="flex-shrink-0 font-bold">Buy Smart. Sell Fast. Grow Together...</div>
-            <div className="flex items-center gap-1 text-center">
-              <span>© 2026 Vendor Portal. All rights reserved.</span>
-              <span className="ml-1 font-bold">eki<span className="text-[8px] font-normal ml-0.5">TM</span></span>
-            </div>
-            <div className="flex items-center gap-6">
-              <a href="#" className="hover:opacity-80">Support</a>
-              <a href="#" className="hover:opacity-80">Privacy Policy</a>
-              <a href="#" className="hover:text-yellow-400">Terms of Service</a>
-              <span className="font-bold border-l border-white/30 pl-6">Ijoema ltd</span>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
-
 export default ForgotPassword;
