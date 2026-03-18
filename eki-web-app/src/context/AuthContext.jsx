@@ -9,21 +9,26 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!localStorage.getItem("access_token"),
   });
 
-  //  Login function
-  const login = (token, role) => {
-    localStorage.setItem("access_token", token);
-    localStorage.setItem("userRole", role);
+  // Login function - now accepting refreshToken
+  const login = (accessToken, role, refreshToken = null) => {
+    localStorage.setItem("access_token", accessToken);
+    localStorage.setItem("userRole", role.toLowerCase());
+    
+    if (refreshToken) {
+      localStorage.setItem("refresh_token", refreshToken);
+    }
 
     setUser({
-      token,
-      role,
+      token: accessToken,
+      role: role.toLowerCase(),
       isAuthenticated: true,
     });
   };
 
-  //  Logout function
+  // Logout function - clears everything
   const logout = () => {
     localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token"); // Clean up refresh token too
     localStorage.removeItem("userRole");
 
     setUser({
@@ -40,13 +45,10 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Custom hook
 export const useAuth = () => {
   const context = useContext(AuthContext);
-
   if (!context) {
     throw new Error("useAuth must be used inside AuthProvider");
   }
-
   return context;
 };

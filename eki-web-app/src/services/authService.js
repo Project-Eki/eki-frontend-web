@@ -16,11 +16,17 @@ api.interceptors.request.use(request => {
 // Sign In (Note: File name is sign in, path matches Django)
 export const signInUser = async (credentials) => {
   try {
-    // FIX: Updated path to /api/v1/accounts/login/
     const response = await api.post('/api/v1/accounts/login/', {
       email: credentials.email?.trim().toLowerCase() || "",
       password: credentials.password
     });
+
+    // CHANGE: Return response.data.data instead of just response.data
+    // This strips away the "success" and "message" wrapper and returns the tokens
+    if (response.data && response.data.success) {
+        return response.data.data; 
+    }
+    
     return response.data;
   } catch (error) {
     console.log("SIGNIN RAW ERROR:", error.response?.data); 
