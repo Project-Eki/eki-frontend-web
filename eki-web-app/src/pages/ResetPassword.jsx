@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import logoImage from '../assets/logo.jpeg';
 import resetIllustration from '../assets/reset.jpeg';
-import { passwordResetConfirm } from '../services/api';
+import { passwordResetConfirm } from '../services/authService';
 
 const ResetPasswordPage = () => {
   const navigate = useNavigate();

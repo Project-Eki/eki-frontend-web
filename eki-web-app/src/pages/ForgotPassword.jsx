@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logoImage from '../assets/logo.jpeg';
 import resetIllustration from '../assets/reset.jpeg';
-import { passwordResetRequest } from '../services/api';
+import { passwordResetRequest } from '../services/authService';
 
 const ForgotPassword = ({
   logoUrl = logoImage,
@@ -18,6 +18,8 @@ const ForgotPassword = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // 1. Validation
     if (!email.trim()) {
       setError('Email is required');
       return;
@@ -27,12 +29,22 @@ const ForgotPassword = ({
       setEmail('');
       return;
     }
+
     setError('');
     setIsLoading(true);
+
     try {
+      // 2. API Call to your backend
       await passwordResetRequest({ email });
+      
       setSuccessMessage('A password reset code has been sent to your email.');
-      navigate('/reset-password', { state: { email } });
+
+      // 3. AUTOMATIC REDIRECTION
+      // We pass the email in the "state" so the OTP page can display it
+      setTimeout(() => {
+        navigate('/otp', { state: { email: email } });
+      }, 1500); // Short delay so they can see the success message
+
     } catch (err) {
       const msg =
         err.response?.data?.detail ||
@@ -67,8 +79,11 @@ const ForgotPassword = ({
 
           <form className="w-full max-w-sm space-y-6" onSubmit={handleSubmit} noValidate>
             {successMessage && (
-              <p className="text-green-600 text-xs font-semibold text-center">{successMessage}</p>
+              <div className="bg-green-50 p-3 rounded-md border border-green-200">
+                 <p className="text-green-600 text-xs font-semibold text-center">{successMessage}</p>
+              </div>
             )}
+            
             <input
               type="email"
               value={email}
@@ -87,7 +102,6 @@ const ForgotPassword = ({
             </button>
 
             <div className="text-center mt-4">
-              {/* 3. Updated Button to trigger Navigation */}
               <button 
                 type="button"
                 onClick={() => navigate('/signin')} 
@@ -100,7 +114,7 @@ const ForgotPassword = ({
         </div>
       </div>
       
-      {/* Footer */}
+      {/* Footer (Dark Green Style) */}
       <footer className="w-full font-sans">
         <div className="w-full bg-[#234E4D] text-white py-3 px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] tracking-wide">

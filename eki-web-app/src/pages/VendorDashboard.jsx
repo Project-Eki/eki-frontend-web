@@ -1,385 +1,304 @@
 import React, { useState } from 'react';
+import logo from '../assets/logo.jpeg';
+import { validateProductForm } from '../utils/productValidation';
 
-import logo from '../assets/logo.jpeg'; 
-
-import { 
-  Search, Bell, Settings, LayoutDashboard, Package, 
-  Truck, CreditCard, ChevronRight, Plus, ListChecks, 
-  AlertCircle, Star, MoreVertical, X, Upload, Tag, Box, Trash2
+import {
+  Search, Bell, Settings, LayoutDashboard, Package,
+  ChevronRight, Plus, ListChecks, AlertCircle, Star,
+  X, Upload, Tag, Box, MoreVertical, Clock
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 const VendorDashboard = () => {
-  // --- NEW LOGIC STATES ---
-  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [formData, setFormData] = useState({
-    title: '', category: '', price: '', sku: '', qty: '', description: ''
+  // --- LIVE DATA STATES (Initialize as empty for your DB fetching) ---
+  const [vendorData, setVendorData] = useState({
+    storeName: "Artisan Workshop",
+    vendorType: "product", // Set to 'product' or 'service' based on registration
+    country: "Uganda"      // Controls Currency (Uganda, Kenya, USA, etc.)
   });
 
-  // This simulates the user's registration type and country
-  const user = {
-    type: "product", // Change to "service" to see service button
-    country: "Uganda" 
-  };
+  const [metrics, setMetrics] = useState({ grossSales: 0, openOrders: 0, pendingPayouts: 0, activeListings: 0 });
+  const [salesHistory, setSalesHistory] = useState([]); 
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [inventoryAlerts, setInventoryAlerts] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [lastPayout, setLastPayout] = useState({ amount: 0, date: "Oct 30, 2026" });
 
+  // --- UI STATES ---
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [formData, setFormData] = useState({});
+
+  // --- DYNAMIC CURRENCY ---
   const getCurrency = (country) => {
     const map = { 'Uganda': 'UGX', 'Kenya': 'KSh', 'USA': '$' };
     return map[country] || '$';
   };
+  const currency = getCurrency(vendorData.country);
 
-  const validateAndSubmit = (e) => {
+  const handlePublish = (e) => {
     e.preventDefault();
-    let newErrors = {};
-    const fields = ['title', 'category', 'price', 'sku', 'qty', 'description'];
-    
-    fields.forEach(field => {
-      if (!formData[field]) newErrors[field] = "This field is required";
-    });
-    
-    setErrors(newErrors);
-    if (Object.keys(newErrors).length === 0) {
-      console.log("Published:", formData);
+    const validationErrors = validateProductForm(formData);
+    setErrors(validationErrors);
+    if (Object.keys(validationErrors).length === 0) {
+      console.log("Saving to Database...", formData);
       setIsProductModalOpen(false);
+      setIsServiceModalOpen(false);
     }
   };
 
-  const emptyChartData = [
-    { name: 'Oct 01', sales: 0 },
-    { name: 'Oct 07', sales: 0 },
-    { name: 'Oct 14', sales: 0 },
-    { name: 'Oct 21', sales: 0 },
-    { name: 'Oct 31', sales: 0 },
-  ];
-
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-slate-800">
-      
-      <nav className="bg-white border-b px-6 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-8">
-        
-          <div className="flex items-center">
-            <img 
-              src={logo} 
-              alt="Eki Logo" 
-              className="h-10 w-auto object-contain" 
-            />
-          </div>
-          
-          <div className="relative hidden md:block">
+      {/* NAVIGATION */}
+      <nav className="bg-white border-b px-6 py-2 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center gap-12">
+          <img src={logo} alt="Eki" className="h-8 w-auto" />
+          <div className="relative hidden lg:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-            <input 
-              type="text" 
-              placeholder="Search..." 
-              className="pl-10 pr-4 py-2 bg-slate-100 rounded-full text-sm w-64 focus:outline-none focus:ring-2 focus:ring-teal-500"
-            />
+            <input type="text" placeholder="Search..." className="pl-10 pr-4 py-1.5 bg-slate-100 rounded-full text-xs w-64 focus:outline-none border border-transparent focus:border-teal-500" />
           </div>
         </div>
-        
-        <div className="flex items-center gap-6 text-sm font-medium">
-          <a href="#" className="text-teal-600 border-b-2 border-teal-600 pb-1">Dashboard</a>
-          <a href="/product-management" className="text-slate-500 hover:text-teal-600 transition">Products</a>
-          <a href="/service-management" className="text-slate-500 hover:text-teal-600 transition">Services</a>
-          <a href="#" className="text-slate-500 hover:text-teal-600 transition">Orders</a>
-          <a href="#" className="text-slate-500 hover:text-teal-600 transition">Payments</a>
-          
-          <div className="flex items-center gap-4 ml-4 border-l pl-6">
-            <Settings className="w-5 h-5 text-slate-500 cursor-pointer" />
-            <div className="relative">
-              <Bell className="w-5 h-5 text-slate-500 cursor-pointer" />
-              <span className="absolute -top-1 -right-1 bg-red-500 w-2 h-2 rounded-full border-2 border-white"></span>
-            </div>
-            <div className="flex items-center gap-2 cursor-pointer">
-              <div className="w-8 h-8 bg-slate-200 rounded-full overflow-hidden">
-             
-                <div className="w-full h-full bg-slate-300 flex items-center justify-center text-[10px] text-white">VN</div>
+        <div className="flex items-center gap-8 text-[11px] font-bold uppercase tracking-wider">
+          <a href="#" className="text-orange-400 border-b-2 border-orange-400 pb-4 mt-4">Dashboard</a>
+          <a href="#" className="text-slate-500 hover:text-orange-400 pb-4 mt-4">Products</a>
+          <a href="#" className="text-slate-500 hover:text-orange-400 pb-4 mt-4">Services</a>
+          <a href="#" className="text-slate-500 hover:text-orange-400 pb-4 mt-4">Orders</a>
+          <a href="#" className="text-slate-500 hover:text-orange-400 pb-4 mt-4">Payments</a>
+          <div className="flex items-center gap-4 ml-4 border-l pl-6 normal-case text-slate-400">
+            <Settings className="w-5 h-5 cursor-pointer hover:text-teal-600" />
+            <Bell className="w-5 h-5 cursor-pointer hover:text-teal-600" />
+            <div className="flex items-center gap-2 border-l pl-4">
+              <div className="text-right">
+                <p className="text-[11px] font-bold text-slate-800 leading-tight">{vendorData.storeName}</p>
+                <p className="text-[9px]">Admin Access</p>
               </div>
-              <div className="hidden lg:block">
-                <p className="text-xs font-bold leading-tight">Vendor Name</p>
-                <p className="text-[10px] text-slate-400">Store Owner</p>
-              </div>
+              <div className="w-8 h-8 rounded-full bg-teal-100 border flex items-center justify-center text-teal-700 font-bold text-xs">AW</div>
             </div>
           </div>
         </div>
       </nav>
 
-      <main className="p-8 max-w-7xl mx-auto">
+      <main className="p-8 max-w-[1400px] mx-auto">
         <header className="mb-8">
-          <h1 className="text-2xl font-bold">Vendor Command Center</h1>
-          <p className="text-slate-500 text-sm">Welcome back. Here's what's happening with your store today.</p>
+          <h1 className="text-2xl font-bold text-slate-900">Eki Vendor Command Center</h1>
+          <p className="text-slate-500 text-sm">Welcome back, James. Monitoring activity for {vendorData.country}.</p>
         </header>
 
-       
+        {/* METRICS ROW */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <MetricCard title="Gross Sales (30d)" value={`${getCurrency(user.country)} 0.00`} trend="+0.0%" icon={<LayoutDashboard className="text-teal-600" />} />
-          <MetricCard title="Open Orders" value="0" subtext="No urgent orders" icon={<Package className="text-teal-600" />} />
-          <MetricCard title="Pending Payouts" value={`${getCurrency(user.country)} 0.00`} subtext="Next: TBD" icon={<CreditCard className="text-teal-600" />} color="bg-teal-50" />
-          <MetricCard title="Active Listings" value="0" subtext="+0 New" icon={<ListChecks className="text-teal-600" />} color="bg-orange-50" />
+          <MetricCard title="Gross Sales (30d)" value={`${currency} ${metrics.grossSales.toLocaleString()}`} trend="+12.5%" icon={<LayoutDashboard className="text-teal-600" />} />
+          <MetricCard title="Open Orders" value={metrics.openOrders} subtext="2 Urgent" icon={<Package className="text-teal-600" />} color="bg-orange-50/50" />
+          <MetricCard title="Pending Payouts" value={`${currency} ${metrics.pendingPayouts.toLocaleString()}`} subtext="Next: Nov 05" icon={<Box className="text-teal-600" />} color="bg-teal-50/50" />
+          <MetricCard title="Active Listings" value={metrics.activeListings} subtext="+3 New" icon={<ListChecks className="text-teal-600" />} color="bg-orange-50/50" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
+            {/* CHART */}
             <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="font-bold">Sales Performance</h2>
-                <div className="flex bg-slate-100 p-1 rounded-lg text-xs font-bold">
-                  <button className="px-3 py-1 rounded-md">1M</button>
-                  <button className="px-3 py-1 bg-teal-800 text-white rounded-md shadow-sm">6M</button>
-                  <button className="px-3 py-1 rounded-md">1Y</button>
+              <div className="flex justify-between items-center mb-8">
+                <div><h2 className="font-bold text-sm">Sales Performance</h2><p className="text-[10px] text-slate-400 italic">Revenue trajectory</p></div>
+                <div className="flex bg-slate-100 p-1 rounded-lg text-[10px] font-bold">
+                  <button className="px-3 py-1">1W</button>
+                  <button className="px-3 py-1 bg-[#234E4D] text-white rounded shadow-sm">1M</button>
+                  <button className="px-3 py-1">1Y</button>
                 </div>
               </div>
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={emptyChartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="sales" stroke="#0d9488" strokeWidth={3} dot={{r: 4, fill: '#0d9488'}} />
-                  </LineChart>
-                </ResponsiveContainer>
+              <div className="h-72 w-full">
+                {salesHistory.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%"><AreaChart data={salesHistory}><defs><linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#0d9488" stopOpacity={0.1}/><stop offset="95%" stopColor="#0d9488" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" /><XAxis dataKey="date" hide /><YAxis hide /><Tooltip /><Area type="monotone" dataKey="sales" stroke="#0d9488" fill="url(#colorSales)" strokeWidth={2} /></AreaChart></ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center border border-dashed rounded-lg text-slate-400 text-xs">Waiting for live sales data...</div>
+                )}
               </div>
             </div>
 
+            {/* RECENT ORDERS */}
             <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="p-6 border-b flex justify-between items-center">
-                <h2 className="font-bold">Recent Orders</h2>
-                <button className="text-teal-600 text-xs font-bold hover:underline">View All Orders</button>
+              <div className="p-6 border-b flex justify-between items-center font-bold text-sm">
+                <h2>Recent Orders</h2>
+                <button className="text-teal-600 text-[10px] hover:underline">View All Orders</button>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 text-slate-400 font-medium">
-                    <tr>
-                      <th className="px-6 py-3 uppercase tracking-wider text-[10px]">Order ID</th>
-                      <th className="px-6 py-3 uppercase tracking-wider text-[10px]">Customer</th>
-                      <th className="px-6 py-3 uppercase tracking-wider text-[10px]">Items</th>
-                      <th className="px-6 py-3 uppercase tracking-wider text-[10px]">Total</th>
-                      <th className="px-6 py-3 uppercase tracking-wider text-[10px]">Status</th>
-                      <th className="px-6 py-3 uppercase tracking-wider text-[10px]">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td colSpan="6" className="px-6 py-12 text-center text-slate-400">
-                        No recent transactions to display.
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-400 font-bold uppercase tracking-tighter">
+                  <tr><th className="px-6 py-4">Order ID</th><th className="px-6 py-4">Customer</th><th className="px-6 py-4">Total</th><th className="px-6 py-4">Status</th><th className="px-6 py-4">Action</th></tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {recentOrders.length > 0 ? recentOrders.map((o) => (
+                    <tr key={o.id}><td className="px-6 py-4 text-teal-600 font-bold">#{o.id}</td><td className="px-6 py-4">{o.customer}</td><td className="px-6 py-4 font-bold">{currency} {o.total}</td><td className="px-6 py-4"><span className="px-2 py-0.5 bg-slate-100 rounded-full text-[9px]">{o.status}</span></td><td className="px-6 py-4"><MoreVertical className="w-4 h-4 text-slate-300" /></td></tr>
+                  )) : (
+                    <tr><td colSpan="5" className="px-6 py-12 text-center text-slate-400 italic">No live orders to display.</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
 
-          <div className="space-y-8">
+          {/* SIDEBAR */}
+          <div className="space-y-6">
+            {/* QUICK ACTIONS DYNAMIC LOGIC */}
             <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-              <h2 className="font-bold mb-4">Quick Actions</h2>
+              <h2 className="font-bold text-sm mb-6">Quick Actions</h2>
               <div className="space-y-3">
-                {/* ROLE BASED BUTTONS */}
-                {user.type === "product" && (
-                  <ActionButton icon={<Plus className="w-4 h-4" />} label="Add New Product" onClick={() => setIsProductModalOpen(true)} />
+                {vendorData.vendorType === 'product' ? (
+                  <ActionButton icon={<Plus className="text-teal-600" />} title="Add New Product" desc="List physical items to your shop" onClick={() => setIsProductModalOpen(true)} />
+                ) : (
+                  <ActionButton icon={<Plus className="text-teal-600" />} title="Add New Service" desc="List professional services" onClick={() => setIsServiceModalOpen(true)} />
                 )}
-                {user.type === "service" && (
-                  <ActionButton icon={<Settings className="w-4 h-4" />} label="Manage Services" onClick={() => window.location.href='/service-management'} />
-                )}
-                {/* LINK TO PRODUCT MANAGEMENT */}
-                <ActionButton 
-                  icon={<ListChecks className="w-4 h-4" />} 
-                  label="Product Management" 
-                  onClick={() => window.location.href = '/product-management'} 
-                />
-              </div>
-
-              <div className="mt-8 bg-teal-900 text-white p-6 rounded-xl relative overflow-hidden">
-                <div className="relative z-10">
-                  <span className="text-[10px] bg-teal-800 px-2 py-0.5 rounded-full uppercase tracking-wider">Verified</span>
-                  <p className="text-xs text-teal-200 mt-4 uppercase tracking-widest font-bold">Last Payout</p>
-                  <p className="text-2xl font-bold mt-1">{getCurrency(user.country)} 0.00</p>
-                  <p className="text-[10px] text-teal-300 mt-4">Paid on: --/--/--</p>
-                  <button className="mt-4 text-xs font-bold flex items-center gap-1 hover:gap-2 transition-all">
-                    View History <ChevronRight className="w-3 h-3" />
-                  </button>
-                </div>
-                <div className="absolute -right-4 -bottom-4 bg-teal-800 w-24 h-24 rounded-full opacity-20"></div>
+                <ActionButton icon={<Settings className="text-teal-600" />} title="Manage Store" desc="Update your business settings" />
               </div>
             </div>
 
+            {/* PAYOUT CARD */}
+            <div className="bg-[#1a3d3c] text-white p-6 rounded-xl shadow-lg relative overflow-hidden">
+               <div className="relative z-10">
+                 <div className="flex justify-between items-start mb-6"><Box className="w-5 h-5 opacity-50" /><span className="text-[8px] bg-[#234E4D] px-2 py-1 rounded-full uppercase border border-white/10">Verified</span></div>
+                 <p className="text-[10px] text-teal-300 uppercase font-bold tracking-widest">Last Payout</p>
+                 <p className="text-3xl font-black">{currency} {lastPayout.amount.toLocaleString()}</p>
+                 <div className="mt-8 flex justify-between items-end text-[9px]"><p className="text-teal-400 font-bold uppercase">Paid on {lastPayout.date}</p><button className="border-b border-teal-500 pb-0.5">View History</button></div>
+               </div>
+            </div>
+
+            {/* INVENTORY ALERTS */}
             <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-              <div className="flex items-center gap-2 mb-4">
-                <AlertCircle className="w-4 h-4 text-red-500" />
-                <h2 className="font-bold">Inventory Alerts</h2>
-              </div>
-              <div className="text-center py-6">
-                <p className="text-xs text-slate-400">Your inventory levels are healthy.</p>
-                <button className="mt-4 w-full py-2 border rounded-lg text-xs font-bold hover:bg-slate-50 transition">Review All Low Items</button>
+              <div className="flex items-center gap-2 mb-1"><AlertCircle className="w-4 h-4 text-red-500" /><h2 className="font-bold text-sm">Inventory Alerts</h2></div>
+              <p className="text-[10px] text-slate-400 mb-6 italic">Low stock notifications</p>
+              <div className="space-y-4">
+                {inventoryAlerts.length > 0 ? inventoryAlerts.map((i, idx) => (
+                  <InventoryItem key={idx} name={i.name} sku={i.sku} stock={i.stock} total={i.threshold} />
+                )) : (
+                  <p className="text-[10px] text-slate-400 text-center italic py-4">Inventory is healthy.</p>
+                )}
+                <button className="w-full py-2 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold hover:bg-slate-100 transition">Restock All Low Items</button>
               </div>
             </div>
 
+            {/* RECENT REVIEWS */}
             <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-              <div className="flex items-center gap-2 mb-4">
-                <Star className="w-4 h-4 text-teal-500" />
-                <h2 className="font-bold">Recent Reviews</h2>
-              </div>
-              <p className="text-center text-xs text-slate-400 py-4">No reviews yet.</p>
-              <div className="border-t pt-4 text-center">
-                <button className="text-xs font-bold text-slate-500 hover:text-teal-600 transition">See All Reviews</button>
+              <div className="flex justify-between items-center mb-4"><div className="flex items-center gap-2"><Star className="w-4 h-4 text-orange-400" /><h2 className="font-bold text-sm">Recent Reviews</h2></div><span className="text-[10px] font-bold text-slate-400">0.0 avg</span></div>
+              <div className="space-y-6">
+                {reviews.length > 0 ? reviews.map((r, idx) => (
+                  <div key={idx} className="space-y-2"><div className="flex items-center gap-3"><div className="w-6 h-6 rounded-full bg-slate-200" /><div><p className="text-[10px] font-bold">{r.user}</p></div></div><p className="text-[10px] text-slate-500 italic">"{r.comment}"</p></div>
+                )) : (
+                  <p className="text-[10px] text-slate-400 text-center italic py-4">No reviews yet.</p>
+                )}
+                <div className="border-t pt-4 text-center"><button className="text-[10px] font-bold text-slate-400 hover:text-teal-600">See All Reviews</button></div>
               </div>
             </div>
           </div>
         </div>
       </main>
 
-      {/* --- PRODUCT POPUP PAGE (MATCHING SCREENSHOT) --- */}
+      {/* --- PRODUCT MODAL --- */}
       {isProductModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-xl shadow-2xl overflow-hidden">
             <div className="p-6 border-b flex justify-between items-start">
-              <div>
-                <h2 className="text-xl font-bold text-slate-800">Create New Product</h2>
-                <p className="text-xs text-slate-500 mt-1">Fill in the details below to list a new product in your store catalog.</p>
-              </div>
-              <button onClick={() => setIsProductModalOpen(false)}><X className="w-5 h-5 text-slate-400" /></button>
+              <div><h2 className="text-lg font-bold">Create New Product</h2><p className="text-[10px] text-slate-500">Fill in details for your store catalog.</p></div>
+              <X className="w-5 h-5 text-slate-300 cursor-pointer" onClick={() => setIsProductModalOpen(false)} />
             </div>
-
-            <form onSubmit={validateAndSubmit} className="p-6 space-y-5">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2">Product Title</label>
-                <input 
-                  className={`w-full p-2.5 border rounded-md text-sm outline-none ${errors.title ? 'border-red-500' : 'border-slate-200'}`}
-                  placeholder="e.g. Premium Wireless Headphones"
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
-                />
-                {errors.title && <p className="text-red-500 text-[10px] mt-1">{errors.title}</p>}
-              </div>
-
+            <form className="p-6 space-y-4 max-h-[80vh] overflow-y-auto" onSubmit={handlePublish}>
+              <div><label className="text-[10px] font-bold mb-1 block">Product Title</label><input placeholder="e.g. Premium Wireless Headphones" className="w-full p-2.5 border rounded-md text-xs bg-slate-50" /></div>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-2">Category</label>
-                  <select 
-                    className={`w-full p-2.5 border rounded-md text-sm outline-none ${errors.category ? 'border-red-500' : 'border-slate-200'}`}
-                    onChange={(e) => setFormData({...formData, category: e.target.value})}
-                  >
-                    <option value="">Electronics</option>
-                  </select>
-                  {errors.category && <p className="text-red-500 text-[10px] mt-1">{errors.category}</p>}
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-2">Base Price ({getCurrency(user.country)})</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
-                    <input 
-                      className={`w-full pl-7 p-2.5 border rounded-md text-sm outline-none ${errors.price ? 'border-red-500' : 'border-slate-200'}`}
-                      placeholder="0.00"
-                      onChange={(e) => setFormData({...formData, price: e.target.value})}
-                    />
-                  </div>
-                  {errors.price && <p className="text-red-500 text-[10px] mt-1">{errors.price}</p>}
-                </div>
+                <div><label className="text-[10px] font-bold mb-1 block">Category</label><select className="w-full p-2.5 border rounded-md text-xs bg-slate-50"><option>Electronics</option></select></div>
+                <div><label className="text-[10px] font-bold mb-1 block">Base Price ({currency})</label><input placeholder="0.00" className="w-full p-2.5 border rounded-md text-xs bg-slate-50" /></div>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-2">SKU</label>
-                  <div className="relative">
-                    <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                    <input className={`w-full pl-9 p-2.5 border rounded-md text-sm outline-none ${errors.sku ? 'border-red-500' : 'border-slate-200'}`} placeholder="PRD-XXXX" onChange={(e) => setFormData({...formData, sku: e.target.value})} />
-                  </div>
-                  {errors.sku && <p className="text-red-500 text-[10px] mt-1">{errors.sku}</p>}
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-2">Inventory Quantity</label>
-                  <div className="relative">
-                    <Box className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                    <input className={`w-full pl-9 p-2.5 border rounded-md text-sm outline-none ${errors.qty ? 'border-red-500' : 'border-slate-200'}`} placeholder="0" onChange={(e) => setFormData({...formData, qty: e.target.value})} />
-                  </div>
-                  {errors.qty && <p className="text-red-500 text-[10px] mt-1">{errors.qty}</p>}
-                </div>
+                <div><label className="text-[10px] font-bold mb-1 block">SKU</label><div className="relative"><Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400"/><input placeholder="PRD-XXXX" className="w-full pl-8 p-2.5 border rounded-md text-xs bg-slate-50" /></div></div>
+                <div><label className="text-[10px] font-bold mb-1 block">Inventory Quantity</label><div className="relative"><Box className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400"/><input placeholder="0" className="w-full pl-8 p-2.5 border rounded-md text-xs bg-slate-50" /></div></div>
               </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2">Product Images</label>
-                <div className="flex gap-3">
-                  <div className="w-20 h-20 bg-slate-100 rounded border border-slate-200" />
-                  <div className="w-20 h-20 bg-slate-100 rounded border border-slate-200" />
-                  <div className="w-20 h-20 border-2 border-dashed border-slate-200 rounded flex flex-col items-center justify-center text-slate-400">
-                    <Upload className="w-4 h-4" /><span className="text-[10px]">Upload</span>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2">Product Description</label>
-                <textarea 
-                  rows="3"
-                  className={`w-full p-2.5 border rounded-md text-sm outline-none ${errors.description ? 'border-red-500' : 'border-slate-200'}`}
-                  placeholder="Describe your product's key features..."
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                />
-                {errors.description && <p className="text-red-500 text-[10px] mt-1">{errors.description}</p>}
-              </div>
-
-              <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-xs font-bold">Product Variants</span>
-                  <button type="button" className="text-[10px] font-bold border px-2 py-1 rounded bg-white">+ Add Variant</button>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex gap-2">
-                    <select className="flex-1 p-2 bg-white border rounded text-xs"><option>Size</option></select>
-                    <input className="flex-[2] p-2 bg-white border rounded text-xs" defaultValue="Medium" />
-                    <Trash2 className="w-4 h-4 text-slate-400 self-center" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-6 border-t flex justify-between items-center">
-                <p className="text-[10px] text-slate-400 italic">Saved automatically every 30s.</p>
-                <div className="flex gap-3">
-                  <button type="button" onClick={() => setIsProductModalOpen(false)} className="px-6 py-2 border rounded text-xs font-bold text-slate-600">Cancel</button>
-                  <button type="submit" className="px-6 py-2 bg-orange-400 text-white rounded text-xs font-bold hover:bg-orange-500">Publish Product</button>
-                </div>
-              </div>
+              <div><label className="text-[10px] font-bold mb-1 block">Product Images</label><div className="w-16 h-16 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center text-slate-400 cursor-pointer hover:bg-slate-50"><Upload className="w-4 h-4"/><span className="text-[8px] mt-1 font-bold">UPLOAD</span></div></div>
+              <div><label className="text-[10px] font-bold mb-1 block">Product Description</label><textarea placeholder="Describe features..." className="w-full p-2.5 border rounded-md text-xs bg-slate-50 h-24" /></div>
+              <div className="pt-4 border-t flex justify-end gap-3"><button type="button" onClick={() => setIsProductModalOpen(false)} className="px-6 py-2 border rounded-md text-[10px] font-bold">Cancel</button><button type="submit" className="px-6 py-2 bg-orange-400 text-white rounded-md text-[10px] font-bold shadow-md hover:bg-orange-500 transition">Publish Product</button></div>
             </form>
           </div>
         </div>
       )}
 
-      <footer className="mt-12 bg-teal-950 text-teal-50 px-8 py-6 flex flex-col md:flex-row justify-between items-center text-[11px]">
-        <p className="font-medium italic">Buy Smart. Sell Fast. Grow together...</p>
-        <p className="mt-4 md:mt-0 text-teal-400 font-bold">© 2026 Vendor Portal. All rights reserved.</p>
-        <div className="flex gap-4 mt-4 md:mt-0 underline underline-offset-4 decoration-teal-800">
-          <a href="#">Support</a>
-          <a href="#">Privacy Policy</a>
-          <a href="#">Terms of Service</a>
-          <a href="#">Report Issue</a>
+      {/* --- SERVICE MODAL --- */}
+      {isServiceModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl overflow-hidden">
+            <div className="p-6 border-b flex justify-between items-start">
+              <div><h2 className="text-xl font-bold">Create New Service</h2><p className="text-[10px] text-slate-500">List professional services on the marketplace.</p></div>
+              <X className="w-5 h-5 text-slate-300 cursor-pointer" onClick={() => setIsServiceModalOpen(false)} />
+            </div>
+            <form className="p-6 space-y-4" onSubmit={handlePublish}>
+              <div><label className="text-[10px] font-bold mb-1 block">Service Title</label><input placeholder="e.g. Consultation" className="w-full p-2.5 border rounded-md text-xs bg-slate-50" /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><label className="text-[10px] font-bold mb-1 block">Category</label><select className="w-full p-2.5 border rounded-md text-xs bg-slate-50"><option>Consulting</option></select></div>
+                <div><label className="text-[10px] font-bold mb-1 block">Base Price ({currency})</label><input placeholder="0.00" className="w-full p-2.5 border rounded-md text-xs bg-slate-50" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><label className="text-[10px] font-bold mb-1 block">Service Duration</label><input placeholder="e.g. 60 min" className="w-full p-2.5 border rounded-md text-xs bg-slate-50" /></div>
+                <div><label className="text-[10px] font-bold mb-1 block">Availability</label><select className="w-full p-2.5 border rounded-md text-xs bg-slate-50"><option>Available Now</option></select></div>
+              </div>
+              <div><label className="text-[10px] font-bold mb-1 block">Service Description</label><textarea className="w-full p-2.5 border rounded-md text-xs bg-slate-50 h-20" placeholder="Describe what you offer..." /></div>
+              <div className="p-4 bg-slate-50 border rounded-lg flex items-center justify-between">
+                <div><p className="text-[11px] font-bold">Remote Offering</p><p className="text-[9px] text-slate-400 italic">Deliver online via video call.</p></div>
+                <div className="w-10 h-5 bg-teal-600 rounded-full relative"><div className="absolute right-1 top-1 w-3 h-3 bg-white rounded-full shadow-sm" /></div>
+              </div>
+              <div className="pt-4 flex justify-end gap-3"><button type="button" onClick={() => setIsServiceModalOpen(false)} className="px-6 py-2 border rounded-md text-[10px] font-bold">Cancel</button><button type="submit" className="px-6 py-2 bg-orange-400 text-white rounded-md text-[10px] font-bold shadow-md">Publish Service</button></div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- FOOTER --- */}
+      <footer className="w-full font-sans">
+        <div className="w-full bg-[#234E4D] text-white py-3 px-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] tracking-wide">
+            <div className="flex-shrink-0 font-bold">Buy Smart. Sell Fast. Grow Together...</div>
+            <div className="flex items-center gap-1 text-center">
+              <span>© 2026 Vendor Portal. All rights reserved.</span>
+              <span className="ml-1 font-bold">eki<span className="text-[8px] font-normal ml-0.5">TM</span></span>
+            </div>
+            <div className="flex items-center gap-6">
+              <a href="#" className="hover:opacity-80">Support</a>
+              <a href="#" className="hover:opacity-80">Privacy Policy</a>
+              <a href="#" className="hover:text-yellow-400 transition-colors">Terms of Service</a>
+              <span className="font-bold border-l border-white/30 pl-6">Ijoema ltd</span>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
   );
 };
 
-
+// --- HELPER COMPONENTS ---
 const MetricCard = ({ title, value, trend, subtext, icon, color = "bg-white" }) => (
-  <div className={`${color === "bg-white" ? "bg-white" : color} p-5 rounded-xl border border-slate-100 shadow-sm flex items-start gap-4`}>
-    <div className="p-2 bg-white rounded-lg border shadow-sm">{icon}</div>
+  <div className={`${color} p-5 rounded-xl border border-slate-100 shadow-sm flex items-start justify-between transition-all hover:shadow-md`}>
     <div>
-      <div className="flex items-center gap-2">
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{title}</p>
-        {trend && <span className="text-[10px] text-teal-600 font-bold">{trend}</span>}
-      </div>
-      <p className="text-xl font-black mt-1">{value}</p>
-      {subtext && <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold">{subtext}</p>}
+      <div className="flex items-center gap-2"><p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{title}</p>{trend && <span className="text-[9px] text-teal-600 font-bold">{trend}</span>}</div>
+      <p className="text-2xl font-black text-slate-800 mt-1">{value}</p>
+      {subtext && <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">{subtext}</p>}
     </div>
+    <div className="p-2 bg-white rounded-lg border shadow-sm">{icon}</div>
   </div>
 );
 
-const ActionButton = ({ icon, label, onClick }) => (
-  <button onClick={onClick} className="w-full flex items-center justify-between p-3 border border-slate-100 rounded-xl hover:bg-slate-50 transition-all group">
-    <div className="flex items-center gap-3">
-      <div className="p-1.5 bg-slate-100 rounded-lg group-hover:bg-white transition-colors">{icon}</div>
-      <span className="text-xs font-bold text-slate-600">{label}</span>
+const ActionButton = ({ icon, title, desc, onClick }) => (
+  <button onClick={onClick} className="w-full flex items-center justify-between p-4 border border-slate-100 rounded-xl hover:bg-slate-50 transition-all text-left group">
+    <div className="flex items-center gap-4">
+      <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-white border border-slate-100">{icon}</div>
+      <div><p className="text-[11px] font-bold text-slate-800">{title}</p><p className="text-[9px] text-slate-400">{desc}</p></div>
     </div>
     <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-teal-600" />
   </button>
+);
+
+const InventoryItem = ({ name, sku, stock, total }) => (
+  <div className="space-y-1.5">
+    <div className="flex justify-between text-[10px]">
+      <div className="font-bold">{name} <span className="text-slate-400 font-normal ml-2">{sku}</span></div>
+      <div className="text-red-500 font-bold">{stock} left</div>
+    </div>
+    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+      <div className="bg-red-500 h-full transition-all duration-1000" style={{ width: `${(stock / total) * 100}%` }}></div>
+    </div>
+  </div>
 );
 
 export default VendorDashboard;

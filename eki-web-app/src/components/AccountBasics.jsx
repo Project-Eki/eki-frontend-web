@@ -76,6 +76,15 @@ const AccountBasics = () => {
 
     if (Object.keys(validationErrors).length === 0) {
       setIsLoading(true);
+
+      // 2. THE CLEAN SLATE
+      // We clear these so the api.js Interceptor doesn't attach 
+      // an old/expired token to the registration request.
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("userRole");
+
+
       try {
         // API CALL: Creates the user and triggers the OTP email
         await registerVendor({
@@ -93,7 +102,7 @@ const AccountBasics = () => {
         dispatch({ type: ACTIONS.NEXT_STEP });
        
       } catch (error) {
-        console.error("FULL ERROR:", error.response?.data);
+        console.error("DEBUG - SERVER ERROR:", JSON.stringify(error.response?.data, null, 2));
         const errData = error.response?.data;
         
         if (errData) {
