@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 
-import loginIllustration from '../assets/login.jpeg';
+import loginIllustration from '../assets/Login.jpeg';
 import logoImage from '../assets/logo.jpeg';
 
 import { validateLoginForm } from '../utils/validation';
