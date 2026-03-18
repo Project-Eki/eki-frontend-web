@@ -29,17 +29,63 @@ const OperationCompliance = () => {
     business_license: licenseRef,
   };
 
+// const handleFinalSubmit = async () => {
+//   setIsLoading(true);
+//   try {
+//     // Call the newly named function
+//     await completeVendorOnboarding(formData);
+
+//     dispatch({ type: ACTIONS.NEXT_STEP });
+//   } catch (error) {
+//     console.error("Registration Error:", error);
+//     const serverMessage = error.response?.data?.message || "Something went wrong.";
+//     alert(serverMessage);
+//   } finally {
+//     setIsLoading(false);
+//   }
+// };
+
 const handleFinalSubmit = async () => {
   setIsLoading(true);
   try {
-    // Call the newly named function
     await completeVendorOnboarding(formData);
 
-    dispatch({ type: ACTIONS.NEXT_STEP });
+    // 1. Mark as submitted so the success screen shows
+    // 2. Move to step 6 to trigger the final checkmark in sidebar
+    dispatch({ type: ACTIONS.UPDATE_FORM, payload: { isSubmitted: true } });
+    dispatch({ type: ACTIONS.SET_STEP, payload: 6 }); 
+    
+  // } catch (error) {
+  //   console.error("Registration Error:", error);
+  //   const serverMessage = error.response?.data?.message || "Something went wrong.";
+  //   alert(serverMessage);
+  // } finally {
+  //   setIsLoading(false);
+  // }
   } catch (error) {
     console.error("Registration Error:", error);
-    const serverMessage = error.response?.data?.message || "Something went wrong.";
-    alert(serverMessage);
+
+    // 1. Try to get the detailed field errors (e.g., registration_number error)
+    const serverErrors = error.response?.data?.errors;
+    
+    // 2. Try to get the general message
+    const serverMessage = error.response?.data?.message;
+
+    if (serverErrors) {
+      // Get the first field name (e.g., "registration_number")
+      const firstField = Object.keys(serverErrors)[0];
+      // Get the first error message for that field
+      const fieldError = Array.isArray(serverErrors[firstField]) 
+        ? serverErrors[firstField][0] 
+        : serverErrors[firstField];
+      
+      alert(`Submission Error: ${fieldError}`);
+    } else if (serverMessage) {
+      alert(serverMessage);
+    } else {
+      alert("Something went wrong. Please check your connection or try again.");
+    }
+
   } finally {
     setIsLoading(false);
   }

@@ -181,9 +181,7 @@ const AdminDashboard = () => {
 
           </div>
         </main>
-      </div>
-
-      {/* Footer - now appears naturally at bottom of content */}
+          {/* Footer - now appears naturally at bottom of content */}
       <footer className="bg-[#1D4D4C] text-white py-4 px-10 flex justify-between items-center text-[11px]">
         <div>Buy Smart. Sell Fast. Grow Together...</div>
         <div>© 2026 Vendor Portal. All rights reserved.</div>
@@ -198,6 +196,23 @@ const AdminDashboard = () => {
           <span className="cursor-pointer hover:underline">Ijoema ltd</span>
         </div>
       </footer>
+      </div>
+
+      {/* Footer - now appears naturally at bottom of content
+      <footer className="bg-[#1D4D4C] text-white py-4 px-10 flex justify-between items-center text-[11px]">
+        <div>Buy Smart. Sell Fast. Grow Together...</div>
+        <div>© 2026 Vendor Portal. All rights reserved.</div>
+        <div className="flex gap-4">
+          <span className="relative inline-block cursor-pointer hover:underline">
+            eki
+            <span className="absolute text-[5px] -bottom-0 -right-2">TM</span>
+          </span>
+          <span className="cursor-pointer hover:underline">Support</span>
+          <span className="cursor-pointer hover:underline">Privacy Policy</span>
+          <span className="cursor-pointer hover:underline">Terms of Service</span>
+          <span className="cursor-pointer hover:underline">Ijoema ltd</span>
+        </div>
+      </footer> */}
 
 
 
