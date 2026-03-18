@@ -5,7 +5,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import loginIllustration from '../assets/Login.jpeg';
 import logoImage from '../assets/logo.jpeg';
 
-import { validateLoginForm } from '../utils/validation';
+import { validateLoginForm } from '../utils/Validation';
 import { SigninUser as manualLogin } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
