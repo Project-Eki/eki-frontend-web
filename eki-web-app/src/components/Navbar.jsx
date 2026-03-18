@@ -73,8 +73,8 @@ const Navbar = () => {
               </a>
             </li>
             <li>
-              <Link to="/signin" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">
-                Sign in
+              <Link to="/Login" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">
+                Login
               </Link>
             </li>
             <li>

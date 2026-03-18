@@ -2,62 +2,118 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import ForgotPassword from '../pages/ForgotPassword'; 
+import { BrowserRouter } from 'react-router-dom';
+import ForgotPassword from '../pages/ForgotPassword';
+import { passwordResetRequest } from '../services/api';
 
 
-vi.mock('../assets/logo.jpeg', () => ({ default: 'logo.jpeg' }));
-vi.mock('../assets/reset.jpeg', () => ({ default: 'reset.jpeg' }));
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
+
+vi.mock('../services/api', () => ({
+  passwordResetRequest: vi.fn(),
+}));
 
 describe('ForgotPassword Component', () => {
-  const mockOnBackToLogin = vi.fn();
-
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
+  const renderComponent = () => {
+    return render(
+      <BrowserRouter>
+        <ForgotPassword />
+      </BrowserRouter>
+    );
+  };
+
   test('renders page correctly', () => {
-    render(<ForgotPassword onBackToLogin={mockOnBackToLogin} />);
+    renderComponent();
     expect(screen.getByText('Forgot Password?')).toBeInTheDocument();
-    expect(screen.getByRole('textbox')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Enter email/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Reset Password/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Back to Sign in/i })).toBeInTheDocument();
+   
+    expect(screen.getByRole('button', { name: /Sign in/i })).toBeInTheDocument();
   });
 
-  test('shows error when email is empty', async () => {
-    render(<ForgotPassword />);
-    fireEvent.click(screen.getByRole('button', { name: /Reset Password/i }));
+  test('shows error in placeholder when email is empty', async () => {
+    renderComponent();
+    const submitBtn = screen.getByRole('button', { name: /Reset Password/i });
+    
+    fireEvent.click(submitBtn);
+
     const input = screen.getByRole('textbox');
+    expect(input).toHaveAttribute('placeholder', 'Email is required');
+    expect(input).toHaveClass('border-red-500');
+  });
+
+  test('shows error for invalid email format', async () => {
+    renderComponent();
+    const input = screen.getByRole('textbox');
+    const submitBtn = screen.getByRole('button', { name: /Reset Password/i });
+
+    fireEvent.change(input, { target: { value: 'invalid-email' } });
+    fireEvent.click(submitBtn);
+
+    expect(input).toHaveAttribute('placeholder', 'Invalid email address');
+    expect(input.value).toBe(''); 
+  });
+
+  test('successful submission navigates to reset-password', async () => {
+   
+    passwordResetRequest.mockResolvedValueOnce({ data: { message: 'Success' } });
+    
+    renderComponent();
+    const input = screen.getByRole('textbox');
+    const submitBtn = screen.getByRole('button', { name: /Reset Password/i });
+
+    fireEvent.change(input, { target: { value: 'user@example.com' } });
+    fireEvent.click(submitBtn);
+
+   
+    expect(screen.getByText(/Sending.../i)).toBeInTheDocument();
+
     await waitFor(() => {
-      expect(input).toHaveAttribute('placeholder', 'Email is required');
+      expect(passwordResetRequest).toHaveBeenCalledWith({ email: 'user@example.com' });
+      expect(mockNavigate).toHaveBeenCalledWith('/reset-password', { 
+        state: { email: 'user@example.com' } 
+      });
+    });
+  });
+
+  test('handles API error correctly', async () => {
+   
+    const errorMessage = "User with this email does not exist.";
+    passwordResetRequest.mockRejectedValueOnce({
+      response: { data: { detail: errorMessage } }
+    });
+
+    renderComponent();
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: 'wrong@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /Reset Password/i }));
+
+    await waitFor(() => {
+     
+      expect(input).toHaveAttribute('placeholder', errorMessage);
       expect(input).toHaveClass('border-red-500');
     });
   });
 
-  test('shows error for invalid email', async () => {
-    render(<ForgotPassword />);
-    const input = screen.getByRole('textbox');
-    fireEvent.change(input, { target: { value: 'invalid' } });
-    fireEvent.click(screen.getByRole('button', { name: /Reset Password/i }));
-    await waitFor(() => {
-      expect(input).toHaveAttribute('placeholder', 'Invalid email address');
-      expect(input).toHaveClass('border-red-500');
-    });
-  });
-
-  test('clears error when valid email is submitted', async () => {
-    render(<ForgotPassword />);
-    const input = screen.getByRole('textbox');
-    fireEvent.change(input, { target: { value: 'test@example.com' } });
-    fireEvent.click(screen.getByRole('button', { name: /Reset Password/i }));
-    await waitFor(() => {
-      expect(input).toHaveAttribute('placeholder', 'Enter email');
-      expect(input).not.toHaveClass('border-red-500');
-    });
-  });
-
-  test('calls onBackToLogin when clicked', () => {
-    render(<ForgotPassword onBackToLogin={mockOnBackToLogin} />);
-    fireEvent.click(screen.getByRole('button', { name: /Back to Sign in/i }));
-    expect(mockOnBackToLogin).toHaveBeenCalledTimes(1);
+  test('navigates back to sign in when button is clicked', () => {
+    renderComponent();
+    const signInBtn = screen.getByRole('button', { name: /Sign in/i });
+    
+    fireEvent.click(signInBtn);
+    
+ 
+    expect(mockNavigate).toHaveBeenCalledWith('/signin');
   });
 });

@@ -3,22 +3,22 @@ import { FaEye } from 'react-icons/fa';
 import ViewDetailsModal from './ViewDetailsModal';
 
 const statusStyles = {
-  // User statuses
+ 
   Active: 'bg-blue-100 text-blue-700',
   Pending: 'bg-yellow-100 text-yellow-700',
   Suspended: 'bg-red-100 text-red-700',
-  // Content moderation statuses
+ 
   Reviewing: 'bg-purple-100 text-purple-700',
   Resolved: 'bg-green-100 text-green-700',
-  // Transaction statuses
+ 
   Completed: 'bg-green-100 text-green-700',
   Disputed: 'bg-red-100 text-red-700',
-  // Verification statuses
+ 
   Approved: 'bg-green-100 text-green-700',
   Rejected: 'bg-red-100 text-red-700',
 };
 
-// props received
+
 const DataTable = ({ title, columns, data, onView, onEdit, onDelete, tableType = 'default' }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
@@ -50,7 +50,7 @@ const DataTable = ({ title, columns, data, onView, onEdit, onDelete, tableType =
     setSelectedRow(null);
   };
 
-  // Generate a title for the modal based on table type
+
   const getModalTitle = () => {
     const typeTitles = {
       userManagement: 'User Details',
@@ -64,9 +64,9 @@ const DataTable = ({ title, columns, data, onView, onEdit, onDelete, tableType =
 
   return (
     <>
-      {/* Table container */}
+     
       <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
-        {/* Table title */}
+       
         <div className="p-5 border-b border-gray-100">
           <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
         </div>
@@ -119,7 +119,7 @@ const DataTable = ({ title, columns, data, onView, onEdit, onDelete, tableType =
         </div>
       </div>
 
-      {/* View Details Modal */}
+    
       <ViewDetailsModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
