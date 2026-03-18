@@ -162,28 +162,72 @@ export const changePassword = async ({
 /* --- VENDOR ONBOARDING & PROFILE --- */
 
 // Use this in OperationCompliance.jsx (the Review phase)
+// export const completeVendorOnboarding = async (formData) => {
+//   const data = new FormData();
+  
+//   // 1. Append general fields
+//   Object.keys(formData).forEach((key) => {
+//     if (key !== "documents" && formData[key] !== null && formData[key] !== undefined) {
+//       data.append(key, formData[key]);
+//     }
+//   });
+
+//   // 2. Append document files specifically
+//   if (formData.documents) {
+//     Object.keys(formData.documents).forEach((key) => {
+//       if (formData.documents[key]) {
+//         data.append(key, formData.documents[key]);
+//       }
+//     });
+//   }
+
+//   // 3. Make the PATCH request to the correct endpoint
+//   const response = await api.patch("/accounts/register-vendor/", data, {
+//     headers: { "Content-Type": "multipart/form-data" },
+//   });
+  
+//   return response.data;
+// };
+
 export const completeVendorOnboarding = async (formData) => {
   const data = new FormData();
   
-  // 1. Append general fields
   Object.keys(formData).forEach((key) => {
+    // 1. Skip documents and nulls
     if (key !== "documents" && formData[key] !== null && formData[key] !== undefined) {
-      data.append(key, formData[key]);
+      let value = formData[key];
+
+      // FIX: Force business_category to lowercase
+      if (key === 'business_category') {
+        value = String(value).toLowerCase();
+      }
+
+      // FIX: Ensure phone doesn't have spaces and has a +
+      if (key === 'business_phone' && value) {
+        value = value.replace(/\s/g, ''); 
+        if (!value.startsWith('+')) value = `+${value}`;
+      }
+
+      // FIX: Only append if the string isn't empty (avoids validation errors on optional fields)
+      if (value !== "") {
+        data.append(key, value);
+      }
     }
   });
 
-  // 2. Append document files specifically
+  // 2. Append documents
   if (formData.documents) {
     Object.keys(formData.documents).forEach((key) => {
-      if (formData.documents[key]) {
+      if (formData.documents[key] instanceof File) {
         data.append(key, formData.documents[key]);
       }
     });
   }
 
-  // 3. Make the PATCH request to the correct endpoint
+  // 3. IMPORTANT: Remove manual 'Content-Type'. 
+  // Axios will set it automatically with the correct 'boundary' for files.
   const response = await api.patch("/accounts/register-vendor/", data, {
-    headers: { "Content-Type": "multipart/form-data" },
+    headers: { "Content-Type": undefined }, 
   });
   
   return response.data;
