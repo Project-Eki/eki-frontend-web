@@ -13,7 +13,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import AdminSignin from "./pages/AdminLogin"; 
 import AccountSettingsPage from "./pages/AccountSetting";
-import AdminSignin from "./pages/AdminLogin";
+
 // import AccountSettingsPage from "./pages/AccountSetting";
 import VendorOnboarding from "./pages/VendorOnboarding";
 import Settings from "./pages/Settings";
