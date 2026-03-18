@@ -39,12 +39,22 @@ const Login = () => {
       // 2. Update AuthContext & LocalStorage
       // Note: Ensure your AuthContext login function accepts (token, role, refresh)
       login(accessToken, userRole, refreshToken); 
+
       
-      // 3. Immediate Redirect
-      if (userRole.includes('vendor')) {
-        navigate('/vendordashboard');
+      // // 3. Immediate Redirect
+      // if (userRole.includes('vendor')) {
+      //   navigate('/vendordashboard');
+      // } else {
+      //   navigate('/');
+      // }
+      //  Redirect based on role
+  // We use .toLowerCase() to make the check "fuzzy" and safe
+      if (userRole.includes('admin')) {
+        navigate('/admindashboard'); // Redirect Admins to their panel
+      } else if (userRole.includes('vendor')) {
+        navigate('/vendordashboard'); // Redirect Vendors to their store management
       } else {
-        navigate('/');
+        navigate('/'); // Default fallback for other users
       }
     } else {
       console.error("Authentication failed: No access token in response body.");
@@ -75,7 +85,7 @@ const Login = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
+ const handleSubmit = async (e) => {
     e.preventDefault();
     const { isValid, errors } = validateLoginForm(formData);
 
@@ -87,10 +97,15 @@ const Login = () => {
     setIsLoading(true);
     try {
       const result = await manualLogin(formData);
-      // Pass the whole result to the handler
       handleAuthSuccess(result);
     } catch (err) {
-      const apiError = err.response?.data?.message || err.response?.data?.detail || "Invalid credentials";
+      // 1. Check if the error is a 403 (Forbidden) - standard for "Not Approved"
+      // 2. Fallback to whatever message the backend sends
+      const apiError = 
+        err.response?.status === 403 
+          ? "Your account is pending admin approval. Please check back later!" 
+          : err.response?.data?.message || err.response?.data?.detail || "Invalid credentials";
+
       setFieldErrors({ email: '', password: '', general: apiError });
       setFormData(prev => ({ ...prev, password: '' }));
     } finally {

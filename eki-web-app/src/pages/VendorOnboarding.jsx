@@ -90,7 +90,7 @@ const VendorOnboarding = () => {
               title="Secure Account"
               subtitle="Protect your merchant profile"
               isActive={currentStep === 5}
-              isCompleted={isSubmitted}
+              isCompleted={isSubmitted || currentStep === 6}
             />
           </div>
         </aside>
@@ -104,7 +104,7 @@ const VendorOnboarding = () => {
             }`}
           >
 
-            {isSubmitted ? (
+            {isSubmitted || currentStep === 6 ? (
               <OnboardingSuccess />
             ) : (
               <>

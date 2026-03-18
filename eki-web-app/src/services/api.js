@@ -7,17 +7,17 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// REQUEST INTERCEPTOR: Attach access token 
+// REQUEST INTERCEPTOR: Attach access token
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("access_token");
   // Only attach if we have a token
- if (token && token !== "undefined" && token !== "null") {
+  if (token && token !== "undefined" && token !== "null") {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// RESPONSE INTERCEPTOR: Auto-refresh token on 401 
+// RESPONSE INTERCEPTOR: Auto-refresh token on 401
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -28,7 +28,6 @@ api.interceptors.response.use(
     const isOnboarding = currentPath.includes("vendoronboarding");
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      
       // If onboarding, just let the error fail silently so the user stays on the page
       if (isOnboarding) {
         console.warn("Suppressing redirect for onboarding path");
@@ -40,27 +39,32 @@ api.interceptors.response.use(
 
       if (!refresh) {
         localStorage.clear();
-        window.location.href = "/signin";
+        window.location.href = "/login";
         return Promise.reject(error);
       }
 
       try {
         const { data } = await axios.post(
           `${api.defaults.baseURL}/accounts/token/refresh/`,
-          { refresh }
+          { refresh },
         );
-        localStorage.setItem("access_token", data.access);
-        originalRequest.headers.Authorization = `Bearer ${data.access}`;
+
+        const newAccessToken = data.access || data.token;
+        localStorage.setItem("access_token", newAccessToken);
+
+        // Retry the original request with the new token
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return api(originalRequest);
       } catch (err) {
         localStorage.clear();
-        window.location.href = "/signin";
+        // CHANGED: /signin -> /login to match App.jsx
+        window.location.href = "/login";
         return Promise.reject(err);
       }
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;
@@ -78,7 +82,6 @@ export const refreshToken = async ({ refresh }) => {
   return response.data;
 };
 
-
 export const registerVendor = async (payload) => {
   const response = await api.post("/accounts/register-vendor/", payload);
   return response.data;
@@ -95,8 +98,8 @@ export const verifyEmail = async ({ email, otp_code }) => {
   } catch (error) {
     if (error.response) {
       const msg =
-        error.response.data.otp_code?.[0] || 
-        error.response.data.message || 
+        error.response.data.otp_code?.[0] ||
+        error.response.data.message ||
         "Something went wrong.";
       throw new Error(msg);
     }
@@ -141,7 +144,9 @@ export const passwordResetConfirm = async ({
     return response.data;
   } catch (error) {
     if (error.response)
-      throw { message: error.response.data.message || "Failed to reset password." };
+      throw {
+        message: error.response.data.message || "Failed to reset password.",
+      };
     throw { message: "Cannot reset password. Check your connection." };
   }
 };
@@ -164,7 +169,7 @@ export const changePassword = async ({
 // Use this in OperationCompliance.jsx (the Review phase)
 // export const completeVendorOnboarding = async (formData) => {
 //   const data = new FormData();
-  
+
 //   // 1. Append general fields
 //   Object.keys(formData).forEach((key) => {
 //     if (key !== "documents" && formData[key] !== null && formData[key] !== undefined) {
@@ -185,27 +190,31 @@ export const changePassword = async ({
 //   const response = await api.patch("/accounts/register-vendor/", data, {
 //     headers: { "Content-Type": "multipart/form-data" },
 //   });
-  
+
 //   return response.data;
 // };
 
 export const completeVendorOnboarding = async (formData) => {
   const data = new FormData();
-  
+
   Object.keys(formData).forEach((key) => {
     // 1. Skip documents and nulls
-    if (key !== "documents" && formData[key] !== null && formData[key] !== undefined) {
+    if (
+      key !== "documents" &&
+      formData[key] !== null &&
+      formData[key] !== undefined
+    ) {
       let value = formData[key];
 
       // FIX: Force business_category to lowercase
-      if (key === 'business_category') {
+      if (key === "business_category") {
         value = String(value).toLowerCase();
       }
 
       // FIX: Ensure phone doesn't have spaces and has a +
-      if (key === 'business_phone' && value) {
-        value = value.replace(/\s/g, ''); 
-        if (!value.startsWith('+')) value = `+${value}`;
+      if (key === "business_phone" && value) {
+        value = value.replace(/\s/g, "");
+        if (!value.startsWith("+")) value = `+${value}`;
       }
 
       // FIX: Only append if the string isn't empty (avoids validation errors on optional fields)
@@ -224,12 +233,12 @@ export const completeVendorOnboarding = async (formData) => {
     });
   }
 
-  // 3. IMPORTANT: Remove manual 'Content-Type'. 
+  // 3. IMPORTANT: Remove manual 'Content-Type'.
   // Axios will set it automatically with the correct 'boundary' for files.
   const response = await api.patch("/accounts/register-vendor/", data, {
-    headers: { "Content-Type": undefined }, 
+    headers: { "Content-Type": undefined },
   });
-  
+
   return response.data;
 };
 
