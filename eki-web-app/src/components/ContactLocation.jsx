@@ -31,7 +31,7 @@ const ContactLocation = () => {
 
   const handlePhoneChange = (value) => {
     // Value will be the E.164 formatted number (e.g., "+15551234567")
-    handleChange("business_phone", value);
+    handleChange("business_phone", value || "");
   };
 
   const handleContinue = () => {

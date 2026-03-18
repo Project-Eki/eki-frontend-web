@@ -87,8 +87,8 @@ const BusinessIdentity = () => {
               className={`w-full h-10 pl-4 pr-10 border ${errors.business_category ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none bg-white cursor-pointer appearance-none`}
             >
               <option value="">Select category</option>
-              <option value="SERVICES">Retail</option>
-              <option value="PRODUCTS">Fashion & Apparel</option>
+              <option value="retail">Retail</option>
+              <option value="fashion">Fashion & Apparel</option>
               <option value="electronics">Electronics</option>
               <option value="food">Food & Beverages</option>
               <option value="beauty">Beauty & Health</option>
