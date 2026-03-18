@@ -6,7 +6,7 @@ import adminIllustration from '../assets/login.jpeg';
 import logoImage from '../assets/logo.jpeg';
 
 import { validateLoginForm } from '../utils/validation';
-import { signInUser as manualLogin } from "../services/authService";
+import { SigninUser as manualLogin } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
 
 const AdminLogin = () => {

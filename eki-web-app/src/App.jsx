@@ -10,7 +10,7 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-import AdminSignin from "./pages/AdminLogin"; // Correct import name
+import AdminSignin from "./pages/AdminLogin"; 
 import AccountSettingsPage from "./pages/AccountSetting";
 import VendorOnboarding from "./pages/VendorOnboarding";
 import Settings from "./pages/Settings";
@@ -21,9 +21,8 @@ import ProductDashboard from "./pages/ProductDashboard";
 import OrderManagement from "./pages/OrderManagement";
 import PaymentSystem from "./pages/PaymentSystem";
 import PaymentAndPayout from "./pages/PaymentAndPayout";
-import BusinessSettings  from "./pages/BusinessSettings";
-// ADD THIS LINE BELOW:
- 
+import BusinessSettings from "./pages/BusinessSettings";
+import OtpVerify from "./pages/otp";
 
 import "./App.css";
 
@@ -67,7 +66,10 @@ function App() {
           {/* Payments */}
           <Route path="/payment" element={<PaymentSystem />} />
           <Route path="/admin-payments" element={<PaymentAndPayout />} />
-           <Route path="/business-settings" element={<BusinessSettings />} />  
+          <Route path="/business-settings" element={<BusinessSettings />} /> 
+          <Route path="/otp-verify" element={<OtpVerify />} />
+
+          
           {/* 404 Fallback */}
           <Route
             path="*"
