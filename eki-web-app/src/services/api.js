@@ -8,55 +8,60 @@ const api = axios.create({
 });
 
 // REQUEST INTERCEPTOR: Attach access token 
-// api.interceptors.request.use((config) => {
-//   const token = localStorage.getItem("access_token");
-//   if (token) config.headers.Authorization = `Bearer ${token}`;
-//   return config;
-// });
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("access_token");
+  // Only attach if we have a token
+ if (token && token !== "undefined" && token !== "null") {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-// // RESPONSE INTERCEPTOR: Auto-refresh token on 401 
-// api.interceptors.response.use(
-//   (response) => response,
-//   async (error) => {
-//     const originalRequest = error.config;
+// RESPONSE INTERCEPTOR: Auto-refresh token on 401 
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    const currentPath = window.location.pathname.toLowerCase();
 
-//     // Only handle 401 once per request
-//     if (error.response?.status === 401 && !originalRequest._retry) {
-//       originalRequest._retry = true;
+    // SHIELD: If the user is onboarding, NEVER redirect to login automatically
+    const isOnboarding = currentPath.includes("vendoronboarding");
 
-//       const refresh = localStorage.getItem("refresh_token");
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      
+      // If onboarding, just let the error fail silently so the user stays on the page
+      if (isOnboarding) {
+        console.warn("Suppressing redirect for onboarding path");
+        return Promise.reject(error);
+      }
 
-//       // If no refresh token, redirect immediately
-//       if (!refresh) {
-//         localStorage.clear();
-//         window.location.href = "/Signin";
-//         return Promise.reject(error);
-//       }
+      originalRequest._retry = true;
+      const refresh = localStorage.getItem("refresh_token");
 
-//       try {
-//         // Refresh access token
-//         const { data } = await axios.post(
-//           `${api.defaults.baseURL}/accounts/token/refresh/`,
-//           { refresh }
-//         );
+      if (!refresh) {
+        localStorage.clear();
+        window.location.href = "/signin";
+        return Promise.reject(error);
+      }
 
-//         // Save new access token
-//         localStorage.setItem("access_token", data.access);
+      try {
+        const { data } = await axios.post(
+          `${api.defaults.baseURL}/accounts/token/refresh/`,
+          { refresh }
+        );
+        localStorage.setItem("access_token", data.access);
+        originalRequest.headers.Authorization = `Bearer ${data.access}`;
+        return api(originalRequest);
+      } catch (err) {
+        localStorage.clear();
+        window.location.href = "/signin";
+        return Promise.reject(err);
+      }
+    }
 
-//         // Update original request with new token and retry
-//         originalRequest.headers.Authorization = `Bearer ${data.access}`;
-//         return api(originalRequest);
-//       } catch {
-//         // Refresh failed: clear storage and redirect
-//         localStorage.clear();
-//         window.location.href = "/signin";
-//       }
-//     }
-
-//     // Pass all other errors to the caller
-//     return Promise.reject(error);
-//   }
-// );
+    return Promise.reject(error);
+  }
+);
 
 export default api;
 
@@ -73,7 +78,7 @@ export const refreshToken = async ({ refresh }) => {
   return response.data;
 };
 
-// FIX: Added trailing slash and api/v1/ to match Django routing
+
 export const registerVendor = async (payload) => {
   const response = await api.post("/accounts/register-vendor/", payload);
   return response.data;
@@ -156,17 +161,31 @@ export const changePassword = async ({
 
 /* --- VENDOR ONBOARDING & PROFILE --- */
 
-export const updateVendorProfile = async (formData) => {
+// Use this in OperationCompliance.jsx (the Review phase)
+export const completeVendorOnboarding = async (formData) => {
   const data = new FormData();
+  
+  // 1. Append general fields
   Object.keys(formData).forEach((key) => {
-    if (formData[key] !== null && formData[key] !== undefined) {
+    if (key !== "documents" && formData[key] !== null && formData[key] !== undefined) {
       data.append(key, formData[key]);
     }
   });
 
-  const response = await api.patch("/accounts/vendor/vendorprofile/", data, {
+  // 2. Append document files specifically
+  if (formData.documents) {
+    Object.keys(formData.documents).forEach((key) => {
+      if (formData.documents[key]) {
+        data.append(key, formData.documents[key]);
+      }
+    });
+  }
+
+  // 3. Make the PATCH request to the correct endpoint
+  const response = await api.patch("/accounts/register-vendor/", data, {
     headers: { "Content-Type": "multipart/form-data" },
   });
+  
   return response.data;
 };
 

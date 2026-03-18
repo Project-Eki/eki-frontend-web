@@ -38,7 +38,7 @@ const BusinessIdentity = () => {
       // 5. No API call here! Just tell the state to go to the next step.
       dispatch({ type: ACTIONS.NEXT_STEP });
     } else {
-      setGeneralError("Please fix the errors before continuing.");
+      // setGeneralError("Please fix the errors before continuing.");
     }
   };
 
@@ -87,8 +87,12 @@ const BusinessIdentity = () => {
               className={`w-full h-10 pl-4 pr-10 border ${errors.business_category ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none bg-white cursor-pointer appearance-none`}
             >
               <option value="">Select category</option>
-              <option value="SERVICES">Services</option>
-              <option value="PRODUCTS">Products</option>
+              <option value="SERVICES">Retail</option>
+              <option value="PRODUCTS">Fashion & Apparel</option>
+              <option value="electronics">Electronics</option>
+              <option value="food">Food & Beverages</option>
+              <option value="beauty">Beauty & Health</option>
+              <option value="other">Other</option>
             </select>
             {errors.business_type && (
               <span className="absolute right-8 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">
@@ -108,10 +112,9 @@ const BusinessIdentity = () => {
               className={`w-full h-10 pl-4 pr-10 border ${errors.business_type ? 'border-red-400' : 'border-gray-200'} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none bg-white cursor-pointer appearance-none`}
             >
               <option value="">Select type</option>
-              <option value="RETAIL">Retailer</option>
-              <option value="WHOLESALE">Wholesaler</option>
-              <option value="MANUFACTURER">Manufacturer</option>
-              <option value="SERVICE PROVIDER">Service Provider</option>
+              <option value="products">Products</option>
+              <option value="services">Services</option>
+              <option value="other">Other</option>
             </select>
             {errors.business_type && (
               <span className="absolute right-8 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">
@@ -160,16 +163,31 @@ const BusinessIdentity = () => {
         </div>
 
         {/* Tax ID */}
-        <div className="flex flex-col">
-          <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Tax ID (TIN)</label>
-          <input 
-            type="text" 
-            value={formData.tax_id || ""}
-            onChange={(e) => handleChange('tax_id', e.target.value)}
-            placeholder="VAT / TIN Number" 
-            className="h-10 px-4 border border-gray-200 rounded-xl text-[14px] focus:border-[#F2B53D] outline-none" 
-          />
-        </div>
+ <div className="flex flex-col">
+  <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">
+    Tax ID (TIN)
+  </label>
+  
+  <div className="relative flex items-center">
+    <input 
+      type="text" 
+      value={formData.tax_id || ""}
+      onChange={(e) => handleChange('tax_id', e.target.value)}
+      placeholder="10-digit TIN" 
+      // Added pr-24 to prevent text from overlapping the absolute error message
+      className={`w-full h-10 pl-4 pr-24 border ${
+        errors.tax_id ? 'border-red-500 bg-red-50' : 'border-gray-200'
+      } rounded-xl text-[14px] outline-none transition-all focus:border-[#F2B53D]`} 
+    />
+
+    {/* ERROR MESSAGE INSIDE THE FIELD */}
+    {errors.tax_id && (
+      <span className="absolute right-4 text-red-500 text-[10px] font-bold pointer-events-none animate-pulse">
+        {errors.tax_id}
+      </span>
+    )}
+  </div>
+</div>
 
         {/* Business Description */}
         <div className="flex flex-col md:col-span-2">
