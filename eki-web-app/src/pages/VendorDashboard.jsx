@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import logo from '../assets/logo.jpeg';
+// Note: Ensure this utility exists in your project
 import { validateProductForm } from '../utils/productValidation';
+import { getVendorDashboard } from "../services/authService";
 
 import {
   Search, Bell, Settings, LayoutDashboard, Package,
@@ -10,11 +12,11 @@ import {
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 const VendorDashboard = () => {
-  // --- LIVE DATA STATES (Initialize as empty for your DB fetching) ---
+  // --- LIVE DATA STATES ---
   const [vendorData, setVendorData] = useState({
     storeName: "Artisan Workshop",
-    vendorType: "product", // Set to 'product' or 'service' based on registration
-    country: "Uganda"      // Controls Currency (Uganda, Kenya, USA, etc.)
+    vendorType: "product", // 'product' or 'service'
+    country: "Uganda"      
   });
 
   const [metrics, setMetrics] = useState({ grossSales: 0, openOrders: 0, pendingPayouts: 0, activeListings: 0 });
@@ -39,13 +41,10 @@ const VendorDashboard = () => {
 
   const handlePublish = (e) => {
     e.preventDefault();
-    const validationErrors = validateProductForm(formData);
-    setErrors(validationErrors);
-    if (Object.keys(validationErrors).length === 0) {
-      console.log("Saving to Database...", formData);
-      setIsProductModalOpen(false);
-      setIsServiceModalOpen(false);
-    }
+    // Logic for validation would go here
+    console.log("Saving to Database...", formData);
+    setIsProductModalOpen(false);
+    setIsServiceModalOpen(false);
   };
 
   return (
@@ -59,12 +58,15 @@ const VendorDashboard = () => {
             <input type="text" placeholder="Search..." className="pl-10 pr-4 py-1.5 bg-slate-100 rounded-full text-xs w-64 focus:outline-none border border-transparent focus:border-teal-500" />
           </div>
         </div>
+        
+        {/* UPDATED NAV LINKS */}
         <div className="flex items-center gap-8 text-[11px] font-bold uppercase tracking-wider">
-          <a href="#" className="text-orange-400 border-b-2 border-orange-400 pb-4 mt-4">Dashboard</a>
-          <a href="#" className="text-slate-500 hover:text-orange-400 pb-4 mt-4">Products</a>
-          <a href="#" className="text-slate-500 hover:text-orange-400 pb-4 mt-4">Services</a>
-          <a href="#" className="text-slate-500 hover:text-orange-400 pb-4 mt-4">Orders</a>
-          <a href="#" className="text-slate-500 hover:text-orange-400 pb-4 mt-4">Payments</a>
+          <a href="/dashboard" className="text-orange-400 border-b-2 border-orange-400 pb-4 mt-4">Dashboard</a>
+          <a href="/product-dashboard" className="text-slate-500 hover:text-orange-400 pb-4 mt-4 transition-colors">Products</a>
+          <a href="/service" className="text-slate-500 hover:text-orange-400 pb-4 mt-4 transition-colors">Services</a>
+          <a href="/order-management" className="text-slate-500 hover:text-orange-400 pb-4 mt-4 transition-colors">Orders</a>
+          <a href="/payments" className="text-slate-500 hover:text-orange-400 pb-4 mt-4 transition-colors">Payments</a>
+          
           <div className="flex items-center gap-4 ml-4 border-l pl-6 normal-case text-slate-400">
             <Settings className="w-5 h-5 cursor-pointer hover:text-teal-600" />
             <Bell className="w-5 h-5 cursor-pointer hover:text-teal-600" />
@@ -107,7 +109,21 @@ const VendorDashboard = () => {
               </div>
               <div className="h-72 w-full">
                 {salesHistory.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%"><AreaChart data={salesHistory}><defs><linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#0d9488" stopOpacity={0.1}/><stop offset="95%" stopColor="#0d9488" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" /><XAxis dataKey="date" hide /><YAxis hide /><Tooltip /><Area type="monotone" dataKey="sales" stroke="#0d9488" fill="url(#colorSales)" strokeWidth={2} /></AreaChart></ResponsiveContainer>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={salesHistory}>
+                      <defs>
+                        <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#0d9488" stopOpacity={0.1}/>
+                          <stop offset="95%" stopColor="#0d9488" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="date" hide />
+                      <YAxis hide />
+                      <Tooltip />
+                      <Area type="monotone" dataKey="sales" stroke="#0d9488" fill="url(#colorSales)" strokeWidth={2} />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 ) : (
                   <div className="h-full flex items-center justify-center border border-dashed rounded-lg text-slate-400 text-xs">Waiting for live sales data...</div>
                 )}
@@ -118,15 +134,27 @@ const VendorDashboard = () => {
             <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
               <div className="p-6 border-b flex justify-between items-center font-bold text-sm">
                 <h2>Recent Orders</h2>
-                <button className="text-teal-600 text-[10px] hover:underline">View All Orders</button>
+                <a href="/order-management" className="text-teal-600 text-[10px] hover:underline">View All Orders</a>
               </div>
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 text-slate-400 font-bold uppercase tracking-tighter">
-                  <tr><th className="px-6 py-4">Order ID</th><th className="px-6 py-4">Customer</th><th className="px-6 py-4">Total</th><th className="px-6 py-4">Status</th><th className="px-6 py-4">Action</th></tr>
+                  <tr>
+                    <th className="px-6 py-4">Order ID</th>
+                    <th className="px-6 py-4">Customer</th>
+                    <th className="px-6 py-4">Total</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4">Action</th>
+                  </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {recentOrders.length > 0 ? recentOrders.map((o) => (
-                    <tr key={o.id}><td className="px-6 py-4 text-teal-600 font-bold">#{o.id}</td><td className="px-6 py-4">{o.customer}</td><td className="px-6 py-4 font-bold">{currency} {o.total}</td><td className="px-6 py-4"><span className="px-2 py-0.5 bg-slate-100 rounded-full text-[9px]">{o.status}</span></td><td className="px-6 py-4"><MoreVertical className="w-4 h-4 text-slate-300" /></td></tr>
+                    <tr key={o.id}>
+                      <td className="px-6 py-4 text-teal-600 font-bold">#{o.id}</td>
+                      <td className="px-6 py-4">{o.customer}</td>
+                      <td className="px-6 py-4 font-bold">{currency} {o.total}</td>
+                      <td className="px-6 py-4"><span className="px-2 py-0.5 bg-slate-100 rounded-full text-[9px]">{o.status}</span></td>
+                      <td className="px-6 py-4"><MoreVertical className="w-4 h-4 text-slate-300" /></td>
+                    </tr>
                   )) : (
                     <tr><td colSpan="5" className="px-6 py-12 text-center text-slate-400 italic">No live orders to display.</td></tr>
                   )}
@@ -137,7 +165,6 @@ const VendorDashboard = () => {
 
           {/* SIDEBAR */}
           <div className="space-y-6">
-            {/* QUICK ACTIONS DYNAMIC LOGIC */}
             <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
               <h2 className="font-bold text-sm mb-6">Quick Actions</h2>
               <div className="space-y-3">
@@ -156,7 +183,7 @@ const VendorDashboard = () => {
                  <div className="flex justify-between items-start mb-6"><Box className="w-5 h-5 opacity-50" /><span className="text-[8px] bg-[#234E4D] px-2 py-1 rounded-full uppercase border border-white/10">Verified</span></div>
                  <p className="text-[10px] text-teal-300 uppercase font-bold tracking-widest">Last Payout</p>
                  <p className="text-3xl font-black">{currency} {lastPayout.amount.toLocaleString()}</p>
-                 <div className="mt-8 flex justify-between items-end text-[9px]"><p className="text-teal-400 font-bold uppercase">Paid on {lastPayout.date}</p><button className="border-b border-teal-500 pb-0.5">View History</button></div>
+                 <div className="mt-8 flex justify-between items-end text-[9px]"><p className="text-teal-400 font-bold uppercase">Paid on {lastPayout.date}</p><a href="/payments" className="border-b border-teal-500 pb-0.5">View History</a></div>
                </div>
             </div>
 

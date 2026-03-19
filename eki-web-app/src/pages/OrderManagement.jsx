@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom'; // Added for navigation
+import logoImage from '../assets/logo.jpeg';
 import { 
   Search, Filter, LayoutGrid, List, ArrowUpDown, 
   Plus, Bell, Package, Eye, AlertTriangle, CheckCircle,
@@ -6,30 +8,32 @@ import {
 } from 'lucide-react';
 
 const OrderManagement = () => {
-  // Maintaining the "empty state" as requested (no dummy data in the table)
+  const location = useLocation(); // To handle active states dynamically
   const orders = [];
 
   return (
     <div className="flex min-h-screen bg-[#F9FAFB] font-sans text-slate-700">
-      {/* Sidebar - Fixed as per Image 4 */}
+      {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-gray-100 flex flex-col fixed h-full z-30">
         <div className="p-6 mb-4">
-          <div className="flex items-center gap-2">
-             <div className="bg-[#0b5d51] w-8 h-8 rounded flex items-center justify-center text-white font-bold text-lg">ë</div>
-          </div>
+          <Link to="/vendor-dashboard" className="flex items-center gap-2">
+             {/* Integrated your logoImage here */}
+             <img src={logoImage} alt="Eki Logo" className="w-5 h-auto rounded" />
+          </Link>
         </div>
         
         <nav className="flex-1 px-4 space-y-1">
-          <NavItem icon={<Package size={20}/>} label="Products" />
-          <NavItem icon={<Settings size={20}/>} label="Services" />
-          <NavItem icon={<List size={20}/>} label="Orders" active />
-          <NavItem icon={<Plus size={20}/>} label="Payments" />
-          <NavItem icon={<Search size={20}/>} label="Reviews and Ratings" />
+          <NavItem to="/product-dashboard" icon={<Package size={20}/>} label="Products" active={location.pathname === '/product-dashboard'} />
+          <NavItem to="/services" icon={<Settings size={20}/>} label="Services" active={location.pathname === '/services'} />
+          <NavItem to="/order-management" icon={<List size={20}/>} label="Orders" active={true} />
+          <NavItem to="/payment" icon={<Plus size={20}/>} label="Payments" active={location.pathname === '/payment'} />
+          <NavItem to="/reviews" icon={<Search size={20}/>} label="Reviews and Ratings" />
         </nav>
 
         <div className="p-4 border-t border-gray-50 space-y-1">
-          <NavItem icon={<Settings size={20}/>} label="Store Settings" />
-          <NavItem icon={<LogOut size={20}/>} label="Log out" color="text-red-500" />
+          <NavItem to="/settings" icon={<Settings size={20}/>} label="Store Settings" />
+          {/* Linked to sign in as per your preference */}
+          <NavItem to="/login" icon={<LogOut size={20}/>} label="Log out" color="text-red-500" />
         </div>
       </aside>
 
@@ -55,7 +59,7 @@ const OrderManagement = () => {
 
         {/* Dashboard Content */}
         <div className="p-8 flex-1">
-          {/* Title and Action Buttons - Matching Image 4 */}
+          {/* Title and Action Buttons */}
           <div className="flex justify-between items-start mb-8">
             <div>
               <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Order Management</h1>
@@ -71,11 +75,11 @@ const OrderManagement = () => {
             </div>
           </div>
 
-          {/* Stats Grid - Matching Order Management icons/colors from Image 4 */}
+          {/* Stats Grid */}
           <div className="grid grid-cols-4 gap-6 mb-8">
             <StatCard title="Total Orders" value="0" sub="0% from last month" icon={<Package className="text-[#0b5d51]"/>} bg="bg-emerald-50" />
             <StatCard title="Active Orders" value="0" sub="0 urgent orders" icon={<div className="text-amber-500">🕒</div>} bg="bg-amber-50" />
-            <StatCard title="Revenue" value="$0.00" sub="0% increase" icon={<div className="text-emerald-600">💰</div>} bg="bg-emerald-50" />
+            <StatCard title="Revenue" value="UGX 0" sub="0% increase" icon={<div className="text-emerald-600">💰</div>} bg="bg-emerald-50" />
             <StatCard title="Avg. Processing" value="0 Days" sub="0 days from avg." icon={<div className="text-amber-500">📊</div>} bg="bg-amber-50" />
           </div>
 
@@ -104,7 +108,7 @@ const OrderManagement = () => {
             </button>
           </div>
 
-          {/* Orders Table - Matching Table Header from Image 4 */}
+          {/* Orders Table */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <table className="w-full text-left border-collapse">
               <thead className="bg-gray-50 border-b border-gray-100">
@@ -132,7 +136,7 @@ const OrderManagement = () => {
                 ) : (
                   orders.map((order) => (
                     <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition cursor-pointer">
-                      {/* Rows would be mapped here based on data */}
+                      {/* Data mapping w */}
                     </tr>
                   ))
                 )}
@@ -140,7 +144,7 @@ const OrderManagement = () => {
             </table>
           </div>
 
-          {/* Pagination Footer - Matching Image 4 */}
+          {/* Footer */}
           <div className="mt-8 pt-6 border-t border-gray-100 flex justify-between items-center text-xs font-bold text-gray-400">
             <p>Showing 0 of 0 results</p>
             <div className="flex gap-2">
@@ -159,9 +163,9 @@ const OrderManagement = () => {
           <p className="opacity-80 uppercase tracking-widest font-bold">Buy Smart. Sell Fast. Grow Together...</p>
           <p className="opacity-60">© 2026 Vendor Portal. All rights reserved.</p>
           <div className="flex gap-6 opacity-80 uppercase">
-            <span className="cursor-pointer hover:underline">Support</span>
-            <span className="cursor-pointer hover:underline">Privacy Policy</span>
-            <span className="cursor-pointer hover:underline">Terms of Service</span>
+            <Link to="/support" className="hover:underline">Support</Link>
+            <Link to="/privacy" className="hover:underline">Privacy Policy</Link>
+            <Link to="/terms" className="hover:underline">Terms of Service</Link>
             <span className="cursor-pointer hover:underline">Ijoema ltd</span>
           </div>
         </footer>
@@ -170,16 +174,17 @@ const OrderManagement = () => {
   );
 };
 
-// Helper Nav Component
-const NavItem = ({ icon, label, active, color = "text-gray-400" }) => (
-  <div className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all group ${active ? 'bg-[#0b5d51] text-white shadow-md' : `${color} hover:bg-gray-50 hover:text-slate-900`}`}>
-    <div className={active ? 'text-white' : 'group-hover:text-[#0b5d51]'}>{icon}</div>
-    <span className="text-[13px] font-bold tracking-tight">{label}</span>
-    {active && <ChevronRight size={14} className="ml-auto opacity-50" />}
-  </div>
+// Helper Nav Component - Updated to use Link
+const NavItem = ({ icon, label, active, to, color = "text-gray-400" }) => (
+  <Link to={to} className="block no-underline">
+    <div className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all group ${active ? 'bg-[#0b5d51] text-white shadow-md' : `${color} hover:bg-gray-50 hover:text-slate-900`}`}>
+      <div className={active ? 'text-white' : 'group-hover:text-[#0b5d51]'}>{icon}</div>
+      <span className="text-[13px] font-bold tracking-tight">{label}</span>
+      {active && <ChevronRight size={14} className="ml-auto opacity-50" />}
+    </div>
+  </Link>
 );
 
-// Helper Stat Card Component
 const StatCard = ({ title, value, sub, icon, bg }) => (
   <div className="bg-white p-6 rounded-2xl border border-gray-50 shadow-sm hover:shadow-md transition-shadow">
     <div className="flex justify-between items-start mb-4">

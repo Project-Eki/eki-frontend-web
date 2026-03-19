@@ -2,11 +2,12 @@ import axios from 'axios';
 
 const api = axios.create({
   // Updated to your Digital Ocean IP
-  baseURL: "http://134.122.22.45", 
+  baseURL: "http://134.122.22.45",
+  // baseURL: "http://127.0.0.1:8000", 
   headers: { "Content-Type": "application/json" },
 });
 
-// INTERCEPTOR: Manages which routes need an Authorization token
+// INTERCEPTOR: 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("access_token");
   
@@ -15,12 +16,12 @@ api.interceptors.request.use((config) => {
     '/api/v1/accounts/reset-password/',
     '/api/v1/accounts/verify-email/',
     '/api/v1/accounts/confirm-password-reset/',
-    '/api/v1/accounts/login/', // Change to /signin/ if your backend is updated
+    '/api/v1/accounts/login/', 
     '/api/v1/accounts/resend-code/'
   ];
 
-  // Check if current request URL is in the public list
-  const isPublic = publicRoutes.some(route => config.url.includes(route));
+  //  Safe check (prevents crash)
+  const isPublic = publicRoutes.some(route => config.url?.includes(route));
 
   if (!isPublic && token && token !== "undefined") {
     config.headers.Authorization = `Bearer ${token}`;
@@ -30,9 +31,9 @@ api.interceptors.request.use((config) => {
   return config;
 }, (error) => Promise.reject(error));
 
+
 /** --- AUTHENTICATION --- **/
 export const SigninUser = async (credentials) => {
-  // If your backend changes 'login' to 'signin' to match your naming, update the URL here
   const response = await api.post('/api/v1/accounts/login/', {
     email: credentials.email?.trim().toLowerCase(),
     password: credentials.password
@@ -46,9 +47,17 @@ export const SigninUser = async (credentials) => {
   return data;
 };
 
+
+/** --- VENDOR DASHBOARD --- **/
+export const getVendorDashboard = async () => {
+  const response = await api.get('/api/v1/accounts/command-center/');
+  return response.data;
+};
+
+
 /** --- FORGOT PASSWORD FLOW --- **/
 
-// STEP 1: Request Code
+// Request Code
 export const passwordResetRequest = async (email) => {
   const response = await api.post('/api/v1/accounts/reset-password/', {
     email: email.trim().toLowerCase()
@@ -56,7 +65,7 @@ export const passwordResetRequest = async (email) => {
   return response.data;
 };
 
-// STEP 2: Verify Code 
+// Verify Code 
 export const verifyOtp = async ({ email, otp_code }) => {
   try {
     const response = await api.post('/api/v1/accounts/verify-email/', {
@@ -70,7 +79,7 @@ export const verifyOtp = async ({ email, otp_code }) => {
   }
 };
 
-// STEP 3: Confirm New Password
+// Confirm New Password
 export const passwordResetConfirm = async ({ email, otp_code, new_password, confirm_password }) => {
   const response = await api.post('/api/v1/accounts/confirm-password-reset/', {
     email: email.trim().toLowerCase(),
@@ -81,7 +90,6 @@ export const passwordResetConfirm = async ({ email, otp_code, new_password, conf
   return response.data;
 };
 
-// Fixed: Removed the stray 'x' that was here
 export const resendOtp = async (email) => {
   try {
     const response = await api.post('/api/v1/accounts/resend-code/', {
