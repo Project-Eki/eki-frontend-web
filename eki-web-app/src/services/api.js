@@ -250,7 +250,7 @@ export const getVendorProfile = async () => {
 export const logoutUser = async () => {
   const refresh_token = localStorage.getItem("refresh_token");
   localStorage.clear();
-  window.location.href = "/signin";
+  window.location.href = "/loginin";
 
   if (refresh_token) {
     try {

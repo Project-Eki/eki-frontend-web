@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 
-import adminIllustration from '../assets/login.jpeg'; 
+import adminIllustration from '../assets/Login.jpeg'; 
 import logoImage from '../assets/logo.jpeg';
 
-import { validateLoginForm } from '../utils/validation';
+import { validateLoginForm } from '../utils/Validation';
 import { SigninUser as manualLogin } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
 
