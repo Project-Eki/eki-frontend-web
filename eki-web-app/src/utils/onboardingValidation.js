@@ -1,81 +1,73 @@
-// Step1 Account Basics
-// export const validateAccountBasics = (formData) => {
-//   let errors = {};
-
-//   if (!formData.first_name || !formData.first_name.trim()) {
-//     errors.first_name = "First name is required";
-//   }
-  
-//   if (!formData.last_name || !formData.last_name.trim()) {
-//     errors.last_name = "Last name is required";
-//   }
-
-//   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-//   if (!formData.email) {
-//     errors.email = "Email is required";
-//   } else if (!emailRegex.test(formData.email)) {
-//     errors.email = "Please enter a valid email address";
-//   }
-
-//   if (!formData.password) {
-//     errors.password = "Password is required";
-//   } else if (formData.password.length < 6) {
-//     errors.password = "Must be at least 6 characters";
-//   }
-
-//   if (!formData.confirmPassword) {
-//     errors.confirmPassword = "Please confirm your password";
-//   } else if (formData.confirmPassword !== formData.password) {
-//     errors.confirmPassword = "Passwords do not match";
-//   }
-
-//   if (!formData.agreeToTerms) {
-//     errors.terms = "You must accept the terms";
-//   }
-
-//   return errors;
-// };
+// Step 1: Account Basics (Looks good, just added minor polish)
 export const validateAccountBasics = (formData) => {
   const errors = {};
   const { first_name, last_name, email, password, confirmPassword, agreeToTerms } = formData;
 
-  if (!first_name || first_name.trim() === '') errors.first_name = "First name is required.";
-  if (!last_name || last_name.trim() === '') errors.last_name = "Last name is required.";
-  if (!email || email.trim() === '') errors.email = "Email is required.";
-  else if (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) errors.email = "Invalid email format.";
-
-  // Password rules matching backend
-  if (!password) errors.password = "Password is required.";
-  else {
-    if (password.length < 8) errors.password = "Password must be at least 8 characters.";
-    if (password.toLowerCase() === password || password.toUpperCase() === password) 
-      errors.password = "Password must include both uppercase and lowercase letters.";
-    if (password === email) errors.password = "Password cannot be same as email.";
-    if (/^\d+$/.test(password)) errors.password = "Password cannot be entirely numeric.";
+  if (!first_name?.trim()) errors.first_name = "Required";
+  if (!last_name?.trim()) errors.last_name = "Required";
+  if (!email?.trim()) {
+    errors.email = "Required";
+  } else if (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) {
+    errors.email = "Invalid format";
   }
 
-  if (!confirmPassword) errors.confirmPassword = "Please confirm your password.";
-  else if (password && password !== confirmPassword) errors.confirmPassword = "Passwords must match.";
+  if (!password) {
+    errors.password = "Required";
+  } else {
+    if (password.length < 8) errors.password = "Min 8 characters";
+    if (password.toLowerCase() === password || password.toUpperCase() === password) 
+      errors.password = "Must use Up & Lowercase";
+    if (password === email) errors.password = "Cannot match email";
+    if (/^\d+$/.test(password)) errors.password = "Cannot be only numbers";
+  }
 
-  if (!agreeToTerms) errors.terms = "You must agree to the terms.";
+  if (password !== confirmPassword) errors.confirmPassword = "Passwords match fail";
+  if (!agreeToTerms) errors.terms = "Accept terms to continue";
 
   return errors;
 };
-// Step 3 Business Identity
+
+
+// Step 3 Business Identity - Pinpoint Edition
 export const validateBusinessIdentity = (formData) => {
   let errors = {};
 
-  if (!formData.business_name?.trim()) errors.business_name = "Required";
-  if (!formData.business_type) errors.business_type = "Required";
-  if (!formData.owner_full_name?.trim()) errors.owner_full_name = "Required";
-  if (!formData.registration_number?.trim()) errors.registration_number = "Required";
+  // Business Name Pinpoint
+  if (!formData.business_name?.trim()) {
+    errors.business_name = "Business name is required";
+  } else if (formData.business_name.length < 3) {
+    errors.business_name = "Name must be at least 3 characters";
+  }
+
+  // Tax ID (TIN) Pinpoint
+  if (!formData.tax_id?.trim()) {
+    errors.tax_id = "TIN is required";
+  } else if (!/^\d+$/.test(formData.tax_id)) {
+    errors.tax_id = "TIN must contain only numbers";
+  } else if (formData.tax_id.length !== 10) {
+    errors.tax_id = `Need 10 digits (currently ${formData.tax_id.length})`;
+  }
+
+  // Registration Number Pinpoint
+  if (!formData.registration_number?.trim()) {
+    errors.registration_number = "Registration number is required";
+  } else if (formData.registration_number.length < 5) {
+    errors.registration_number = "Enter a valid RC/BN number";
+  }
+
+  // Owner Name Pinpoint
+  if (!formData.owner_full_name?.trim()) {
+    errors.owner_full_name = "Legal owner name is required";
+  } else if (!formData.owner_full_name.includes(" ")) {
+    errors.owner_full_name = "Enter both First and Last name";
+  }
 
   return errors;
 };
 
-// Contact & Location
+// Step 4: Contact & Location
 export const validateContactLocation = (formData) => {
-  let errors = {};
+  const errors = {};
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if (!formData.business_email?.trim()) {
@@ -84,7 +76,13 @@ export const validateContactLocation = (formData) => {
     errors.business_email = "Invalid Email";
   }
 
-  if (!formData.business_phone?.trim()) errors.business_phone = "Required";
+  // Phone check (Assuming +256 or local format)
+  if (!formData.business_phone?.trim()) {
+    errors.business_phone = "Required";
+  } else if (formData.business_phone.length < 10) {
+    errors.business_phone = "Invalid number";
+  }
+
   if (!formData.address?.trim()) errors.address = "Required";
   if (!formData.city?.trim()) errors.city = "Required";
   if (!formData.country?.trim()) errors.country = "Required";
@@ -92,13 +90,21 @@ export const validateContactLocation = (formData) => {
   return errors;
 };
 
-// Operation & Compliance
+// Step 5: Operation & Compliance (Fixed Document pathing)
 export const validateOperationCompliance = (formData) => {
-  let errors = {};
+  const errors = {};
+  
   if (!formData.opening_time) errors.opening_time = "Required";
   if (!formData.closing_time) errors.closing_time = "Required";
-  if (!formData.documents.incorporation_cert) errors.incorporation_cert = "Missing Document";
-  if (!formData.documents.national_id) errors.national_id = "Missing ID";
+
+  // Check if documents exist (Note: File objects don't have .trim())
+  if (!formData.incorporation_cert) errors.incorporation_cert = "Missing Document";
+  if (!formData.government_issued_id) errors.government_issued_id = "Missing ID";
+  
+  // Checking additional license if it's a "Retail" business
+  if (formData.business_type === 'products' && !formData.business_license) {
+      errors.business_license = "License required for retail";
+  }
 
   return errors;
 };

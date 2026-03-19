@@ -6,7 +6,7 @@ import { FiLock } from "react-icons/fi";
 // Import Context and Actions
 import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
 import { validateAccountBasics } from "../utils/onboardingValidation";
-import { registerVendor, googleAuth } from '../services/api'; // Centralized API
+import { registerVendor } from '../services/api';
 import MessageAlert from "../components/MessageAlert";
 
 const AccountBasics = () => {
@@ -19,7 +19,6 @@ const AccountBasics = () => {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 
-  // Password rules state tracking
   const [passwordRules, setPasswordRules] = useState({
     length: false,
     upperLower: false,
@@ -77,6 +76,15 @@ const AccountBasics = () => {
 
     if (Object.keys(validationErrors).length === 0) {
       setIsLoading(true);
+
+      // 2. THE CLEAN SLATE
+      // We clear these so the api.js Interceptor doesn't attach 
+      // an old/expired token to the registration request.
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("userRole");
+
+
       try {
         // API CALL: Creates the user and triggers the OTP email
         await registerVendor({
@@ -94,7 +102,7 @@ const AccountBasics = () => {
         dispatch({ type: ACTIONS.NEXT_STEP });
        
       } catch (error) {
-        console.error("FULL ERROR:", error.response?.data);
+        console.error("DEBUG - SERVER ERROR:", JSON.stringify(error.response?.data, null, 2));
         const errData = error.response?.data;
         
         if (errData) {
@@ -210,20 +218,6 @@ const AccountBasics = () => {
           className={`w-full h-10 rounded-full text-white font-bold text-[15px] transition-all mt-3 ${isLoading || !isFormValid ? 'bg-gray-400' : 'bg-[#D99201] hover:bg-[#e0a630]'}`}
         >
           {isLoading ? "Creating Account..." : "Continue"}
-        </button>
-
-        <div className="flex items-center py-2">
-          <div className="flex-grow border-t border-gray-100"></div>
-          <span className="px-2 text-gray-400 text-[11px] font-bold uppercase tracking-widest">OR</span>
-          <div className="flex-grow border-t border-gray-100"></div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => loginWithGoogle()}
-          className="w-full h-9 border border-gray-200 rounded-full flex justify-center items-center gap-3 bg-white hover:bg-gray-50 transition font-bold text-[14px] text-gray-700"
-        >
-          <FcGoogle size={18} /> Sign up with Google
         </button>
       </form>
       

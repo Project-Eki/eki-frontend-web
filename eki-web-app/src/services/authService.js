@@ -1,68 +1,71 @@
 import axios from 'axios';
 
 const api = axios.create({
-  // FIX: Switched from Render to your local Django server
   baseURL: "http://127.0.0.1:8000",
-  headers: {
-    "Content-Type": "application/json",
-  },
+  headers: { "Content-Type": "application/json" },
 });
 
-api.interceptors.request.use(request => {
-  console.log('Sending Request to:', request.baseURL + (request.url || ''));
-  return request;
-});
-
-// Sign In (Note: File name is sign in, path matches Django)
-export const signInUser = async (credentials) => {
+// Helper to handle all login variations
+export const SigninUser = async (credentials) => {
   try {
-    // FIX: Updated path to /api/v1/accounts/signin/
-    const response = await api.post('/api/v1/accounts/signin/', {
-      email: credentials.email?.trim().toLowerCase() || "",
+    const response = await api.post('/api/v1/accounts/login/', {
+      email: credentials.email?.trim().toLowerCase(),
       password: credentials.password
     });
-    return response.data;
-  } catch (error) {
-    console.log("SIGNIN RAW ERROR:", error.response?.data); 
-    handleAxiosError(error);
-  }
+    return response.data.success ? response.data.data : response.data;
+  } catch (error) { handleAxiosError(error); }
 };
+export const SignInUser = SigninUser;
+export const signInUser = SigninUser;
 
-export const requestPasswordChange = async (email) => {
+// Password Reset Request
+export const passwordResetRequest = async (email) => {
   try {
     const response = await api.post('/api/v1/accounts/password/change/', {
       email: email.trim().toLowerCase()
     });
     return response.data;
-  } catch (error) {
-    handleAxiosError(error);
-  }
+  } catch (error) { handleAxiosError(error); }
+};
+
+// Verify OTP - The 400 Fix
+export const verifyOtp = async ({ email, otp_code }) => {
+  try {
+    const response = await api.post('/api/v1/accounts/verify-email/', {
+      email: email?.trim().toLowerCase(),
+      otp_code: String(otp_code),
+      otp_type: "password_reset" 
+    });
+    return response.data;
+  } catch (error) { handleAxiosError(error); }
+};
+export const verifyEmail = verifyOtp;
+
+// Resend OTP
+export const resendOtp = async (email) => {
+  try {
+    const response = await api.post('/api/v1/accounts/resend-code/', {
+      email: email.trim().toLowerCase(),
+      otp_type: "password_reset"
+    });
+    return response.data;
+  } catch (error) { handleAxiosError(error); }
+};
+
+// Confirm Reset
+export const passwordResetConfirm = async ({ email, otp_code, new_password }) => {
+  try {
+    const response = await api.post('/api/v1/accounts/confirm-password-reset/', {
+      email: email.trim().toLowerCase(),
+      otp_code: String(otp_code),
+      new_password: new_password
+    });
+    return response.data;
+  } catch (error) { handleAxiosError(error); }
 };
 
 const handleAxiosError = (error) => {
-  const contentType = error.response?.headers['content-type'] || '';
-  if (contentType.toLowerCase().includes('text/html')) {
-    throw new Error("The server returned an invalid HTML page. Check if the API path is correct.");
-  }
-
-  if (error.response?.status === 500) {
-    throw new Error("Server error. Please check your Django terminal for logs.");
-  }
-
-  let message = "An error occurred. Please try again.";
-
-  if (error.response?.data) {
-    if (error.response.data.detail) message = error.response.data.detail;
-    else if (error.response.data.message) message = error.response.data.message;
-    else if (Array.isArray(error.response.data) && error.response.data[0]?.message) {
-      message = error.response.data[0].message;
-    }
-  }
-
-  if (!error.response) {
-    message = "Network error: Unable to reach your local server. Is Django running?";
-  }
-
+  let message = error.response?.data?.message || error.response?.data?.detail || "An error occurred.";
   throw new Error(message);
 };
 

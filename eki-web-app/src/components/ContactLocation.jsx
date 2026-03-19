@@ -31,7 +31,7 @@ const ContactLocation = () => {
 
   const handlePhoneChange = (value) => {
     // Value will be the E.164 formatted number (e.g., "+15551234567")
-    handleChange("business_phone", value);
+    handleChange("business_phone", value || "");
   };
 
   const handleContinue = () => {
@@ -83,49 +83,33 @@ const ContactLocation = () => {
           </div>
         </div>
 
-        {/* Business Phone */}
-        <div className="flex flex-col">
-          <label className="text-[12px] font-bold text-gray-600 mb-1 ml-1 font-sans">
-            Phone Number
-          </label>
-          <div
-            className={`relative flex items-center h-11 border rounded-xl px-4 transition-all bg-white ${
-              formData.business_phone &&
-              isValidPhoneNumber(formData.business_phone)
-                ? "border-green-500 ring-1 ring-green-500" // Success state
-                : errors.business_phone
-                  ? "border-red-400"
-                  : "border-gray-200 focus-within:border-[#F2B53D]"
-            }`}
-          >
-            <PhoneInput
-              international
-              defaultCountry="UG"
-              value={formData.business_phone}
-              onChange={(val) => handleChange("business_phone", val)}
-              className="eki-phone-input flex-1"
-            />
+       {/* Business Phone */}
+<div className="flex flex-col">
+  <label className="text-[12px] font-bold text-gray-600 mb-1 ml-1 font-sans">
+    Phone Number
+  </label>
+  <div
+    className={`relative flex items-center h-11 border rounded-xl px-4 transition-all bg-white ${
+      errors.business_phone ? "border-red-500 bg-red-50" : "border-gray-200 focus-within:border-[#F2B53D]"
+    }`}
+  >
+    <PhoneInput
+      international
+      defaultCountry="UG"
+      value={formData.business_phone}
+      onChange={(val) => handleChange("business_phone", val)}
+      // pr-16 ensures the numbers don't go under the "Required" text
+      className="eki-phone-input flex-1 pr-16"
+    />
 
-            {/* Visual Feedback Icon */}
-            {formData.business_phone && (
-              <div className="ml-2">
-                {isValidPhoneNumber(formData.business_phone) ? (
-                  <span className="text-green-500 text-lg">✓</span>
-                ) : (
-                  <span className="text-gray-300 text-lg">...</span>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Helper text for the user */}
-          {!isValidPhoneNumber(formData.business_phone || "") &&
-            formData.business_phone?.length > 5 && (
-              <span className="text-red-500 text-[10px] mt-1 ml-1 font-bold">
-                Please enter a valid phone number for the selected country.
-              </span>
-            )}
-        </div>
+    {/* PINPOINT ERROR INSIDE THE FIELD */}
+    {errors.business_phone && (
+      <span className="absolute right-4 text-red-500 text-[10px] font-bold pointer-events-none">
+        {errors.business_phone}
+      </span>
+    )}
+  </div>
+</div>
 
         {/* Street Address */}
         <div className="flex flex-col md:col-span-2">
@@ -149,32 +133,37 @@ const ContactLocation = () => {
         </div>
 
         {/* City */}
-        <div className="flex flex-col">
-          <label className="text-[12px] font-bold text-gray-600 mb-1 ml-1">
-            City
-          </label>
-          <div className="relative">
-            <input
-              type="text"
-              value={formData.city || ""}
-              onChange={(e) => handleChange("city", e.target.value)}
-              placeholder="e.g. Kampala"
-              className={`w-full h-11 pl-4 pr-16 border ${errors.city ? "border-red-400" : "border-gray-200"} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`}
-            />
-            {errors.city && (
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">
-                {errors.city}
-              </span>
-            )}
-          </div>
-        </div>
+<div className="flex flex-col">
+  <label className="text-[12px] font-bold text-gray-600 mb-1 ml-1">City</label>
+  <div className="relative flex items-center">
+    <input
+      type="text"
+      value={formData.city || ""}
+      onChange={(e) => handleChange("city", e.target.value)}
+      placeholder="e.g. Kampala"
+      className={`w-full h-11 pl-4 pr-20 border ${errors.city ? "border-red-500 bg-red-50" : "border-gray-200"} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`}
+    />
+    {errors.city && (
+      <span className="absolute right-4 text-red-500 text-[10px] font-bold pointer-events-none">
+        {errors.city}
+      </span>
+    )}
+  </div>
+</div>
 
-        {/* Country*/}
-        <SearchableCountrySelector
-          value={formData.country}
-          onChange={(val) => handleChange("country", val)}
-          error={errors.country}
-        />
+       {/* Country Selector Wrapper */}
+<div className="relative flex flex-col">
+  <SearchableCountrySelector
+    value={formData.country}
+    onChange={(val) => handleChange("country", val)}
+    
+  />
+  {errors.country && (
+    <span className="absolute right-10 top-[38px] text-red-500 text-[10px] font-bold pointer-events-none">
+      Required
+    </span>
+  )}
+</div>
       </div>
 
       <div className="mt-8 flex items-center justify-center gap-4 w-full">

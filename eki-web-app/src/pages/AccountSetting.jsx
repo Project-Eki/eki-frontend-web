@@ -1,13 +1,16 @@
 import React, { useState, useRef } from 'react';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css'; // Standard style for the flags/dropdown
 import logoImage from '../assets/logo.jpeg';
+import { validateAccountData } from '../utils/validationUtils'; 
 
 function AccountSettingsPage() {
   const [userData, setUserData] = useState({
     firstName: '',
     lastName: '',
     email: '',
-    phone: '',
-    profileImage: null, 
+    phone: '', // This will now store the full code + number (e.g., "16505551234")
+    profileImage: null,
   });
 
   const [errors, setErrors] = useState({});
@@ -23,24 +26,15 @@ function AccountSettingsPage() {
     }
   };
 
-  const validate = () => {
-    let newErrors = {};
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!userData.firstName.trim()) newErrors.firstName = "This field is required";
-    if (!userData.lastName.trim()) newErrors.lastName = "This field is required";
-    if (!userData.phone.trim()) newErrors.phone = "This field is required";
-    if (!userData.email.trim()) {
-      newErrors.email = "This field is required";
-    } else if (!emailRegex.test(userData.email)) {
-      newErrors.email = "Invalid email format";
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (validate()) console.log("Form submitted:", userData);
+    const validationErrors = validateAccountData(userData);
+    setErrors(validationErrors);
+
+    if (Object.keys(validationErrors).length === 0) {
+      console.log("Form submitted successfully:", userData);
+      alert("Changes saved!");
+    }
   };
 
   const handleChange = (e) => {
@@ -49,9 +43,15 @@ function AccountSettingsPage() {
     if (errors[name]) setErrors({ ...errors, [name]: null });
   };
 
+  // Special handler for the Phone Input library
+  const handlePhoneChange = (value) => {
+    setUserData({ ...userData, phone: value });
+    if (errors.phone) setErrors({ ...errors, phone: null });
+  };
+
   return (
     <div className="min-h-screen bg-white font-sans text-gray-800">
-      {/* Navigation - Fixed at the top */}
+      {/* Navigation */}
       <nav className="h-16 w-full bg-white border-b border-gray-100 px-8 flex items-center justify-between fixed top-0 z-[60]">
         <div className="flex items-center gap-12">
           <img src={logoImage} alt="Logo" className="h-10 w-auto" />
@@ -93,7 +93,7 @@ function AccountSettingsPage() {
             General Settings
           </button>
         </div>
-        
+
         <button className="flex items-center gap-3 text-red-500 text-sm font-semibold px-4 py-4 hover:bg-red-50 rounded-md transition-colors border-t border-gray-50 mt-auto">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-6 0v-1m6-10V7a3 3 0 00-6 0v1" /></svg>
           Sign out
@@ -104,7 +104,7 @@ function AccountSettingsPage() {
       <main className="ml-64 pt-24 pb-16 px-10 bg-white min-h-screen">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-2xl font-bold text-gray-800 mb-8">Account Settings</h1>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
             <div className="space-y-6">
               <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6 text-center">
@@ -123,32 +123,42 @@ function AccountSettingsPage() {
 
               <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-8">
                 <h3 className="text-lg font-bold text-gray-800 mb-6">Account Details</h3>
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} noValidate className="space-y-5">
                   <div className="flex gap-4">
                     <div className="flex-1 space-y-1">
                       <label className="text-sm font-medium text-gray-600">First Name</label>
-                      <input name="firstName" type="text" value={userData.firstName} onChange={handleChange} className={`w-full px-4 py-2.5 text-sm border rounded-lg bg-gray-50 focus:outline-none transition-all ${errors.firstName ? 'border-red-500' : 'border-gray-300'}`} />
+                      <input name="firstName" type="text" value={userData.firstName} onChange={handleChange} className={`w-full px-4 py-2.5 text-sm border rounded-lg bg-gray-50 focus:outline-none transition-all ${errors.firstName ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'}`} />
                       {errors.firstName && <p className="text-[10px] text-red-500 font-medium">{errors.firstName}</p>}
                     </div>
                     <div className="flex-1 space-y-1">
                       <label className="text-sm font-medium text-gray-600">Last Name</label>
-                      <input name="lastName" type="text" value={userData.lastName} onChange={handleChange} className={`w-full px-4 py-2.5 text-sm border rounded-lg bg-gray-50 focus:outline-none transition-all ${errors.lastName ? 'border-red-500' : 'border-gray-300'}`} />
+                      <input name="lastName" type="text" value={userData.lastName} onChange={handleChange} className={`w-full px-4 py-2.5 text-sm border rounded-lg bg-gray-50 focus:outline-none transition-all ${errors.lastName ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'}`} />
                       {errors.lastName && <p className="text-[10px] text-red-500 font-medium">{errors.lastName}</p>}
                     </div>
                   </div>
                   <div className="space-y-1">
                     <label className="text-sm font-medium text-gray-600">Email Address</label>
-                    <input name="email" type="email" value={userData.email} onChange={handleChange} className={`w-full px-4 py-2.5 text-sm border rounded-lg bg-gray-50 focus:outline-none transition-all ${errors.email ? 'border-red-500' : 'border-gray-300'}`} />
+                    <input name="email" type="email" value={userData.email} onChange={handleChange} className={`w-full px-4 py-2.5 text-sm border rounded-lg bg-gray-50 focus:outline-none transition-all ${errors.email ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'}`} />
                     {errors.email && <p className="text-[10px] text-red-500 font-medium">{errors.email}</p>}
                   </div>
+                  
+                  {/* PHONE NUMBER WITH COUNTRY DROPDOWN */}
                   <div className="space-y-1">
                     <label className="text-sm font-medium text-gray-600">Phone Number</label>
-                    <input name="phone" type="text" value={userData.phone} onChange={handleChange} className={`w-full px-4 py-2.5 text-sm border rounded-lg bg-gray-50 focus:outline-none transition-all ${errors.phone ? 'border-red-500' : 'border-gray-300'}`} />
+                    <PhoneInput
+                      country={'us'} // Default country
+                      value={userData.phone}
+                      onChange={handlePhoneChange}
+                      containerClass="phone-container"
+                      inputClass={`!w-full !px-12 !py-5 !text-sm !border !rounded-lg !bg-gray-50 !focus:outline-none !transition-all ${errors.phone ? '!border-red-500 !ring-1 !ring-red-500' : '!border-gray-300'}`}
+                      buttonClass={`!bg-gray-50 !border !rounded-l-lg ${errors.phone ? '!border-red-500' : '!border-gray-300'}`}
+                    />
                     {errors.phone && <p className="text-[10px] text-red-500 font-medium">{errors.phone}</p>}
                   </div>
+
                   <div className="flex justify-end gap-3 pt-4">
-                    <button type="button" className="px-8 py-2.5 text-sm font-bold bg-[#E5E7EB] text-gray-700 rounded-xl">Cancel</button>
-                    <button type="submit" className="px-8 py-2.5 text-sm font-bold bg-[#F1B434] text-white rounded-xl shadow-md hover:bg-[#d9a22e]">Save Changes</button>
+                    <button type="button" className="px-8 py-2.5 text-sm font-bold bg-[#E5E7EB] text-gray-700 rounded-xl hover:bg-gray-300">Cancel</button>
+                    <button type="submit" className="px-8 py-2.5 text-sm font-bold bg-[#F1B434] text-white rounded-xl shadow-md hover:bg-[#D9A22E]">Save Changes</button>
                   </div>
                 </form>
               </div>
@@ -156,7 +166,7 @@ function AccountSettingsPage() {
 
             {/* Right Side Cards */}
             <div className="space-y-6">
-              {/* Your Role Card */}
+              {/* Role, Identity, and Linked Accounts sections remain unchanged */}
               <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6">
                 <h3 className="text-xs font-bold text-gray-800 mb-4 uppercase tracking-widest">Your Role</h3>
                 <div className="border border-[#125852] border-opacity-20 rounded-lg p-4 flex items-center justify-between bg-gray-50/30">
@@ -173,7 +183,6 @@ function AccountSettingsPage() {
                 </div>
               </div>
 
-              {/* NEW: Identity Verification Card */}
               <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6">
                 <h3 className="text-xs font-bold text-gray-800 mb-4 uppercase tracking-widest">Identity Verification</h3>
                 <div className="flex items-start gap-4">
@@ -190,12 +199,10 @@ function AccountSettingsPage() {
                 </div>
               </div>
 
-              {/* Linked Accounts Card */}
               <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-8">
                  <h3 className="text-xs font-bold text-gray-800 mb-5 uppercase tracking-widest">Linked Accounts</h3>
                  <div className="flex items-center justify-between bg-gray-50/50 p-3 rounded-lg">
                    <div className="flex items-center gap-3">
-                     {/* Facebook Icon with Official Blue (#1877F2) */}
                      <svg className="w-5 h-5 text-[#1877F2]" fill="currentColor" viewBox="0 0 24 24"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>
                      <span className="text-[12px] text-gray-700 font-semibold">Facebook (eleanor.pena)</span>
                    </div>
@@ -210,7 +217,6 @@ function AccountSettingsPage() {
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="ml-64 bg-[#234E4D] py-4 px-8 text-white text-[10px]">
         <div className="flex justify-between items-center max-w-4xl mx-auto">
           <div className="font-bold italic opacity-90">Buy Smart. Sell Fast. Grow Together...</div>
