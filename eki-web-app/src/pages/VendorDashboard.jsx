@@ -65,7 +65,7 @@ const VendorDashboard = () => {
           <a href="/product-dashboard" className="text-slate-500 hover:text-orange-400 pb-4 mt-4 transition-colors">Products</a>
           <a href="/service" className="text-slate-500 hover:text-orange-400 pb-4 mt-4 transition-colors">Services</a>
           <a href="/order-management" className="text-slate-500 hover:text-orange-400 pb-4 mt-4 transition-colors">Orders</a>
-          <a href="/payments" className="text-slate-500 hover:text-orange-400 pb-4 mt-4 transition-colors">Payments</a>
+          <a href="/payment" className="text-slate-500 hover:text-orange-400 pb-4 mt-4 transition-colors">Payments</a>
           
           <div className="flex items-center gap-4 ml-4 border-l pl-6 normal-case text-slate-400">
             <Settings className="w-5 h-5 cursor-pointer hover:text-teal-600" />

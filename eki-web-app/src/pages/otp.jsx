@@ -14,34 +14,58 @@ const OTPVerify = () => {
   const inputRefs = useRef([]);
 
   useEffect(() => {
+    // Redirect back if email is missing (page refresh issue)
+    if (!email) {
+      navigate('/reset-password-request'); 
+    }
     if (timer > 0) {
       const interval = setInterval(() => setTimer(prev => prev - 1), 1000);
       return () => clearInterval(interval);
     }
-  }, [timer]);
+  }, [timer, email, navigate]);
 
   const handleChange = (element, index) => {
-    if (isNaN(element.value)) return false;
+    const value = element.value;
+    if (isNaN(value)) return false;
+
     const newOtp = [...otp];
-    newOtp[index] = element.value;
+    newOtp[index] = value;
     setOtp(newOtp);
 
-    if (element.value !== "" && index < 5) inputRefs.current[index + 1].focus();
-    if (newOtp.join("").length === 6) submitOtp(newOtp.join(""));
+    // Move focus to next input
+    if (value !== "" && index < 5) {
+      inputRefs.current[index + 1].focus();
+    }
   };
 
   const handleKeyDown = (e, index) => {
-    if (e.key === "Backspace" && !otp[index] && index > 0) inputRefs.current[index - 1].focus();
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      inputRefs.current[index - 1].focus();
+    }
   };
 
   const submitOtp = async (code) => {
+    if (code.length < 6) return;
+    
     setIsLoading(true);
     setError("");
     try {
-      await verifyOtp({ email, otp_code: code });
-      navigate("/reset-password", { state: { email, otp_code: code } });
+      // FIX: Ensure you are passing the email and the 6-digit code
+      await verifyOtp({ 
+        email: email.trim().toLowerCase(), 
+        otp_code: code 
+      });
+      
+      // Navigate to Reset Password page, passing email and otp for the final step
+      navigate("/reset-password", { 
+        state: { 
+          email: email, 
+          otp_code: code 
+        } 
+      });
     } catch (err) {
-      setError(err.message);
+      // Show the specific error from the backend
+      setError(err.message || "Invalid or expired code.");
       setOtp(new Array(6).fill(""));
       inputRefs.current[0].focus();
     } finally {
@@ -54,7 +78,6 @@ const OTPVerify = () => {
       await resendOtp(email);
       setTimer(60);
       setError("");
-      alert("A new code has been sent!");
     } catch (err) {
       setError(err.message);
     }
@@ -83,12 +106,12 @@ const OTPVerify = () => {
         ))}
       </div>
       
-      {error && <p className="text-red-500 text-sm mb-6 font-bold">{error}</p>}
+      {error && <p className="text-red-500 text-sm mb-6 font-bold text-center">{error}</p>}
       
       <button 
         onClick={() => submitOtp(otp.join(""))} 
         disabled={isLoading || otp.join("").length < 6}
-        className="w-full max-w-sm bg-yellow-500 text-white font-bold py-4 rounded-full shadow-lg transition-transform active:scale-95"
+        className="w-full max-w-sm bg-[#F1B243] text-white font-bold py-4 rounded-full shadow-lg transition-transform active:scale-95 disabled:bg-gray-300"
       >
         {isLoading ? "Verifying..." : "Verify Code"}
       </button>
