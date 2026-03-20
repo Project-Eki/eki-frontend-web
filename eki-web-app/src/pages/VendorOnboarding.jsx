@@ -43,7 +43,7 @@ const VendorOnboarding = () => {
   };
 
   return (
-    <div className="h-screen w-full flex flex-col bg-[#F8F9FA] font-sans overflow-hidden">
+    <div className="vendor-onboarding-root h-screen w-full flex flex-col bg-[#F8F9FA] font-sans overflow-hidden">
       
       {/* Navbar */}
       <Navbar2 />
@@ -97,6 +97,16 @@ const VendorOnboarding = () => {
 
         {/* MAIN CONTENT */}
         <main className="flex-1 flex flex-col items-center px-10">
+          
+           {/* Mobile progress bar — hidden on desktop via CSS */}
+          <div className="mobile-progress-bar">
+            {[1,2,3,4,5].map(n => (
+              <div key={n} className={`mobile-progress-step ${
+                n < currentStep ? 'done' :
+                n === currentStep ? 'active' : ''
+              }`}/>
+            ))}
+          </div> 
 
           <div
             className={`w-full transition-all duration-300 ${

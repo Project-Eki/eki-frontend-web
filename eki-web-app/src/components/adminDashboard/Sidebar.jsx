@@ -14,8 +14,8 @@ import {
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admindashboard" },
-  { icon: Users, label: "Admin Management", path: "/admin-management" },
-  { icon: Store, label: "Vendors", path: "/vendor-management" },
+  { icon: Users, label: "Vendors", path: "/admin-management" },
+  { icon: Store, label: "Buyers", path: "/buyer-management" },
   { icon: Box, label: "Listings", path: "/product-dashboard" },
   { icon: CreditCard, label: "Payments", path: "/admin-payments" },
   { icon: ShoppingCart, label: "Orders", path: "/order-management" },
@@ -31,7 +31,7 @@ const Sidebar = () => {
   };
 
   return (
-    <aside className="w-[240px] bg-white border-r border-gray-100 h-screen py-4 flex flex-col shrink-0 sticky top-[73px]">
+    <aside className="w-[240px] bg-white border-r border-gray-100 h-screen py-4 flex flex-col shrink-0 sticky ">
       {/* Note: sticky top matches the approximate height of your Navbar */}
 
       <nav className="flex-1 px-4 flex flex-col">
