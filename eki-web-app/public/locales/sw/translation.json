@@ -1,0 +1,12 @@
+{
+  "nav": {
+    "home": "Nyumbani",
+    "login": "Ingia",
+    "signup": "Jisajili"
+  },
+  "hero": {
+    "title": "Anza Kuuza kwenye Eki",
+    "description": "Eki inakuunganisha na soko linalostawi la wauzaji wa ndani na watoa huduma, wote wakiwa na wasifu uliothibitishwa kwa miamala salama ya kuchukua bidhaa.",
+    "button": "Kuwa Muuzaji"
+  }
+}
