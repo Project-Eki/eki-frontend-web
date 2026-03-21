@@ -122,7 +122,7 @@ const VerifyIdentity = () => {
         </span>
       </div>
 
-      <div className="flex items-center gap-4 mt-10 mb-4" onPaste={handlePaste}>
+      {/* <div className="flex items-center gap-4 mt-10 mb-4" onPaste={handlePaste}>
         <div className="flex gap-3">
           {otp.slice(0, 3).map((data, index) => (
             <input
@@ -152,6 +152,41 @@ const VerifyIdentity = () => {
               onChange={(e) => handleChange(e.target.value, index + 3)}
               onKeyDown={(e) => handleKeyDown(e, index + 3)}
               className={inputClass}
+              disabled={isLoading}
+            />
+          ))}
+        </div>
+      </div> */}
+            <div className="otp-wrapper flex items-center gap-4 mt-10 mb-4" onPaste={handlePaste}>
+        <div className="otp-group flex gap-3">
+          {otp.slice(0, 3).map((data, index) => (
+            <input
+              key={index}
+              type="text"
+              maxLength="1"
+              ref={(el) => (inputRefs.current[index] = el)}
+              value={data}
+              onChange={(e) => handleChange(e.target.value, index)}
+              onKeyDown={(e) => handleKeyDown(e, index)}
+              className={`otp-input ${inputClass}`}
+              disabled={isLoading}
+            />
+          ))}
+        </div>
+
+        <HiMinus className="text-gray-300" size={24} />
+
+        <div className="otp-group flex gap-3">
+          {otp.slice(3, 6).map((data, index) => (
+            <input
+              key={index + 3}
+              type="text"
+              maxLength="1"
+              ref={(el) => (inputRefs.current[index + 3] = el)}
+              value={data}
+              onChange={(e) => handleChange(e.target.value, index + 3)}
+              onKeyDown={(e) => handleKeyDown(e, index + 3)}
+              className={`otp-input ${inputClass}`}
               disabled={isLoading}
             />
           ))}

@@ -129,7 +129,7 @@ const AccountBasics = () => {
       <form className="space-y-3" onSubmit={handleContinue}>
         {errors.general && <MessageAlert message={errors.general} type="error" />}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="account-basics-grid grid grid-cols-2 gap-4">
           <div className="relative">
             <FaRegUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={14} />
             <input 
@@ -163,7 +163,7 @@ const AccountBasics = () => {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className=" password-grid grid grid-cols-2 gap-4">
           <div className="relative">
             <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={14}/>
             <input

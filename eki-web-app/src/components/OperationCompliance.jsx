@@ -141,7 +141,7 @@ const handleFinalSubmit = async () => {
     return (
       <div
         onClick={() => fileRefs[field]?.current?.click()}
-        className={`relative p-3 h-[110px] rounded-2xl border-2 border-dashed cursor-pointer transition-all flex flex-col items-center justify-center text-center
+        className={`upload-card relative p-3 min-h-[110px] h-auto py-4 rounded-2xl border-2 border-dashed cursor-pointer transition-all flex flex-col items-center justify-center text-center
         ${isUploaded ? "border-green-500 bg-green-50" : 
           hasError ? "border-red-400 bg-red-50" : "border-gray-200 hover:border-[#F2B53D] bg-white shadow-sm"}`}
       >
@@ -205,7 +205,7 @@ const handleFinalSubmit = async () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 mb-3">
+          <div className="upload-grid grid grid-cols-3 gap-3 mb-3">
             <UploadCard label="Govt Issued ID" field="government_issued_id" />
             <UploadCard label="Country Issued ID" field="country_issued_id" />
             <UploadCard label="Business License" field="business_license" />
