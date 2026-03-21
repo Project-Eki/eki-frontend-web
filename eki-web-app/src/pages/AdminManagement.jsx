@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import AdminSidebar from '../components/AdminSidebar';
+// import AdminSidebar from '../components/AdminSidebar';
+import Sidebar from '../components/adminDashboard/Sidebar';
 import AdminHeader from '../components/AdminHeader';
 import StatCard from '../components/StatCard';
 import VendorList from '../components/VendorList';
@@ -19,7 +20,7 @@ const AdminManagement = () => {
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
-      <AdminSidebar />
+      <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
         <main className="flex-1 overflow-y-auto p-8 space-y-8">

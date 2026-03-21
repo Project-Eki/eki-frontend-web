@@ -9,25 +9,30 @@ import {
   faTimes
 } from '@fortawesome/free-solid-svg-icons'
 import logoImage from '../assets/eki-white-logo.png'
+import { useTranslation } from 'react-i18next'  // <-- Add this import
 
 const Navbar = () => {
+  const { t, i18n } = useTranslation()  // <-- Add this hook
   const [isOpen, setIsOpen] = useState(false)
   const [isLanguageOpen, setIsLanguageOpen] = useState(false)
-  const [selectedLanguage, setSelectedLanguage] = useState('EN')
+  // Remove this line: const [selectedLanguage, setSelectedLanguage] = useState('EN')
 
   const languages = [
-    { code: 'EN', name: 'English' },
-    { code: 'KS', name: 'Kiswahili' },
-    { code: 'FR', name: 'French' },
-    { code: 'SP', name: 'Spanish' },
-    { code: 'IT', name: 'Italiano' },
-    { code: 'PT', name: 'Português' },
+    { code: 'en', name: 'English' },
+    { code: 'sw', name: 'Kiswahili' },
+    { code: 'fr', name: 'French' },
+    { code: 'es', name: 'Spanish' },
+    { code: 'it', name: 'Italiano' },
+    { code: 'pt', name: 'Português' },
   ]
 
   const handleLanguageSelect = (langCode) => {
-    setSelectedLanguage(langCode)
+    i18n.changeLanguage(langCode)  // <-- Use i18n.changeLanguage instead of local state
     setIsLanguageOpen(false)
   }
+
+  // Get current language display
+  const currentLanguage = languages.find(lang => lang.code === i18n.resolvedLanguage) || languages[0]
 
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">
@@ -39,42 +44,17 @@ const Navbar = () => {
           </Link>
         </div>
 
-       {/* Search Bar */}
-{/* <div className="hidden sm:flex flex-1 justify-center px-6">
-  <div className="relative w-full max-w-[320px] lg:max-w-[420px]">
-    <FontAwesomeIcon
-      icon={faSearch}
-      className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-    />
-    <input
-      type="text"
-      placeholder="Search products..."
-      className="w-full pl-11 pr-4 py-2.5 border border-gray-300 rounded-full outline-none focus:border-[#efb034] focus:ring-1 focus:ring-[#efb034] transition-all text-sm"
-    />
-  </div>
-</div> */}
-
         {/* Desktop Navigation */}
         <div className="hidden lg:flex items-center">
           <ul className="flex list-none gap-6 items-center">
             <li>
               <a href="#home" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">
-                Home
+                {t('nav.home')}  {/* <-- Translate this */}
               </a>
             </li>
-            {/* <li>
-              <a href="#products" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">
-                Products
-              </a>
-            </li>
-            <li>
-              <a href="#services" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">
-                Services
-              </a>
-            </li> */}
             <li>
               <Link to="/Login" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">
-                Login
+                {t('nav.login')}  {/* <-- Translate this */}
               </Link>
             </li>
             <li>
@@ -82,7 +62,7 @@ const Navbar = () => {
                 to="/vendorOnboarding"
                 className="bg-[#efb034] text-white px-6 py-2.5 rounded-lg font-bold hover:bg-[#d99c1c] transition-all active:scale-95"
               >
-                Sign Up
+                {t('nav.signup')}  {/* <-- Translate this */}
               </Link>
             </li>
             <li className="relative">
@@ -91,7 +71,7 @@ const Navbar = () => {
                 className="flex items-center gap-1 text-gray-700 font-semibold hover:text-[#efb034] focus:outline-none"
               >
                 <FontAwesomeIcon icon={faGlobe} />
-                <span>{selectedLanguage}</span>
+                <span>{currentLanguage.code.toUpperCase()}</span>  {/* <-- Use currentLanguage from i18n */}
                 <FontAwesomeIcon
                   icon={faChevronDown}
                   className={`text-xs transition-transform duration-300 ${isLanguageOpen ? 'rotate-180' : ''}`}
@@ -105,7 +85,7 @@ const Navbar = () => {
                       key={lang.code}
                       onClick={() => handleLanguageSelect(lang.code)}
                       className={`block w-full text-left px-4 py-2 text-sm ${
-                        selectedLanguage === lang.code
+                        i18n.resolvedLanguage === lang.code  // <-- Compare with i18n.resolvedLanguage
                           ? 'text-[#efb034] bg-orange-50'
                           : 'text-gray-700 hover:bg-gray-50'
                       }`}
@@ -140,14 +120,14 @@ const Navbar = () => {
             className="block font-medium text-gray-800"
             onClick={() => setIsOpen(false)}
           >
-            Sign in
+            {t('nav.login')}  {/* <-- Translate this */}
           </Link>
           <Link
             to="/signup"
             className="block w-full text-center bg-[#efb034] text-white py-3 rounded-lg font-bold"
             onClick={() => setIsOpen(false)}
           >
-            Sign Up
+            {t('nav.signup')}  {/* <-- Translate this */}
           </Link>
         </div>
       </div>

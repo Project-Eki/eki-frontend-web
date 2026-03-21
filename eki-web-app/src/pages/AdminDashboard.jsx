@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Users, Box, ShieldCheck, ArrowLeftRight } from 'lucide-react';
 import Navbar3 from '../components/adminDashboard/Navbar3';
@@ -121,47 +120,6 @@ const AdminDashboard = () => {
             {/* Tables: Multiple Sections */}
           <div className="space-y-10 pb-10">
 
-  {/* User Management */}
-  <div>
-    <h2 className="text-lg font-semibold text-gray-900 mb-4">
-      User Management
-    </h2>
-{/* Props  */}
-    <DataTable
-      title="Recent Users"
-      columns={userManagementColumns}
-      data={userManagementData}
-      tableType="userManagement"
-    />
-  </div>
-
-  {/* Content Moderation */}
-  <div>
-    <h2 className="text-lg font-semibold text-gray-900 mb-4">
-      Content Moderation
-    </h2>
-
-    <DataTable
-      title="Flagged Content"
-      columns={contentModerationColumns}
-      data={contentModerationData}
-      tableType="contentModeration"
-    />
-  </div>
-
-  {/* Transaction Monitoring */}
-  <div>
-    <h2 className="text-lg font-semibold text-gray-900 mb-4">
-      Transaction Monitoring
-    </h2>
-
-    <DataTable
-      title="Recent Transactions"
-      columns={transactionColumns}
-      data={transactionData}
-      tableType="transaction"
-    />
-  </div>
 
    {/*verificationWorkflows */}
   <div>
@@ -177,16 +135,54 @@ const AdminDashboard = () => {
     />
   </div>
 
+  {/* Buyer Management */}
+  <div>
+    <h2 className="text-lg font-semibold text-gray-900 mb-4">
+      Buyer Management
+    </h2>
+{/* Props  */}
+    <DataTable
+      title="Buyers"
+      columns={userManagementColumns}
+      data={userManagementData}
+      tableType="userManagement"
+    />
+  </div>
+
+ {/* Transaction Monitoring */}
+  <div>
+    <h2 className="text-lg font-semibold text-gray-900 mb-4">
+      Transaction Monitoring
+    </h2>
+
+    <DataTable
+      title="Recent Transactions"
+      columns={transactionColumns}
+      data={transactionData}
+      tableType="transaction"
+    />
+  </div>
+
+
+  {/* Content Moderation */}
+  <div>
+    <h2 className="text-lg font-semibold text-gray-900 mb-4">
+      Content Moderation
+    </h2>
+
+    <DataTable
+      title="Flagged Content"
+      columns={contentModerationColumns}
+      data={contentModerationData}
+      tableType="contentModeration"
+    />
+  </div>
+
 </div>
 
           </div>
-        </main>
-          
-      
-      </div>
-
-      {/* Footer - now appears naturally at bottom of content */}
-      <footer className="bg-[#1D4D4C] text-white py-4 px-10 flex justify-between items-center text-[11px]">
+            {/* Footer - now appears naturally at bottom of content */}
+      <footer className="bg-[#1D4D4C] text-white py-4 px-3 flex justify-between items-center text-[11px]">
         <div>Buy Smart. Sell Fast. Grow Together...</div>
         <div>© 2026 Vendor Portal. All rights reserved.</div>
         <div className="flex gap-4">
@@ -200,6 +196,26 @@ const AdminDashboard = () => {
           <span className="cursor-pointer hover:underline">Ijoema ltd</span>
         </div>
       </footer>
+        </main>
+          
+      
+      </div>
+
+      {/* Footer - now appears naturally at bottom of content
+      <footer className="bg-[#1D4D4C] text-white py-4 px-10 flex justify-between items-center text-[11px]">
+        <div>Buy Smart. Sell Fast. Grow Together...</div>
+        <div>© 2026 Vendor Portal. All rights reserved.</div>
+        <div className="flex gap-4">
+          <span className="relative inline-block cursor-pointer hover:underline">
+            eki
+            <span className="absolute text-[5px] -bottom-0 -right-2">TM</span>
+          </span>
+          <span className="cursor-pointer hover:underline">Support</span>
+          <span className="cursor-pointer hover:underline">Privacy Policy</span>
+          <span className="cursor-pointer hover:underline">Terms of Service</span>
+          <span className="cursor-pointer hover:underline">Ijoema ltd</span>
+        </div>
+      </footer> */}
 
 
 
