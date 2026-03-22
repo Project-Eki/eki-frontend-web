@@ -28,22 +28,22 @@ const StatusBadge = ({ status }) => {
 
 // --- DATA ARRAYS ---
 const userManagementData = [
-  { id: 'USR-001', name: 'John Doe', email: 'john@example.com', role: 'Buyer', status: 'Active', created: '2026-01-15' },
-  { id: 'USR-002', name: 'Sarah Wilson', email: 'sarah@example.com', role: 'Seller', status: 'Active', created: '2026-01-18' },
-  { id: 'USR-003', name: 'Mike Johnson', email: 'mike@example.com', role: 'Buyer', status: 'Pending', created: '2026-02-01' },
+  { id: 'USR-001/03/26', name: 'John Doe', email: 'john@example.com', role: 'Buyer', status: 'Active', created: '2026-01-15' },
+  { id: 'USR-002/03/26', name: 'Sarah Wilson', email: 'sarah@example.com', role: 'Seller', status: 'Active', created: '2026-01-18' },
+  { id: 'USR-003/03/26', name: 'Mike Johnson', email: 'mike@example.com', role: 'Buyer', status: 'Pending', created: '2026-02-01' },
 ];
 
 const contentModerationData = [
-  { id: 'MOD-001', type: 'Listing', item: 'iPhone 15 Pro', reason: 'Prohibited Item', status: 'Pending', submitted: '2026-03-05' },
-  { id: 'MOD-003', type: 'Listing', item: 'Designer Bag', reason: 'Counterfeit', status: 'Resolved', submitted: '2026-03-01' },
+  { id: 'MOD-001/03/26', type: 'Listing', item: 'iPhone 15 Pro', reason: 'Prohibited Item', status: 'Pending', submitted: '2026-03-05' },
+  { id: 'MOD-003/03/26', type: 'Listing', item: 'Designer Bag', reason: 'Counterfeit', status: 'Resolved', submitted: '2026-03-01' },
 ];
 
 const transactionData = [
-  { id: 'TXN-001', date: '2026-03-06', buyer: 'John Doe', seller: 'Sarah Store', amount: '$450.00', status: 'Completed' },
-  { id: 'TXN-003', date: '2026-03-04', buyer: 'Emily Brown', seller: 'Fashion Hub', amount: '$89.99', status: 'Disputed' },
+  { id: 'TXN-001/03/26', date: '2026-03-06', buyer: 'John Doe', seller: 'Sarah Store', amount: '$450.00', status: 'Completed' },
+  { id: 'TXN-003/03/26', date: '2026-03-04', buyer: 'Emily Brown', seller: 'Fashion Hub', amount: '$89.99', status: 'Disputed' },
 ];
 const verificationWorkflowsData = [
-  {id: 'VER001', applicant: 'Tech Solutions', type: 'Seller Account', status: 'Pending', submitted: '2026-01-02'}
+  {id: 'VER001/03/26', applicant: 'Tech Solutions', type: 'Seller Account', status: 'Pending', submitted: '2026-01-02'}
 ]
 
 const AdminDashboard = () => {
