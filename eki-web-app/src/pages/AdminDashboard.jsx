@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Users, Box, ShieldCheck, ArrowLeftRight } from 'lucide-react';
 import Navbar3 from '../components/adminDashboard/Navbar3';
@@ -29,22 +28,22 @@ const StatusBadge = ({ status }) => {
 
 // --- DATA ARRAYS ---
 const userManagementData = [
-  { id: 'USR-001', name: 'John Doe', email: 'john@example.com', role: 'Buyer', status: 'Active', created: '2026-01-15' },
-  { id: 'USR-002', name: 'Sarah Wilson', email: 'sarah@example.com', role: 'Seller', status: 'Active', created: '2026-01-18' },
-  { id: 'USR-003', name: 'Mike Johnson', email: 'mike@example.com', role: 'Buyer', status: 'Pending', created: '2026-02-01' },
+  { id: 'USR-001/03/26', name: 'John Doe', email: 'john@example.com', role: 'Buyer', status: 'Active', created: '2026-01-15' },
+  { id: 'USR-002/03/26', name: 'Sarah Wilson', email: 'sarah@example.com', role: 'Seller', status: 'Active', created: '2026-01-18' },
+  { id: 'USR-003/03/26', name: 'Mike Johnson', email: 'mike@example.com', role: 'Buyer', status: 'Pending', created: '2026-02-01' },
 ];
 
 const contentModerationData = [
-  { id: 'MOD-001', type: 'Listing', item: 'iPhone 15 Pro', reason: 'Prohibited Item', status: 'Pending', submitted: '2026-03-05' },
-  { id: 'MOD-003', type: 'Listing', item: 'Designer Bag', reason: 'Counterfeit', status: 'Resolved', submitted: '2026-03-01' },
+  { id: 'MOD-001/03/26', type: 'Listing', item: 'iPhone 15 Pro', reason: 'Prohibited Item', status: 'Pending', submitted: '2026-03-05' },
+  { id: 'MOD-003/03/26', type: 'Listing', item: 'Designer Bag', reason: 'Counterfeit', status: 'Resolved', submitted: '2026-03-01' },
 ];
 
 const transactionData = [
-  { id: 'TXN-001', date: '2026-03-06', buyer: 'John Doe', seller: 'Sarah Store', amount: '$450.00', status: 'Completed' },
-  { id: 'TXN-003', date: '2026-03-04', buyer: 'Emily Brown', seller: 'Fashion Hub', amount: '$89.99', status: 'Disputed' },
+  { id: 'TXN-001/03/26', date: '2026-03-06', buyer: 'John Doe', seller: 'Sarah Store', amount: '$450.00', status: 'Completed' },
+  { id: 'TXN-003/03/26', date: '2026-03-04', buyer: 'Emily Brown', seller: 'Fashion Hub', amount: '$89.99', status: 'Disputed' },
 ];
 const verificationWorkflowsData = [
-  {id: 'VER001', applicant: 'Tech Solutions', type: 'Seller Account', status: 'Pending', submitted: '2026-01-02'}
+  {id: 'VER001/03/26', applicant: 'Tech Solutions', type: 'Seller Account', status: 'Pending', submitted: '2026-01-02'}
 ]
 
 const AdminDashboard = () => {
@@ -121,47 +120,6 @@ const AdminDashboard = () => {
             {/* Tables: Multiple Sections */}
           <div className="space-y-10 pb-10">
 
-  {/* User Management */}
-  <div>
-    <h2 className="text-lg font-semibold text-gray-900 mb-4">
-      User Management
-    </h2>
-{/* Props  */}
-    <DataTable
-      title="Recent Users"
-      columns={userManagementColumns}
-      data={userManagementData}
-      tableType="userManagement"
-    />
-  </div>
-
-  {/* Content Moderation */}
-  <div>
-    <h2 className="text-lg font-semibold text-gray-900 mb-4">
-      Content Moderation
-    </h2>
-
-    <DataTable
-      title="Flagged Content"
-      columns={contentModerationColumns}
-      data={contentModerationData}
-      tableType="contentModeration"
-    />
-  </div>
-
-  {/* Transaction Monitoring */}
-  <div>
-    <h2 className="text-lg font-semibold text-gray-900 mb-4">
-      Transaction Monitoring
-    </h2>
-
-    <DataTable
-      title="Recent Transactions"
-      columns={transactionColumns}
-      data={transactionData}
-      tableType="transaction"
-    />
-  </div>
 
    {/*verificationWorkflows */}
   <div>
@@ -177,12 +135,54 @@ const AdminDashboard = () => {
     />
   </div>
 
+  {/* Buyer Management */}
+  <div>
+    <h2 className="text-lg font-semibold text-gray-900 mb-4">
+      Buyer Management
+    </h2>
+{/* Props  */}
+    <DataTable
+      title="Buyers"
+      columns={userManagementColumns}
+      data={userManagementData}
+      tableType="userManagement"
+    />
+  </div>
+
+ {/* Transaction Monitoring */}
+  <div>
+    <h2 className="text-lg font-semibold text-gray-900 mb-4">
+      Transaction Monitoring
+    </h2>
+
+    <DataTable
+      title="Recent Transactions"
+      columns={transactionColumns}
+      data={transactionData}
+      tableType="transaction"
+    />
+  </div>
+
+
+  {/* Content Moderation */}
+  <div>
+    <h2 className="text-lg font-semibold text-gray-900 mb-4">
+      Content Moderation
+    </h2>
+
+    <DataTable
+      title="Flagged Content"
+      columns={contentModerationColumns}
+      data={contentModerationData}
+      tableType="contentModeration"
+    />
+  </div>
+
 </div>
 
           </div>
-        </main>
-          {/* Footer - now appears naturally at bottom of content */}
-      <footer className="bg-[#1D4D4C] text-white py-4 px-10 flex justify-between items-center text-[11px]">
+            {/* Footer - now appears naturally at bottom of content */}
+      <footer className="bg-[#1D4D4C] text-white py-4 px-3 flex justify-between items-center text-[11px]">
         <div>Buy Smart. Sell Fast. Grow Together...</div>
         <div>© 2026 Vendor Portal. All rights reserved.</div>
         <div className="flex gap-4">
@@ -196,6 +196,9 @@ const AdminDashboard = () => {
           <span className="cursor-pointer hover:underline">Ijoema ltd</span>
         </div>
       </footer>
+        </main>
+          
+      
       </div>
 
       {/* Footer - now appears naturally at bottom of content

@@ -14,6 +14,7 @@ import VendorOnboarding from "./pages/VendorOnboarding";
 import Settings from "./pages/Settings";
 import AdminDashboard from "./pages/AdminDashboard";
 import VendorDashboard from "./pages/VendorDashboard";
+import ServiceManagement from "./pages/ServiceManagement";
 import AdminManagement from "./pages/AdminManagement";
 import ProductDashboard from "./pages/ProductDashboard";
 import OrderManagement from "./pages/OrderManagement";
@@ -62,7 +63,8 @@ function App() {
           <Route path="/product-dashboard" element={<ProtectedRoute allowedRole="vendor"><ProductDashboard /></ProtectedRoute>} />
           <Route path="/order-management" element={<ProtectedRoute allowedRole="vendor"><OrderManagement /></ProtectedRoute>} />
           <Route path="/business-settings" element={<ProtectedRoute allowedRole="vendor"><BusinessSettings /></ProtectedRoute>} />
-
+          {/* <Route path="/servicemanagement" element={<ProtectedRoute allowedRole="vendor"><ServiceManagement /></ProtectedRoute>} /> */}
+            <Route path="/servicemanagement" element={<ServiceManagement />} />  
           {/* Protected Admin Routes */}
           <Route path="/admindashboard" element={<ProtectedRoute allowedRole="admin"><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin-management" element={<ProtectedRoute allowedRole="admin"><AdminManagement /></ProtectedRoute>} />

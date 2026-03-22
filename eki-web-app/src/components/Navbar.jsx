@@ -40,7 +40,7 @@ const Navbar = () => {
         </div>
 
        {/* Search Bar */}
-<div className="hidden sm:flex flex-1 justify-center px-6">
+{/* <div className="hidden sm:flex flex-1 justify-center px-6">
   <div className="relative w-full max-w-[320px] lg:max-w-[420px]">
     <FontAwesomeIcon
       icon={faSearch}
@@ -52,7 +52,7 @@ const Navbar = () => {
       className="w-full pl-11 pr-4 py-2.5 border border-gray-300 rounded-full outline-none focus:border-[#efb034] focus:ring-1 focus:ring-[#efb034] transition-all text-sm"
     />
   </div>
-</div>
+</div> */}
 
         {/* Desktop Navigation */}
         <div className="hidden lg:flex items-center">
@@ -62,7 +62,7 @@ const Navbar = () => {
                 Home
               </a>
             </li>
-            <li>
+            {/* <li>
               <a href="#products" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">
                 Products
               </a>
@@ -71,7 +71,7 @@ const Navbar = () => {
               <a href="#services" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">
                 Services
               </a>
-            </li>
+            </li> */}
             <li>
               <Link to="/Login" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">
                 Login

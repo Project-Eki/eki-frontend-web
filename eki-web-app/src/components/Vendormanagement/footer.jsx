@@ -2,13 +2,12 @@ import React from "react";
 
 const Footer = () => {
   return (
-    <footer className="footer-root bg-[#235E5DFF] text-white py-4 px-10 flex justify-between items-center text-[11px] shrink-0">
-      <div className="footer-tagline">Buy Smart. Sell Fast. Grow Together...</div>
-      <div className="footer-copy">© 2026 Vendor Portal. All rights reserved.</div>
-      <div className="footer-links flex gap-4">
+    <footer className="bg-[#1D4D4C] text-white py-4 px-5 sm:px-10 flex flex-col sm:flex-row justify-between items-center gap-2 text-[11px] shrink-0">
+      <div className="hidden sm:block">Buy Smart. Sell Fast. Grow Together...</div>
+      <div>© 2026 Vendor Portal. All rights reserved.</div>
+      <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
         <span className="relative inline-block cursor-pointer hover:underline">
-          eki
-          <span className="absolute text-[5px] -bottom-0 -right-2">TM</span>
+          eki<span className="absolute text-[5px] -bottom-0 -right-2">TM</span>
         </span>
         <span className="cursor-pointer hover:underline">Support</span>
         <span className="cursor-pointer hover:underline">Privacy Policy</span>

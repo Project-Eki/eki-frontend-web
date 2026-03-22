@@ -2,10 +2,8 @@ import React, { useRef, useState } from "react";
 import { HiOutlineCloudUpload, HiCheckCircle, HiExclamationCircle } from "react-icons/hi";
 import ReviewPhase from "./Review all details";
 import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
+import { validateOperationCompliance } from "../utils/operationComplianceValidation";
 import { completeVendorOnboarding } from '../services/api';
-
-// Import your validation function (assuming it's in the same file or an utils file)
-// export const validateOperationCompliance = (formData) => { ... }
 
 const OperationCompliance = () => {
   const { state, dispatch } = useOnboarding();
@@ -29,21 +27,7 @@ const OperationCompliance = () => {
     business_license: licenseRef,
   };
 
-// const handleFinalSubmit = async () => {
-//   setIsLoading(true);
-//   try {
-//     // Call the newly named function
-//     await completeVendorOnboarding(formData);
 
-//     dispatch({ type: ACTIONS.NEXT_STEP });
-//   } catch (error) {
-//     console.error("Registration Error:", error);
-//     const serverMessage = error.response?.data?.message || "Something went wrong.";
-//     alert(serverMessage);
-//   } finally {
-//     setIsLoading(false);
-//   }
-// };
 
 const handleFinalSubmit = async () => {
   setIsLoading(true);
@@ -54,14 +38,6 @@ const handleFinalSubmit = async () => {
     // 2. Move to step 6 to trigger the final checkmark in sidebar
     dispatch({ type: ACTIONS.UPDATE_FORM, payload: { isSubmitted: true } });
     dispatch({ type: ACTIONS.SET_STEP, payload: 6 }); 
-    
-  // } catch (error) {
-  //   console.error("Registration Error:", error);
-  //   const serverMessage = error.response?.data?.message || "Something went wrong.";
-  //   alert(serverMessage);
-  // } finally {
-  //   setIsLoading(false);
-  // }
   } catch (error) {
     console.error("Registration Error:", error);
 
@@ -141,7 +117,7 @@ const handleFinalSubmit = async () => {
     return (
       <div
         onClick={() => fileRefs[field]?.current?.click()}
-        className={`relative p-3 h-[110px] rounded-2xl border-2 border-dashed cursor-pointer transition-all flex flex-col items-center justify-center text-center
+        className={`upload-card relative p-3 min-h-[110px] h-auto py-4 rounded-2xl border-2 border-dashed cursor-pointer transition-all flex flex-col items-center justify-center text-center
         ${isUploaded ? "border-green-500 bg-green-50" : 
           hasError ? "border-red-400 bg-red-50" : "border-gray-200 hover:border-[#F2B53D] bg-white shadow-sm"}`}
       >
@@ -205,7 +181,7 @@ const handleFinalSubmit = async () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 mb-3">
+          <div className="upload-grid grid grid-cols-3 gap-3 mb-3">
             <UploadCard label="Govt Issued ID" field="government_issued_id" />
             <UploadCard label="Country Issued ID" field="country_issued_id" />
             <UploadCard label="Business License" field="business_license" />
@@ -225,24 +201,7 @@ const handleFinalSubmit = async () => {
   );
 };
 
-// Paste your validation functions here or import them
-export const validateOperationCompliance = (formData) => {
-  const errors = {};
-  
-  if (!formData.opening_time) errors.opening_time = "Required";
-  if (!formData.closing_time) errors.closing_time = "Required";
 
-  // Check documents
-  if (!formData.incorporation_cert) errors.incorporation_cert = "Required";
-  if (!formData.government_issued_id) errors.government_issued_id = "Required";
-  if (!formData.country_issued_id) errors.country_issued_id = "Required";
-  if (!formData.tax_certificate) errors.tax_certificate = "Required";
-  
-  if (!formData.business_license) {
-      errors.business_license = "Required";
-  }
 
-  return errors;
-};
 
 export default OperationCompliance;
