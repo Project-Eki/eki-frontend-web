@@ -62,7 +62,7 @@ function App() {
           <Route path="/vendordashboard" element={<ProtectedRoute allowedRole="vendor"><VendorDashboard /></ProtectedRoute>} />
           <Route path="/product-dashboard" element={<ProtectedRoute allowedRole="vendor"><ProductDashboard /></ProtectedRoute>} />
           <Route path="/order-management" element={<ProtectedRoute allowedRole="vendor"><OrderManagement /></ProtectedRoute>} />
-          <Route path="/business-settings" element={<ProtectedRoute allowedRole="vendor"><BusinessSettings /></ProtectedRoute>} />
+          <Route path="/business-settings" element={<BusinessSettings />} />
           {/* <Route path="/servicemanagement" element={<ProtectedRoute allowedRole="vendor"><ServiceManagement /></ProtectedRoute>} /> */}
             <Route path="/servicemanagement" element={<ServiceManagement />} />  
           {/* Protected Admin Routes */}
@@ -71,7 +71,7 @@ function App() {
           <Route path="/admin-payments" element={<ProtectedRoute allowedRole="admin"><PaymentAndPayout /></ProtectedRoute>} />
 
           {/* Shared Protected Routes */}
-          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/payment" element={<ProtectedRoute><PaymentSystem /></ProtectedRoute>} />
           <Route path="/account-settings" element={<ProtectedRoute><AccountSettingsPage /></ProtectedRoute>} />
 
