@@ -12,7 +12,7 @@ import {
 } from "react-icons/hi";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
-import VendorNavbar from "../components/VendorNavbar";
+import VendorNavbar from "../components/Vendormanagement/Navbar";
 import Footer from "../components/Footer";
 
 const BusinessSettings = () => {
