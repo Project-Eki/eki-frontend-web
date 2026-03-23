@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import logoImage from '../assets/logo.jpeg';
+import { Eye, EyeOff } from 'lucide-react';
+
 import resetIllustration from '../assets/reset.jpeg';
 import { passwordResetConfirm } from '../services/authService';
+import Navbar2 from "../components/Navbar2";
+import Footer from "../components/Footer";
 
 const ResetPasswordPage = () => {
   const navigate = useNavigate();
@@ -15,17 +18,20 @@ const ResetPasswordPage = () => {
   const [confirm_password, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false); // Success state
+  const [isSuccess, setIsSuccess] = useState(false);
 
   // Password visibility states
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Dynamic button logic: turns yellow only if both fields are filled
+  const isFormFilled = new_password.length > 0 && confirm_password.length > 0;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (new_password.length < 8) {
-      setError('Password must be min 8 chars');
+      setError('Min 8 characters required');
       return;
     }
     if (new_password !== confirm_password) {
@@ -44,150 +50,136 @@ const ResetPasswordPage = () => {
         confirm_password,
       });
       
-      setIsSuccess(true); // Trigger success UI
-      
-      // Auto-navigate after 3 seconds
+      setIsSuccess(true);
       setTimeout(() => {
-        navigate('/signin'); 
+        navigate('/sign-in'); // Matches your file name 'sign in'
       }, 3000);
     } catch (err) {
-      setError(err.message || 'Reset failed. Please try again.');
+      setError(err.message || 'Reset failed. Try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-white font-sans text-sm">
-      {/* Added flex-col md:flex-row for responsiveness */}
-      <div className="flex flex-col md:flex-row flex-grow overflow-hidden">
+    <div className="flex flex-col h-screen bg-white font-sans overflow-hidden">
+      <Navbar2 />
+
+      <div className="flex flex-1 w-full overflow-hidden">
         
-        {/* Left Side: Illustration - Hidden on small screens, shown on medium+ */}
-        <div className="hidden md:flex md:w-1/2 items-center justify-center p-4">
-          <img src={resetIllustration} alt="Reset Illustration" className="max-w-full h-auto object-contain" />
+        {/* Left Side: Stagnant Image */}
+        <div className="hidden lg:block lg:w-1/2 h-full overflow-hidden">
+          <img 
+            src={resetIllustration} 
+            alt="Reset Illustration" 
+            className="w-full h-full object-cover pointer-events-none" 
+          />
         </div>
 
-        {/* Right Side: Form Content */}
-        <div className="flex w-full md:w-1/2 flex-col justify-center items-center px-8 py-10 md:px-16 bg-white">
-          
-          <div className="w-full max-w-sm">
-            {/* Logo */}
-            <div className="flex justify-center mb-6">
-              <img src={logoImage} alt="Logo" className="h-12 w-auto object-contain" />
-            </div>
-
-            {/* Success Message UI */}
+        {/* Right Side: Stagnant Form Container */}
+        <div className="w-full lg:w-1/2 h-full flex flex-col justify-center items-center p-8 md:p-12 bg-white overflow-hidden">
+          <div className="w-full max-w-md animate-in fade-in duration-500 text-sm">
+            
             {isSuccess ? (
-              <div className="text-center animate-fade-in">
-                <div className="bg-emerald-50 text-emerald-700 p-6 rounded-2xl border border-emerald-100 mb-6">
-                  <h2 className="text-lg font-bold mb-2">Success!</h2>
-                  <p>You have successfully reset your password. Redirecting to the sign in page...</p>
+              <div className="text-center">
+                <div className="bg-emerald-50 text-emerald-700 p-8 rounded-2xl border border-emerald-100 mb-6">
+                  <h2 className="text-2xl font-bold mb-2">Success!</h2>
+                  <p className="text-sm">Password reset successfully. Redirecting you to sign in...</p>
                 </div>
-                <Link to="/signin" className="text-[#F1B243] font-bold hover:underline">Click here to sign in now</Link>
+                <Link to="/sign-in" className="text-[#EFB034] font-bold hover:underline">
+                  Click here to go now
+                </Link>
               </div>
             ) : (
               <>
-                <h2 className="text-xl font-semibold text-gray-800 text-center mb-10">Secure your account</h2>
-                
-                <form className="space-y-4" onSubmit={handleSubmit}>
+                <div className="mb-8 text-left">
+                  <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight whitespace-nowrap">
+                    Secure your account
+                  </h2>
+                  <p className="text-slate-400 mt-2 text-[10px] uppercase tracking-[0.2em] font-bold">
+                    Create a strong new password below
+                  </p>
+                </div>
+
+                <form className="space-y-5" onSubmit={handleSubmit} noValidate>
                   
-                  {/* Enter Password Input */}
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                    </div>
+                  {/* New Password Input */}
+                  <div className="relative flex items-center">
                     <input
                       type={showNewPassword ? "text" : "password"}
                       value={new_password}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Enter password"
-                      className="w-full rounded-lg border border-gray-300 py-3 pl-10 pr-10 focus:outline-none focus:ring-1 focus:ring-gray-300 placeholder-gray-400"
+                      onChange={(e) => { setNewPassword(e.target.value); if(error) setError(''); }}
+                      placeholder="New Password"
+                      className={`w-full rounded-xl border h-12 px-5 focus:outline-none transition-all text-slate-900
+                        ${error && error.includes('8') ? 'border-red-500 bg-red-50/10' : 'border-slate-200 focus:border-[#EFB034]'}`}
                     />
-                    {/* Clickable Eye Icon */}
-                    <button 
-                      type="button"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                    >
-                      {showNewPassword ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.012 10.012 0 014.13-5.026m1.83-2.29A10.004 10.004 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.011m-9.424-9.424l10.848 10.848" />
-                        </svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
+                    <div className="absolute right-4 flex items-center gap-2">
+                      {error && error.includes('8') && (
+                        <span className="text-[10px] text-red-500 font-bold italic pointer-events-none">{error}</span>
                       )}
-                    </button>
+                      <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="text-slate-400">
+                        {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </div>
 
                   {/* Confirm Password Input */}
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                    </div>
+                  <div className="relative flex items-center">
                     <input
                       type={showConfirmPassword ? "text" : "password"}
                       value={confirm_password}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Confirm password"
-                      className="w-full rounded-lg border border-gray-300 py-3 pl-10 pr-10 focus:outline-none focus:ring-1 focus:ring-gray-300 placeholder-gray-400"
+                      onChange={(e) => { setConfirmPassword(e.target.value); if(error) setError(''); }}
+                      placeholder="Confirm Password"
+                      className={`w-full rounded-xl border h-12 px-5 focus:outline-none transition-all text-slate-900
+                        ${error && error.includes('match') ? 'border-red-500 bg-red-50/10' : 'border-slate-200 focus:border-[#EFB034]'}`}
                     />
-                    {/* Clickable Eye Icon */}
-                    <button 
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                    >
-                      {showConfirmPassword ? (
-                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.012 10.012 0 014.13-5.026m1.83-2.29A10.004 10.004 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.011m-9.424-9.424l10.848 10.848" />
-                        </svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
+                    <div className="absolute right-4 flex items-center gap-2">
+                      {error && error.includes('match') && (
+                        <span className="text-[10px] text-red-500 font-bold italic pointer-events-none">{error}</span>
                       )}
-                    </button>
+                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="text-slate-400">
+                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Requirements  */}
-                  <div className="bg-gray-50/50 p-4 rounded-lg mt-4 border border-gray-100">
-                    <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-600 mb-2 uppercase tracking-wide">
-                      <div className="w-3 h-3 rounded-full border border-emerald-500 flex items-center justify-center">
-                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
-                      </div>
-                      Requirements
-                    </div>
-                    <ul className="space-y-1.5 text-[10px] text-gray-500 ml-1">
-                      <li className="flex items-center gap-2"><div className={`w-2.5 h-2.5 rounded-full border ${new_password.length >= 8 ? 'bg-emerald-500 border-emerald-500' : 'border-gray-300'}`}></div> At least 8 characters long</li>
-                      <li className="flex items-center gap-2"><div className={`w-2.5 h-2.5 rounded-full border ${/[A-Z]/.test(new_password) ? 'bg-emerald-500 border-emerald-500' : 'border-gray-300'}`}></div> Contains an uppercase letter</li>
-                      <li className="flex items-center gap-2"><div className={`w-2.5 h-2.5 rounded-full border ${/[0-9]/.test(new_password) ? 'bg-emerald-500 border-emerald-500' : 'border-gray-300'}`}></div> Contains a number or symbol</li>
+                  {/* Requirements Box */}
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <div className="text-[10px] font-bold text-[#234E4D] mb-2 uppercase tracking-widest">Requirements</div>
+                    <ul className="space-y-1.5 text-[10px] text-gray-500 font-medium">
+                      <li className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${new_password.length >= 8 ? 'bg-emerald-500' : 'bg-gray-300'}`}></div> 
+                        At least 8 characters long
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${/[A-Z]/.test(new_password) ? 'bg-emerald-500' : 'bg-gray-300'}`}></div> 
+                        Contains an uppercase letter
+                      </li>
                     </ul>
                   </div>
 
-                  {error && <p className="text-red-500 text-[11px] text-center font-medium">{error}</p>}
+                  {/* General Error (API errors) */}
+                  {error && !error.includes('8') && !error.includes('match') && (
+                    <p className="text-red-500 text-[10px] text-center font-bold">{error}</p>
+                  )}
 
                   <button
                     type="submit"
-                    disabled={isLoading}
-                    className={`w-full rounded-xl py-3.5 mt-2 font-bold text-white shadow-sm transition-all active:scale-[0.98] ${isLoading ? 'bg-gray-400' : 'bg-[#F1B243] hover:bg-[#e0a234]'}`}
+                    disabled={isLoading || !isFormFilled}
+                    className={`w-full h-12 text-sm font-bold text-white rounded-full 
+                      flex items-center justify-center transition-all duration-300 active:scale-[0.98] 
+                      ${isFormFilled 
+                        ? 'bg-[#EFB034] shadow-md shadow-yellow-100 hover:brightness-105' 
+                        : 'bg-gray-300 cursor-not-allowed opacity-80'
+                      }`}
                   >
                     {isLoading ? 'Updating...' : 'Reset Password'}
                   </button>
-                  
-                  {/* Back to Sign In Link */}
-                  <div className="text-center mt-6">
-                    <p className="text-xs text-gray-500">
-                      Remember your password?{' '}
-                      <Link to="/login" className="text-[#F1B243] font-bold hover:underline">
-                        Back to Login
-                      </Link>
-                    </p>
+
+                  <div className="text-center pt-2">
+                    <button type="button" onClick={() => navigate('/sign-in')} className="text-xs font-bold text-[#234E4D] hover:underline uppercase tracking-widest">
+                      Back to login
+                    </button>
                   </div>
                 </form>
               </>
@@ -196,12 +188,7 @@ const ResetPasswordPage = () => {
         </div>
       </div>
       
-      {/* Footer */}
-      <footer className="w-full bg-[#2D5351] text-white py-3 px-6 mt-auto">
-        <div className="flex items-center justify-between text-[10px] opacity-90 max-w-6xl mx-auto">
-          <div>© 2026 Business Onboard. All rights reserved. Privacy Policy | Terms of Service</div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

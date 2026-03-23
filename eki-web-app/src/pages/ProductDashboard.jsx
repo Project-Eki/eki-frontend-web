@@ -203,8 +203,8 @@ const ProductDashboard = () => {
                   <div className="relative">
                     <Box className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                     <select name="qty" value={formData.qty} onChange={handleInputChange} className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none appearance-none">
-                      <option value="High">High Quality</option>
-                      <option value="Medium">Medium Quality</option>
+                      <option value="High">High </option>
+                      <option value="Medium">Medium </option>
                       <option value="Low">Low Quality</option>
                     </select>
                   </div>
