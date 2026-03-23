@@ -7,7 +7,7 @@ export const validateAccountBasics = (formData) => {
   if (!last_name?.trim()) errors.last_name = "Required";
   if (!email?.trim()) {
     errors.email = "Required";
-  } else if (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) {
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     errors.email = "Invalid format";
   }
 
@@ -21,7 +21,9 @@ export const validateAccountBasics = (formData) => {
     if (/^\d+$/.test(password)) errors.password = "Cannot be only numbers";
   }
 
-  if (password !== confirmPassword) errors.confirmPassword = "Passwords match fail";
+  if (confirmPassword && password !== confirmPassword) {
+  errors.confirmPassword = "Passwords do not match";
+}
   if (!agreeToTerms) errors.terms = "Accept terms to continue";
 
   return errors;

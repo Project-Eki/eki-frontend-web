@@ -41,6 +41,7 @@ const STATUS_STYLE = {
 };
 const AVAIL_COLOR = { "Fully Booked": "text-red-500", "Limited": "text-amber-500" };
 
+// s means one service object
 const ServiceCard = ({ s }) => (
   <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all group">
     <div className="relative h-44 overflow-hidden">
@@ -74,14 +75,14 @@ const ServiceCard = ({ s }) => (
     </div>
   </div>
 );
-
+// main component
 const ServiceManagement = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewMode, setViewMode]       = useState("grid");
   const [search, setSearch]           = useState("");
   const [sortBy, setSortBy]           = useState("newest");
-
+// filtering data
   const filtered = MOCK.filter(s =>
     s.title.toLowerCase().includes(search.toLowerCase()) ||
     s.category.toLowerCase().includes(search.toLowerCase())
@@ -162,6 +163,7 @@ const ServiceManagement = () => {
               </div>
 
               {/* Stats Cards */}
+              {/* s is current item , i is index */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
                 {STATS.map((s, i) => {
                   const c = colorMap[s.color];

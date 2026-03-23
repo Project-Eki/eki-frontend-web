@@ -51,7 +51,7 @@ const Toggle = ({ checked, onChange, label, desc }) => (
     </button>
   </div>
 );
-
+// checkbox component
 const AmenityCheck = ({ label, checked, onChange }) => (
   <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
     <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)}
@@ -60,7 +60,7 @@ const AmenityCheck = ({ label, checked, onChange }) => (
   </label>
 );
 
-/* ─── Section header ─── */
+/*Section header e.g Service configuration*/
 const SectionHeader = ({ icon: Icon, label, color = "teal" }) => {
   const colors = {
     teal:   "bg-teal-50 border-teal-100 text-teal-800",
@@ -75,7 +75,8 @@ const SectionHeader = ({ icon: Icon, label, color = "teal" }) => {
   );
 };
 
-/* ─── PROFESSIONAL FIELDS ─── */
+/*  PROFESSIONAL FIELDS  */
+// d- data object /set- function to update data
 const ProfessionalFields = ({ d, set }) => {
   const amenities = ["One-on-One", "Group Sessions", "Certificate Provided", "Materials Included", "Follow-up Session", "Online Resources"];
   return (
