@@ -1,273 +1,325 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import Navbar3 from '../components/adminDashboard/Navbar3';
+import logo from '../assets/logo.jpeg';
 import { 
-  Search, Filter, LayoutGrid, List, ArrowUpDown, 
-  Plus, Bell, Package, Eye, AlertTriangle, CheckCircle,
-  Upload, Trash2, X, Settings, LogOut, Tag, Info
+  Plus, Search, Filter, LayoutGrid, List, MoreHorizontal, 
+  AlertCircle, CheckCircle2, Package, ShoppingBag,
+  LayoutDashboard, Truck, CreditCard, MessageSquare, Settings, LogOut, Tag, Box, X, Upload, Trash2,
+  MapPin
 } from 'lucide-react';
+import { validateProductForm } from '../utils/productValidation';
 
 const ProductDashboard = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [viewType, setViewType] = useState('grid');
+  const [products, setProducts] = useState([]); 
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isPublished, setIsPublished] = useState(true);
+  const fileInputRef = useRef(null);
 
-  // Initializing with an empty list as requested (no dummy data)
-  const products = [];
+  const [formData, setFormData] = useState({
+    title: '', category: 'Electronics', price: '', sku: '', qty: 'Medium',
+    location: '', description: '', image: null,
+    variants: [{ type: 'Size', value: 'Medium' }, { type: 'Color', value: 'Ocean Blue' }]
+  });
+  const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    const savedProducts = JSON.parse(localStorage.getItem('eki_products') || '[]');
+    setProducts(savedProducts);
+  }, []);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
+  };
+
+  const handleImageClick = () => fileInputRef.current.click();
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setFormData(prev => ({ ...prev, image: reader.result }));
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePublish = (e) => {
+    e.preventDefault(); // Critical: Stops the page from refreshing
+    
+    // Check validations
+    const validationErrors = validateProductForm(formData);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      console.log("Validation Failed:", validationErrors);
+      return;
+    }
+
+    const newProduct = { 
+      ...formData, 
+      id: Date.now(), 
+      status: isPublished ? 'In Stock' : 'Draft'
+    };
+
+    const updatedProducts = [newProduct, ...products];
+    setProducts(updatedProducts);
+    localStorage.setItem('eki_products', JSON.stringify(updatedProducts));
+    
+    // Close and Reset
+    setIsProductModalOpen(false);
+    setFormData({ title: '', category: 'Electronics', price: '', sku: '', qty: 'Medium', location: '', description: '', image: null, variants: [] });
+    setErrors({});
+  };
 
   return (
-    <div className="flex min-h-screen bg-gray-50 font-sans text-slate-700">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col fixed h-full">
-        <div className="p-6">
-          <div className="bg-emerald-600 w-8 h-8 rounded flex items-center justify-center text-white font-bold text-lg">ë</div>
-        </div>
+    <div className="flex min-h-screen bg-[#F8FAFC] font-sans text-slate-800">
+      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col sticky top-0 h-screen z-50">
+        <div className="p-6 mb-4"><img src={logo} alt="Eki" className="h-8 w-auto object-contain" /></div>
         <nav className="flex-1 px-4 space-y-1">
-          <NavItem icon={<Package size={18}/>} label="Products" active />
-          <NavItem icon={<Settings size={18}/>} label="Services" />
-          <NavItem icon={<List size={18}/>} label="Orders" />
-          <NavItem icon={<Plus size={18}/>} label="Payments" />
-          <NavItem icon={<Search size={18}/>} label="Reviews and Ratings" />
+          <SidebarLink href="/dashboard" icon={<LayoutDashboard size={18} />} label="Dashboard" />
+          <SidebarLink href="/product-dashboard" icon={<ShoppingBag size={18} />} label="Products" active />
+          <SidebarLink href="/service" icon={<Plus size={18} />} label="Services" />
+          <SidebarLink href="/order-management" icon={<Truck size={18} />} label="Orders" />
+          <SidebarLink href="/payment" icon={<CreditCard size={18} />} label="Payments" />
+          <SidebarLink href="/reviews" icon={<MessageSquare size={18} />} label="Reviews" />
         </nav>
-        <div className="p-4 border-t border-gray-100 space-y-1">
-          <NavItem icon={<Settings size={18}/>} label="Store Settings" />
-          <NavItem icon={<LogOut size={18}/>} label="Log out" color="text-red-500" />
+        <div className="p-4 border-t border-slate-100 mt-auto">
+          <SidebarLink href="/settings" icon={<Settings size={18} />} label="Store Settings" />
+          <button className="flex items-center gap-3 px-3 py-2 w-full text-red-500 hover:bg-red-50 rounded-lg text-[11px] font-bold mt-2">
+            <LogOut size={18} /><span>Log out</span>
+          </button>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 ml-64 min-h-screen flex flex-col">
-        {/* Top Navbar */}
-        <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-end px-8 gap-6 sticky top-0 z-20">
-          <div className="relative cursor-pointer">
-            <Bell size={20} className="text-gray-600" />
-            <div className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></div>
-          </div>
-          <div className="flex items-center gap-3 border-l pl-6">
-            <span className="text-sm font-bold text-slate-800">Andrew</span>
-            <img src="https://ui-avatars.com/api/?name=Andrew&background=0b5d51&color=fff" className="w-8 h-8 rounded-full border border-gray-200" alt="profile" />
-          </div>
-        </header>
-
-        {/* Dashboard Content */}
-        <div className="p-8">
-          {/* Header Section with "Add New Product" Button Below Navbar */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <Navbar3 />
+        <main className="p-8 max-w-[1400px] mx-auto w-full">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h1 className="text-2xl font-bold text-slate-800">Product Management</h1>
-              <p className="text-gray-400 text-sm mt-1">Manage your inventory, pricing, and visibility across the marketplace.</p>
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Product Management</h1>
+              <p className="text-slate-500 text-[12px]">Manage your inventory, pricing, and visibility across the marketplace.</p>
             </div>
             <button 
-              onClick={() => setIsModalOpen(true)}
-              className="bg-[#0b5d51] text-white px-5 py-2.5 rounded-lg flex items-center gap-2 hover:bg-[#084a41] transition shadow-sm font-bold text-sm"
+              onClick={() => setIsProductModalOpen(true)} 
+              className="bg-[#125852] text-white px-5 py-2.5 rounded-lg text-[12px] font-bold flex items-center gap-2 hover:bg-[#0e443f] transition-all active:scale-95"
             >
               <Plus size={18} /> Add New Product
             </button>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-4 gap-5 mb-8">
-            <StatCard title="Total Products" value="0" sub="0 added this week" icon={<Package className="text-emerald-600"/>} trend="0% vs last month" />
-            <StatCard title="Active Listings" value="0" sub="0% visibility rate" icon={<Eye className="text-emerald-600"/>} />
-            <StatCard title="Low Stock Alerts" value="0" sub="Healthy status" icon={<AlertTriangle className="text-amber-500"/>} />
-            <StatCard title="In Stock" value="0" sub="No inventory yet" icon={<CheckCircle className="text-emerald-600"/>} />
+          {/* Quick Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <StatCard label="Total Products" value={products.length} icon={<Package className="text-teal-600" />} />
+            <StatCard label="Active Listings" value={products.filter(p => p.status === 'In Stock').length} icon={<CheckCircle2 className="text-teal-600" />} />
+            <StatCard label="High Quality" value={products.filter(p => p.qty === 'High').length} icon={<CheckCircle2 className="text-green-500" />} />
+            <StatCard label="Drafts" value={products.filter(p => p.status === 'Draft').length} icon={<Box className="text-slate-400" />} />
           </div>
 
-          {/* Search and Filters Bar */}
-          <div className="bg-white p-4 rounded-xl border border-gray-100 mb-6 shadow-sm flex items-center justify-between">
-            <div className="flex gap-3 flex-1 max-w-2xl">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <input 
-                  type="text" 
-                  placeholder="Search by title or SKU..." 
-                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-1 ring-emerald-500 outline-none transition" 
-                />
-              </div>
-              <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-gray-50">
-                <Filter size={16} /> Filters
-              </button>
+          <div className="flex items-center justify-between mb-6">
+            <div className="relative w-80">
+              <input type="text" placeholder="Search by title or SKU..." className="w-full pl-4 pr-10 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-teal-500 shadow-sm" />
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-medium text-gray-400">View:</span>
-              <div className="flex border border-gray-200 rounded-lg">
-                <button className="p-2 border-r border-gray-200 bg-gray-50"><LayoutGrid size={18} /></button>
-                <button className="p-2 border-r border-gray-200"><List size={18} className="text-gray-400" /></button>
-                <button className="p-2"><ArrowUpDown size={18} className="text-gray-400" /></button>
+            <div className="flex items-center gap-3">
+              <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50"><Filter size={14}/> Filters</button>
+              <div className="h-8 w-[1px] bg-slate-200 mx-1"></div>
+              <div className="flex bg-white border border-slate-200 rounded-lg p-1">
+                <button onClick={() => setViewType('grid')} className={`p-1.5 rounded ${viewType === 'grid' ? 'bg-slate-100' : ''}`}><LayoutGrid size={16}/></button>
+                <button onClick={() => setViewType('list')} className={`p-1.5 rounded ${viewType === 'list' ? 'bg-slate-100' : ''}`}><List size={16}/></button>
               </div>
             </div>
           </div>
 
-          {/* Product Grid / Empty State */}
-          <div className="min-h-[400px] flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl bg-white">
-            <div className="bg-gray-50 p-4 rounded-full mb-4">
-              <Package size={40} className="text-gray-300" />
+          {products.length === 0 ? (
+            <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-20 text-center">
+              <ShoppingBag className="text-slate-200 mx-auto mb-4" size={48} />
+              <h3 className="text-lg font-bold text-slate-800">No products found</h3>
+              <p className="text-slate-500 text-sm">Start by adding your first product to the catalog.</p>
             </div>
-            <h3 className="text-lg font-bold text-slate-800">No products listed</h3>
-            <p className="text-gray-400 text-sm max-w-xs text-center mt-1">Your inventory is currently empty. Click the button above to add your first product.</p>
-          </div>
-
-          {/* Pagination Footer */}
-          <div className="mt-8 pt-6 border-t border-gray-100 flex justify-between items-center">
-            <p className="text-gray-400 text-xs font-medium tracking-tight">Showing 0 of 0 products</p>
-            <div className="flex gap-2">
-              <button className="px-4 py-1.5 border border-gray-200 rounded-md text-xs font-bold text-gray-400 cursor-not-allowed">Previous</button>
-              <button className="px-4 py-1.5 border border-gray-200 rounded-md text-xs font-bold text-gray-400 cursor-not-allowed">Next</button>
+          ) : (
+            <div className={viewType === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" : "space-y-4"}>
+              {products.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
             </div>
-          </div>
-        </div>
+          )}
+        </main>
+      </div>
 
-        {/* Footer Bar */}
-        <footer className="mt-auto bg-[#134e48] text-white p-4 flex justify-between items-center text-[10px] font-medium">
-          <p>Buy Smart. Sell Fast. Grow Together...</p>
-          <p>© 2026 Vendor Portal. All rights reserved.</p>
-          <div className="flex gap-4">
-            <span>Support</span>
-            <span>Privacy Policy</span>
-            <span>Terms of Service</span>
-            <span>Ijoema ltd</span>
-          </div>
-        </footer>
-      </main>
-
-      {/* POP-UP MODAL - CREATE NEW PRODUCT */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[95vh] overflow-y-auto shadow-2xl relative animate-in fade-in zoom-in duration-150">
-            {/* Modal Header */}
-            <div className="sticky top-0 bg-white border-b border-gray-100 p-6 flex justify-between items-center z-10">
+      {/* --- PRODUCT MODAL --- */}
+      {isProductModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <form onSubmit={handlePublish} className="bg-white w-full max-w-xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-start">
               <div>
-                <h2 className="text-xl font-bold text-slate-800">Create New Product</h2>
-                <p className="text-xs text-gray-400 mt-1 font-medium">Fill in the details below to list a new product in your store catalog.</p>
+                <h2 className="text-lg font-bold text-slate-900">Create New Product</h2>
+                <p className="text-[12px] text-slate-500">Fill in the details below to list a new product in your store catalog.</p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition">
-                <X size={20} className="text-gray-400" />
-              </button>
+              <button type="button" onClick={() => setIsProductModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors"><X size={20} /></button>
             </div>
 
-            <div className="p-8 space-y-6">
-              {/* Product Info Section */}
-              <div className="grid grid-cols-2 gap-5">
-                <div className="col-span-2">
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-2 tracking-wider">Product Title</label>
-                  <input type="text" placeholder="e.g. Premium Wireless Headphones" className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white outline-none transition text-sm" />
+            <div className="p-6 overflow-y-auto space-y-6 custom-scrollbar">
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-slate-700 uppercase">Product Title</label>
+                <input type="text" name="title" value={formData.title} onChange={handleInputChange} placeholder="e.g. Premium Wireless Headphones" className={`w-full px-4 py-2.5 bg-slate-50 border ${errors.title ? 'border-red-500' : 'border-slate-200'} rounded-lg text-sm focus:outline-none`} />
+                {errors.title && <p className="text-red-500 text-[10px] font-bold">{errors.title}</p>}
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-slate-700 uppercase">Vendor Location</label>
+                <div className="relative">
+                  <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input type="text" name="location" value={formData.location} onChange={handleInputChange} placeholder="e.g. Lagos, Nigeria" className={`w-full pl-10 pr-4 py-2.5 bg-slate-50 border ${errors.location ? 'border-red-500' : 'border-slate-200'} rounded-lg text-sm focus:outline-none`} />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-2 tracking-wider">Category</label>
-                  <select className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50/50 outline-none cursor-pointer text-sm">
-                    <option>Electronics</option>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase">Category</label>
+                  <select name="category" value={formData.category} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none appearance-none">
+                    <option>Electronics</option><option>Computers</option><option>Grocery</option><option>Home & Decor</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-2 tracking-wider">Base Price ($)</label>
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase">Base Price ($)</label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-                    <input type="number" placeholder="0.00" className="w-full pl-8 p-3 border border-gray-200 rounded-xl bg-gray-50/50 outline-none text-sm" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-2 tracking-wider">SKU</label>
-                  <div className="relative">
-                    <Tag className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                    <input type="text" placeholder="PRD-XXXX" className="w-full pl-10 p-3 border border-gray-200 rounded-xl bg-gray-50/50 outline-none text-sm" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-2 tracking-wider">Inventory Quantity</label>
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 bg-gray-100 p-1 rounded">
-                      <Package className="text-gray-400" size={14} />
-                    </div>
-                    <input type="number" placeholder="0" className="w-full pl-11 p-3 border border-gray-200 rounded-xl bg-gray-50/50 outline-none text-sm" />
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                    <input type="number" name="price" value={formData.price} onChange={handleInputChange} placeholder="0.00" className={`w-full pl-8 pr-4 py-2.5 bg-slate-50 border ${errors.price ? 'border-red-500' : 'border-slate-200'} rounded-lg text-sm focus:outline-none`} />
                   </div>
                 </div>
               </div>
 
-              {/* Image Upload Area */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-tighter">SKU</label>
+                  <div className="relative">
+                    <Tag className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <input type="text" name="sku" value={formData.sku} onChange={handleInputChange} placeholder="PRD-XXXX" className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-tighter">Inventory Quality</label>
+                  <div className="relative">
+                    <Box className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <select name="qty" value={formData.qty} onChange={handleInputChange} className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none appearance-none">
+                      <option value="High">High </option>
+                      <option value="Medium">Medium </option>
+                      <option value="Low">Low Quality</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-3 tracking-wider">Product Images</label>
-                <div className="flex gap-4">
-                  <button className="w-28 h-28 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-emerald-500 hover:text-emerald-500 hover:bg-emerald-50/20 transition group">
-                    <Upload size={24} className="mb-1" />
-                    <span className="text-[10px] font-bold">Upload</span>
-                  </button>
-                  <div className="w-28 h-28 border border-gray-100 rounded-xl bg-gray-50/50"></div>
-                </div>
-                <p className="text-[10px] text-gray-400 mt-3 font-medium tracking-tight">
-                   <span className="bg-gray-100 px-1 rounded mr-1">i</span> Recommended size: 1200 x 1200px. Max 5MB.
-                </p>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-2 tracking-wider">Product Description</label>
-                <textarea rows="4" placeholder="Describe your product's key features, benefits, and specifications..." className="w-full p-4 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white outline-none resize-none transition text-sm"></textarea>
-              </div>
-
-              {/* Variants */}
-              <div className="bg-gray-50/30 p-5 rounded-2xl border border-gray-100">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-sm font-bold flex items-center gap-2 text-slate-800">
-                    <LayoutGrid size={16} className="text-emerald-600"/> Product Variants
-                  </h3>
-                  <button className="text-[11px] font-bold py-1.5 px-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition active:scale-95">
-                    + Add Variant
-                  </button>
-                </div>
-                <div className="flex flex-col items-center justify-center py-6 text-gray-300 border border-dashed border-gray-200 rounded-xl bg-white/50">
-                  <p className="text-[11px] font-bold">No variants added yet</p>
-                </div>
-              </div>
-
-              {/* Toggle publish */}
-              <div className="flex items-center justify-between bg-white border border-gray-200 p-5 rounded-2xl">
-                <div>
-                  <h4 className="text-sm font-bold text-slate-800">Publish Status</h4>
-                  <p className="text-[11px] text-gray-400 font-medium">Make this product visible to customers immediately.</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-[9px] font-black border border-gray-100 rounded bg-gray-50 px-2 py-1 uppercase text-gray-300">Published</span>
-                  <div className="w-11 h-6 bg-gray-200 rounded-full relative">
-                    <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Form Footer */}
-              <div className="flex justify-between items-center pt-6 border-t border-gray-100">
-                <p className="text-[10px] text-gray-400 italic flex items-center gap-1">
-                  <CheckCircle size={10} /> All changes are automatically saved to drafts...
-                </p>
+                <label className="block text-[11px] font-bold text-slate-700 mb-2 uppercase">Product Images</label>
                 <div className="flex gap-3">
-                  <button onClick={() => setIsModalOpen(false)} className="px-8 py-2.5 border border-gray-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-gray-50 transition">Cancel</button>
-                  <button className="px-8 py-2.5 bg-[#f0ad4e] text-white rounded-xl text-sm font-bold hover:bg-[#ec971f] shadow-lg shadow-amber-500/20 transition active:scale-95">Publish Product</button>
+                  {formData.image && (
+                    <div className="w-20 h-20 rounded-lg border border-slate-200 overflow-hidden shadow-sm relative group">
+                      <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => setFormData({...formData, image: null})} className="absolute top-1 right-1 bg-white/80 p-1 rounded-full text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={12}/></button>
+                    </div>
+                  )}
+                  <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+                  <div onClick={handleImageClick} className="w-20 h-20 bg-white rounded-lg border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-[#125852] hover:bg-slate-50 transition-all">
+                    <Upload size={18} className="text-slate-400" />
+                    <span className="text-[9px] font-bold text-slate-400 mt-1 uppercase">Upload</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-slate-700 uppercase">Product Description</label>
+                <textarea name="description" value={formData.description} onChange={handleInputChange} rows="3" placeholder="Describe your product..." className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none resize-none h-28"></textarea>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-100 rounded-xl p-5">
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex items-center gap-2">
+                    <Settings size={14} className="text-slate-400" />
+                    <h3 className="text-[11px] font-bold text-slate-800 uppercase tracking-tight">Product Variants</h3>
+                  </div>
+                  <button type="button" className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:shadow-sm transition-all">+ Add Variant</button>
+                </div>
+                <div className="space-y-3">
+                  {formData.variants.map((v, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-700">{v.type}</div>
+                      <div className="flex-[2] bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-700">{v.value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-1">
+                <div>
+                  <h3 className="text-[12px] font-bold text-slate-800 uppercase">Publish Status</h3>
+                  <p className="text-[10px] text-slate-400">Make this product visible immediately.</p>
+                </div>
+                <div onClick={() => setIsPublished(!isPublished)} className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-all ${isPublished ? 'bg-green-500' : 'bg-slate-200'}`}>
+                  <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${isPublished ? 'translate-x-6' : 'translate-x-0'}`}></div>
                 </div>
               </div>
             </div>
-          </div>
+
+            <div className="px-6 py-5 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
+              <p className="text-[10px] text-slate-400 italic">Save to drafts to complete later.</p>
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={() => setIsProductModalOpen(false)} className="px-6 py-2.5 text-[12px] font-bold text-slate-600 border border-slate-300 rounded-lg bg-white hover:bg-slate-50">Cancel</button>
+                <button type="submit" className="px-6 py-2.5 bg-[#F5B841] text-white rounded-lg text-[12px] font-bold hover:bg-[#E0A83B] uppercase shadow-md active:scale-95 transition-all">Publish Product</button>
+              </div>
+            </div>
+          </form>
         </div>
       )}
     </div>
   );
 };
 
-// Sub-components
-const NavItem = ({ icon, label, active, color = "text-gray-500" }) => (
-  <div className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all group ${active ? 'bg-[#0b4d45] text-white shadow-md' : `${color} hover:bg-gray-100 hover:text-slate-800`}`}>
-    <div className={active ? 'text-white' : 'text-gray-400 group-hover:text-emerald-600'}>{icon}</div>
-    <span className="text-sm font-bold tracking-tight">{label}</span>
-    {active && <div className="ml-auto w-1 h-4 bg-emerald-400 rounded-full"></div>}
+// Internal Components
+const SidebarLink = ({ href, icon, label, active = false }) => (
+  <a href={href} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all ${active ? 'bg-[#125852] text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}>{icon}<span>{label}</span></a>
+);
+
+const StatCard = ({ label, value, icon }) => (
+  <div className="bg-white p-5 rounded-xl border border-slate-100 shadow-sm flex items-start justify-between">
+    <div><p className="text-[10px] font-bold text-slate-400 uppercase">{label}</p><p className="text-2xl font-black text-slate-800 mt-1">{value}</p></div>
+    <div className="p-2 bg-slate-50 rounded-lg">{icon}</div>
   </div>
 );
 
-const StatCard = ({ title, value, sub, icon, trend }) => (
-  <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-    <div className="flex justify-between items-start mb-4">
-      <div className="bg-emerald-50 p-2 rounded-xl text-emerald-600">{icon}</div>
-      {trend && <span className="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full font-bold">{trend}</span>}
+const ProductCard = ({ product }) => {
+  const getQualityColor = () => {
+    if (product.qty === 'Low') return 'bg-red-50 text-red-600';
+    if (product.qty === 'Medium') return 'bg-orange-50 text-orange-600';
+    return 'bg-teal-50 text-teal-600';
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all group cursor-pointer">
+      <div className="relative h-48 bg-slate-100 p-4 flex items-center justify-center">
+        {product.image ? (
+          <img src={product.image} alt="" className="w-full h-full object-contain" />
+        ) : (
+          <ShoppingBag className="text-slate-200" size={40}/>
+        )}
+        <span className={`absolute top-3 right-3 px-2.5 py-1 rounded-md text-[9px] font-black uppercase shadow-sm ${getQualityColor()}`}>
+          {product.qty} Quality
+        </span>
+      </div>
+      <div className="p-5 border-t border-slate-50">
+        <p className="text-[9px] font-black text-[#125852] uppercase mb-1 tracking-wider">{product.category}</p>
+        <h4 className="text-[13px] font-bold text-slate-900 mb-1 truncate">{product.title}</h4>
+        <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium mb-4 uppercase">
+           <MapPin size={10} /> {product.location || 'Unknown Location'}
+        </div>
+        <div className="flex justify-between items-end pt-2 border-t border-slate-100">
+          <div><p className="text-[9px] text-slate-400 uppercase font-bold">SKU</p><p className="text-[11px] font-bold text-slate-700">{product.sku || 'N/A'}</p></div>
+          <div className="text-right"><p className="text-[9px] text-slate-400 uppercase font-bold">Price</p><p className="text-lg font-black text-[#125852]">${product.price}</p></div>
+        </div>
+      </div>
     </div>
-    <h4 className="text-gray-400 text-[10px] font-bold uppercase tracking-widest leading-none">{title}</h4>
-    <div className="mt-1 flex items-baseline gap-2">
-      <span className="text-3xl font-black text-slate-800">{value}</span>
-    </div>
-    <p className="text-[11px] text-gray-400 mt-1 font-medium tracking-tight">{sub}</p>
-  </div>
-);
+  );
+};
 
 export default ProductDashboard;

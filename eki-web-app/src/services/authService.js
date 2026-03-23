@@ -1,111 +1,98 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: "http://127.0.0.1:8000", 
+  baseURL: "http://134.122.22.45", 
   headers: { "Content-Type": "application/json" },
 });
 
-// INTERCEPTOR: Prevents 401/404 issues by handling public vs private routes
+// --- INTERCEPTOR ---
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("access_token");
-  
-  // These routes MUST NOT have the Authorization header
   const publicRoutes = [
-    '/api/v1/accounts/reset-password/',
-    '/api/v1/accounts/verify-email/',
-    '/api/v1/accounts/confirm-password-reset/',
     '/api/v1/accounts/login/', 
-    '/api/v1/accounts/resend-code/'
+    '/api/v1/accounts/reset-password/', 
+    '/api/v1/accounts/verify-email/', 
+    '/api/v1/accounts/resend-code/', 
+    '/api/v1/accounts/confirm-password-reset/'
   ];
 
-  const isPublic = publicRoutes.some(route => config.url?.includes(route));
+  const isPublic = publicRoutes.some(route => config.url === route);
 
-  if (isPublic) {
-    // Completely remove the header for public endpoints to avoid 401/403 errors
-    delete config.headers.Authorization;
-  } else if (token && token !== "undefined") {
+  if (!isPublic && token && token !== "null" && token !== "undefined") {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 }, (error) => Promise.reject(error));
 
-
-/** --- 1. AUTHENTICATION --- **/
+/** --- AUTHENTICATION --- **/
 export const SigninUser = async (credentials) => {
   const response = await api.post('/api/v1/accounts/login/', {
     email: credentials.email?.trim().toLowerCase(),
     password: credentials.password
   });
-  
-  const data = response.data?.data || response.data;
-  
-  if (data?.access) {
-    localStorage.setItem("access_token", data.access);
-  }
-  return data;
-};
-
-
-/** --- 2. VENDOR DASHBOARD --- **/
-export const getVendorDashboard = async () => {
-  const response = await api.get('/api/v1/accounts/command-center/');
+  const token = response.data?.access || response.data?.token;
+  if (token) localStorage.setItem("access_token", token);
   return response.data;
 };
 
+export const verifyOtp = (data) => api.post('/api/v1/accounts/verify-email/', data).then(res => res.data);
+export const resendOtp = (email) => api.post('/api/v1/accounts/resend-code/', { email }).then(res => res.data);
 
-/** --- 3. FORGOT PASSWORD / OTP FLOW --- **/
+/** --- USER PROFILE (REQUIRED BY ACCOUNT SETTINGS) --- **/
+export const getBuyerProfile = () => 
+  api.get('/api/v1/accounts/Buyerprofile/').then(res => res.data);
 
-// Request Code: Starts the process and sets the cache key
-export const passwordResetRequest = async (email) => {
-  const response = await api.post('/api/v1/accounts/reset-password/', {
-    email: email.trim().toLowerCase()
+export const updateBuyerProfile = (profileData) => 
+  api.patch('/api/v1/accounts/Buyerprofile/', profileData).then(res => res.data);
+
+/** --- VENDOR DASHBOARD --- **/
+export const getVendorDashboard = () => 
+  api.get('/api/v1/accounts/command-center/').then(res => res.data);
+
+/** --- PRODUCT LISTINGS (CRUD) --- **/
+export const getProducts = () => api.get('/api/v1/listings/').then(res => res.data);
+
+export const createProductListing = async (productData) => {
+  const payload = {
+    title: productData.title,
+    category: productData.category,
+    price: parseFloat(productData.price),
+    sku: productData.sku,
+    inventory_quality: productData.qty?.toUpperCase() || "MEDIUM",
+    vendor_location: productData.location || "Default",
+    description: productData.description,
+    is_published: productData.is_published ?? true
+  };
+  return api.post('/api/v1/listings/', payload).then(res => res.data);
+};
+
+export const updateProductListing = async (listingId, productData) => {
+  const payload = {
+    title: productData.title,
+    category: productData.category,
+    price: parseFloat(productData.price),
+    sku: productData.sku,
+    inventory_quality: productData.qty?.toUpperCase() || "MEDIUM",
+    vendor_location: productData.location,
+    description: productData.description,
+    is_published: productData.is_published
+  };
+  return api.patch(`/api/v1/listings/${listingId}/`, payload).then(res => res.data);
+};
+
+export const deleteProductListing = (listingId) => api.delete(`/api/v1/listings/${listingId}/`);
+
+export const uploadListingImage = (listingId, imageFile) => {
+  const formData = new FormData();
+  formData.append('image', imageFile);
+  return api.post(`/api/v1/listings/${listingId}/images/`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
   });
-  return response.data;
 };
 
-// Verify Code: This is where your 400 error was happening
-export const verifyOtp = async ({ email, otp_code }) => {
-  try {
-    const response = await api.post('/api/v1/accounts/verify-email/', {
-      email: email?.trim().toLowerCase(),
-      otp_code: String(otp_code).trim(), // Clean up spaces
-      otp_type: "password_reset"   // This MUST match the prefix in your server logs
-    });
-    return response.data;
-  } catch (error) {
-    // Log the exact message from Django (e.g., "Invalid OTP")
-    console.error("OTP Verification Detailed Error:", error.response?.data);
-    throw new Error(error.response?.data?.message || "Invalid or expired code");
-  }
-};
-
-// Confirm New Password: The final step
-export const passwordResetConfirm = async ({ email, otp_code, new_password, confirm_password }) => {
-  try {
-    const response = await api.post('/api/v1/accounts/confirm-password-reset/', {
-      email: email.trim().toLowerCase(),
-      otp_code: String(otp_code).trim(),
-      new_password: new_password,
-      confirm_password: confirm_password 
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Password Reset Detailed Error:", error.response?.data);
-    throw new Error(error.response?.data?.message || "Failed to reset password. Please try again.");
-  }
-};
-
-// Resend Code: Matches the prefix logic
-export const resendOtp = async (email) => {
-  try {
-    const response = await api.post('/api/v1/accounts/resend-code/', {
-      email: email.trim().toLowerCase(),
-      otp_type: "password_reset"
-    });
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.detail || "Failed to resend code");
-  }
-};
+/** --- PASSWORDS --- **/
+export const passwordResetRequest = (email) => api.post('/api/v1/accounts/reset-password/', { email });
+export const passwordResetConfirm = (data) => api.post('/api/v1/accounts/confirm-password-reset/', data);
+export const changePassword = (data) => api.post('/api/v1/accounts/change-password/', data);
 
 export default api;
