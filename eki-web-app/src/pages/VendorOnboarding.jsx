@@ -164,7 +164,7 @@ const VendorOnboarding = () => {
 
                 {/* STEP 3 */}
                 {currentStep === 3 && (
-                  <div className="flex flex-col items-start w-full">
+                  <div className="flex flex-col items-start w-full pb-10">
 
                     <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">
                       Step 3 of 5

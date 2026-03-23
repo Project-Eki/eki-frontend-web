@@ -166,35 +166,6 @@ export const changePassword = async ({
 };
 
 /* --- VENDOR ONBOARDING & PROFILE --- */
-
-// Use this in OperationCompliance.jsx (the Review phase)
-// export const completeVendorOnboarding = async (formData) => {
-//   const data = new FormData();
-
-//   // 1. Append general fields
-//   Object.keys(formData).forEach((key) => {
-//     if (key !== "documents" && formData[key] !== null && formData[key] !== undefined) {
-//       data.append(key, formData[key]);
-//     }
-//   });
-
-//   // 2. Append document files specifically
-//   if (formData.documents) {
-//     Object.keys(formData.documents).forEach((key) => {
-//       if (formData.documents[key]) {
-//         data.append(key, formData.documents[key]);
-//       }
-//     });
-//   }
-
-//   // 3. Make the PATCH request to the correct endpoint
-//   const response = await api.patch("/accounts/register-vendor/", data, {
-//     headers: { "Content-Type": "multipart/form-data" },
-//   });
-
-//   return response.data;
-// };
-
 export const completeVendorOnboarding = async (formData) => {
   const data = new FormData();
 
