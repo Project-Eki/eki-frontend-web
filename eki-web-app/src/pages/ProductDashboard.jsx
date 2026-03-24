@@ -17,8 +17,8 @@ import {
   SignoutUser,
 } from '../services/authService';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-// SIZE_OPTIONS must exactly match Django's ProductSize choices
+
+// SIZE_OPTIONS 
 const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'one_size'];
 const COLOR_OPTIONS = [
   'Black', 'White', 'Red', 'Blue', 'Green', 'Yellow',
@@ -498,9 +498,9 @@ const ProductDashboard = () => {
         </main>
       </div>
 
-      {/* ══════════════════════════════════════════════
+      {/*
           CREATE PRODUCT MODAL
-      ══════════════════════════════════════════════ */}
+       */}
       {isProductModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <form
@@ -680,9 +680,9 @@ const ProductDashboard = () => {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════
-          EDIT / DELETE MODAL
-      ══════════════════════════════════════════════ */}
+     
+         // EDIT / DELETE MODAL//
+    
       {isEditModalOpen && selectedProduct && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <form
