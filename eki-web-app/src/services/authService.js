@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://134.122.22.45/api/docs/',
+  baseURL: 'http://134.122.22.45',
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -98,7 +98,7 @@ api.interceptors.response.use(
 
       try {
         const res = await axios.post(
-          'http://127.0.0.1:8000/api/v1/accounts/token-refresh/',
+          'http://134.122.22.45/api/v1/accounts/token-refresh/',
           { refresh: refreshToken }
         );
         const newAccess = res.data?.access || res.data?.data?.access;
