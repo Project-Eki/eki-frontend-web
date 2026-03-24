@@ -1,6 +1,6 @@
 import { useOnboarding } from "../context/vendorOnboardingContext";
 import { ACTIONS } from "../context/vendorOnboardingContext";
-import Navbar2 from "../components/Navbar2";
+import Navbar from "../components/Navbar";
 import AccountBasics from "../components/AccountBasics";
 import VerifyIdentity from "../components/VerifyIdentity";
 import BusinessIdentity from "../components/BusinessIdentity";
@@ -46,7 +46,7 @@ const VendorOnboarding = () => {
     <div className="vendor-onboarding-root h-screen w-full flex flex-col bg-[#F8F9FA] font-sans overflow-hidden">
       
       {/* Navbar */}
-      <Navbar2 />
+      <Navbar />
 
       <div className="flex flex-1 overflow-hidden">
 

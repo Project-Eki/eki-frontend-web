@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { verifyOtp, resendOtp } from "../services/authService";
 import logoImage from '../assets/logo.jpeg';
+import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 
 const OTPVerify = () => {
   const { state } = useLocation();
@@ -84,45 +86,74 @@ const OTPVerify = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-white">
-      <img src={logoImage} alt="Logo" className="h-28 mb-8" />
-      <h2 className="text-2xl font-bold mb-2">Verify Identity</h2>
-      <p className="text-gray-500 mb-10 text-sm">Code sent to <b>{email}</b></p>
-      
-      <div className="flex justify-center gap-2 mb-6">
-        {otp.map((data, index) => (
-          <input
-            key={index}
-            type="text"
-            maxLength="1"
-            ref={(el) => (inputRefs.current[index] = el)}
-            value={data}
-            onChange={(e) => handleChange(e.target, index)}
-            onKeyDown={(e) => handleKeyDown(e, index)}
-            className={`w-12 h-16 md:w-14 md:h-20 text-center text-2xl font-bold border-2 rounded-xl outline-none transition-all ${
-              error ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-yellow-500'
-            }`}
-          />
-        ))}
+    <div className="flex flex-col min-h-screen bg-white font-sans">
+      <Navbar />
+
+      <div className="flex-1 flex items-center justify-center py-12 px-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <h2 className="text-[28px] font-black text-gray-900 leading-tight mb-2">
+              Verify Identity
+            </h2>
+            <p className="text-gray-500 text-[14px]">
+              Code sent to <span className="font-semibold text-gray-700">{email}</span>
+            </p>
+          </div>
+          
+          <div className="flex justify-center gap-3 mb-6">
+            {otp.map((data, index) => (
+              <input
+                key={index}
+                type="text"
+                maxLength="1"
+                ref={(el) => (inputRefs.current[index] = el)}
+                value={data}
+                onChange={(e) => handleChange(e.target, index)}
+                onKeyDown={(e) => handleKeyDown(e, index)}
+                className={`w-12 h-14 text-center text-2xl font-bold border-2 rounded-full outline-none transition-all ${
+                  error 
+                    ? 'border-red-500 bg-red-50 focus:border-red-500' 
+                    : 'border-slate-200 focus:border-[#EFB034] focus:ring-1 focus:ring-[#EFB034]/20'
+                }`}
+              />
+            ))}
+          </div>
+          
+          {error && (
+            <p className="text-red-500 text-sm mb-6 font-bold text-center">
+              {error}
+            </p>
+          )}
+          
+          <button 
+            onClick={() => submitOtp(otp.join(""))} 
+            disabled={isLoading || otp.join("").length < 6}
+            className={`w-full h-12 rounded-full font-bold transition-all duration-300
+              ${!isLoading && otp.join("").length === 6
+                ? 'bg-[#efb034] hover:bg-[#d99c1c] hover:-translate-y-1 hover:shadow-lg text-white cursor-pointer' 
+                : 'bg-gray-300 cursor-not-allowed text-white/70'
+              }`}
+          >
+            {isLoading ? "Verifying..." : "Verify Code"}
+          </button>
+
+          <div className="text-center mt-6">
+            <button 
+              disabled={timer > 0} 
+              onClick={handleResend} 
+              className={`text-sm font-medium transition-colors ${
+                timer > 0 
+                  ? "text-gray-400 cursor-not-allowed" 
+                  : "text-[#EFB034] hover:underline cursor-pointer"
+              }`}
+            >
+              {timer > 0 ? `Resend Code in ${timer}s` : "Resend New Code"}
+            </button>
+          </div>
+        </div>
       </div>
       
-      {error && <p className="text-red-500 text-sm mb-6 font-bold text-center">{error}</p>}
-      
-      <button 
-        onClick={() => submitOtp(otp.join(""))} 
-        disabled={isLoading || otp.join("").length < 6}
-        className="w-full max-w-sm bg-[#F1B243] text-white font-bold py-4 rounded-full shadow-lg transition-transform active:scale-95 disabled:bg-gray-300"
-      >
-        {isLoading ? "Verifying..." : "Verify Code"}
-      </button>
-
-      <button 
-        disabled={timer > 0} 
-        onClick={handleResend} 
-        className={`mt-8 text-sm font-bold ${timer > 0 ? "text-gray-300" : "text-yellow-600 hover:underline"}`}
-      >
-        {timer > 0 ? `Resend Code in ${timer}s` : "Resend New Code"}
-      </button>
+      <Footer />
     </div>
   );
 };

@@ -9,89 +9,71 @@ import {
   faTimes
 } from '@fortawesome/free-solid-svg-icons'
 import logoImage from '../assets/eki-white-logo.png'
+import { useTranslation } from 'react-i18next'
 
 const Navbar = () => {
+  const { t, i18n } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [isLanguageOpen, setIsLanguageOpen] = useState(false)
-  const [selectedLanguage, setSelectedLanguage] = useState('EN')
 
   const languages = [
-    { code: 'EN', name: 'English' },
-    { code: 'KS', name: 'Kiswahili' },
-    { code: 'FR', name: 'French' },
-    { code: 'SP', name: 'Spanish' },
-    { code: 'IT', name: 'Italiano' },
-    { code: 'PT', name: 'Português' },
+    { code: 'en', name: 'English' },
+    { code: 'sw', name: 'Kiswahili' },
+    { code: 'fr', name: 'French' },
+    { code: 'es', name: 'Spanish' },
+    { code: 'it', name: 'Italiano' },
+    { code: 'pt', name: 'Português' },
   ]
 
   const handleLanguageSelect = (langCode) => {
-    setSelectedLanguage(langCode)
+    i18n.changeLanguage(langCode)
     setIsLanguageOpen(false)
   }
 
+  const currentLanguage = languages.find(lang => lang.code === i18n.resolvedLanguage) || languages[0]
+
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">
-      <div className="container mx-auto px-4 flex justify-between items-center h-20">
-        {/* Logo */}
+      <div className="container mx-auto px-4 flex justify-between items-center h-14">
+        {/* Logo - Made larger */}
         <div className="flex-shrink-0">
           <Link to="/">
-            <img src={logoImage} alt="Eki Logo" className="h-16 w-auto object-contain" />
+            <img 
+              src={logoImage} 
+              alt="Eki Logo" 
+              className="h-12 w-auto object-contain" // Increased from h-10 to h-12
+            />
           </Link>
         </div>
 
-       {/* Search Bar */}
-{/* <div className="hidden sm:flex flex-1 justify-center px-6">
-  <div className="relative w-full max-w-[320px] lg:max-w-[420px]">
-    <FontAwesomeIcon
-      icon={faSearch}
-      className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-    />
-    <input
-      type="text"
-      placeholder="Search products..."
-      className="w-full pl-11 pr-4 py-2.5 border border-gray-300 rounded-full outline-none focus:border-[#efb034] focus:ring-1 focus:ring-[#efb034] transition-all text-sm"
-    />
-  </div>
-</div> */}
-
         {/* Desktop Navigation */}
         <div className="hidden lg:flex items-center">
-          <ul className="flex list-none gap-6 items-center">
+          <ul className="flex list-none gap-4 items-center">
             <li>
-              <a href="#home" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">
-                Home
-              </a>
-            </li>
-            {/* <li>
-              <a href="#products" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">
-                Products
+              <a href="#home" className="text-gray-700 text-sm font-semibold hover:text-[#efb034] transition-colors">
+                {t('nav.home')}
               </a>
             </li>
             <li>
-              <a href="#services" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">
-                Services
-              </a>
-            </li> */}
-            <li>
-              <Link to="/Login" className="text-gray-700 font-semibold hover:text-[#efb034] transition-colors">
-                Login
+              <Link to="/Login" className="text-gray-700 text-sm font-semibold hover:text-[#efb034] transition-colors">
+                {t('nav.login')}
               </Link>
             </li>
             <li>
               <Link
                 to="/vendorOnboarding"
-                className="bg-[#efb034] text-white px-6 py-2.5 rounded-lg font-bold hover:bg-[#d99c1c] transition-all active:scale-95"
+                className="bg-[#efb034] text-white px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-[#d99c1c] transition-all active:scale-95"
               >
-                Sign Up
+                {t('nav.signup')}
               </Link>
             </li>
-            <li className="relative">
+            <li className="relative ml-2">
               <button
                 onClick={() => setIsLanguageOpen(!isLanguageOpen)}
-                className="flex items-center gap-1 text-gray-700 font-semibold hover:text-[#efb034] focus:outline-none"
+                className="flex items-center gap-1 text-gray-700 text-sm font-semibold hover:text-[#efb034] focus:outline-none"
               >
-                <FontAwesomeIcon icon={faGlobe} />
-                <span>{selectedLanguage}</span>
+                <FontAwesomeIcon icon={faGlobe} className="text-sm" />
+                <span>{currentLanguage.code.toUpperCase()}</span>
                 <FontAwesomeIcon
                   icon={faChevronDown}
                   className={`text-xs transition-transform duration-300 ${isLanguageOpen ? 'rotate-180' : ''}`}
@@ -99,13 +81,13 @@ const Navbar = () => {
               </button>
 
               {isLanguageOpen && (
-                <div className="absolute right-0 mt-3 w-40 bg-white rounded-xl shadow-xl py-2 z-50 border border-gray-100">
+                <div className="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-xl py-2 z-50 border border-gray-100">
                   {languages.map((lang) => (
                     <button
                       key={lang.code}
                       onClick={() => handleLanguageSelect(lang.code)}
                       className={`block w-full text-left px-4 py-2 text-sm ${
-                        selectedLanguage === lang.code
+                        i18n.resolvedLanguage === lang.code
                           ? 'text-[#efb034] bg-orange-50'
                           : 'text-gray-700 hover:bg-gray-50'
                       }`}
@@ -120,10 +102,10 @@ const Navbar = () => {
         </div>
 
         {/* Mobile Menu Button */}
-        <div className="lg:hidden ml-4" onClick={() => setIsOpen(!isOpen)}>
+        <div className="lg:hidden" onClick={() => setIsOpen(!isOpen)}>
           <FontAwesomeIcon
             icon={isOpen ? faTimes : faBars}
-            className="text-2xl text-gray-800 cursor-pointer"
+            className="text-xl text-gray-800 cursor-pointer"
           />
         </div>
       </div>
@@ -134,20 +116,20 @@ const Navbar = () => {
           isOpen ? 'max-h-screen border-t' : 'max-h-0'
         }`}
       >
-        <div className="p-6 space-y-4">
+        <div className="p-4 space-y-3">
           <Link
             to="/signin"
-            className="block font-medium text-gray-800"
+            className="block font-medium text-gray-800 text-sm"
             onClick={() => setIsOpen(false)}
           >
-            Sign in
+            {t('nav.login')}
           </Link>
           <Link
             to="/signup"
-            className="block w-full text-center bg-[#efb034] text-white py-3 rounded-lg font-bold"
+            className="block w-full text-center bg-[#efb034] text-white py-2 rounded-lg text-sm font-bold"
             onClick={() => setIsOpen(false)}
           >
-            Sign Up
+            {t('nav.signup')}
           </Link>
         </div>
       </div>

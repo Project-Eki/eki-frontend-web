@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import resetIllustration from '../assets/reset.jpeg';
 import { passwordResetRequest } from '../services/authService'; 
-import Navbar2 from "../components/Navbar2";
+import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
 const ForgotPassword = () => {
@@ -11,7 +11,7 @@ const ForgotPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Button turns yellow only if email is not empty
+  // Button turns gold only if email is not empty
   const isEmailFilled = email.trim() !== '';
 
   const handleSubmit = async (e) => {
@@ -36,7 +36,7 @@ const ForgotPassword = () => {
   return (
     <div className="flex flex-col h-screen bg-white font-sans overflow-hidden">
       {/* Navbar fixed at the top */}
-      <Navbar2 />
+      <Navbar />
 
       {/* Main Content Area - stagnant and non-scrollable */}
       <div className="flex flex-1 w-full overflow-hidden">
@@ -85,7 +85,7 @@ const ForgotPassword = () => {
                 )}
               </div>
 
-              {/* Dynamic Submit Button: Gray to Yellow */}
+              {/* Dynamic Submit Button: Gray to Gold */}
               <button 
                 type="submit"
                 disabled={isLoading || !isEmailFilled} 
