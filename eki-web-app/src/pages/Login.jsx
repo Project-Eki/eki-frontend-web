@@ -218,7 +218,7 @@ const Login = () => {
                 disabled={isLoading || !isFormFilled}
                 className={`w-full h-12 rounded-xl font-bold transition-all duration-300
                   ${isFormFilled && !isLoading
-                    ? 'bg-[#efb034] hover:bg-[#d99c1c] hover:-translate-y-1 hover:shadow-lg text-white cursor-pointer' 
+                    ? 'bg-[#efb034] hover:bg-[#d99c1c] btn-roundhover:-translate-y-1 hover:shadow-lg text-white cursor-pointer' 
                     : 'bg-gray-300 cursor-not-allowed text-white/70'
                   }`}
               >
