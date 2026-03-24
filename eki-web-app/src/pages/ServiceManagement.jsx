@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { getServices } from "../services/api";
 import Sidebar from "../components/Vendormanagement/Sidebar";
 import Navbar from "../components/Vendormanagement/Navbar";
 import ServiceForm from "../components/Vendormanagement/ServiceForm";
@@ -82,11 +83,55 @@ const ServiceManagement = () => {
   const [viewMode, setViewMode]       = useState("grid");
   const [search, setSearch]           = useState("");
   const [sortBy, setSortBy]           = useState("newest");
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 // filtering data
-  const filtered = MOCK.filter(s =>
-    s.title.toLowerCase().includes(search.toLowerCase()) ||
-    s.category.toLowerCase().includes(search.toLowerCase())
-  );
+  // const filtered = MOCK.filter(s =>
+  //   s.title.toLowerCase().includes(search.toLowerCase()) ||
+  //   s.category.toLowerCase().includes(search.toLowerCase())
+  // );
+  // 3. Load data from API
+useEffect(() => {
+  const fetchMyServices = async () => {
+    setLoading(true);
+    try {
+      const data = await getServices();
+      // Map API data to your UI Card shape
+      const formatted = data.map(item => ({
+        id: item.id,
+        category: item.business_category.toUpperCase(),
+        title: item.title,
+        desc: item.description,
+        price: item.price || 0,
+        unit: item.price_unit || "session",
+        duration: item.detail?.duration || item.detail?.flight_duration || "N/A",
+        avail: item.availability || "Available",
+        status: item.status, // 'published', 'draft', etc.
+        mode: item.detail?.delivery_mode || (item.detail?.is_remote ? "remote" : "in-person"),
+        img: item.images?.[0]?.image || "https://via.placeholder.com/400x300?text=No+Image"
+      }));
+      setServices(formatted);
+    } catch (err) {
+      console.error("Load error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchMyServices();
+}, [refreshKey]);
+
+// 4. Update the "filtered" logic to use the state
+const filtered = services.filter(s =>
+  s.title.toLowerCase().includes(search.toLowerCase()) ||
+  s.category.toLowerCase().includes(search.toLowerCase())
+);
+
+// 5. Update the Create Modal to trigger a refresh
+<ServiceForm onClose={(didCreate) => {
+  setIsModalOpen(false);
+  if (didCreate === true) setRefreshKey(prev => prev + 1);
+}} />
 
   return (
     // OUTER: full viewport height, no overflow — nothing on this level scrolls

@@ -6,8 +6,11 @@ import {
   CheckCircle2, ChevronDown, Phone, Mail, Link,
   Car, User, Tag, AlignLeft, Image
 } from 'lucide-react';
+import { createListing, uploadListingImage } from "../../services/api";
+import { buildListingPayload } from "../../utils/buildListingPayload";
+// import { toast } from "react-hot-toast";
 
-/* ─── shared field wrapper ─── */
+/* shared field wrapper  */
 const Field = ({ label, required, hint, children }) => (
   <div className="space-y-1.5">
     <label className="block text-sm font-semibold text-gray-700">
@@ -18,7 +21,7 @@ const Field = ({ label, required, hint, children }) => (
   </div>
 );
 
-/* ─── shared input styles ─── */
+/*  shared input styles */
 const inputCls = "w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all placeholder:text-gray-400";
 const iconInputCls = "w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all placeholder:text-gray-400";
 
@@ -434,15 +437,60 @@ const ServiceForm = ({ onClose }) => {
   const [serviceType, setServiceType] = useState('');
   const [title, setTitle] = useState('');
   const [data, setData] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [coverImage, setCoverImage] = useState(null);
+  const [coverPreview, setCoverPreview] = useState(null);
 
   const set = (k, v) => setData(p => ({ ...p, [k]: v }));
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("Submit:", { serviceType, title, ...data });
-    onClose?.();
-  };
+  // const handleSubmit = (e) => {
+  //   e.preventDefault();
+  //   console.log("Submit:", { serviceType, title, ...data });
+  //   onClose?.();
+  // };
+   // 3. Replace the handleSubmit function
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!serviceType || !title) {
+    setError("Please provide a service type and title.");
+    return;
+  }
 
+  setIsLoading(true);
+  setError("");
+
+  try {
+    // A. Build payload using the utility we created in the previous step
+    const payload = buildListingPayload(serviceType, title, data);
+
+    // B. Create the listing (POST /api/v1/listings/)
+    const newListing = await createListing(payload);
+
+    // C. If user selected an image, upload it (POST /api/v1/listings/{id}/images/)
+    if (coverImage && newListing.id) {
+      await uploadListingImage(newListing.id, coverImage);
+    }
+
+    toast.success("Service published successfully!");
+    onClose?.(true); // Pass true so parent knows to refresh the list
+  } catch (err) {
+    console.error("Submission error:", err);
+    const msg = err.response?.data?.detail || "Failed to save service. Check your connection.";
+    setError(msg);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+// 4. Update the "Publish Service" button at the bottom of the form
+<button
+  type="submit"
+  disabled={!serviceType || !title || isLoading}
+  className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-xl text-sm transition-all active:scale-95"
+>
+  {isLoading ? "Publishing..." : "Publish Service"}
+</button>
   return (
     <div className="p-6 sm:p-8">
       {/* Header */}
