@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { getVendorProfile, updateVendorProfile } from "../services/api";
 import {
   HiOutlinePencil,
   HiOutlineClock,
@@ -9,393 +10,384 @@ import {
   HiOutlineDocumentText,
   HiOutlineGlobeAlt,
   HiOutlineChevronRight,
+  HiOutlineCheckCircle,
+  HiOutlineExclamationCircle,
+  HiOutlineX,
 } from "react-icons/hi";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
-import VendorNavbar from "../components/VendorNavbar";
-import Footer from "../components/Footer";
+import VendorNavbar from "../components/Vendormanagement/Navbar2";
+
+/* ── inline footer matching the rest of the app ── */
+const Footer = () => (
+  <footer className="bg-[#235E5D] text-white py-4 px-5 sm:px-10 flex flex-col sm:flex-row justify-between items-center gap-2 text-[11px] shrink-0">
+    <div className="hidden sm:block">Buy Smart. Sell Fast. Grow Together...</div>
+    <div>© 2026 Vendor Portal. All rights reserved.</div>
+    <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
+      <span className="relative inline-block cursor-pointer hover:underline">
+        eki<span className="absolute text-[5px] -bottom-0 -right-2">TM</span>
+      </span>
+      <span className="cursor-pointer hover:underline">Support</span>
+      <span className="cursor-pointer hover:underline">Privacy Policy</span>
+      <span className="cursor-pointer hover:underline">Terms of Service</span>
+      <span className="cursor-pointer hover:underline">Ijoema ltd</span>
+    </div>
+  </footer>
+);
+
+/* ── document status config ── */
+const DOC_STATUS = {
+  Verified: { color: "text-green-600", bg: "bg-green-50", icon: HiOutlineCheckCircle },
+  Pending:  { color: "text-amber-600", bg: "bg-amber-50",  icon: HiOutlineClock       },
+  Missing:  { color: "text-red-500",   bg: "bg-red-50",    icon: HiOutlineExclamationCircle },
+};
+
+const quickLinks = [
+  { title: "Listings Management", desc: "Manage your products, inventory, and offers",       icon: HiOutlineClipboardList, path: "/product-dashboard" },
+  { title: "Payout Settings",     desc: "Configure bank accounts and payment schedules",     icon: HiOutlineCreditCard,    path: "/payment"           },
+  { title: "Dashboard Access",    desc: "View analytics and performance metrics",            icon: HiOutlineChartBar,      path: "/vendordashboard"   },
+];
+
+const fields = [
+  { key: "business_name",     label: "Business Name",      locked: true,  span: false },
+  { key: "business_category", label: "Business Category",  locked: false, span: false },
+  { key: "address",           label: "Street Address",     locked: false, span: true  },
+  { key: "city",              label: "City",               locked: false, span: false },
+  { key: "country",           label: "Country",            locked: false, span: false },
+  { key: "business_email",    label: "Contact Email",      locked: false, span: false },
+  { key: "business_phone",    label: "Contact Phone",      locked: false, span: false },
+  { key: "website",           label: "Website Link",       locked: false, span: true  },
+];
+
+/* ── field row ── */
+const FieldRow = ({ fieldKey, label, locked, value, editing, tempValue, onStartEdit, onConfirm, onTempChange }) => {
+  const isPhone = fieldKey === "business_phone";
+  const isWebsite = fieldKey === "website";
+
+  if (locked) {
+    return (
+      <div className="flex items-center justify-between h-11 px-4 bg-gray-100 rounded-xl">
+        <span className="text-sm text-gray-700 font-semibold truncate">{value}</span>
+        <span className="text-[10px] font-bold text-gray-400 shrink-0 ml-2">LOCKED</span>
+      </div>
+    );
+  }
+
+  if (editing) {
+    return (
+      <div className="flex gap-2">
+        {isPhone ? (
+          <div className="flex-1 bg-white border-2 border-[#F2B53D] rounded-xl px-3 h-11 flex items-center">
+            <PhoneInput
+              international
+              defaultCountry="UG"
+              value={tempValue}
+              onChange={onTempChange}
+              className="eki-phone-input w-full"
+            />
+          </div>
+        ) : (
+          <input
+            autoFocus
+            value={tempValue}
+            onChange={e => onTempChange(e.target.value)}
+            className="flex-1 h-11 px-4 border-2 border-[#F2B53D] rounded-xl text-sm outline-none bg-white"
+          />
+        )}
+        <button
+          onClick={onConfirm}
+          className="h-11 px-4 bg-[#235E5D] text-white text-xs font-bold rounded-xl hover:bg-[#1a4544] transition-colors shrink-0"
+        >
+          Save
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between h-11 px-4 bg-gray-50 rounded-xl group hover:bg-gray-100 transition-colors cursor-default">
+      <span className="text-sm text-gray-700 font-medium truncate">
+        {isWebsite && value && <HiOutlineGlobeAlt className="inline mr-2 text-blue-400 shrink-0" />}
+        {value || <span className="text-gray-300">Add {label}</span>}
+      </span>
+      <button
+        onClick={() => onStartEdit(fieldKey, value)}
+        className="text-gray-300 group-hover:text-[#F2B53D] transition-colors shrink-0 ml-2 p-1"
+        title={`Edit ${label}`}
+      >
+        <HiOutlinePencil size={15} />
+      </button>
+    </div>
+  );
+};
+
+/* main component */
+const fmt = (t) => {
+  if (!t) return "--:--";
+  const [h, m] = t.split(":");
+  const hr = parseInt(h);
+  return `${hr % 12 || 12}:${m} ${hr >= 12 ? "PM" : "AM"}`;
+};
 
 const BusinessSettings = () => {
   const [formData, setFormData] = useState({
-    business_name: "Eki Marketplace Ventures",
-    business_address: "456 Market Lane, Suite 200",
-    city: "Kampala",
-    country: "Uganda",
-    contact_email: "vendor@ekimarketplace.com",
-    contact_phone: "+256700000000",
-    website: "https://ekimarketplace.com",
-    category: "products",
-    opening_time: "08:00",
-    closing_time: "18:00",
-    logo: null,
+    business_name: "", address: "", city: "", country: "", business_email: "", business_phone: "",
+    website: "", business_category: "", opening_time: "", closing_time: "", logo: null,
+    has_gov_id: false, has_country_id: false, has_license: false, has_tax: false, has_incorp: false,
   });
 
+  const [originalData, setOriginalData] = useState({});
   const [logoPreview, setLogoPreview] = useState(null);
   const [editingField, setEditingField] = useState(null);
   const [tempValue, setTempValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [loading, setLoading] = useState(true);
   const [editingHours, setEditingHours] = useState(false);
+  const [tempHours, setTempHours] = useState({ opening_time: "", closing_time: "" });
 
-  const fields = [
-    { key: "business_name", label: "Business Name" },
-    { key: "category", label: "Business Category" },
-    { key: "business_address", label: "Street Address" },
-    { key: "city", label: "City" },
-    { key: "country", label: "Country" },
-    { key: "contact_email", label: "Contact Email" },
-    { key: "contact_phone", label: "Contact Phone" },
-    { key: "website", label: "Website Link" },
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const data = await getVendorProfile();
+        if (data) {
+          const mapped = {
+            business_name:     data.business_name     || "",
+            address:           data.address           || "",
+            city:              data.city              || "",
+            country:           data.country           || "",
+            business_email:    data.business_email    || "",
+            business_phone:    data.business_phone    || "",
+            website:           data.website           || "",
+            business_category: data.business_category || "",
+            opening_time:      data.opening_time      || "",
+            closing_time:      data.closing_time      || "",
+            logo:              null,
+            has_gov_id: data.has_government_issued_id,
+            has_country_id: data.has_country_issued_id,
+            has_license: data.has_business_license,
+            has_tax: data.has_tax_certificate,
+            has_incorp: data.has_incorporation_cert,
+          };
+          setFormData(mapped);
+          setOriginalData(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to load profile:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadProfile();
+  }, []);
+
+  // Dynamic Docs Array for UI
+  const docs = [
+    { label: "Government Issued ID", status: formData.has_gov_id ? "Verified" : "Missing", apiKey: "government_issued_id" },
+    { label: "Country Issued ID",    status: formData.has_country_id ? "Verified" : "Missing", apiKey: "country_issued_id" },
+    { label: "Business License",     status: formData.has_license ? "Verified" : "Missing", apiKey: "business_license" },
+    { label: "Tax Certificate",      status: formData.has_tax ? "Verified" : "Missing", apiKey: "tax_certificate" },
+    { label: "Incorporation Cert",   status: formData.has_incorp ? "Verified" : "Missing", apiKey: "incorporation_cert" },
   ];
 
   const handleLogoChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setFormData({ ...formData, logo: file });
-      setLogoPreview(URL.createObjectURL(file));
+    if (!file) return;
+    setFormData(p => ({ ...p, logo: file }));
+    setLogoPreview(URL.createObjectURL(file));
+  };
+
+  const handleFileUpload = async (e, apiKey) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setSaving(true);
+    try {
+      await updateVendorProfile({ [apiKey]: file });
+      const updatedData = await getVendorProfile();
+      setFormData(prev => ({
+        ...prev,
+        has_gov_id: updatedData.has_government_issued_id,
+        has_country_id: updatedData.has_country_issued_id,
+        has_license: updatedData.has_business_license,
+        has_tax: updatedData.has_tax_certificate,
+        has_incorp: updatedData.has_incorporation_cert,
+      }));
+      alert("Document uploaded successfully!");
+    } catch (err) {
+      alert("Failed to upload document.");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const startEdit = (field, value) => {
-    setEditingField(field);
-    setTempValue(value);
+  const startEdit = (key, value) => { setEditingField(key); setTempValue(value); };
+  const confirmEdit = (key) => { setFormData(p => ({ ...p, [key]: tempValue })); setEditingField(null); };
+
+  const startHoursEdit = () => {
+    setTempHours({ opening_time: formData.opening_time, closing_time: formData.closing_time });
+    setEditingHours(true);
+  };
+  const confirmHours = () => {
+    setFormData(p => ({ ...p, ...tempHours }));
+    setEditingHours(false);
   };
 
-  const confirmEdit = (field) => {
-    setFormData((prev) => ({ ...prev, [field]: tempValue }));
-    setEditingField(null);
+  const getChangedFields = () => {
+    const changed = {};
+    Object.keys(formData).forEach((key) => {
+      if (key === "logo") {
+        if (formData.logo instanceof File) changed.logo = formData.logo;
+      } else if (!key.startsWith('has_') && formData[key] !== originalData[key]) {
+        changed[key] = formData[key];
+      }
+    });
+    return changed;
   };
 
-  const handleSave = () => {
-    setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
+  const handleSave = async () => {
+    setSaveError("");
+    const changedFields = getChangedFields();
+    if (Object.keys(changedFields).length === 0) {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
-    }, 1000);
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateVendorProfile(changedFields);
+      setOriginalData({ ...formData, logo: null });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setSaveError("Failed to save.");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const formatTime = (time) => {
-    if (!time) return "--:--";
-    const [h, m] = time.split(":");
-    const hour = parseInt(h);
-    const ampm = hour >= 12 ? "PM" : "AM";
-    const display = hour % 12 === 0 ? 12 : hour % 12;
-    return `${display}:${m} ${ampm}`;
-  };
-
-  const quickLinks = [
-    {
-      title: "Listings Management",
-      desc: "Manage your products, inventory, and offers",
-      icon: HiOutlineClipboardList,
-    },
-    {
-      title: "Payout Settings",
-      desc: "Configure bank accounts and payment schedules",
-      icon: HiOutlineCreditCard,
-    },
-    {
-      title: "Dashboard Access",
-      desc: "View analytics and performance metrics",
-      icon: HiOutlineChartBar,
-    },
-  ];
+  if (loading) return (
+    <div className="h-screen flex items-center justify-center bg-gray-50">
+      <p className="text-gray-400 text-sm font-semibold">Loading profile...</p>
+    </div>
+  );
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 font-sans pb-12">
+    <div className="h-screen flex flex-col overflow-hidden bg-gray-50 font-sans">
       <VendorNavbar />
-
-      <div className=" flex-1 max-w-5xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* LEFT SIDE: MAIN SETTINGS */}
-          <div className="lg:col-span-2 flex flex-col gap-6">
-            {/* Logo Section */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <div className="flex items-center gap-6">
-                <div className="relative group">
-                  <div className="w-24 h-24 rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden">
-                    {logoPreview ? (
-                      <img
-                        src={logoPreview}
-                        alt="logo"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <HiOutlinePhotograph
-                        size={32}
-                        className="text-gray-300"
-                      />
-                    )}
-                  </div>
-                  <label className="absolute -bottom-2 -right-2 w-8 h-8 bg-[#1C2B2B] text-white rounded-lg flex items-center justify-center cursor-pointer shadow-lg">
-                    <HiOutlinePencil size={14} />
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept="image/*"
-                      onChange={handleLogoChange}
-                    />
-                  </label>
-                </div>
-                <div>
-                  <h2 className="text-lg font-black text-[#235E5D]">
-                    Business Brand
-                  </h2>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Upload your business logo for your storefront.
-                  </p>
-                </div>
-              </div>
+      <div className="flex-1 overflow-y-auto flex flex-col">
+        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6">
+          <div className="max-w-5xl mx-auto">
+            <div className="mb-6">
+              <h1 className="text-xl font-black text-gray-900">Business Settings</h1>
+              <p className="text-sm text-gray-500 mt-0.5">Manage store profile, documents, and details.</p>
             </div>
 
-            {/* General Info Section */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50">
-                <h2 className="text-[16px] font-black text-[#235E5D]">
-                  Business Information
-                </h2>
-              </div>
-
-              {/* Info Message */}
-              <div className="px-6 pt-4">
-                <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-xl text-xs font-semibold">
-                  Some information like your business name and documents cannot be changed after verification.
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* MAIN COLUMN */}
+              <div className="lg:col-span-2 flex flex-col gap-5">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-5">
+                   <div className="relative shrink-0">
+                      <div className="w-20 h-20 rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden">
+                        {logoPreview ? <img src={logoPreview} alt="logo" className="w-full h-full object-cover" /> : <HiOutlinePhotograph size={28} className="text-gray-300" />}
+                      </div>
+                      <label className="absolute -bottom-2 -right-2 w-7 h-7 bg-[#235E5D] text-white rounded-lg flex items-center justify-center cursor-pointer shadow-md"><HiOutlinePencil size={13} /><input type="file" className="hidden" accept="image/*" onChange={handleLogoChange} /></label>
+                   </div>
+                   <div><h2 className="text-[15px] font-black text-[#235E5D]">Business Brand</h2><p className="text-xs text-gray-400">Upload your logo for your storefront.</p></div>
                 </div>
-              </div>
 
-              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-                {fields.map(({ key, label }) => {
-                  const isLocked = key === "business_name";
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="px-5 py-4 border-b border-gray-50 bg-gray-50/60"><h2 className="text-[15px] font-black text-[#235E5D]">Business Information</h2></div>
+                  <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {fields.map(({ key, label, locked, span }) => (
+                      <div key={key} className={span ? "sm:col-span-2" : ""}>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase mb-1.5 ml-0.5">{label}</p>
+                        <FieldRow fieldKey={key} label={label} locked={locked} value={formData[key]} editing={editingField === key} tempValue={tempValue} onStartEdit={startEdit} onConfirm={() => confirmEdit(key)} onTempChange={setTempValue} />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="px-5 pb-5">
+                    <button onClick={handleSave} className={`w-full h-11 rounded-xl font-bold text-sm ${saved ? "bg-[#F2B53D] text-white" : "bg-[#235E5D] text-white"}`}>{saved ? "✓ Saved" : "Save Changes"}</button>
+                  </div>
+                </div>
 
-                  return (
-                    <div
-                      key={key}
-                      className={
-                        key === "business_address" || key === "website"
-                          ? "md:col-span-2"
-                          : ""
-                      }
-                    >
-                      <p className="text-[10px] font-bold text-gray-400 uppercase mb-2 ml-1">
-                        {label}
-                      </p>
-
-                      {isLocked ? (
-                        <div className="flex items-center justify-between h-11 px-4 bg-gray-100 rounded-xl ">
-                          <span className="text-sm text-gray-700 font-semibold">
-                            {formData[key]}
-                          </span>
-                          <span className="text-[10px] font-bold text-gray-400">
-                            LOCKED
-                          </span>
-                        </div>
-                      ) : editingField === key ? (
-                        <div className="flex gap-2">
-                          {key === "contact_phone" ? (
-                            <div className="flex-1 bg-white border-2 border-[#F2B53D] rounded-xl px-3 h-11 flex items-center">
-                              <PhoneInput
-                                international
-                                defaultCountry="UG"
-                                value={tempValue}
-                                onChange={setTempValue}
-                                className="eki-phone-input w-full"
-                              />
-                            </div>
+                {/* VENDOR DOCUMENTS */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="px-5 py-4 border-b border-gray-50 bg-gray-50/60"><h2 className="text-[15px] font-black text-[#235E5D]">Vendor Documents</h2></div>
+                  <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {docs.map((doc, i) => {
+                      const cfg = DOC_STATUS[doc.status];
+                      const StatusIcon = cfg.icon;
+                      return (
+                        <div key={i} className="p-3.5 border border-gray-100 rounded-xl bg-gray-50/60 flex items-center gap-3">
+                          <div className={`w-9 h-9 ${cfg.bg} rounded-xl flex items-center justify-center shrink-0`}><StatusIcon size={17} className={cfg.color} /></div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[11px] font-bold text-gray-700 truncate">{doc.label}</p>
+                            <p className={`text-[10px] font-bold mt-0.5 ${cfg.color}`}>{doc.status}</p>
+                          </div>
+                          {doc.status === "Missing" ? (
+                             <label className="text-[10px] font-black text-[#F2B53D] hover:underline cursor-pointer uppercase">UPLOAD<input type="file" className="hidden" onChange={(e) => handleFileUpload(e, doc.apiKey)} /></label>
                           ) : (
-                            <input
-                              autoFocus
-                              value={tempValue}
-                              onChange={(e) => setTempValue(e.target.value)}
-                              className="flex-1 h-11 px-4 border-2 border-[#F2B53D] rounded-xl text-sm outline-none"
-                            />
-                          )}
-                          <button
-                            onClick={() => confirmEdit(key)}
-                            className="h-11 px-4 bg-[#1C2B2B] text-white text-xs font-bold rounded-xl"
-                          >
-                            Save
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between h-11 px-4 bg-gray-50 rounded-xl  group transition-all">
-                          <span className="text-sm text-gray-700 font-semibold truncate">
-                            {key === "website" && (
-                              <HiOutlineGlobeAlt className="inline mr-2 text-blue-400" />
-                            )}
-                            {formData[key] || `Add ${label}`}
-                          </span>
-
-                          {!isLocked && (
-                            <button
-                              onClick={() => startEdit(key, formData[key])}
-                              className="text-gray-300 group-hover:text-[#F2B53D]"
-                            >
-                              <HiOutlinePencil size={16} />
-                            </button>
+                             <button className="text-[10px] font-black text-[#F2B53D] hover:underline uppercase">VIEW</button>
                           )}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="px-6 pb-6">
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className={`w-full h-12 rounded-xl font-black text-sm transition-all shadow-sm ${
-                    saved
-                      ? "bg-[#efb034]  text-white"
-                      : saving
-                      ? "bg-gray-200 text-gray-400"
-                      : "bg-gray-400 text-white hover:bg-gray-500"
-                  }`}
-                >
-                  {saved
-                    ? "Changes Saved"
-                    : saving
-                    ? "Updating..."
-                    : "Save All Changes"}
-                </button>
-              </div>
-            </div>
-
-            {/* Vendor Documents Card */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                <h2 className="text-[16px] font-black text-[#235E5D]">
-                  Vendor Documents
-                </h2>
-              </div>
-              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[
-                  {
-                    label: "Government Issued ID",
-                    status: "Verified",
-                    color: "text-green-600",
-                  },
-                  {
-                    label: "Country Issued ID",
-                    status: "Missing",
-                    color: "text-red-500",
-                  },
-                  { label: "Business License", status: "Pending", color: "text-yellow-500" },
-                  { label: "Tax Certificate", status: "Verified", color: "text-green-600" },
-                  { label: "Incorporation Certificate", status: "Missing", color: "text-red-500" },
-                ].map((doc, i) => (
-                  <div
-                    key={i}
-                    className="p-4 border border-gray-100 rounded-2xl bg-gray-50 flex items-center gap-4"
-                  >
-                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-gray-400 shadow-sm">
-                      <HiOutlineDocumentText size={20} />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase leading-none mb-1">
-                        {doc.label}
-                      </p>
-                      <p className={`text-xs font-bold ${doc.color}`}>
-                        {doc.status}
-                      </p>
-                    </div>
-                    {doc.status === "Missing" ? (
-                      <button className="text-[10px] font-black text-[#F2B53D] hover:underline">
-                        UPLOAD
-                      </button>
-                    ) : (
-                      <button className="text-[10px] font-black text-[#F2B53D] hover:underline">
-                        VIEW
-                      </button>
-                    )}
+                      );
+                    })}
                   </div>
-                ))}
+                </div>
+              </div>
+
+              {/* RIGHT SIDEBAR */}
+              <div className="flex flex-col gap-5">
+                {/* QUICK LINKS */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="px-5 py-4 border-b border-gray-50 bg-gray-50/60"><h2 className="text-[14px] font-black text-gray-800">Quick Links</h2></div>
+                  <div className="p-3 flex flex-col gap-1">
+                    {quickLinks.map(link => (
+                      <a key={link.title} href={link.path} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors group">
+                        <div className="w-9 h-9 bg-gray-50 rounded-xl flex items-center justify-center text-gray-500 group-hover:bg-[#F2B53D]/10 group-hover:text-[#F2B53D] shrink-0"><link.icon size={18} /></div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-bold text-gray-800 leading-tight">{link.title}</p>
+                          <p className="text-[11px] text-gray-400 mt-0.5 truncate">{link.desc}</p>
+                        </div>
+                        <HiOutlineChevronRight size={15} className="text-gray-300 group-hover:text-gray-500" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+
+                {/* OPERATING HOURS */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="px-5 py-4 border-b border-gray-50 bg-gray-50/60 flex items-center justify-between">
+                    <h2 className="text-[14px] font-black text-gray-800">Operating Hours</h2>
+                    <button onClick={editingHours ? confirmHours : startHoursEdit} className="text-xs font-bold text-[#F2B53D]">{editingHours ? "Save" : "Edit"}</button>
+                  </div>
+                  <div className="p-4 flex flex-col gap-2">
+                    {[{ label: "Opens", key: "opening_time" }, { label: "Closes", key: "closing_time" }].map(({ label, key }) => (
+                      <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                        <div className="flex items-center gap-2"><HiOutlineClock size={14} className="text-[#F2B53D]" /><span className="text-[11px] font-bold text-gray-400 uppercase">{label}</span></div>
+                        {editingHours ? (
+                          <input type="time" value={tempHours[key]} onChange={e => setTempHours(p => ({ ...p, [key]: e.target.value }))} className="text-sm font-bold bg-transparent border-b border-[#F2B53D] outline-none" />
+                        ) : (
+                          <span className="text-sm font-bold text-gray-600">{fmt(formData[key])}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* SUPPORT */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                  <h3 className="text-[14px] font-black text-gray-800 mb-1">Need Assistance?</h3>
+                  <p className="text-[12px] text-gray-500 mb-4 leading-relaxed">Our support team is here to help with any vendor account issues.</p>
+                  <button className="w-full h-10 bg-[#F2B53D] text-white font-bold rounded-xl text-sm hover:bg-[#e0a630] transition-colors">Contact Support</button>
+                </div>
               </div>
             </div>
           </div>
-
-          {/* RIGHT SIDE */}
-          <div className="flex flex-col gap-6">
-            {/* Quick Links Section */}
-            <div className="flex flex-col gap-4">
-              {quickLinks.map((link) => (
-                <div
-                  key={link.title}
-                  className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 cursor-pointer hover:border-[#F2B53D] transition-all group"
-                >
-                  <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center text-gray-700 group-hover:bg-[#F2B53D]/10 transition-colors">
-                    <link.icon size={24} />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-[14px] font-black text-gray-900 leading-tight">
-                      {link.title}
-                    </h3>
-                    <p className="text-[11px] text-gray-500 mt-1 leading-snug">
-                      {link.desc}
-                    </p>
-                  </div>
-                  <HiOutlineChevronRight
-                    size={18}
-                    className="text-gray-300 group-hover:text-gray-900"
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* Operating Hours Card */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-[16px] font-black text-gray-900">Hours</h2>
-                <button
-                  onClick={() => setEditingHours(!editingHours)}
-                  className="text-[#F2B53D] text-xs font-bold"
-                >
-                  {editingHours ? "Cancel" : "Edit"}
-                </button>
-              </div>
-              <div className="flex flex-col gap-3">
-                <div className="p-3 bg-gray-50 rounded-xl  flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <HiOutlineClock size={14} className="text-[#F2B53D]" />
-                    <span className="text-[10px] font-black text-gray-400 uppercase">
-                      Opens
-                    </span>
-                  </div>
-                  <p className="font-black text-gray-500">
-                    {formatTime(formData.opening_time)}
-                  </p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-xl  flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <HiOutlineClock size={14} className="text-[#F2B53D]" />
-                    <span className="text-[10px] font-black text-gray-400 uppercase">
-                      Closes
-                    </span>
-                  </div>
-                  <p className="font-black text-gray-500">
-                    {formatTime(formData.closing_time)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Assistance Card */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm pt-6">
-              <h3 className="text-[15px] font-black text-gray-600 mb-2">
-                Need Assistance?
-              </h3>
-              <p className="text-[12px] text-gray-500 mb-6 leading-relaxed">
-                Our support team is here to help with any questions or issues.
-              </p>
-              <button className="w-full h-11 bg-[#efb034]  text-white font-bold rounded-xl text-sm hover:opacity-90 transition-opacity">
-                Contact Support
-              </button>
-            </div>
-          </div>
-        </div>
+        </main>
+        <Footer />
       </div>
-      <Footer className="fixed bottom-0 left-0 w-full"/>
     </div>
   );
 };
@@ -404,379 +396,538 @@ export default BusinessSettings;
 
 
 
-// import React, { useState } from "react";
+// import React, { useState, useEffect, useRef } from "react";
+// import { getVendorProfile, updateVendorProfile } from "../services/api";
 // import {
 //   HiOutlinePencil,
 //   HiOutlineClock,
 //   HiOutlineClipboardList,
 //   HiOutlineCreditCard,
 //   HiOutlineChartBar,
-//   HiArrowRight,
 //   HiOutlinePhotograph,
 //   HiOutlineDocumentText,
 //   HiOutlineGlobeAlt,
 //   HiOutlineChevronRight,
+//   HiOutlineCheckCircle,
+//   HiOutlineExclamationCircle,
+//   HiOutlineX,
 // } from "react-icons/hi";
 // import PhoneInput from "react-phone-number-input";
 // import "react-phone-number-input/style.css";
-// import VendorNavbar from "../components/VendorNavbar";
-// import Footer from "../components/Footer";
+// import VendorNavbar from "../components/Vendormanagement/Navbar2";
+
+// /* ── inline footer matching the rest of the app ── */
+// const Footer = () => (
+//   <footer className="bg-[#235E5D] text-white py-4 px-5 sm:px-10 flex flex-col sm:flex-row justify-between items-center gap-2 text-[11px] shrink-0">
+//     <div className="hidden sm:block">Buy Smart. Sell Fast. Grow Together...</div>
+//     <div>© 2026 Vendor Portal. All rights reserved.</div>
+//     <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
+//       <span className="relative inline-block cursor-pointer hover:underline">
+//         eki<span className="absolute text-[5px] -bottom-0 -right-2">TM</span>
+//       </span>
+//       <span className="cursor-pointer hover:underline">Support</span>
+//       <span className="cursor-pointer hover:underline">Privacy Policy</span>
+//       <span className="cursor-pointer hover:underline">Terms of Service</span>
+//       <span className="cursor-pointer hover:underline">Ijoema ltd</span>
+//     </div>
+//   </footer>
+// );
+
+// /* ── document status config ── */
+// const DOC_STATUS = {
+//   Verified: { color: "text-green-600", bg: "bg-green-50", icon: HiOutlineCheckCircle },
+//   Pending:  { color: "text-amber-600", bg: "bg-amber-50",  icon: HiOutlineClock       },
+//   Missing:  { color: "text-red-500",   bg: "bg-red-50",    icon: HiOutlineExclamationCircle },
+// };
+
+
+
+// const quickLinks = [
+//   { title: "Listings Management", desc: "Manage your products, inventory, and offers",       icon: HiOutlineClipboardList, path: "/product-dashboard" },
+//   { title: "Payout Settings",     desc: "Configure bank accounts and payment schedules",     icon: HiOutlineCreditCard,    path: "/payment"           },
+//   { title: "Dashboard Access",    desc: "View analytics and performance metrics",            icon: HiOutlineChartBar,      path: "/vendordashboard"   },
+// ];
+
+// const fields = [
+//   { key: "business_name",    label: "Business Name",      locked: true,  span: false },
+//   { key: "business_category",label: "Business Category",  locked: false, span: false },
+//   { key: "address",          label: "Street Address",     locked: false, span: true  },
+//   { key: "city",             label: "City",               locked: false, span: false },
+//   { key: "country",          label: "Country",            locked: false, span: false },
+//   { key: "business_email",    label: "Contact Email",      locked: false, span: false },
+//   { key: "business_phone",    label: "Contact Phone",      locked: false, span: false },
+//   { key: "website",          label: "Website Link",       locked: false, span: true  },
+// ];
+
+// /* ── field row ── */
+// const FieldRow = ({ fieldKey, label, locked, value, editing, tempValue, onStartEdit, onConfirm, onTempChange }) => {
+//   const isPhone = fieldKey === "business_phone";
+//   const isWebsite = fieldKey === "website";
+
+//   if (locked) {
+//     return (
+//       <div className="flex items-center justify-between h-11 px-4 bg-gray-100 rounded-xl">
+//         <span className="text-sm text-gray-700 font-semibold truncate">{value}</span>
+//         <span className="text-[10px] font-bold text-gray-400 shrink-0 ml-2">LOCKED</span>
+//       </div>
+//     );
+//   }
+
+//   if (editing) {
+//     return (
+//       <div className="flex gap-2">
+//         {isPhone ? (
+//           <div className="flex-1 bg-white border-2 border-[#F2B53D] rounded-xl px-3 h-11 flex items-center">
+//             <PhoneInput
+//               international
+//               defaultCountry="UG"
+//               value={tempValue}
+//               onChange={onTempChange}
+//               className="eki-phone-input w-full"
+//             />
+//           </div>
+//         ) : (
+//           <input
+//             autoFocus
+//             value={tempValue}
+//             onChange={e => onTempChange(e.target.value)}
+//             className="flex-1 h-11 px-4 border-2 border-[#F2B53D] rounded-xl text-sm outline-none bg-white"
+//           />
+//         )}
+//         <button
+//           onClick={onConfirm}
+//           className="h-11 px-4 bg-[#235E5D] text-white text-xs font-bold rounded-xl hover:bg-[#1a4544] transition-colors shrink-0"
+//         >
+//           Save
+//         </button>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="flex items-center justify-between h-11 px-4 bg-gray-50 rounded-xl group hover:bg-gray-100 transition-colors cursor-default">
+//       <span className="text-sm text-gray-700 font-medium truncate">
+//         {isWebsite && value && <HiOutlineGlobeAlt className="inline mr-2 text-blue-400 shrink-0" />}
+//         {value || <span className="text-gray-300">Add {label}</span>}
+//       </span>
+//       <button
+//         onClick={() => onStartEdit(fieldKey, value)}
+//         className="text-gray-300 group-hover:text-[#F2B53D] transition-colors shrink-0 ml-2 p-1"
+//         title={`Edit ${label}`}
+//       >
+//         <HiOutlinePencil size={15} />
+//       </button>
+//     </div>
+//   );
+// };
+
+// /* main component */
+// const fmt = (t) => {
+//   if (!t) return "--:--";
+//   const [h, m] = t.split(":");
+//   const hr = parseInt(h);
+//   return `${hr % 12 || 12}:${m} ${hr >= 12 ? "PM" : "AM"}`;
+// };
 
 // const BusinessSettings = () => {
+//   // const [formData, setFormData] = useState({
+//   //   business_name:    "Eki Marketplace Ventures",
+//   //   business_address: "456 Market Lane, Suite 200",
+//   //   city:             "Kampala",
+//   //   country:          "Uganda",
+//   //   contact_email:    "vendor@ekimarketplace.com",
+//   //   contact_phone:    "+256700000000",
+//   //   website:          "https://ekimarketplace.com",
+//   //   category:         "Products",
+//   //   opening_time:     "08:00",
+//   //   closing_time:     "18:00",
+//   //   logo:             null,
+//   // });
+
+//   // const [logoPreview,   setLogoPreview]   = useState(null);
+//   // const [editingField,  setEditingField]  = useState(null);
+//   // const [tempValue,     setTempValue]     = useState("");
+//   // const [saving,        setSaving]        = useState(false);
+//   // const [saved,         setSaved]         = useState(false);
+//   // const [editingHours,  setEditingHours]  = useState(false);
+//   // const [tempHours,     setTempHours]     = useState({ opening_time: "", closing_time: "" });
+
+//   // const handleLogoChange = e => {
+//   //   const file = e.target.files[0];
+//   //   if (!file) return;
+//   //   setFormData(p => ({ ...p, logo: file }));
+//   //   setLogoPreview(URL.createObjectURL(file));
+//   // };
+
+//   // const startEdit = (key, value) => { setEditingField(key); setTempValue(value); };
+//   // const confirmEdit = key => { setFormData(p => ({ ...p, [key]: tempValue })); setEditingField(null); };
+
+//   // const startHoursEdit = () => {
+//   //   setTempHours({ opening_time: formData.opening_time, closing_time: formData.closing_time });
+//   //   setEditingHours(true);
+//   // };
+//   // const confirmHours = () => {
+//   //   setFormData(p => ({ ...p, ...tempHours }));
+//   //   setEditingHours(false);
+//   // };
+
+//   // const handleSave = () => {
+//   //   setSaving(true);
+//   //   setTimeout(() => { setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2500); }, 1000);
+//   // };
+
+//   // const fmt = t => {
+//   //   if (!t) return "--:--";
+//   //   const [h, m] = t.split(":");
+//   //   const hr = parseInt(h);
+//   //   return `${hr % 12 || 12}:${m} ${hr >= 12 ? "PM" : "AM"}`;
+//   // };
 //   const [formData, setFormData] = useState({
-//     business_name: "Eki Marketplace Ventures",
-//     business_address: "456 Market Lane, Suite 200",
-//     city: "Kampala",
-//     country: "Uganda",
-//     contact_email: "vendor@ekimarketplace.com",
-//     contact_phone: "+256700000000",
-//     website: "https://ekimarketplace.com",
-//     category: "products",
-//     opening_time: "08:00",
-//     closing_time: "18:00",
+//     business_name: "",
+//     address: "",
+//     city: "",
+//     country: "",
+//     business_email: "",
+//     business_phone: "",
+//     website: "",
+//     business_category: "",
+//     opening_time: "",
+//     closing_time: "",
 //     logo: null,
 //   });
 
+//   const [originalData, setOriginalData] = useState({}); // snapshot from GET
 //   const [logoPreview, setLogoPreview] = useState(null);
 //   const [editingField, setEditingField] = useState(null);
 //   const [tempValue, setTempValue] = useState("");
 //   const [saving, setSaving] = useState(false);
 //   const [saved, setSaved] = useState(false);
+//   const [saveError, setSaveError] = useState("");
+//   const [loading, setLoading] = useState(true);
 //   const [editingHours, setEditingHours] = useState(false);
+//   const [tempHours, setTempHours] = useState({ opening_time: "", closing_time: "" });
 
-//   const fields = [
-//     { key: "business_name", label: "Business Name" },
-//     { key: "category", label: "Business Category" },
-//     { key: "business_address", label: "Street Address" },
-//     { key: "city", label: "City" },
-//     { key: "country", label: "Country" },
-//     { key: "contact_email", label: "Contact Email" },
-//     { key: "contact_phone", label: "Contact Phone" },
-//     { key: "website", label: "Website Link" },
-//   ];
+//   // Load real profile data on mount
+//  useEffect(() => {
+//     const loadProfile = async () => {
+//       try {
+//         const data = await getVendorProfile(); // getVendorProfile already returns response.data.data
+        
+//         if (data) {
+//           const mapped = {
+//             business_name:     data.business_name     || "",
+//             address:           data.address           || "",
+//             city:              data.city              || "",
+//             country:           data.country           || "",
+//             business_email:    data.business_email    || "",
+//             business_phone:    data.business_phone    || "",
+//             website:           data.website           || "", // Check if key is 'website' or 'website_link'
+//             business_category: data.business_category || "",
+//             opening_time:      data.opening_time      || "",
+//             closing_time:      data.closing_time      || "",
+//             logo:              null,
+//             // Add the document booleans here:
+//             has_gov_id: data.has_government_issued_id,
+//             has_country_id: data.has_country_issued_id,
+//             has_license: data.has_business_license,
+//             has_tax: data.has_tax_certificate,
+//             has_incorp: data.has_incorporation_cert,
+//           };
+//           setFormData(mapped);
+//           setOriginalData(mapped);
+//         }
+//       } catch (err) {
+//         console.error("Failed to load profile:", err);
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
+//     loadProfile();
+//   }, []);
 
 //   const handleLogoChange = (e) => {
 //     const file = e.target.files[0];
-//     if (file) {
-//       setFormData({ ...formData, logo: file });
-//       setLogoPreview(URL.createObjectURL(file));
+//     if (!file) return;
+//     setFormData(p => ({ ...p, logo: file }));
+//     setLogoPreview(URL.createObjectURL(file));
+//   };
+
+//   const startEdit = (key, value) => { setEditingField(key); setTempValue(value); };
+//   const confirmEdit = (key) => { setFormData(p => ({ ...p, [key]: tempValue })); setEditingField(null); };
+
+//   const startHoursEdit = () => {
+//     setTempHours({ opening_time: formData.opening_time, closing_time: formData.closing_time });
+//     setEditingHours(true);
+//   };
+//   const confirmHours = () => {
+//     setFormData(p => ({ ...p, ...tempHours }));
+//     setEditingHours(false);
+//   };
+
+//   // Only send fields that actually changed
+//   const getChangedFields = () => {
+//     const changed = {};
+//     Object.keys(formData).forEach((key) => {
+//       if (key === "logo") {
+//         if (formData.logo instanceof File) changed.logo = formData.logo;
+//       } else if (formData[key] !== originalData[key]) {
+//         changed[key] = formData[key];
+//       }
+//     });
+//     return changed;
+//   };
+
+//   const handleSave = async () => {
+//     setSaveError("");
+//     const changedFields = getChangedFields();
+
+//     if (Object.keys(changedFields).length === 0) {
+//       setSaved(true);
+//       setTimeout(() => setSaved(false), 2500);
+//       return;
+//     }
+
+//     setSaving(true);
+//     try {
+//       await updateVendorProfile(changedFields);
+//       setOriginalData({ ...formData, logo: null }); // update snapshot
+//       setSaved(true);
+//       setTimeout(() => setSaved(false), 2500);
+//     } catch (err) {
+//       const errData = err.response?.data;
+//       setSaveError(
+//         errData?.detail ||
+//         errData?.message ||
+//         Object.values(errData || {})?.[0]?.[0] ||
+//         "Failed to save. Please try again."
+//       );
+//     } finally {
+//       setSaving(false);
 //     }
 //   };
 
-//   const startEdit = (field, value) => {
-//     setEditingField(field);
-//     setTempValue(value);
+//   if (loading) {
+//     return (
+//       <div className="h-screen flex items-center justify-center bg-gray-50">
+//         <p className="text-gray-400 text-sm font-semibold">Loading profile...</p>
+//       </div>
+//     );
 //   };
-
-//   const confirmEdit = (field) => {
-//     setFormData((prev) => ({ ...prev, [field]: tempValue }));
-//     setEditingField(null);
-//   };
-
-//   const handleSave = () => {
-//     setSaving(true);
-//     setTimeout(() => {
-//       setSaving(false);
-//       setSaved(true);
-//       setTimeout(() => setSaved(false), 2500);
-//     }, 1000);
-//   };
-
-//   const formatTime = (time) => {
-//     if (!time) return "--:--";
-//     const [h, m] = time.split(":");
-//     const hour = parseInt(h);
-//     const ampm = hour >= 12 ? "PM" : "AM";
-//     const display = hour % 12 === 0 ? 12 : hour % 12;
-//     return `${display}:${m} ${ampm}`;
-//   };
-
-//   const quickLinks = [
-//     {
-//       title: "Listings Management",
-//       desc: "Manage your products, inventory, and offers",
-//       icon: HiOutlineClipboardList,
-//     },
-//     {
-//       title: "Payout Settings",
-//       desc: "Configure bank accounts and payment schedules",
-//       icon: HiOutlineCreditCard,
-//     },
-//     {
-//       title: "Dashboard Access",
-//       desc: "View analytics and performance metrics",
-//       icon: HiOutlineChartBar,
-//     },
-//   ];
+ 
 
 //   return (
-//     <div className="min-h-screen bg-gray-50 font-sans pb-12">
+//     /* Outer shell — same h-screen pattern as other pages */
+//     <div className="h-screen flex flex-col overflow-hidden bg-gray-50 font-sans">
 //       <VendorNavbar />
 
-//       <div className="max-w-5xl mx-auto px-4 py-8">
-//         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-//           {/* LEFT SIDE: MAIN SETTINGS */}
-//           <div className="lg:col-span-2 flex flex-col gap-6">
-//             {/* Logo Section */}
-//             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-//               <div className="flex items-center gap-6">
-//                 <div className="relative group">
-//                   <div className="w-24 h-24 rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden">
-//                     {logoPreview ? (
-//                       <img
-//                         src={logoPreview}
-//                         alt="logo"
-//                         className="w-full h-full object-cover"
-//                       />
-//                     ) : (
-//                       <HiOutlinePhotograph
-//                         size={32}
-//                         className="text-gray-300"
-//                       />
-//                     )}
-//                   </div>
-//                   <label className="absolute -bottom-2 -right-2 w-8 h-8 bg-[#1C2B2B] text-white rounded-lg flex items-center justify-center cursor-pointer shadow-lg">
-//                     <HiOutlinePencil size={14} />
-//                     <input
-//                       type="file"
-//                       className="hidden"
-//                       accept="image/*"
-//                       onChange={handleLogoChange}
-//                     />
-//                   </label>
-//                 </div>
-//                 <div>
-//                   <h2 className="text-lg font-black text-[#235E5D]">
-//                     Business Brand
-//                   </h2>
-//                   <p className="text-xs text-gray-400 mt-1">
-//                     Upload your business logo for your storefront.
-//                   </p>
-//                 </div>
-//               </div>
+//       {/* Scrollable right column */}
+//       <div className="flex-1 overflow-y-auto flex flex-col">
+//         <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6">
+//           <div className="max-w-5xl mx-auto">
+
+//             {/* Page header */}
+//             <div className="mb-6">
+//               <h1 className="text-xl font-black text-gray-900">Business Settings</h1>
+//               <p className="text-sm text-gray-500 mt-0.5">Manage your store profile, documents, and operating details.</p>
 //             </div>
 
-//             {/* General Info Section */}
-//             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-//               <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50">
-//                 <h2 className="text-[16px] font-black text-[#235E5D]">
-//                   Business Information
-//                 </h2>
-//               </div>
+//             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-//               <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-//                 {fields.map(({ key, label }) => (
-//                   <div
-//                     key={key}
-//                     className={
-//                       key === "business_address" || key === "website"
-//                         ? "md:col-span-2"
-//                         : ""
-//                     }
-//                   >
-//                     <p className="text-[10px] font-bold text-gray-400 uppercase mb-2 ml-1">
-//                       {label}
-//                     </p>
+//               {/* ── LEFT / MAIN COLUMN ── */}
+//               <div className="lg:col-span-2 flex flex-col gap-5">
 
-//                     {editingField === key ? (
-//                       <div className="flex gap-2">
-//                         {key === "contact_phone" ? (
-//                           <div className="flex-1 bg-white border-2 border-[#F2B53D] rounded-xl px-3 h-11 flex items-center">
-//                             <PhoneInput
-//                               international
-//                               defaultCountry="UG"
-//                               value={tempValue}
-//                               onChange={setTempValue}
-//                               className="eki-phone-input w-full"
-//                             />
-//                           </div>
-//                         ) : (
-//                           <input
-//                             autoFocus
-//                             value={tempValue}
-//                             onChange={(e) => setTempValue(e.target.value)}
-//                             className="flex-1 h-11 px-4 border-2 border-[#F2B53D] rounded-xl text-sm outline-none"
-//                           />
-//                         )}
-//                         <button
-//                           onClick={() => confirmEdit(key)}
-//                           className="h-11 px-4 bg-[#1C2B2B] text-white text-xs font-bold rounded-xl"
-//                         >
-//                           Save
-//                         </button>
+//                 {/* Logo card */}
+//                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+//                   <div className="flex items-center gap-5">
+//                     <div className="relative shrink-0">
+//                       <div className="w-20 h-20 rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden">
+//                         {logoPreview
+//                           ? <img src={logoPreview} alt="logo" className="w-full h-full object-cover" />
+//                           : <HiOutlinePhotograph size={28} className="text-gray-300" />
+//                         }
 //                       </div>
-//                     ) : (
-//                       <div className="flex items-center justify-between h-11 px-4 bg-gray-50 rounded-xl border group hover:border-gray-200 transition-all">
-//                         <span className="text-sm text-gray-700 font-semibold truncate">
-//                           {key === "website" && (
-//                             <HiOutlineGlobeAlt className="inline mr-2 text-blue-400" />
-//                           )}
-//                           {formData[key] || `Add ${label}`}
-//                         </span>
-//                         <button
-//                           onClick={() => startEdit(key, formData[key])}
-//                           className="text-gray-300 group-hover:text-[#F2B53D]"
-//                         >
-//                           <HiOutlinePencil size={16} />
-//                         </button>
-//                       </div>
-//                     )}
+//                       <label className="absolute -bottom-2 -right-2 w-7 h-7 bg-[#235E5D] text-white rounded-lg flex items-center justify-center cursor-pointer shadow-md hover:bg-[#1a4544] transition-colors">
+//                         <HiOutlinePencil size={13} />
+//                         <input type="file" className="hidden" accept="image/*" onChange={handleLogoChange} />
+//                       </label>
+//                     </div>
+//                     <div>
+//                       <h2 className="text-[15px] font-black text-[#235E5D]">Business Brand</h2>
+//                       <p className="text-xs text-gray-400 mt-0.5">Upload your business logo for your storefront.</p>
+//                       <p className="text-[10px] text-gray-300 mt-1">PNG, JPG or WEBP — max 2MB</p>
+//                     </div>
 //                   </div>
-//                 ))}
-//               </div>
+//                 </div>
 
-//               <div className="px-6 pb-6">
-//                 <button
-//                   onClick={handleSave}
-//                   disabled={saving}
-//                   className={`w-full h-12 rounded-xl font-black text-sm transition-all shadow-sm ${
-//                     saved
-//                       ? "bg-[#efb034]  text-white"
-//                       : saving
-//                         ? "bg-gray-200 text-gray-400"
-//                         : "bg-gray-400 text-white hover:bg-gray-500"
-//                   }`}
-//                 >
-//                   {saved
-//                     ? "Changes Saved"
-//                     : saving
-//                       ? "Updating..."
-//                       : "Save All Changes"}
-//                 </button>
-//               </div>
-//             </div>
+//                 {/* Business information card */}
+//                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+//                   <div className="px-5 py-4 border-b border-gray-50 bg-gray-50/60">
+//                     <h2 className="text-[15px] font-black text-[#235E5D]">Business Information</h2>
+//                   </div>
 
-//             {/* Vendor Documents Card */}
-//             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-//               <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-//                 <h2 className="text-[16px] font-black text-[#235E5D]">
-//                   Vendor Documents
-//                 </h2>
-//               </div>
-//               <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-//                 {[
-//                   {
-//                     label: "Government Issued ID",
-//                     // status: "Uploaded",
-//                     // color: "text-green-600",
-//                   },
-//                   {
-//                     label: "Country Issued ID",
-//                     // status: "Missing",
-//                     // color: "text-red-500",
-//                   },
-//                   { label: "Business License" },
-//                   { label: "Tax Certificate" },
-//                   { label: "Incorporation Certificate" },
-//                 ].map((doc, i) => (
-//                   <div
-//                     key={i}
-//                     className="p-4 border border-gray-100 rounded-2xl bg-gray-50 flex items-center gap-4"
-//                   >
-//                     <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-gray-400 shadow-sm">
-//                       <HiOutlineDocumentText size={20} />
+//                   {/* Warning notice */}
+//                   <div className="px-5 pt-4">
+//                     <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-2.5 rounded-xl text-xs font-semibold flex items-start gap-2">
+//                       <HiOutlineExclamationCircle size={14} className="shrink-0 mt-0.5" />
+//                       Some information like your business name cannot be changed after verification.
 //                     </div>
-//                     <div className="flex-1">
-//                       <p className="text-[10px] font-bold text-gray-400 uppercase leading-none mb-1">
-//                         {doc.label}
-//                       </p>
-//                       <p className={`text-xs font-bold ${doc.color}`}>
-//                         {doc.status}
-//                       </p>
-//                     </div>
-//                     <button className="text-[10px] font-black text-[#F2B53D] hover:underline">
-//                       UPLOAD
+//                   </div>
+
+//                   <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+//                     {fields.map(({ key, label, locked, span }) => (
+//                       <div key={key} className={span ? "sm:col-span-2" : ""}>
+//                         <p className="text-[10px] font-bold text-gray-400 uppercase mb-1.5 ml-0.5">{label}</p>
+//                         <FieldRow
+//                           fieldKey={key}
+//                           label={label}
+//                           locked={locked}
+//                           value={formData[key]}
+//                           editing={editingField === key}
+//                           tempValue={tempValue}
+//                           onStartEdit={startEdit}
+//                           onConfirm={() => confirmEdit(key)}
+//                           onTempChange={setTempValue}
+//                         />
+//                       </div>
+//                     ))}
+//                   </div>
+
+//                   <div className="px-5 pb-5">
+//                     <button
+//                       onClick={handleSave}
+//                       disabled={saving}
+//                       className={`w-full h-11 rounded-xl font-bold text-sm transition-all ${
+//                         saved    ? "bg-[#F2B53D] text-white" :
+//                         saving   ? "bg-gray-100 text-gray-400 cursor-not-allowed" :
+//                                    "bg-[#235E5D] text-white hover:bg-[#1a4544]"
+//                       }`}
+//                     >
+//                       {saved ? "✓ Changes Saved" : saving ? "Saving..." : "Save All Changes"}
 //                     </button>
 //                   </div>
-//                 ))}
+//                 </div>
+
+//                 {/* Vendor documents card */}
+//                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+//                   <div className="px-5 py-4 border-b border-gray-50 bg-gray-50/60">
+//                     <h2 className="text-[15px] font-black text-[#235E5D]">Vendor Documents</h2>
+//                   </div>
+//                   <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+//                     {docs.map((doc, i) => {
+//                       const cfg = DOC_STATUS[doc.status];
+//                       const StatusIcon = cfg.icon;
+//                       return (
+//                         <div key={i} className="p-3.5 border border-gray-100 rounded-xl bg-gray-50/60 flex items-center gap-3">
+//                           <div className={`w-9 h-9 ${cfg.bg} rounded-xl flex items-center justify-center shrink-0`}>
+//                             <StatusIcon size={17} className={cfg.color} />
+//                           </div>
+//                           <div className="flex-1 min-w-0">
+//                             <p className="text-[11px] font-bold text-gray-700 leading-tight truncate">{doc.label}</p>
+//                             <p className={`text-[10px] font-bold mt-0.5 ${cfg.color}`}>{doc.status}</p>
+//                           </div>
+//                           <button className="text-[10px] font-black text-[#F2B53D] hover:underline shrink-0">
+//                             {doc.status === "Missing" ? "UPLOAD" : "VIEW"}
+//                           </button>
+//                         </div>
+//                       );
+//                     })}
+//                   </div>
+//                 </div>
+
+//               </div>
+
+//               {/* ── RIGHT COLUMN ── */}
+//               <div className="flex flex-col gap-5">
+
+//                 {/* Quick links */}
+//                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+//                   <div className="px-5 py-4 border-b border-gray-50 bg-gray-50/60">
+//                     <h2 className="text-[14px] font-black text-gray-800">Quick Links</h2>
+//                   </div>
+//                   <div className="p-3 flex flex-col gap-1">
+//                     {quickLinks.map(link => (
+//                       <a
+//                         key={link.title}
+//                         href={link.path}
+//                         className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors group cursor-pointer"
+//                       >
+//                         <div className="w-9 h-9 bg-gray-50 rounded-xl flex items-center justify-center text-gray-500 group-hover:bg-[#F2B53D]/10 group-hover:text-[#F2B53D] transition-colors shrink-0">
+//                           <link.icon size={18} />
+//                         </div>
+//                         <div className="flex-1 min-w-0">
+//                           <p className="text-[13px] font-bold text-gray-800 leading-tight">{link.title}</p>
+//                           <p className="text-[11px] text-gray-400 mt-0.5 leading-snug truncate">{link.desc}</p>
+//                         </div>
+//                         <HiOutlineChevronRight size={15} className="text-gray-300 group-hover:text-gray-500 shrink-0" />
+//                       </a>
+//                     ))}
+//                   </div>
+//                 </div>
+
+//                 {/* Operating hours card */}
+//                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+//                   <div className="px-5 py-4 border-b border-gray-50 bg-gray-50/60 flex items-center justify-between">
+//                     <h2 className="text-[14px] font-black text-gray-800">Operating Hours</h2>
+//                     <button
+//                       onClick={editingHours ? confirmHours : startHoursEdit}
+//                       className={`text-xs font-bold transition-colors ${editingHours ? "text-[#235E5D]" : "text-[#F2B53D]"}`}
+//                     >
+//                       {editingHours ? "Save" : "Edit"}
+//                     </button>
+//                   </div>
+//                   <div className="p-4 flex flex-col gap-2">
+//                     {[
+//                       { label: "Opens", key: "opening_time" },
+//                       { label: "Closes", key: "closing_time" },
+//                     ].map(({ label, key }) => (
+//                       <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+//                         <div className="flex items-center gap-2">
+//                           <HiOutlineClock size={14} className="text-[#F2B53D]" />
+//                           <span className="text-[11px] font-bold text-gray-400 uppercase">{label}</span>
+//                         </div>
+//                         {editingHours ? (
+//                           <input
+//                             type="time"
+//                             value={tempHours[key]}
+//                             onChange={e => setTempHours(p => ({ ...p, [key]: e.target.value }))}
+//                             className="text-sm font-bold text-gray-700 bg-transparent outline-none border-b border-[#F2B53D]"
+//                           />
+//                         ) : (
+//                           <span className="text-sm font-bold text-gray-600">{fmt(formData[key])}</span>
+//                         )}
+//                       </div>
+//                     ))}
+//                     {editingHours && (
+//                       <button
+//                         onClick={() => setEditingHours(false)}
+//                         className="mt-1 text-xs text-gray-400 hover:text-gray-600 transition-colors text-center"
+//                       >
+//                         Cancel
+//                       </button>
+//                     )}
+//                   </div>
+//                 </div>
+
+//                 {/* Support card */}
+//                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+//                   <h3 className="text-[14px] font-black text-gray-800 mb-1">Need Assistance?</h3>
+//                   <p className="text-[12px] text-gray-500 mb-4 leading-relaxed">
+//                     Our support team is here to help with any questions or issues about your vendor account.
+//                   </p>
+//                   <button className="w-full h-10 bg-[#F2B53D] text-white font-bold rounded-xl text-sm hover:bg-[#e0a630] transition-colors">
+//                     Contact Support
+//                   </button>
+//                 </div>
+
 //               </div>
 //             </div>
 //           </div>
+//         </main>
 
-//           {/* RIGHT SIDE: MATCHING YOUR PNG */}
-//           <div className="flex flex-col gap-6">
-//             {/* Quick Links Section */}
-//             <div className="flex flex-col gap-4">
-//               {quickLinks.map((link) => (
-//                 <div
-//                   key={link.title}
-//                   className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 cursor-pointer hover:border-[#F2B53D] transition-all group"
-//                 >
-//                   <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center text-gray-700 group-hover:bg-[#F2B53D]/10 transition-colors">
-//                     <link.icon size={24} />
-//                   </div>
-//                   <div className="flex-1">
-//                     <h3 className="text-[14px] font-black text-gray-900 leading-tight">
-//                       {link.title}
-//                     </h3>
-//                     <p className="text-[11px] text-gray-500 mt-1 leading-snug">
-//                       {link.desc}
-//                     </p>
-//                   </div>
-//                   <HiOutlineChevronRight
-//                     size={18}
-//                     className="text-gray-300 group-hover:text-gray-900"
-//                   />
-//                 </div>
-//               ))}
-//             </div>
-
-//             {/* Operating Hours Card (Moved below or can be removed if not in PNG) */}
-//             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-//               <div className="flex justify-between items-center mb-6">
-//                 <h2 className="text-[16px] font-black text-gray-900">Hours</h2>
-//                 <button
-//                   onClick={() => setEditingHours(!editingHours)}
-//                   className="text-[#F2B53D] text-xs font-bold"
-//                 >
-//                   {editingHours ? "Cancel" : "Edit"}
-//                 </button>
-//               </div>
-//               <div className="flex flex-col gap-3">
-//                 <div className="p-3 bg-gray-50 rounded-xl border flex justify-between items-center">
-//                   <div className="flex items-center gap-2">
-//                     <HiOutlineClock size={14} className="text-[#F2B53D]" />
-//                     <span className="text-[10px] font-black text-gray-400 uppercase">
-//                       Opens
-//                     </span>
-//                   </div>
-//                   <p className="font-black text-gray-800">
-//                     {formatTime(formData.opening_time)}
-//                   </p>
-//                 </div>
-//                 <div className="p-3 bg-gray-50 rounded-xl border flex justify-between items-center">
-//                   <div className="flex items-center gap-2">
-//                     <HiOutlineClock size={14} className="text-[#F2B53D]" />
-//                     <span className="text-[10px] font-black text-gray-400 uppercase">
-//                       Closes
-//                     </span>
-//                   </div>
-//                   <p className="font-black text-gray-800">
-//                     {formatTime(formData.closing_time)}
-//                   </p>
-//                 </div>
-//               </div>
-//             </div>
-
-//              {/* Assistance Card */}
-//             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm pt-6">
-//               <h3 className="text-[15px] font-black text-gray-600 mb-2">
-//                 Need Assistance?
-//               </h3>
-//               <p className="text-[12px] text-gray-500 mb-6 leading-relaxed">
-//                 Our support team is here to help with any questions or issues.
-//               </p>
-//               <button className="w-full h-11 bg-[#efb034]  text-white font-bold rounded-xl text-sm hover:opacity-90 transition-opacity">
-//                 Contact Support
-//               </button>
-//             </div>
-//           </div>
-//         </div>
+//         <Footer />
 //       </div>
-//       <Footer />
 //     </div>
 //   );
 // };
 
 // export default BusinessSettings;
-

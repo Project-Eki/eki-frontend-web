@@ -2,8 +2,8 @@ import axios from "axios";
 
 // Axios instance configured for Localhost development
 const api = axios.create({
-  baseURL: "http://134.122.22.45/api/v1",
-  // baseURL: "http://127.0.0.1:8000/api/v1",
+  // baseURL: "http://134.122.22.45/api/v1",
+  baseURL: "http://127.0.0.1:8000/api/v1",
   // baseURL: "https://api-7w8f.onrender.com/api/v1",
   headers: { "Content-Type": "application/json" },
 });
@@ -166,35 +166,6 @@ export const changePassword = async ({
 };
 
 /* --- VENDOR ONBOARDING & PROFILE --- */
-
-// Use this in OperationCompliance.jsx (the Review phase)
-// export const completeVendorOnboarding = async (formData) => {
-//   const data = new FormData();
-
-//   // 1. Append general fields
-//   Object.keys(formData).forEach((key) => {
-//     if (key !== "documents" && formData[key] !== null && formData[key] !== undefined) {
-//       data.append(key, formData[key]);
-//     }
-//   });
-
-//   // 2. Append document files specifically
-//   if (formData.documents) {
-//     Object.keys(formData.documents).forEach((key) => {
-//       if (formData.documents[key]) {
-//         data.append(key, formData.documents[key]);
-//       }
-//     });
-//   }
-
-//   // 3. Make the PATCH request to the correct endpoint
-//   const response = await api.patch("/accounts/register-vendor/", data, {
-//     headers: { "Content-Type": "multipart/form-data" },
-//   });
-
-//   return response.data;
-// };
-
 export const completeVendorOnboarding = async (formData) => {
   const data = new FormData();
 
@@ -207,18 +178,18 @@ export const completeVendorOnboarding = async (formData) => {
     ) {
       let value = formData[key];
 
-      // FIX: Force business_category to lowercase
+      //  Force business_category to lowercase
       if (key === "business_category") {
         value = String(value).toLowerCase();
       }
 
-      // FIX: Ensure phone doesn't have spaces and has a +
+      // Ensure phone doesn't have spaces and has a +
       if (key === "business_phone" && value) {
         value = value.replace(/\s/g, "");
         if (!value.startsWith("+")) value = `+${value}`;
       }
 
-      // FIX: Only append if the string isn't empty (avoids validation errors on optional fields)
+      //  Only append if the string isn't empty (avoids validation errors on optional fields)
       if (value !== "") {
         data.append(key, value);
       }
@@ -243,10 +214,10 @@ export const completeVendorOnboarding = async (formData) => {
   return response.data;
 };
 
-export const getVendorProfile = async () => {
-  const response = await api.get("/accounts/vendor/vendorprofile/");
-  return response.data;
-};
+// export const getVendorProfile = async () => {
+//   const response = await api.get("/accounts/vendor/vendorprofile/");
+//   return response.data;
+// };
 
 export const logoutUser = async () => {
   const refresh_token = localStorage.getItem("refresh_token");
@@ -264,5 +235,142 @@ export const logoutUser = async () => {
 
 export const validateSession = async () => {
   const response = await api.get("/accounts/session/");
+  return response.data;
+};
+
+
+// BUSINESS SETTINGS PAGE
+// fetch the vendor's current profile data
+export const getVendorProfile = async () => {
+  const response = await api.get("/accounts/register-vendor/");
+  return response.data.data;
+};
+
+// Update specific fields — logo included as a file
+export const updateVendorProfile = async (changedFields) => {
+  const data = new FormData();
+
+  Object.keys(changedFields).forEach((key) => {
+    const value = changedFields[key];
+    if (value === null || value === undefined || value === "") return;
+
+    if (key === "business_category") {
+      data.append(key, String(value).toLowerCase());
+    } else if (key === "business_phone") {
+      let phone = value.replace(/\s/g, "");
+      if (!phone.startsWith("+")) phone = `+${phone}`;
+      data.append(key, phone);
+    } else {
+      data.append(key, value); // File objects (logo) are appended as-is
+    }
+  });
+
+  const response = await api.patch("/accounts/register-vendor/", data, {
+    headers: { "Content-Type": undefined },
+  });
+  return response.data;
+};
+
+/* --- LISTINGS & SERVICES --- */
+
+// Fetch only "service" type listings
+export const getServices = async (status = '') => {
+  const params = { listing_type: 'service' };
+  if (status) params.status = status;
+  const response = await api.get("/listings/", { params });
+  return response.data;
+};
+
+export const createListing = async (payload) => {
+  const response = await api.post("/listings/", payload);
+  return response.data;
+};
+
+export const updateListingStatus = async (id, status) => {
+  const response = await api.patch(`/listings/${id}/status/`, { status });
+  return response.data;
+};
+
+export const deleteListing = async (id) => {
+  await api.delete(`/listings/${id}/`);
+};
+
+export const uploadListingImage = async (listingId, imageFile) => {
+  const formData = new FormData();
+  formData.append("image", imageFile);
+  formData.append("is_primary", "true");
+  const response = await api.post(`/listings/${listingId}/images/`, formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  });
+  return response.data;
+};
+
+
+// ADMIN DASHBOARD ENDPOINTS
+// ADDED: Single call that powers the entire admin dashboard.
+// Returns: overview stats, user_management, content_moderation,
+//          transaction_monitoring, verification_workflows, unread_notifications
+export const getAdminDashboard = async () => {
+  const response = await api.get("/accounts/admin/dashboard/");
+  return response.data;
+};
+
+// ADDED: Recent admin action logs — feeds the ActivityPanel
+// Paginated: pass page number e.g. getAdminLogs(2)
+export const getAdminLogs = async (page = 1) => {
+  const response = await api.get("/accounts/admin/logs/", {
+    params: { page },
+  });
+  return response.data;
+};
+
+// ADDED: Flagged content for the moderation table
+// Optional filters: status = pending | reviewing | resolved
+//                   type   = listing | review | chat_message
+export const getAdminModeration = async (filters = {}) => {
+  const response = await api.get("/accounts/admin/moderation/", {
+    params: filters,
+  });
+  return response.data;
+};
+
+// ADDED: Platform-wide stats (total users, listings, etc.)
+export const getAdminStats = async () => {
+  const response = await api.get("/accounts/admin/stats/");
+  return response.data;
+};
+
+// ADDED: List all vendor verification applications
+export const getAdminVerifications = async () => {
+  const response = await api.get("/accounts/admin/verifications/");
+  return response.data;
+};
+
+// ADDED: Approve, reject, or suspend a vendor verification
+// status options: "approved" | "rejected" | "suspended"
+// rejection_reason is required when status is rejected or suspended
+export const updateVerificationStatus = async (vendorId, status, rejectionReason = "") => {
+  const payload = { verification_status: status };
+  if (rejectionReason) payload.rejection_reason = rejectionReason;
+  const response = await api.patch(
+    `/accounts/admin/verifications/${vendorId}/`,
+    payload
+  );
+  return response.data;
+};
+
+// ADDED: Get admin notifications
+export const getAdminNotifications = async (filters = {}) => {
+  const response = await api.get("/accounts/admin/notifications/", {
+    params: filters,
+  });
+  return response.data;
+};
+
+// ADDED: Mark a single notification as read
+export const markNotificationRead = async (notificationId) => {
+  const response = await api.post(
+    `/accounts/admin/notifications/${notificationId}/read/`
+  );
   return response.data;
 };
