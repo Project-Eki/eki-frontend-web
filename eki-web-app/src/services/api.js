@@ -2,8 +2,8 @@ import axios from "axios";
 
 // Axios instance configured for Localhost development
 const api = axios.create({
-  baseURL: "http://134.122.22.45/api/v1",
-  // baseURL: "http://127.0.0.1:8000/api/v1",
+  // baseURL: "http://134.122.22.45/api/v1",
+  baseURL: "http://127.0.0.1:8000/api/v1",
   // baseURL: "https://api-7w8f.onrender.com/api/v1",
   headers: { "Content-Type": "application/json" },
 });
@@ -178,18 +178,18 @@ export const completeVendorOnboarding = async (formData) => {
     ) {
       let value = formData[key];
 
-      // FIX: Force business_category to lowercase
+      //  Force business_category to lowercase
       if (key === "business_category") {
         value = String(value).toLowerCase();
       }
 
-      // FIX: Ensure phone doesn't have spaces and has a +
+      // Ensure phone doesn't have spaces and has a +
       if (key === "business_phone" && value) {
         value = value.replace(/\s/g, "");
         if (!value.startsWith("+")) value = `+${value}`;
       }
 
-      // FIX: Only append if the string isn't empty (avoids validation errors on optional fields)
+      //  Only append if the string isn't empty (avoids validation errors on optional fields)
       if (value !== "") {
         data.append(key, value);
       }
@@ -214,10 +214,10 @@ export const completeVendorOnboarding = async (formData) => {
   return response.data;
 };
 
-export const getVendorProfile = async () => {
-  const response = await api.get("/accounts/vendor/vendorprofile/");
-  return response.data;
-};
+// export const getVendorProfile = async () => {
+//   const response = await api.get("/accounts/vendor/vendorprofile/");
+//   return response.data;
+// };
 
 export const logoutUser = async () => {
   const refresh_token = localStorage.getItem("refresh_token");
@@ -235,5 +235,72 @@ export const logoutUser = async () => {
 
 export const validateSession = async () => {
   const response = await api.get("/accounts/session/");
+  return response.data;
+};
+
+
+// BUSINESS SETTINGS PAGE
+// fetch the vendor's current profile data
+export const getVendorProfile = async () => {
+  const response = await api.get("/accounts/register-vendor/");
+  return response.data.data;
+};
+
+// Update specific fields — logo included as a file
+export const updateVendorProfile = async (changedFields) => {
+  const data = new FormData();
+
+  Object.keys(changedFields).forEach((key) => {
+    const value = changedFields[key];
+    if (value === null || value === undefined || value === "") return;
+
+    if (key === "business_category") {
+      data.append(key, String(value).toLowerCase());
+    } else if (key === "business_phone") {
+      let phone = value.replace(/\s/g, "");
+      if (!phone.startsWith("+")) phone = `+${phone}`;
+      data.append(key, phone);
+    } else {
+      data.append(key, value); // File objects (logo) are appended as-is
+    }
+  });
+
+  const response = await api.patch("/accounts/register-vendor/", data, {
+    headers: { "Content-Type": undefined },
+  });
+  return response.data;
+};
+
+/* --- LISTINGS & SERVICES --- */
+
+// Fetch only "service" type listings
+export const getServices = async (status = '') => {
+  const params = { listing_type: 'service' };
+  if (status) params.status = status;
+  const response = await api.get("/listings/", { params });
+  return response.data;
+};
+
+export const createListing = async (payload) => {
+  const response = await api.post("/listings/", payload);
+  return response.data;
+};
+
+export const updateListingStatus = async (id, status) => {
+  const response = await api.patch(`/listings/${id}/status/`, { status });
+  return response.data;
+};
+
+export const deleteListing = async (id) => {
+  await api.delete(`/listings/${id}/`);
+};
+
+export const uploadListingImage = async (listingId, imageFile) => {
+  const formData = new FormData();
+  formData.append("image", imageFile);
+  formData.append("is_primary", "true");
+  const response = await api.post(`/listings/${listingId}/images/`, formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  });
   return response.data;
 };
