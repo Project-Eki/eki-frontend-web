@@ -3,7 +3,8 @@ import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css'; 
 import logoImage from '../assets/logo.jpeg';
 import { validateAccountData } from '../utils/validationUtils'; 
-import { getBuyerProfile, updateBuyerProfile } from '../services/authService'; 
+// FIXED: Updated these two imports to match the new names in authService.js
+import { getVendorProfile, updateVendorProfile, SignoutUser } from '../services/authService'; 
 
 function AccountSettingsPage() {
   const [userData, setUserData] = useState({
@@ -33,8 +34,8 @@ function AccountSettingsPage() {
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        const res = await getBuyerProfile();
-        // Mapping backend snake_case to frontend camelCase
+        // FIXED: Changed getBuyerProfile to getVendorProfile
+        const res = await getVendorProfile();
         setUserData({
           firstName: res.first_name || '',
           lastName: res.last_name || '',
@@ -45,9 +46,6 @@ function AccountSettingsPage() {
         });
       } catch (err) {
         console.error("Error fetching profile:", err);
-        if (err.response?.status === 401) {
-          console.error("Unauthorized: Check your token in localStorage");
-        }
       }
     };
     loadProfile();
@@ -85,10 +83,10 @@ function AccountSettingsPage() {
     if (Object.keys(validationErrors).length === 0) {
       setIsLoading(true);
       try {
-        await updateBuyerProfile(userData);
+        // FIXED: Changed updateBuyerProfile to updateVendorProfile
+        await updateVendorProfile(userData);
         alert("Changes saved successfully!");
       } catch (err) {
-        // Handling the 401 or other backend errors
         const backendError = err.response?.data?.detail || err.response?.data?.message || "Failed to save changes";
         alert(backendError);
       } finally {
@@ -146,7 +144,8 @@ function AccountSettingsPage() {
             Privacy Settings
           </button>
         </div>
-        <button className="flex items-center gap-3 text-red-500 text-sm font-semibold px-4 py-4 hover:bg-red-50 rounded-md transition-colors border-t border-gray-50 mt-auto">
+        {/* FIXED: Added SignoutUser call here */}
+        <button onClick={SignoutUser} className="flex items-center gap-3 text-red-500 text-sm font-semibold px-4 py-4 hover:bg-red-50 rounded-md transition-colors border-t border-gray-50 mt-auto">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-6 0v-1m6-10V7a3 3 0 00-6 0v1" /></svg>
           Sign out
         </button>
