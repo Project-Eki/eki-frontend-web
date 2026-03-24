@@ -58,7 +58,6 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (err) {
         localStorage.clear();
-        // CHANGED: /signin -> /login to match App.jsx
         window.location.href = "/login";
         return Promise.reject(err);
       }
