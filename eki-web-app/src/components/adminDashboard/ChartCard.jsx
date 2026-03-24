@@ -1,17 +1,9 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-const data = [
-  { name: 'Jan', users: 420, listings: 280 },
-  { name: 'Feb', users: 380, listings: 320 },
-  { name: 'Mar', users: 520, listings: 410 },
-  { name: 'Apr', users: 480, listings: 380 },
-  { name: 'May', users: 610, listings: 490 },
-  { name: 'Jun', users: 550, listings: 440 },
-  { name: 'Jul', users: 670, listings: 520 },
-];
 
-const ChartCard = () => {
+// REPLACE with a prop — parent passes data in, default to empty array for now
+const ChartCard = ({data = []}) => {
   return (
     <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 h-full">
       <div className="p-5 border-b border-gray-100">

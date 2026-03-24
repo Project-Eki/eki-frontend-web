@@ -304,3 +304,73 @@ export const uploadListingImage = async (listingId, imageFile) => {
   });
   return response.data;
 };
+
+
+// ADMIN DASHBOARD ENDPOINTS
+// ADDED: Single call that powers the entire admin dashboard.
+// Returns: overview stats, user_management, content_moderation,
+//          transaction_monitoring, verification_workflows, unread_notifications
+export const getAdminDashboard = async () => {
+  const response = await api.get("/accounts/admin/dashboard/");
+  return response.data;
+};
+
+// ADDED: Recent admin action logs — feeds the ActivityPanel
+// Paginated: pass page number e.g. getAdminLogs(2)
+export const getAdminLogs = async (page = 1) => {
+  const response = await api.get("/accounts/admin/logs/", {
+    params: { page },
+  });
+  return response.data;
+};
+
+// ADDED: Flagged content for the moderation table
+// Optional filters: status = pending | reviewing | resolved
+//                   type   = listing | review | chat_message
+export const getAdminModeration = async (filters = {}) => {
+  const response = await api.get("/accounts/admin/moderation/", {
+    params: filters,
+  });
+  return response.data;
+};
+
+// ADDED: Platform-wide stats (total users, listings, etc.)
+export const getAdminStats = async () => {
+  const response = await api.get("/accounts/admin/stats/");
+  return response.data;
+};
+
+// ADDED: List all vendor verification applications
+export const getAdminVerifications = async () => {
+  const response = await api.get("/accounts/admin/verifications/");
+  return response.data;
+};
+
+// ADDED: Approve, reject, or suspend a vendor verification
+// status options: "approved" | "rejected" | "suspended"
+// rejection_reason is required when status is rejected or suspended
+export const updateVerificationStatus = async (vendorId, status, rejectionReason = "") => {
+  const payload = { verification_status: status };
+  if (rejectionReason) payload.rejection_reason = rejectionReason;
+  const response = await api.patch(
+    `/accounts/admin/verifications/${vendorId}/`,
+    payload
+  );
+  return response.data;
+};
+
+// ADDED: Get admin notifications
+export const getAdminNotifications = async (filters = {}) => {
+  const response = await api.get("/accounts/admin/notifications/", {
+    params: filters,
+  });
+  return response.data;
+};
+
+// ADDED: Mark a single notification as read
+export const markNotificationRead = async (notificationId) => {
+  const response = await api.post(
+    `/accounts/admin/notifications/${notificationId}/read/`
+  );
+  return response.data;
+};
