@@ -2,179 +2,235 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import logo from '../assets/logo.jpeg';
 import Navbar3 from '../components/adminDashboard/Navbar3';
-import { 
-  getVendorDashboard, 
-  createProductListing, 
+import {
+  getVendorDashboard,
+  getCategories,
+  createProductListing,
   uploadListingImage,
-  // Make sure to add these two to your authService.js
-  updateProductListing, 
-  deleteProductListing 
-} from "../services/authService";
-import { validateProductForm } from '../utils/productValidation';
+  SignoutUser,
+} from '../services/authService';
 
-import { 
-  Settings, LayoutDashboard, Package, ChevronRight, Plus, 
-  ListChecks, AlertCircle, Star, X, Upload, Tag, Box, 
-  MoreVertical, LogOut, ShoppingBag, Truck, CreditCard, MessageSquare, MapPin, Trash2, Edit3
+import {
+  LayoutDashboard, Package, ChevronRight, Plus,
+  ListChecks, AlertCircle, Star, X, Upload, Tag, Box,
+  LogOut, ShoppingBag, Truck, CreditCard, MessageSquare, Trash2,
 } from 'lucide-react';
-import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import {
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area,
+} from 'recharts';
+
+// ─── Currency helper ──────────────────────────────────────────────────────────
+const getCurrencySymbol = (country) => {
+  const map = {
+    uganda: 'UGX', nigeria: '₦', kenya: 'KES', ghana: 'GHS',
+    'south africa': 'ZAR', usa: '$', 'united states': '$',
+    uk: '£', 'united kingdom': '£', tanzania: 'TZS', rwanda: 'RWF',
+    ethiopia: 'ETB', zambia: 'ZMW', zimbabwe: 'ZWL', egypt: 'EGP',
+    morocco: 'MAD', senegal: 'XOF', ivory: 'XOF', cameroon: 'XAF',
+  };
+  return map[country?.toLowerCase()] || '$';
+};
+
+// ─── These match backend ProductSize choices exactly ─────────────────────────
+const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'one_size'];
+
+const blankForm = () => ({
+  title: '',
+  category_id: '',   // UUID from /api/v1/listings/categories/
+  price: '',
+  sku: '',
+  qty: 'Medium',     // maps to quality: "medium"
+  location: '',
+  description: '',
+  image: null,
+  imageFile: null,
+  // Variants: each needs at least color OR size
+  colorVariant: '',  // free text, e.g. "Red"
+  sizeVariant: '',   // one of SIZE_OPTIONS
+});
 
 const VendorDashboard = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
-  
-  // --- DATA STATES ---
-  const [vendorData, setVendorData] = useState({ storeName: "", vendorType: "", country: "" });
+
+  // ── Data states ───────────────────────────────────────────────────────────
+  const [vendorData, setVendorData] = useState({
+    storeName: '', vendorType: 'Products', country: 'Uganda', businessCategory: 'retail',
+  });
   const [metrics, setMetrics] = useState({ grossSales: 0, openOrders: 0, pendingPayouts: 0, activeListings: 0 });
-  const [salesHistory, setSalesHistory] = useState([]); 
+  const [salesHistory, setSalesHistory] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
   const [inventoryAlerts, setInventoryAlerts] = useState([]);
   const [reviews, setReviews] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [categories, setCategories] = useState([]); // from /api/v1/listings/categories/
+  const [isFetching, setIsFetching] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // --- UI & FORM STATES ---
-  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-  const [editingProductId, setEditingProductId] = useState(null); // ID if editing, null if creating
+  // ── Modal / form states ───────────────────────────────────────────────────
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPublished, setIsPublished] = useState(true);
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [formData, setFormData] = useState({
-    title: '', category: 'Electronics', price: '', sku: '', qty: 'Medium', location: '', description: '',
-    variants: []
-  });
-  const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState(blankForm());
+  const [formErrors, setFormErrors] = useState({});
+  const [successMsg, setSuccessMsg] = useState('');
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  useEffect(() => { fetchDashboardData(); }, []);
 
   const fetchDashboardData = async () => {
+    setIsFetching(true);
     try {
       const response = await getVendorDashboard();
       if (response) {
+        const bc = response.businessCategory || 'retail';
         setVendorData({
-          storeName: response.storeName || "",
-          vendorType: response.vendorType || "",
-          country: response.country || ""
+          storeName:        response.storeName        || '',
+          vendorType:       response.vendorType       || 'Products',
+          country:          response.country          || 'Uganda',
+          businessCategory: bc,
         });
         setMetrics(response.metrics || { grossSales: 0, openOrders: 0, pendingPayouts: 0, activeListings: 0 });
-        setSalesHistory(response.salesHistory || []);
-        setRecentOrders(response.recentOrders || []);
+        setSalesHistory(response.salesHistory   || []);
+        setRecentOrders(response.recentOrders   || []);
         setInventoryAlerts(response.inventoryAlerts || []);
-        setReviews(response.reviews || []);
+        setReviews(response.reviews             || []);
+
+        // Fetch categories scoped to this vendor's business_category
+        try {
+          const cats = await getCategories(bc);
+          setCategories(cats);
+        } catch (_) {
+          // non-fatal — dropdown will be empty but listing can still be created
+        }
       }
     } catch (error) {
-      console.error("Error fetching vendor dashboard:", error);
+      console.error('Dashboard fetch error:', error);
+      // If 401 — the response interceptor handles redirect automatically
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  const currencySymbol = getCurrencySymbol(vendorData.country);
+
+  // True if vendor sells services (transport/tailoring/airlines/hotels)
+  const SERVICE_CATEGORIES = new Set(['transport', 'tailoring', 'airlines', 'hotels']);
+  const isServiceVendor = SERVICE_CATEGORIES.has(vendorData.businessCategory);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (formErrors[name]) setFormErrors((prev) => ({ ...prev, [name]: null }));
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () =>
+      setFormData((prev) => ({ ...prev, imageFile: file, image: reader.result }));
+    reader.readAsDataURL(file);
+  };
+
+  const resetForm = () => {
+    setFormData(blankForm());
+    setFormErrors({});
+    setIsPublished(true);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // ── Validate ──────────────────────────────────────────────────────────────
+  const validate = (data) => {
+    const errs = {};
+    if (!data.title?.trim())
+      errs.title = 'Title is required';
+    if (!data.price || isNaN(Number(data.price)) || Number(data.price) <= 0)
+      errs.price = 'Valid price is required';
+    return errs;
+  };
+
+  // ── CREATE listing ────────────────────────────────────────────────────────
+  const handlePublish = async (e) => {
+    e.preventDefault();
+    const errs = validate(formData);
+    if (Object.keys(errs).length > 0) { setFormErrors(errs); return; }
+
+    setIsLoading(true);
+    try {
+      // Build variants from the two variant fields.
+      // Backend rule: each variant must have at least color OR size.
+      const variants = [];
+      if (formData.colorVariant?.trim()) {
+        variants.push({ type: 'Color', value: formData.colorVariant.trim() });
+      }
+      if (formData.sizeVariant?.trim()) {
+        variants.push({ type: 'Size', value: formData.sizeVariant.trim() });
+      }
+
+      const payload = {
+        ...formData,
+        business_category: vendorData.businessCategory, // ← from vendor profile
+        is_published: isPublished,
+        variants,
+      };
+
+      const created = await createProductListing(payload);
+
+      // Upload image if provided and listing was created successfully
+      if (formData.imageFile && created?.id) {
+        try {
+          await uploadListingImage(created.id, formData.imageFile);
+        } catch (imgErr) {
+          console.warn('Image upload failed — listing was still created:', imgErr);
+        }
+      }
+
+      // Update active listing count locally (avoid full refetch)
+      setMetrics((prev) => ({ ...prev, activeListings: prev.activeListings + 1 }));
+
+      setIsModalOpen(false);
+      resetForm();
+      setSuccessMsg(`${isServiceVendor ? 'Service' : 'Product'} created successfully!`);
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err) {
+      console.error('Failed to create listing:', err);
+      // The response interceptor already logged the full Django error.
+      // Show a friendly message to the user.
+      const serverErrors = err.response?.data?.errors ?? err.response?.data ?? {};
+      let msg = 'Failed to create listing. Please check your inputs and try again.';
+
+      if (typeof serverErrors === 'object' && Object.keys(serverErrors).length > 0) {
+        msg = Object.entries(serverErrors)
+          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+          .join(' | ');
+      }
+      setFormErrors({ _server: msg });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // --- HANDLERS ---
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
-  };
-
-  const resetForm = () => {
-    setFormData({ title: '', category: 'Electronics', price: '', sku: '', qty: 'Medium', location: '', description: '', variants: [] });
-    setSelectedImage(null);
-    setEditingProductId(null);
-    setErrors({});
-  };
-
-  const handleEditClick = (product) => {
-    setEditingProductId(product.id);
-    setFormData({
-      title: product.title || '',
-      category: product.category || 'Electronics',
-      price: product.price || '',
-      sku: product.sku || '',
-      qty: product.qty || 'Medium',
-      location: product.location || '',
-      description: product.description || '',
-      variants: product.variants || []
-    });
-    setIsPublished(product.is_published ?? true);
-    setIsProductModalOpen(true);
-  };
-
-  const handleDelete = async () => {
-    if (!window.confirm("Are you sure? This listing will be permanently removed.")) return;
-    
-    setIsSubmitting(true);
-    try {
-      await deleteProductListing(editingProductId);
-      setIsProductModalOpen(false);
-      resetForm();
-      fetchDashboardData(); // Refresh metrics and list
-    } catch (error) {
-      setErrors({ server: "Failed to delete listing." });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handlePublish = async (e) => {
-    e.preventDefault();
-    const validationErrors = validateProductForm(formData);
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const cleanedData = {
-        ...formData,
-        price: parseFloat(formData.price) || 0,
-        qty: formData.qty.toUpperCase(), 
-        is_published: isPublished
-      };
-
-      if (editingProductId) {
-        await updateProductListing(editingProductId, cleanedData);
-      } else {
-        const productResponse = await createProductListing(cleanedData);
-        if (selectedImage && productResponse.id) {
-          await uploadListingImage(productResponse.id, selectedImage);
-        }
-      }
-
-      setIsProductModalOpen(false);
-      resetForm();
-      fetchDashboardData();
-    } catch (error) {
-      setErrors(error.response?.data || { server: "Failed to save product." });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const currency = vendorData.country === 'Uganda' ? 'UGX' : '$';
-
   return (
-    <div className="flex min-h-screen bg-gray-50 font-sans text-slate-800 relative">
-      
+    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800">
+
       {/* SIDEBAR */}
-      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col sticky top-0 h-screen z-50">
+      <aside className="w-64 bg-white border-r border-slate-100 flex flex-col sticky top-0 h-screen z-50">
         <div className="p-6 mb-4">
           <img src={logo} alt="Eki" className="h-8 w-auto object-contain" />
         </div>
         <nav className="flex-1 px-4 space-y-1">
-          <SidebarLink to="/dashboard" icon={<LayoutDashboard size={18} />} label="Dashboard" active />
-          <SidebarLink to="/product-dashboard" icon={<ShoppingBag size={18} />} label="Products" />
-          <SidebarLink to="/service" icon={<Plus size={18} />} label="Services" />
-          <SidebarLink to="/order-management" icon={<Truck size={18} />} label="Orders" />
-          <SidebarLink to="/payment" icon={<CreditCard size={18} />} label="Payments" />
-          <SidebarLink to="/reviews" icon={<MessageSquare size={18} />} label="Reviews" />
+          <SidebarLink to="/dashboard"         icon={<LayoutDashboard size={18} />} label="Dashboard" active />
+          <SidebarLink to="/product-dashboard" icon={<ShoppingBag size={18} />}    label="Products" />
+          <SidebarLink to="/service"           icon={<Plus size={18} />}            label="Services" />
+          <SidebarLink to="/order-management"  icon={<Truck size={18} />}           label="Orders" />
+          <SidebarLink to="/payment"           icon={<CreditCard size={18} />}      label="Payments" />
+          <SidebarLink to="/reviews"           icon={<MessageSquare size={18} />}   label="Reviews" />
         </nav>
-        <div className="p-4 border-t border-slate-100 space-y-2">
-          <SidebarLink to="/settings" icon={<Settings size={18} />} label="Store Settings" />
-          <button onClick={() => navigate('/sign-in')} className="flex items-center gap-3 px-3 py-2 w-full text-red-500 hover:bg-red-50 rounded-lg text-[11px] font-bold transition-colors">
-            <LogOut size={18} />
-            <span>Sign out</span>
+        <div className="p-4 border-t border-slate-50">
+          <button
+            onClick={SignoutUser}
+            className="flex items-center gap-3 px-3 py-2 w-full text-red-500 hover:bg-red-50 rounded-lg text-[11px] font-bold"
+          >
+            <LogOut size={18} /> <span>Sign out</span>
           </button>
         </div>
       </aside>
@@ -182,249 +238,426 @@ const VendorDashboard = () => {
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar3 />
 
+        {/* Success toast */}
+        {successMsg && (
+          <div className="fixed top-6 right-6 z-[200] bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-lg text-sm font-bold flex items-center gap-2 animate-pulse">
+            <span>✓</span> {successMsg}
+          </div>
+        )}
+
         <main className="p-8 max-w-[1400px] mx-auto w-full">
-          <header className="mb-8 flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Eki Vendor Command Center</h1>
-              <p className="text-slate-500 text-[12px]">Monitoring activity for {vendorData.storeName || "your store"}.</p>
-            </div>
-            <button 
-              onClick={() => { resetForm(); setIsProductModalOpen(true); }}
-              className="bg-[#125852] text-white px-5 py-2.5 rounded-lg text-xs font-bold hover:bg-[#0d4540] transition-all flex items-center gap-2 shadow-sm"
-            >
-              <Plus size={18} /> Add New Listing
-            </button>
+          <header className="mb-8 text-left">
+            <h1 className="text-2xl font-bold text-[#1A1A1A]">Eki Vendor Command Center</h1>
+            <p className="text-slate-400 text-sm">
+              Monitoring activity for{' '}
+              <span className="font-semibold text-slate-600">{vendorData.storeName || '—'}</span>
+              {vendorData.country && (
+                <span className="ml-2 text-[11px] bg-slate-100 px-2 py-0.5 rounded-full text-slate-500">
+                  {vendorData.country} · {currencySymbol}
+                </span>
+              )}
+            </p>
           </header>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <MetricCard title="Gross Sales (30d)" value={`${currency} ${metrics.grossSales.toLocaleString()}`} icon={<LayoutDashboard className="text-teal-600" size={18} />} />
-            <MetricCard title="Open Orders" value={metrics.openOrders} icon={<Package className="text-teal-600" size={18} />} color="bg-orange-50/50" />
-            <MetricCard title="Pending Payouts" value={`${currency} ${metrics.pendingPayouts.toLocaleString()}`} icon={<Box className="text-teal-600" size={18} />} color="bg-teal-50/50" />
-            <MetricCard title="Active Listings" value={metrics.activeListings} icon={<ListChecks className="text-teal-600" size={18} />} color="bg-orange-50/50" />
-          </div>
+          {/* METRIC CARDS */}
+          {isFetching ? (
+            <div className="grid grid-cols-4 gap-4 mb-8">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="bg-white p-6 rounded-2xl border border-slate-50 animate-pulse h-28" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+              <MetricCard title="Gross Sales"      value={`${currencySymbol} ${(metrics.grossSales || 0).toLocaleString()}`}     icon={<CreditCard size={18} />} />
+              <MetricCard title="Open Orders"      value={metrics.openOrders || 0}                                                icon={<Package size={18} />} />
+              <MetricCard title="Pending Payouts"  value={`${currencySymbol} ${(metrics.pendingPayouts || 0).toLocaleString()}`} icon={<Box size={18} />}      bg="bg-[#E0F2F1]" />
+              <MetricCard title="Active Listings"  value={metrics.activeListings || 0}                                           icon={<ListChecks size={18} />} bg="bg-[#FFF8E1]" />
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-8">
-              {/* Sales Chart */}
+            <div className="lg:col-span-2 space-y-6">
+
+              {/* SALES GRAPH */}
               <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-                <div className="h-[300px] w-full">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold text-sm uppercase tracking-tighter">Sales Performance</h3>
+                </div>
+                <div className="h-[220px] w-full">
                   {salesHistory.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={salesHistory}>
-                        <defs>
-                          <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#0d9488" stopOpacity={0.1}/>
-                            <stop offset="95%" stopColor="#0d9488" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                         <XAxis dataKey="date" hide />
                         <YAxis hide />
                         <Tooltip />
-                        <Area type="monotone" dataKey="sales" stroke="#0d9488" fill="url(#colorSales)" strokeWidth={2} isAnimationActive={false} />
+                        <Area type="monotone" dataKey="sales" stroke="#125852" fill="#125852" fillOpacity={0.05} strokeWidth={2} />
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs italic">No sales data available.</div>
+                    <div className="h-full flex items-center justify-center text-slate-300 text-sm">No sales data yet</div>
                   )}
                 </div>
               </div>
 
-              {/* Listings Table - Key for "Manage" functionality */}
+              {/* RECENT ORDERS */}
               <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="p-6 border-b flex justify-between items-center font-bold text-sm">
-                  <h2>Active Product Listings</h2>
-                  <Link to="/product-dashboard" className="text-teal-600 text-[10px] uppercase font-bold tracking-tighter hover:underline">Full Inventory</Link>
+                <div className="p-6 border-b flex justify-between items-center">
+                  <h3 className="font-bold text-sm uppercase tracking-tighter">Recent Orders</h3>
+                  <Link to="/order-management" className="text-[#125852] text-[10px] font-bold">VIEW ALL</Link>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 text-slate-400 font-bold uppercase tracking-tighter">
-                      <tr>
-                        <th className="px-6 py-4">Title</th>
-                        <th className="px-6 py-4">Price</th>
-                        <th className="px-6 py-4">SKU</th>
-                        <th className="px-6 py-4">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {recentOrders.map((p) => (
-                        <tr key={p.id} className="hover:bg-slate-50 transition-colors group">
-                          <td className="px-6 py-4 font-medium text-slate-900">{p.title || 'Untitled Product'}</td>
-                          <td className="px-6 py-4 font-bold">{currency} {p.price || '0'}</td>
-                          <td className="px-6 py-4 text-slate-400">{p.sku || 'N/A'}</td>
-                          <td className="px-6 py-4">
-                            <button 
-                              onClick={() => handleEditClick(p)}
-                              className="flex items-center gap-1.5 text-teal-600 hover:text-teal-700 font-bold transition-colors"
-                            >
-                              <Edit3 size={14} /> Manage
-                            </button>
-                          </td>
+                  {recentOrders.length > 0 ? (
+                    <table className="w-full text-left text-[11px]">
+                      <thead className="bg-slate-50 text-slate-400 font-bold uppercase">
+                        <tr>
+                          <th className="px-6 py-4">Order ID</th>
+                          <th className="px-6 py-4">Customer</th>
+                          <th className="px-6 py-4">Total</th>
+                          <th className="px-6 py-4">Status</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {recentOrders.map((order, i) => (
+                          <tr key={i} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-6 py-4 text-[#125852] font-bold">#{order.id}</td>
+                            <td className="px-6 py-4">{order.customer}</td>
+                            <td className="px-6 py-4 font-bold">{currencySymbol} {Number(order.total || 0).toLocaleString()}</td>
+                            <td className="px-6 py-4">
+                              <span className="px-2 py-1 bg-slate-100 rounded text-[9px] uppercase font-bold">{order.status}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="p-8 text-center text-slate-300 text-sm">No recent orders</div>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Right Sidebar */}
             <div className="space-y-6">
+
+              {/* QUICK ACTIONS */}
               <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-                <h2 className="font-bold text-sm mb-6 uppercase tracking-tighter">Quick Actions</h2>
-                <div className="space-y-3">
-                  <ActionButton icon={<Plus className="text-teal-600" size={16} />} title="New Listing" desc="Add to your store" onClick={() => { resetForm(); setIsProductModalOpen(true); }} />
-                  <ActionButton icon={<Settings className="text-teal-600" size={16} />} title="Settings" desc="Update store info" />
+                <h3 className="font-bold text-sm mb-4 uppercase tracking-tighter">Quick Actions</h3>
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="w-full flex items-center justify-between p-4 border border-slate-50 rounded-xl hover:bg-slate-50 transition-all"
+                >
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><Plus size={18} /></div>
+                    <div><p className="text-xs font-bold">Add New {isServiceVendor ? 'Service' : 'Product'}</p></div>
+                  </div>
+                  <ChevronRight size={14} className="text-slate-300" />
+                </button>
+              </div>
+
+              {/* LAST PAYOUT */}
+              <div className="bg-[#125852] p-6 rounded-xl text-white shadow-lg relative overflow-hidden">
+                <div className="relative z-10">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="p-2 bg-white/10 rounded-lg"><CreditCard size={18} /></div>
+                  </div>
+                  <p className="text-[10px] text-white/70 uppercase font-bold tracking-widest mb-1">Last Payout</p>
+                  <h3 className="text-2xl font-bold mb-4">{currencySymbol} {(metrics.pendingPayouts || 0).toLocaleString()}</h3>
+                  <div className="flex justify-between items-center text-[10px]">
+                    <span className="text-white/60">Recent Activity</span>
+                    <Link to="/payment" className="font-bold hover:underline">View History</Link>
+                  </div>
                 </div>
               </div>
 
-              {/* Inventory Alerts */}
-              <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-                <div className="flex items-center gap-2 mb-6 text-orange-500">
+              {/* INVENTORY ALERTS */}
+              <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm text-left">
+                <div className="flex items-center gap-2 mb-4 text-[#E53935]">
                   <AlertCircle size={16} />
-                  <h2 className="font-bold text-sm uppercase tracking-tighter">Inventory Alerts</h2>
+                  <h3 className="font-bold text-xs uppercase tracking-tighter">Inventory Alerts</h3>
                 </div>
                 <div className="space-y-4">
                   {inventoryAlerts.length > 0 ? inventoryAlerts.map((alert, i) => (
-                    <div key={i} className="flex justify-between items-center text-[11px] font-medium border-b border-slate-50 pb-3 last:border-0">
-                      <span className="text-slate-600">{alert.product_name}</span>
-                      <span className="text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded">{alert.stock_left} Left</span>
+                    <div key={i} className="flex justify-between items-center text-[11px] border-b border-slate-50 pb-2 last:border-0">
+                      <span className="font-bold text-slate-700">{alert.title}</span>
+                      <span className="text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded">
+                        {alert.quantity ?? 0} left
+                      </span>
                     </div>
-                  )) : <p className="text-[10px] text-slate-400 italic">No low stock alerts.</p>}
+                  )) : (
+                    <p className="text-slate-300 text-[11px]">No low-stock alerts</p>
+                  )}
                 </div>
               </div>
+
+              {/* RECENT REVIEWS */}
+              <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm text-left">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold text-xs uppercase tracking-tighter">Recent Reviews</h3>
+                  <Link to="/reviews" className="text-[#125852] text-[10px] font-bold hover:underline uppercase tracking-tighter">VIEW ALL</Link>
+                </div>
+                <div className="space-y-4">
+                  {reviews.length > 0 ? reviews.map((r, i) => (
+                    <Link to="/reviews" key={i} className="block text-[11px] space-y-1 hover:bg-slate-50 rounded-lg p-1 transition-colors">
+                      <div className="flex text-yellow-400 gap-0.5">
+                        {[...Array(5)].map((_, idx) => (
+                          <Star key={idx} size={8} fill={idx < r.rating ? 'currentColor' : 'none'} />
+                        ))}
+                      </div>
+                      <p className="text-slate-500 italic">"{r.comment}"</p>
+                      {r.reviewer && <p className="text-slate-400 text-[10px]">— {r.reviewer}</p>}
+                    </Link>
+                  )) : (
+                    <p className="text-slate-300 text-[11px]">No reviews yet</p>
+                  )}
+                </div>
+              </div>
+
             </div>
           </div>
         </main>
-
-        <footer className="w-full bg-[#234E4D] text-white py-4 px-8 mt-auto flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] font-medium">
-          <div>Buy Smart. Sell Fast. Grow Together...</div>
-          <div>© 2026 Vendor Portal. eki<span className="text-[8px] ml-0.5">TM</span></div>
-          <div className="font-bold uppercase tracking-widest">Ijoema ltd</div>
-        </footer>
       </div>
 
-      {/* --- REFACTORED PRODUCT MODAL --- */}
-      {isProductModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <form onSubmit={handlePublish} className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
-            
-            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-start bg-slate-50/50">
+      {/* ── CREATE LISTING MODAL ───────────────────────────────────────────────── */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <form
+            onSubmit={handlePublish}
+            className="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[95vh] text-left"
+          >
+            {/* Header */}
+            <div className="px-6 py-5 border-b flex justify-between items-start">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">
-                  {editingProductId ? 'Manage Listing' : 'Create New Product'}
-                </h2>
-                <p className="text-[12px] text-slate-500">
-                  {editingProductId ? 'Update your product details or remove listing.' : 'Fill in the information to list a new item.'}
+                <h2 className="text-lg font-bold">Create New {isServiceVendor ? 'Service' : 'Product'}</h2>
+                <p className="text-[11px] text-slate-500">
+                  Category: <span className="font-bold text-[#125852] capitalize">{vendorData.businessCategory}</span>
                 </p>
               </div>
-              <button type="button" onClick={() => { setIsProductModalOpen(false); resetForm(); }} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+              <button type="button" onClick={() => { setIsModalOpen(false); resetForm(); }}>
+                <X size={20} />
+              </button>
             </div>
 
-            <div className="p-6 overflow-y-auto space-y-6 custom-scrollbar">
-              {errors.server && <div className="p-3 bg-red-50 border border-red-100 text-red-600 text-[11px] font-bold rounded-lg">{errors.server}</div>}
-              
+            {/* Body */}
+            <div className="p-6 overflow-y-auto space-y-5">
+
+              {/* Server error */}
+              {formErrors._server && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-medium px-4 py-3 rounded-lg">
+                  {formErrors._server}
+                </div>
+              )}
+
+              {/* Title */}
               <div className="space-y-1.5">
-                <label className="block text-[11px] font-bold text-slate-700 uppercase">Product Title</label>
-                <input type="text" name="title" value={formData.title} onChange={handleInputChange} className={`w-full px-4 py-2.5 bg-slate-50 border ${errors.title ? 'border-red-500' : 'border-slate-200'} rounded-lg text-sm outline-none`} />
+                <label className="text-[11px] font-bold uppercase text-slate-500">Title *</label>
+                <input
+                  type="text" name="title" value={formData.title} onChange={handleInputChange}
+                  placeholder={`e.g. ${isServiceVendor ? 'Website Design Package' : 'Premium Wireless Headphones'}`}
+                  className={`w-full px-4 py-2.5 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.title ? 'border-red-500' : 'border-slate-200'}`}
+                />
+                {formErrors.title && <p className="text-red-500 text-[10px] font-bold">{formErrors.title}</p>}
               </div>
 
+              {/* Description */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase text-slate-500">Description</label>
+                <textarea
+                  name="description" value={formData.description} onChange={handleInputChange}
+                  rows="3" placeholder="Describe your item..."
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none resize-none"
+                />
+              </div>
+
+              {/* Location */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase text-slate-500">Location</label>
+                <input
+                  type="text" name="location" value={formData.location} onChange={handleInputChange}
+                  placeholder="e.g. Kampala, Uganda"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
+                />
+              </div>
+
+              {/* Category (from API) + Price */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase">Category</label>
-                  <select name="category" value={formData.category} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none appearance-none cursor-pointer">
-                    <option>Electronics</option><option>Computers</option><option>Grocery</option><option>Home & Decor</option>
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase">Price ({currency})</label>
-                  <input type="number" name="price" value={formData.price} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase">SKU</label>
-                  <input type="text" name="sku" value={formData.sku} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase">Inventory Quality</label>
-                  <select name="qty" value={formData.qty} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none">
-                    <option value="High">High Quality</option>
-                    <option value="Medium">Medium Quality</option>
-                    <option value="Low">Low Quality</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-bold text-slate-700 uppercase">Description</label>
-                <textarea name="description" value={formData.description} onChange={handleInputChange} rows="3" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none resize-none"></textarea>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
-                <div>
-                  <h3 className="text-[12px] font-bold text-slate-800 uppercase">Visibility</h3>
-                  <p className="text-[10px] text-slate-400">Published products are visible to customers.</p>
-                </div>
-                <div onClick={() => setIsPublished(!isPublished)} className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-all ${isPublished ? 'bg-green-500' : 'bg-slate-300'}`}>
-                  <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${isPublished ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                </div>
-              </div>
-            </div>
-
-            <div className="px-6 py-5 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between">
-              <div>
-                {editingProductId && (
-                  <button 
-                    type="button" 
-                    onClick={handleDelete}
-                    className="flex items-center gap-2 text-red-500 hover:bg-red-50 px-3 py-2 rounded-lg text-[11px] font-bold transition-all border border-transparent hover:border-red-100"
+                  <label className="text-[11px] font-bold uppercase text-slate-500">Category</label>
+                  <select
+                    name="category_id" value={formData.category_id} onChange={handleInputChange}
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none bg-white"
                   >
-                    <Trash2 size={16} /> DELETE
-                  </button>
-                )}
+                    <option value="">— Select —</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold uppercase text-slate-500">Price ({currencySymbol}) *</label>
+                  <input
+                    type="number" name="price" value={formData.price} onChange={handleInputChange}
+                    placeholder="0.00" min="0" step="any"
+                    className={`w-full px-4 py-2.5 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.price ? 'border-red-500' : 'border-slate-200'}`}
+                  />
+                  {formErrors.price && <p className="text-red-500 text-[10px] font-bold">{formErrors.price}</p>}
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <button type="button" onClick={() => { setIsProductModalOpen(false); resetForm(); }} className="px-6 py-2.5 text-[12px] font-bold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">Cancel</button>
-                <button type="submit" disabled={isSubmitting} className="px-6 py-2.5 bg-[#F5B841] text-white rounded-lg text-[12px] font-bold hover:bg-[#E0A83B] uppercase shadow-md active:scale-95 transition-all">
-                  {isSubmitting ? "Saving..." : editingProductId ? "Update Product" : "Publish Product"}
-                </button>
+
+              {/* SKU + Quality — product vendors only */}
+              {!isServiceVendor && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold uppercase text-slate-500">SKU</label>
+                    <input
+                      type="text" name="sku" value={formData.sku} onChange={handleInputChange}
+                      placeholder="PRD-XXXX"
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    {/* Maps to ProductQuality: high / medium / low */}
+                    <label className="text-[11px] font-bold uppercase text-slate-500">Quality</label>
+                    <select
+                      name="qty" value={formData.qty} onChange={handleInputChange}
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none bg-white"
+                    >
+                      <option value="High">High</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Low">Low</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Variants — product vendors only */}
+              {!isServiceVendor && (
+                <div className="space-y-3">
+                  <h4 className="text-[11px] font-bold uppercase text-slate-700">
+                    Variant <span className="text-slate-400 font-normal">(at least color or size required)</span>
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold uppercase text-slate-500">Color</label>
+                      <input
+                        type="text" name="colorVariant" value={formData.colorVariant}
+                        onChange={handleInputChange}
+                        placeholder="e.g. Red, Navy Blue"
+                        className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      {/* Size values must match ProductSize choices exactly */}
+                      <label className="text-[11px] font-bold uppercase text-slate-500">Size</label>
+                      <select
+                        name="sizeVariant" value={formData.sizeVariant} onChange={handleInputChange}
+                        className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm outline-none bg-white"
+                      >
+                        <option value="">— None —</option>
+                        {SIZE_OPTIONS.map((s) => (
+                          <option key={s} value={s}>{s === 'one_size' ? 'One Size' : s}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Image upload */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold uppercase text-slate-500">
+                  {isServiceVendor ? 'Service Image' : 'Product Image'}
+                </label>
+                <div className="flex gap-3 items-center">
+                  {formData.image && (
+                    <div className="w-20 h-20 rounded-lg border overflow-hidden relative group">
+                      <img src={formData.image} alt="preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData((p) => ({ ...p, image: null, imageFile: null }));
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }}
+                        className="absolute top-1 right-1 bg-white/80 p-1 rounded-full text-red-500 opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  )}
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-20 h-20 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center bg-white cursor-pointer hover:bg-slate-50 hover:border-[#125852] transition-colors"
+                  >
+                    <Upload size={20} className="text-slate-400" />
+                    <span className="text-[9px] font-bold text-slate-400 mt-1">UPLOAD</span>
+                  </div>
+                  <input
+                    type="file" ref={fileInputRef} onChange={handleFileChange}
+                    className="hidden" accept="image/jpeg,image/png,image/webp"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400">JPEG, PNG or WebP · max 5 MB</p>
               </div>
+
+              {/* Publish toggle */}
+              <div className="flex items-center justify-between pt-2">
+                <div>
+                  <p className="text-[12px] font-bold text-slate-800 uppercase">Publish immediately</p>
+                  <p className="text-[10px] text-slate-400">Off = saved as draft.</p>
+                </div>
+                <div
+                  onClick={() => setIsPublished(!isPublished)}
+                  className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-all ${isPublished ? 'bg-green-500' : 'bg-slate-200'}`}
+                >
+                  <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${isPublished ? 'translate-x-6' : 'translate-x-0'}`} />
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-5 border-t flex justify-end gap-3 bg-slate-50/20">
+              <button
+                type="button"
+                onClick={() => { setIsModalOpen(false); resetForm(); }}
+                className="px-8 py-2.5 text-[11px] font-bold border rounded-lg bg-white hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit" disabled={isLoading}
+                className="px-8 py-2.5 bg-[#F5B841] text-white rounded-lg text-[11px] font-bold uppercase shadow-sm disabled:opacity-60 hover:bg-[#E0A83B] active:scale-95 transition-all"
+              >
+                {isLoading ? 'Publishing...' : `Publish ${isServiceVendor ? 'Service' : 'Product'}`}
+              </button>
             </div>
           </form>
         </div>
       )}
+
+      {/* FOOTER */}
+      <footer className="fixed bottom-0 left-64 right-0 bg-[#125852] text-white py-2 px-8 flex justify-between items-center text-[9px] z-40">
+        <div>Buy Smart. Sell Fast. Grow Together...</div>
+        <div>© 2026 Vendor Portal. All rights reserved.</div>
+      </footer>
     </div>
   );
 };
 
-// --- HELPER COMPONENTS ---
+// ─── Sub-components ───────────────────────────────────────────────────────────
 const SidebarLink = ({ to, icon, label, active = false }) => (
-  <Link to={to} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all ${active ? 'bg-teal-50 text-teal-700 shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}>
+  <Link
+    to={to}
+    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all ${active ? 'bg-slate-50 text-[#125852]' : 'text-slate-400 hover:text-slate-900'}`}
+  >
     {icon} <span>{label}</span>
   </Link>
 );
 
-const MetricCard = ({ title, value, icon, color = "bg-white" }) => (
-  <div className={`${color} p-6 rounded-xl border border-slate-100 shadow-sm transition-hover hover:shadow-md`}>
-    <div className="flex justify-between items-start mb-4">
-      <div className="p-2 bg-white rounded-lg shadow-sm border border-slate-50">{icon}</div>
-      <ChevronRight size={14} className="text-slate-300" />
-    </div>
-    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{title}</p>
-    <h3 className="text-xl font-bold text-slate-900 tracking-tight">{value}</h3>
+const MetricCard = ({ title, value, icon, bg = 'bg-white' }) => (
+  <div className={`${bg} p-6 rounded-2xl border border-slate-50 shadow-sm text-left`}>
+    <div className="p-2 bg-white rounded-lg shadow-sm w-fit mb-3">{icon}</div>
+    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">{title}</p>
+    <h3 className="text-xl font-bold text-slate-900">{value}</h3>
   </div>
-);
-
-const ActionButton = ({ icon, title, desc, onClick }) => (
-  <button onClick={onClick} className="w-full flex items-center gap-4 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 transition-all text-left group">
-    <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-white transition-colors">{icon}</div>
-    <div>
-      <p className="text-[11px] font-bold text-slate-800">{title}</p>
-      <p className="text-[9px] text-slate-400">{desc}</p>
-    </div>
-  </button>
 );
 
 export default VendorDashboard;
