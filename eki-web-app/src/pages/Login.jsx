@@ -8,7 +8,7 @@ import logoImage from '../assets/logo.jpeg';
 import { validateLoginForm } from '../utils/Validation';
 import { SigninUser as manualLogin } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
-import Navbar2 from "../components/Navbar2";
+import Navbar from "../components/Navbar";
 import Footer from "../components/Footer"; 
 
 const Login = () => {
@@ -98,59 +98,75 @@ const Login = () => {
 
   return (
     <div className="flex flex-col h-screen bg-white font-sans overflow-hidden">
-      <Navbar2 />
+      <Navbar />
 
-      <div className="flex flex-1 w-full overflow-hidden">
-        
-        {/* Left Side: Stagnant Image */}
-        <div className="hidden lg:block lg:w-1/2 h-full overflow-hidden">
-          <img 
-            src={loginIllustration} 
-            alt="Login Illustration" 
-            className="w-full h-full object-cover pointer-events-none" 
-          />
+      <div className="flex-1 flex w-full overflow-hidden">
+        {/* Left Side: Image Section - Takes exactly half */}
+        <div className="hidden lg:block lg:w-1/2 relative overflow-hidden bg-white">
+          {/* Decorative Shapes */}
+          <div className="absolute -top-6 -left-6 w-32 h-32 border-4 border-[#235E5DFF] rounded-full opacity-20 z-10"></div>
+          <div className="absolute -bottom-10 -right-6 w-40 h-40 border-4 border-[#EFB034] rounded-lg opacity-20 transform rotate-12 z-10"></div>
+          <div className="absolute top-1/3 -left-8 w-24 h-24 border-4 border-[#235E5DFF] rounded-lg opacity-10 transform -rotate-12 z-10"></div>
+          <div className="absolute bottom-1/4 -right-8 w-28 h-28 border-4 border-[#EFB034] rounded-full opacity-20 z-10"></div>
+          
+          {/* Image Container - Full height and width */}
+          <div className="relative z-20 w-full h-full flex items-center justify-center p-8">
+            <div className="relative w-full h-full max-h-[70vh]">
+              <img
+                src={loginIllustration}
+                alt="Login Illustration"
+                className="w-full h-full object-cover rounded-[40px] shadow-2xl border-4 border-white/20"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#235E5D] to-[#EFB034] rounded-[40px] opacity-10 blur-3xl -z-10 scale-105"></div>
+            </div>
+          </div>
         </div>
 
-        {/* Right Side: Login Form Container */}
-        <div className="w-full lg:w-1/2 h-full flex flex-col justify-center items-center p-8 md:p-12 bg-white overflow-hidden">
-          <div className="w-full max-w-md animate-in fade-in duration-500">
-            
-            <div className="mb-8 text-left">
-              <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight whitespace-nowrap">
-                Welcome back! ready to sell?
+        {/* Right Side: Login Form Section - Takes exactly half */}
+        <div className="w-full lg:w-1/2 flex items-center justify-center bg-white overflow-y-auto">
+          <div className="w-full max-w-md px-8 py-6">
+            <div className="mb-5 text-left">
+              <h2 className="text-[28px] font-black text-gray-900 leading-tight mb-2">
+                Welcome back!
               </h2>
+              <p className="text-gray-500 text-[14px]">
+                Ready to sell?
+              </p>
             </div>
 
-            <form className="w-full space-y-5" onSubmit={handleSubmit} noValidate>
+            <form className="w-full space-y-4" onSubmit={handleSubmit} noValidate>
               
               {fieldErrors.general && (
-                <div className="text-red-600 text-[11px] font-bold py-3 text-center bg-red-50 rounded-xl border border-red-100">
+                <div className="text-red-600 text-sm font-bold py-2 text-center bg-red-50 rounded-xl border border-red-100 mb-2">
                   {fieldErrors.general}
                 </div>
               )}
 
-              {/* Email Input */}
-              <div className="relative flex items-center">
+              {/* Email Input*/}
+              <div className="relative">
                 <input
                   name="email"
                   type="email"
-                  autoComplete="email" // Fixed: Added for browser context
+                  autoComplete="email"
                   value={formData.email}
                   onChange={handleChange}
                   onBlur={handleBlur}
                   placeholder="Email Address"
-                  className={`w-full rounded-xl border h-12 px-5 focus:outline-none transition-all text-sm text-slate-900
-                    ${fieldErrors.email ? 'border-red-500 bg-red-50/10' : 'border-slate-200 focus:border-[#EFB034]'}`}
+                  className={`w-full rounded-xl border h-12 px-4 focus:outline-none transition-all text-sm text-slate-900 bg-white
+                    ${fieldErrors.email 
+                      ? 'border-red-500 bg-red-50/10 focus:border-red-500' 
+                      : 'border-slate-200 focus:border-[#EFB034] focus:ring-1 focus:ring-[#EFB034]/20'
+                    }`}
                 />
                 {fieldErrors.email && (
-                  <span className="absolute right-4 text-[10px] text-red-500 font-bold italic pointer-events-none">
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-red-500 font-bold italic pointer-events-none">
                     {fieldErrors.email}
                   </span>
                 )}
               </div>
 
               {/* Password Input */}
-              <div className="relative flex items-center">
+              <div className="relative">
                 <input
                   name="password"
                   type={showPassword ? "text" : "password"}
@@ -159,10 +175,13 @@ const Login = () => {
                   onChange={handleChange}
                   onBlur={handleBlur}
                   placeholder="Password"
-                  className={`w-full rounded-xl border h-12 pl-5 pr-24 focus:outline-none transition-all text-sm text-slate-900
-                    ${fieldErrors.password ? 'border-red-500 bg-red-50/10' : 'border-slate-200 focus:border-[#EFB034]'}`}
+                  className={`w-full rounded-xl border h-12 px-4 pr-24 focus:outline-none transition-all text-sm text-slate-900 bg-white
+                    ${fieldErrors.password 
+                      ? 'border-red-500 bg-red-50/10 focus:border-red-500' 
+                      : 'border-slate-200 focus:border-[#EFB034] focus:ring-1 focus:ring-[#EFB034]/20'
+                    }`}
                 />
-                <div className="absolute right-4 flex items-center gap-2">
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
                   {fieldErrors.password && (
                     <span className="text-[10px] text-red-500 font-bold italic pointer-events-none">
                       {fieldErrors.password}
@@ -178,34 +197,43 @@ const Login = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-[11px] px-1 font-bold">
-                <label className="flex items-center text-slate-500 cursor-pointer">
+              {/* Remember Me & Forgot Password */}
+              <div className="flex items-center justify-between text-sm">
+                <label className="flex items-center text-slate-600 cursor-pointer">
                   <input className="mr-2 h-4 w-4 accent-[#234E4D] border-slate-300 rounded" type="checkbox" />
-                  Remember me
+                  <span className="text-[13px]">Remember me</span>
                 </label>
-                <button type="button" onClick={() => navigate('/forgot-password')} className="text-[#EFB034] hover:underline">
+                <button 
+                  type="button" 
+                  onClick={() => navigate('/forgot-password')} 
+                  className="text-[#EFB034] hover:underline font-medium text-[13px]"
+                >
                   Forgot Password?
                 </button>
               </div>
 
+              {/* Login Button */}
               <button
                 type="submit"
                 disabled={isLoading || !isFormFilled}
-                className={`w-full h-12 text-sm font-bold text-white rounded-full 
-                  flex items-center justify-center transition-all duration-300 active:scale-[0.98] 
-                  ${isFormFilled 
-                    ? 'bg-[#EFB034] shadow-md shadow-yellow-100 hover:brightness-105' 
-                    : 'bg-gray-300 cursor-not-allowed'
-                  }
-                  ${isLoading ? 'opacity-70' : 'opacity-100'}`}
+                className={`w-full h-12 rounded-xl font-bold transition-all duration-300
+                  ${isFormFilled && !isLoading
+                    ? 'bg-[#efb034] hover:bg-[#d99c1c] hover:-translate-y-1 hover:shadow-lg text-white cursor-pointer' 
+                    : 'bg-gray-300 cursor-not-allowed text-white/70'
+                  }`}
               >
-                {isLoading ? 'Wait...' : 'Login'} 
+                {isLoading ? 'Please wait...' : 'Login'}
               </button>
 
-              <div className="text-center pt-2">
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">
+              {/* Sign Up Link */}
+              <div className="text-center pt-3">
+                <p className="text-[13px] text-slate-600">
                   Don't have an account?{" "}
-                  <button type="button" onClick={() => navigate('/vendorOnboarding')} className="text-[#234E4D] hover:underline">
+                  <button 
+                    type="button" 
+                    onClick={() => navigate('/vendorOnboarding')} 
+                    className="text-[#234E4D] font-semibold hover:underline"
+                  >
                     Sign up
                   </button>
                 </p>
