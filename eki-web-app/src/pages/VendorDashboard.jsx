@@ -37,17 +37,16 @@ const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'one_size'];
 
 const blankForm = () => ({
   title: '',
-  category_id: '',   // UUID from /api/v1/listings/categories/
+  category_id: '',
   price: '',
   sku: '',
-  qty: 'Medium',     // maps to quality: "medium"
+  qty: 'Medium',
   location: '',
   description: '',
   image: null,
   imageFile: null,
-  // Variants: each needs at least color OR size
-  colorVariant: '',  // free text, e.g. "Red"
-  sizeVariant: '',   // one of SIZE_OPTIONS
+  colorVariant: '',
+  sizeVariant: '',
 });
 
 const VendorDashboard = () => {
@@ -63,7 +62,7 @@ const VendorDashboard = () => {
   const [recentOrders, setRecentOrders] = useState([]);
   const [inventoryAlerts, setInventoryAlerts] = useState([]);
   const [reviews, setReviews] = useState([]);
-  const [categories, setCategories] = useState([]); // from /api/v1/listings/categories/
+  const [categories, setCategories] = useState([]);
   const [isFetching, setIsFetching] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -94,17 +93,13 @@ const VendorDashboard = () => {
         setInventoryAlerts(response.inventoryAlerts || []);
         setReviews(response.reviews             || []);
 
-        // Fetch categories scoped to this vendor's business_category
         try {
           const cats = await getCategories(bc);
           setCategories(cats);
-        } catch (_) {
-          // non-fatal — dropdown will be empty but listing can still be created
-        }
+        } catch (_) {}
       }
     } catch (error) {
       console.error('Dashboard fetch error:', error);
-      // If 401 — the response interceptor handles redirect automatically
     } finally {
       setIsFetching(false);
     }
@@ -112,7 +107,6 @@ const VendorDashboard = () => {
 
   const currencySymbol = getCurrencySymbol(vendorData.country);
 
-  // True if vendor sells services (transport/tailoring/airlines/hotels)
   const SERVICE_CATEGORIES = new Set(['transport', 'tailoring', 'airlines', 'hotels']);
   const isServiceVendor = SERVICE_CATEGORIES.has(vendorData.businessCategory);
 
@@ -138,7 +132,6 @@ const VendorDashboard = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // ── Validate ──────────────────────────────────────────────────────────────
   const validate = (data) => {
     const errs = {};
     if (!data.title?.trim())
@@ -148,7 +141,6 @@ const VendorDashboard = () => {
     return errs;
   };
 
-  // ── CREATE listing ────────────────────────────────────────────────────────
   const handlePublish = async (e) => {
     e.preventDefault();
     const errs = validate(formData);
@@ -156,8 +148,6 @@ const VendorDashboard = () => {
 
     setIsLoading(true);
     try {
-      // Build variants from the two variant fields.
-      // Backend rule: each variant must have at least color OR size.
       const variants = [];
       if (formData.colorVariant?.trim()) {
         variants.push({ type: 'Color', value: formData.colorVariant.trim() });
@@ -168,14 +158,13 @@ const VendorDashboard = () => {
 
       const payload = {
         ...formData,
-        business_category: vendorData.businessCategory, // ← from vendor profile
+        business_category: vendorData.businessCategory,
         is_published: isPublished,
         variants,
       };
 
       const created = await createProductListing(payload);
 
-      // Upload image if provided and listing was created successfully
       if (formData.imageFile && created?.id) {
         try {
           await uploadListingImage(created.id, formData.imageFile);
@@ -184,7 +173,6 @@ const VendorDashboard = () => {
         }
       }
 
-      // Update active listing count locally (avoid full refetch)
       setMetrics((prev) => ({ ...prev, activeListings: prev.activeListings + 1 }));
 
       setIsModalOpen(false);
@@ -193,8 +181,6 @@ const VendorDashboard = () => {
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
       console.error('Failed to create listing:', err);
-      // The response interceptor already logged the full Django error.
-      // Show a friendly message to the user.
       const serverErrors = err.response?.data?.errors ?? err.response?.data ?? {};
       let msg = 'Failed to create listing. Please check your inputs and try again.';
 
@@ -218,6 +204,7 @@ const VendorDashboard = () => {
           <img src={logo} alt="Eki" className="h-8 w-auto object-contain" />
         </div>
         <nav className="flex-1 px-4 space-y-1">
+          {/* ── active link now uses footer green #125852 ── */}
           <SidebarLink to="/dashboard"         icon={<LayoutDashboard size={18} />} label="Dashboard" active />
           <SidebarLink to="/product-dashboard" icon={<ShoppingBag size={18} />}    label="Products" />
           <SidebarLink to="/service"           icon={<Plus size={18} />}            label="Services" />
@@ -226,12 +213,14 @@ const VendorDashboard = () => {
           <SidebarLink to="/reviews"           icon={<MessageSquare size={18} />}   label="Reviews" />
         </nav>
         <div className="p-4 border-t border-slate-50">
-          <button
+          {/* ── Changed "Sign out" → "Log out", linked to home page ── */}
+          <Link
+            to="/"
             onClick={SignoutUser}
             className="flex items-center gap-3 px-3 py-2 w-full text-red-500 hover:bg-red-50 rounded-lg text-[11px] font-bold"
           >
-            <LogOut size={18} /> <span>Sign out</span>
-          </button>
+            <LogOut size={18} /> <span>Log out</span>
+          </Link>
         </div>
       </aside>
 
@@ -259,7 +248,11 @@ const VendorDashboard = () => {
             </p>
           </header>
 
-          {/* METRIC CARDS */}
+          {/* METRIC CARDS
+              Colors assigned so each appears exactly twice:
+              - bg-[#E0F2F1]  → Gross Sales  +  Pending Payouts  (teal-light, was Pending Payouts color)
+              - bg-[#FFF8E1]  → Open Orders  +  Active Listings  (amber-light, was Active Listings color)
+          */}
           {isFetching ? (
             <div className="grid grid-cols-4 gap-4 mb-8">
               {[...Array(4)].map((_, i) => (
@@ -268,10 +261,10 @@ const VendorDashboard = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-              <MetricCard title="Gross Sales"      value={`${currencySymbol} ${(metrics.grossSales || 0).toLocaleString()}`}     icon={<CreditCard size={18} />} />
-              <MetricCard title="Open Orders"      value={metrics.openOrders || 0}                                                icon={<Package size={18} />} />
-              <MetricCard title="Pending Payouts"  value={`${currencySymbol} ${(metrics.pendingPayouts || 0).toLocaleString()}`} icon={<Box size={18} />}      bg="bg-[#E0F2F1]" />
-              <MetricCard title="Active Listings"  value={metrics.activeListings || 0}                                           icon={<ListChecks size={18} />} bg="bg-[#FFF8E1]" />
+              <MetricCard title="Gross Sales"     value={`${currencySymbol} ${(metrics.grossSales || 0).toLocaleString()}`}     icon={<CreditCard size={18} />} bg="bg-[#E0F2F1]" />
+              <MetricCard title="Open Orders"     value={metrics.openOrders || 0}                                                icon={<Package size={18} />}    bg="bg-[#FFF8E1]" />
+              <MetricCard title="Pending Payouts" value={`${currencySymbol} ${(metrics.pendingPayouts || 0).toLocaleString()}`} icon={<Box size={18} />}        bg="bg-[#E0F2F1]" />
+              <MetricCard title="Active Listings" value={metrics.activeListings || 0}                                           icon={<ListChecks size={18} />}  bg="bg-[#FFF8E1]" />
             </div>
           )}
 
@@ -300,7 +293,7 @@ const VendorDashboard = () => {
                 </div>
               </div>
 
-              {/* RECENT ORDERS */}
+              {/* RECENT ORDERS — updated columns: Order ID, Customer, Items, Total, Status, Action */}
               <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
                 <div className="p-6 border-b flex justify-between items-center">
                   <h3 className="font-bold text-sm uppercase tracking-tighter">Recent Orders</h3>
@@ -313,8 +306,10 @@ const VendorDashboard = () => {
                         <tr>
                           <th className="px-6 py-4">Order ID</th>
                           <th className="px-6 py-4">Customer</th>
+                          <th className="px-6 py-4">Items</th>
                           <th className="px-6 py-4">Total</th>
                           <th className="px-6 py-4">Status</th>
+                          <th className="px-6 py-4">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">
@@ -322,9 +317,18 @@ const VendorDashboard = () => {
                           <tr key={i} className="hover:bg-slate-50 transition-colors">
                             <td className="px-6 py-4 text-[#125852] font-bold">#{order.id}</td>
                             <td className="px-6 py-4">{order.customer}</td>
+                            <td className="px-6 py-4">{order.items ?? '—'}</td>
                             <td className="px-6 py-4 font-bold">{currencySymbol} {Number(order.total || 0).toLocaleString()}</td>
                             <td className="px-6 py-4">
                               <span className="px-2 py-1 bg-slate-100 rounded text-[9px] uppercase font-bold">{order.status}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <Link
+                                to={`/order-management/${order.id}`}
+                                className="px-3 py-1.5 bg-[#125852] text-white rounded-lg text-[9px] font-bold uppercase hover:bg-[#0e4440] transition-colors"
+                              >
+                                View
+                              </Link>
                             </td>
                           </tr>
                         ))}
@@ -440,14 +444,12 @@ const VendorDashboard = () => {
             {/* Body */}
             <div className="p-6 overflow-y-auto space-y-5">
 
-              {/* Server error */}
               {formErrors._server && (
                 <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-medium px-4 py-3 rounded-lg">
                   {formErrors._server}
                 </div>
               )}
 
-              {/* Title */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Title *</label>
                 <input
@@ -458,7 +460,6 @@ const VendorDashboard = () => {
                 {formErrors.title && <p className="text-red-500 text-[10px] font-bold">{formErrors.title}</p>}
               </div>
 
-              {/* Description */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Description</label>
                 <textarea
@@ -468,7 +469,6 @@ const VendorDashboard = () => {
                 />
               </div>
 
-              {/* Location */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Location</label>
                 <input
@@ -478,7 +478,6 @@ const VendorDashboard = () => {
                 />
               </div>
 
-              {/* Category (from API) + Price */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold uppercase text-slate-500">Category</label>
@@ -503,7 +502,6 @@ const VendorDashboard = () => {
                 </div>
               </div>
 
-              {/* SKU + Quality — product vendors only */}
               {!isServiceVendor && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
@@ -515,7 +513,6 @@ const VendorDashboard = () => {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    {/* Maps to ProductQuality: high / medium / low */}
                     <label className="text-[11px] font-bold uppercase text-slate-500">Quality</label>
                     <select
                       name="qty" value={formData.qty} onChange={handleInputChange}
@@ -529,7 +526,6 @@ const VendorDashboard = () => {
                 </div>
               )}
 
-              {/* Variants — product vendors only */}
               {!isServiceVendor && (
                 <div className="space-y-3">
                   <h4 className="text-[11px] font-bold uppercase text-slate-700">
@@ -546,7 +542,6 @@ const VendorDashboard = () => {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      {/* Size values must match ProductSize choices exactly */}
                       <label className="text-[11px] font-bold uppercase text-slate-500">Size</label>
                       <select
                         name="sizeVariant" value={formData.sizeVariant} onChange={handleInputChange}
@@ -562,7 +557,6 @@ const VendorDashboard = () => {
                 </div>
               )}
 
-              {/* Image upload */}
               <div className="space-y-2">
                 <label className="text-[11px] font-bold uppercase text-slate-500">
                   {isServiceVendor ? 'Service Image' : 'Product Image'}
@@ -598,7 +592,6 @@ const VendorDashboard = () => {
                 <p className="text-[10px] text-slate-400">JPEG, PNG or WebP · max 5 MB</p>
               </div>
 
-              {/* Publish toggle */}
               <div className="flex items-center justify-between pt-2">
                 <div>
                   <p className="text-[12px] font-bold text-slate-800 uppercase">Publish immediately</p>
@@ -643,10 +636,16 @@ const VendorDashboard = () => {
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
+
+/* Active link uses footer green #125852 for text + background tint */
 const SidebarLink = ({ to, icon, label, active = false }) => (
   <Link
     to={to}
-    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all ${active ? 'bg-slate-50 text-[#125852]' : 'text-slate-400 hover:text-slate-900'}`}
+    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all ${
+      active
+        ? 'bg-[#E0F2F1] text-[#125852]'
+        : 'text-slate-400 hover:text-slate-900'
+    }`}
   >
     {icon} <span>{label}</span>
   </Link>
