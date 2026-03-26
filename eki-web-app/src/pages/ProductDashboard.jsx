@@ -655,7 +655,7 @@ const ProductDashboard = () => {
         </div>
         <nav className="flex-1 px-4 space-y-1">
           {/* ── FIXED: sidebar links now point to correct routes ── */}
-          <SidebarLink to="/vendor-dashboard"  icon={<LayoutDashboard size={18} />} label="Dashboard" />
+          <SidebarLink to="/vendordashboard"  icon={<LayoutDashboard size={18} />} label="Dashboard" />
           <SidebarLink to="/product-dashboard" icon={<ShoppingBag size={18} />}     label="Products" active />
           <SidebarLink to="/service"           icon={<Plus size={18} />}             label="Services" />
           <SidebarLink to="/order-management"  icon={<Truck size={18} />}            label="Orders" />
