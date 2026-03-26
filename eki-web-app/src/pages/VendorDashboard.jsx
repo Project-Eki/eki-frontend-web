@@ -199,12 +199,11 @@ const VendorDashboard = () => {
     <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800">
 
       {/* SIDEBAR */}
-      <aside className="w-64 bg-white border-r border-slate-100 flex flex-col sticky top-0 h-screen z-50">
+      <aside className="w-64 bg-white border-r border-white flex flex-col sticky top-0 h-screen z-50">
         <div className="p-6 mb-4">
           <img src={logo} alt="Eki" className="h-8 w-auto object-contain" />
         </div>
         <nav className="flex-1 px-4 space-y-1">
-          {/* ── active link now uses footer green #125852 ── */}
           <SidebarLink to="/dashboard"         icon={<LayoutDashboard size={18} />} label="Dashboard" active />
           <SidebarLink to="/product-dashboard" icon={<ShoppingBag size={18} />}    label="Products" />
           <SidebarLink to="/service"           icon={<Plus size={18} />}            label="Services" />
@@ -212,8 +211,7 @@ const VendorDashboard = () => {
           <SidebarLink to="/payment"           icon={<CreditCard size={18} />}      label="Payments" />
           <SidebarLink to="/reviews"           icon={<MessageSquare size={18} />}   label="Reviews" />
         </nav>
-        <div className="p-4 border-t border-slate-50">
-          {/* ── Changed "Sign out" → "Log out", linked to home page ── */}
+        <div className="p-4 border-t border-white">
           <Link
             to="/"
             onClick={SignoutUser}
@@ -248,15 +246,11 @@ const VendorDashboard = () => {
             </p>
           </header>
 
-          {/* METRIC CARDS
-              Colors assigned so each appears exactly twice:
-              - bg-[#E0F2F1]  → Gross Sales  +  Pending Payouts  (teal-light, was Pending Payouts color)
-              - bg-[#FFF8E1]  → Open Orders  +  Active Listings  (amber-light, was Active Listings color)
-          */}
+          {/* METRIC CARDS */}
           {isFetching ? (
             <div className="grid grid-cols-4 gap-4 mb-8">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="bg-white p-6 rounded-2xl border border-slate-50 animate-pulse h-28" />
+                <div key={i} className="bg-white p-6 rounded-2xl border border-white animate-pulse h-28" />
               ))}
             </div>
           ) : (
@@ -272,7 +266,7 @@ const VendorDashboard = () => {
             <div className="lg:col-span-2 space-y-6">
 
               {/* SALES GRAPH */}
-              <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
+              <div className="bg-white p-6 rounded-xl border border-white shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-bold text-sm uppercase tracking-tighter">Sales Performance</h3>
                 </div>
@@ -293,9 +287,9 @@ const VendorDashboard = () => {
                 </div>
               </div>
 
-              {/* RECENT ORDERS — updated columns: Order ID, Customer, Items, Total, Status, Action */}
-              <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="p-6 border-b flex justify-between items-center">
+              {/* RECENT ORDERS */}
+              <div className="bg-white rounded-xl border border-white shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-white flex justify-between items-center">
                   <h3 className="font-bold text-sm uppercase tracking-tighter">Recent Orders</h3>
                   <Link to="/order-management" className="text-[#125852] text-[10px] font-bold">VIEW ALL</Link>
                 </div>
@@ -312,7 +306,7 @@ const VendorDashboard = () => {
                           <th className="px-6 py-4">Action</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-50">
+                      <tbody className="divide-y divide-white">
                         {recentOrders.map((order, i) => (
                           <tr key={i} className="hover:bg-slate-50 transition-colors">
                             <td className="px-6 py-4 text-[#125852] font-bold">#{order.id}</td>
@@ -344,11 +338,11 @@ const VendorDashboard = () => {
             <div className="space-y-6">
 
               {/* QUICK ACTIONS */}
-              <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
+              <div className="bg-white p-6 rounded-xl border border-white shadow-sm">
                 <h3 className="font-bold text-sm mb-4 uppercase tracking-tighter">Quick Actions</h3>
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className="w-full flex items-center justify-between p-4 border border-slate-50 rounded-xl hover:bg-slate-50 transition-all"
+                  className="w-full flex items-center justify-between p-4 border border-white rounded-xl hover:bg-slate-50 transition-all"
                 >
                   <div className="flex items-center gap-3 text-left">
                     <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><Plus size={18} /></div>
@@ -374,14 +368,14 @@ const VendorDashboard = () => {
               </div>
 
               {/* INVENTORY ALERTS */}
-              <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm text-left">
+              <div className="bg-white p-6 rounded-xl border border-white shadow-sm text-left">
                 <div className="flex items-center gap-2 mb-4 text-[#E53935]">
                   <AlertCircle size={16} />
                   <h3 className="font-bold text-xs uppercase tracking-tighter">Inventory Alerts</h3>
                 </div>
                 <div className="space-y-4">
                   {inventoryAlerts.length > 0 ? inventoryAlerts.map((alert, i) => (
-                    <div key={i} className="flex justify-between items-center text-[11px] border-b border-slate-50 pb-2 last:border-0">
+                    <div key={i} className="flex justify-between items-center text-[11px] border-b border-white pb-2 last:border-0">
                       <span className="font-bold text-slate-700">{alert.title}</span>
                       <span className="text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded">
                         {alert.quantity ?? 0} left
@@ -394,7 +388,7 @@ const VendorDashboard = () => {
               </div>
 
               {/* RECENT REVIEWS */}
-              <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm text-left">
+              <div className="bg-white p-6 rounded-xl border border-white shadow-sm text-left">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-bold text-xs uppercase tracking-tighter">Recent Reviews</h3>
                   <Link to="/reviews" className="text-[#125852] text-[10px] font-bold hover:underline uppercase tracking-tighter">VIEW ALL</Link>
@@ -429,7 +423,7 @@ const VendorDashboard = () => {
             className="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[95vh] text-left"
           >
             {/* Header */}
-            <div className="px-6 py-5 border-b flex justify-between items-start">
+            <div className="px-6 py-5 border-b border-white flex justify-between items-start">
               <div>
                 <h2 className="text-lg font-bold">Create New {isServiceVendor ? 'Service' : 'Product'}</h2>
                 <p className="text-[11px] text-slate-500">
@@ -455,7 +449,7 @@ const VendorDashboard = () => {
                 <input
                   type="text" name="title" value={formData.title} onChange={handleInputChange}
                   placeholder={`e.g. ${isServiceVendor ? 'Website Design Package' : 'Premium Wireless Headphones'}`}
-                  className={`w-full px-4 py-2.5 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.title ? 'border-red-500' : 'border-slate-200'}`}
+                  className={`w-full px-4 py-2.5 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.title ? 'border-red-500' : 'border-white'}`}
                 />
                 {formErrors.title && <p className="text-red-500 text-[10px] font-bold">{formErrors.title}</p>}
               </div>
@@ -465,7 +459,7 @@ const VendorDashboard = () => {
                 <textarea
                   name="description" value={formData.description} onChange={handleInputChange}
                   rows="3" placeholder="Describe your item..."
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none resize-none"
+                  className="w-full px-4 py-2.5 border border-white rounded-lg text-sm outline-none resize-none"
                 />
               </div>
 
@@ -474,7 +468,7 @@ const VendorDashboard = () => {
                 <input
                   type="text" name="location" value={formData.location} onChange={handleInputChange}
                   placeholder="e.g. Kampala, Uganda"
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
+                  className="w-full px-4 py-2.5 border border-white rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
                 />
               </div>
 
@@ -483,7 +477,7 @@ const VendorDashboard = () => {
                   <label className="text-[11px] font-bold uppercase text-slate-500">Category</label>
                   <select
                     name="category_id" value={formData.category_id} onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none bg-white"
+                    className="w-full px-4 py-2.5 border border-white rounded-lg text-sm outline-none bg-white"
                   >
                     <option value="">— Select —</option>
                     {categories.map((cat) => (
@@ -496,7 +490,7 @@ const VendorDashboard = () => {
                   <input
                     type="number" name="price" value={formData.price} onChange={handleInputChange}
                     placeholder="0.00" min="0" step="any"
-                    className={`w-full px-4 py-2.5 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.price ? 'border-red-500' : 'border-slate-200'}`}
+                    className={`w-full px-4 py-2.5 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.price ? 'border-red-500' : 'border-white'}`}
                   />
                   {formErrors.price && <p className="text-red-500 text-[10px] font-bold">{formErrors.price}</p>}
                 </div>
@@ -509,14 +503,14 @@ const VendorDashboard = () => {
                     <input
                       type="text" name="sku" value={formData.sku} onChange={handleInputChange}
                       placeholder="PRD-XXXX"
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none"
+                      className="w-full px-4 py-2.5 border border-white rounded-lg text-sm outline-none"
                     />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-bold uppercase text-slate-500">Quality</label>
                     <select
                       name="qty" value={formData.qty} onChange={handleInputChange}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none bg-white"
+                      className="w-full px-4 py-2.5 border border-white rounded-lg text-sm outline-none bg-white"
                     >
                       <option value="High">High</option>
                       <option value="Medium">Medium</option>
@@ -538,14 +532,14 @@ const VendorDashboard = () => {
                         type="text" name="colorVariant" value={formData.colorVariant}
                         onChange={handleInputChange}
                         placeholder="e.g. Red, Navy Blue"
-                        className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm outline-none"
+                        className="w-full px-3 py-2.5 border border-white rounded-lg text-sm outline-none"
                       />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-bold uppercase text-slate-500">Size</label>
                       <select
                         name="sizeVariant" value={formData.sizeVariant} onChange={handleInputChange}
-                        className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm outline-none bg-white"
+                        className="w-full px-3 py-2.5 border border-white rounded-lg text-sm outline-none bg-white"
                       >
                         <option value="">— None —</option>
                         {SIZE_OPTIONS.map((s) => (
@@ -563,7 +557,7 @@ const VendorDashboard = () => {
                 </label>
                 <div className="flex gap-3 items-center">
                   {formData.image && (
-                    <div className="w-20 h-20 rounded-lg border overflow-hidden relative group">
+                    <div className="w-20 h-20 rounded-lg border border-white overflow-hidden relative group">
                       <img src={formData.image} alt="preview" className="w-full h-full object-cover" />
                       <button
                         type="button"
@@ -579,7 +573,7 @@ const VendorDashboard = () => {
                   )}
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-20 h-20 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center bg-white cursor-pointer hover:bg-slate-50 hover:border-[#125852] transition-colors"
+                    className="w-20 h-20 border-2 border-dashed border-white rounded-lg flex flex-col items-center justify-center bg-white cursor-pointer hover:bg-slate-50 hover:border-[#125852] transition-colors"
                   >
                     <Upload size={20} className="text-slate-400" />
                     <span className="text-[9px] font-bold text-slate-400 mt-1">UPLOAD</span>
@@ -607,11 +601,11 @@ const VendorDashboard = () => {
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-5 border-t flex justify-end gap-3 bg-slate-50/20">
+            <div className="px-6 py-5 border-t border-white flex justify-end gap-3 bg-slate-50/20">
               <button
                 type="button"
                 onClick={() => { setIsModalOpen(false); resetForm(); }}
-                className="px-8 py-2.5 text-[11px] font-bold border rounded-lg bg-white hover:bg-slate-50"
+                className="px-8 py-2.5 text-[11px] font-bold border border-white rounded-lg bg-white hover:bg-slate-50"
               >
                 Cancel
               </button>
@@ -637,7 +631,6 @@ const VendorDashboard = () => {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-/* Active link uses footer green #125852 for text + background tint */
 const SidebarLink = ({ to, icon, label, active = false }) => (
   <Link
     to={to}
@@ -652,7 +645,7 @@ const SidebarLink = ({ to, icon, label, active = false }) => (
 );
 
 const MetricCard = ({ title, value, icon, bg = 'bg-white' }) => (
-  <div className={`${bg} p-6 rounded-2xl border border-slate-50 shadow-sm text-left`}>
+  <div className={`${bg} p-6 rounded-2xl border border-white shadow-sm text-left`}>
     <div className="p-2 bg-white rounded-lg shadow-sm w-fit mb-3">{icon}</div>
     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">{title}</p>
     <h3 className="text-xl font-bold text-slate-900">{value}</h3>
