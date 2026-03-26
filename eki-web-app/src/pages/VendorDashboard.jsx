@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import logo from '../assets/logo.jpeg';
+// import logo from '../assets/logo.jpeg';
 import Navbar3 from '../components/adminDashboard/Navbar3';
 import {
   getVendorDashboard,
@@ -201,7 +201,7 @@ const VendorDashboard = () => {
       {/* SIDEBAR */}
       <aside className="w-64 bg-white border-r border-white flex flex-col sticky top-0 h-screen z-50">
         <div className="p-6 mb-4">
-          <img src={logo} alt="Eki" className="h-8 w-auto object-contain" />
+          {/* <img src={logo} alt="Eki" className="h-8 w-auto object-contain" /> */}
         </div>
         <nav className="flex-1 px-4 space-y-1">
           <SidebarLink to="/dashboard"         icon={<LayoutDashboard size={18} />} label="Dashboard" active />

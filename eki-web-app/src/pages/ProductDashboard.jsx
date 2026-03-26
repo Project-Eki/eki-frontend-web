@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import Navbar3 from '../components/adminDashboard/Navbar3';
-import logo from '../assets/logo.jpeg';
+// import logo from '../assets/logo.jpeg';
 import {
   Plus, Search, Filter, LayoutGrid, List,
   CheckCircle2, Package, ShoppingBag,
@@ -50,7 +51,7 @@ const blankForm = () => ({
   colors: [],
 });
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Main Component ──
 const ProductDashboard = () => {
   const [viewType, setViewType]                     = useState('grid');
   const [products, setProducts]                     = useState([]);
@@ -63,7 +64,6 @@ const ProductDashboard = () => {
   const [isFetching, setIsFetching]                 = useState(true);
   const [currencySymbol, setCurrencySymbol]         = useState('$');
   const [vendorCountry, setVendorCountry]           = useState('');
-  // ↓ Stored from vendor profile — MUST be passed to createProductListing
   const [businessCategory, setBusinessCategory]     = useState('retail');
   const [searchQuery, setSearchQuery]               = useState('');
   const [successMsg, setSuccessMsg]                 = useState('');
@@ -86,7 +86,6 @@ const ProductDashboard = () => {
         setVendorCountry(data.country);
         setCurrencySymbol(getCurrencySymbol(data.country));
       }
-      // getVendorDashboard already fetches vendor/profile/ and returns businessCategory
       if (data?.businessCategory) {
         setBusinessCategory(data.businessCategory);
       }
@@ -136,7 +135,6 @@ const ProductDashboard = () => {
     reader.readAsDataURL(file);
   };
 
-  // ── Toggle a chip in an array ─────────────────────────────────────────────
   const toggleChip = (field, value, isEdit = false) => {
     if (isEdit) {
       setSelectedProduct((prev) => {
@@ -157,7 +155,6 @@ const ProductDashboard = () => {
     }
   };
 
-  // ── Validate ──────────────────────────────────────────────────────────────
   const validateForm = (data) => {
     const errs = {};
     if (!data.title?.trim()) errs.title = 'Title is required';
@@ -166,7 +163,6 @@ const ProductDashboard = () => {
     return errs;
   };
 
-  // ── CREATE ────────────────────────────────────────────────────────────────
   const handlePublish = async (e) => {
     e.preventDefault();
     const validationErrors = validateForm(formData);
@@ -174,8 +170,6 @@ const ProductDashboard = () => {
 
     setIsLoading(true);
     try {
-      // Pass only the fields authService.createProductListing expects.
-      // business_category comes from the vendor profile, NOT the category dropdown.
       const created = await createProductListing({
         title:             formData.title,
         description:       formData.description,
@@ -215,7 +209,6 @@ const ProductDashboard = () => {
     }
   };
 
-  // ── OPEN EDIT ─────────────────────────────────────────────────────────────
   const handleProductClick = (product) => {
     const parseSaved = (val) => {
       if (!val) return [];
@@ -235,7 +228,6 @@ const ProductDashboard = () => {
     setIsEditModalOpen(true);
   };
 
-  // ── UPDATE ────────────────────────────────────────────────────────────────
   const handleUpdate = async (e) => {
     e.preventDefault();
     if (!selectedProduct?.id) return;
@@ -278,7 +270,6 @@ const ProductDashboard = () => {
     }
   };
 
-  // ── DELETE ────────────────────────────────────────────────────────────────
   const handleDelete = () => {
     if (!selectedProduct?.id) return;
     setIsDeleteModalOpen(true);
@@ -306,12 +297,10 @@ const ProductDashboard = () => {
     p.sku?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // ── Shared variant section ────────────────────────────────────────────────
   const VariantSection = ({ sizes, colors, isEdit = false }) => (
     <div className="space-y-5 border border-slate-100 rounded-xl p-4 bg-slate-50/50">
       <h4 className="text-[11px] font-bold uppercase text-slate-600 tracking-wider">Product Variants</h4>
 
-      {/* Sizes */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Ruler size={14} className="text-slate-400" />
@@ -338,7 +327,6 @@ const ProductDashboard = () => {
         )}
       </div>
 
-      {/* Colors */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Palette size={14} className="text-slate-400" />
@@ -373,24 +361,25 @@ const ProductDashboard = () => {
       {/* SIDEBAR */}
       <aside className="w-64 bg-white border-r border-slate-100 flex flex-col sticky top-0 h-screen z-50">
         <div className="p-6 mb-4">
-          <img src={logo} alt="Eki" className="h-8 w-auto object-contain" />
+          {/* <img src={logo} alt="Eki" className="h-8 w-auto object-contain" /> */}
         </div>
         <nav className="flex-1 px-4 space-y-1">
-          <SidebarLink href="/dashboard"         icon={<LayoutDashboard size={18} />} label="Dashboard" />
-          <SidebarLink href="/product-dashboard" icon={<ShoppingBag size={18} />}     label="Products" active />
-          <SidebarLink href="/service"           icon={<Plus size={18} />}             label="Services" />
-          <SidebarLink href="/order-management"  icon={<Truck size={18} />}            label="Orders" />
-          <SidebarLink href="/payment"           icon={<CreditCard size={18} />}       label="Payments" />
-          <SidebarLink href="/reviews"           icon={<MessageSquare size={18} />}    label="Reviews" />
+          <SidebarLink to="/vendordashboard"         icon={<LayoutDashboard size={18} />} label="Dashboard" />
+          <SidebarLink to="/product-dashboard" icon={<ShoppingBag size={18} />}     label="Products" active />
+          <SidebarLink to="/service"           icon={<Plus size={18} />}             label="Services" />
+          <SidebarLink to="/order-management"  icon={<Truck size={18} />}            label="Orders" />
+          <SidebarLink to="/payment"           icon={<CreditCard size={18} />}       label="Payments" />
+          <SidebarLink to="/reviews"           icon={<MessageSquare size={18} />}    label="Reviews" />
         </nav>
         <div className="p-4 border-t border-slate-50 mt-auto">
-          <SidebarLink href="/settings" icon={<Settings size={18} />} label="Store Settings" />
-          <button
+          <SidebarLink to="/settings" icon={<Settings size={18} />} label="Store Settings" />
+          <Link
+            to="/"
             onClick={SignoutUser}
             className="flex items-center gap-3 px-3 py-2 w-full text-red-500 hover:bg-red-50 rounded-lg text-[11px] font-bold mt-2"
           >
-            <LogOut size={18} /><span>Sign out</span>
-          </button>
+            <LogOut size={18} /><span>Log out</span>
+          </Link>
         </div>
       </aside>
 
@@ -503,16 +492,13 @@ const ProductDashboard = () => {
         </main>
       </div>
 
-      {/*
-          CREATE PRODUCT MODAL
-       */}
+      {/* CREATE PRODUCT MODAL */}
       {isProductModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <form
             onSubmit={handlePublish}
             className="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[95vh] text-left"
           >
-            {/* Header */}
             <div className="px-6 py-5 border-b flex justify-between items-start">
               <div>
                 <h2 className="text-lg font-bold">Create New Product</h2>
@@ -525,7 +511,6 @@ const ProductDashboard = () => {
               </button>
             </div>
 
-            {/* Body */}
             <div className="p-6 overflow-y-auto space-y-5">
 
               {errors._server && (
@@ -534,7 +519,6 @@ const ProductDashboard = () => {
                 </div>
               )}
 
-              {/* Title */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Title *</label>
                 <input
@@ -545,7 +529,6 @@ const ProductDashboard = () => {
                 {errors.title && <p className="text-red-500 text-[10px] font-bold">{errors.title}</p>}
               </div>
 
-              {/* Description */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Description</label>
                 <textarea
@@ -555,7 +538,6 @@ const ProductDashboard = () => {
                 />
               </div>
 
-              {/* Location */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Location</label>
                 <input
@@ -565,7 +547,6 @@ const ProductDashboard = () => {
                 />
               </div>
 
-              {/* Category + Price */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold uppercase text-slate-500">Sub-category</label>
@@ -590,7 +571,6 @@ const ProductDashboard = () => {
                 </div>
               </div>
 
-              {/* SKU + Quality */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold uppercase text-slate-500">SKU</label>
@@ -613,10 +593,8 @@ const ProductDashboard = () => {
                 </div>
               </div>
 
-              {/* Variants */}
               <VariantSection sizes={formData.sizes} colors={formData.colors} isEdit={false} />
 
-              {/* Image upload */}
               <div className="space-y-2">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Product Image</label>
                 <div className="flex gap-3 items-center">
@@ -650,7 +628,6 @@ const ProductDashboard = () => {
                 <p className="text-[10px] text-slate-400">JPEG, PNG or WebP · max 5 MB</p>
               </div>
 
-              {/* Publish toggle */}
               <div className="flex items-center justify-between pt-2">
                 <div>
                   <p className="text-[12px] font-bold text-slate-800 uppercase">Publish immediately</p>
@@ -665,7 +642,6 @@ const ProductDashboard = () => {
               </div>
             </div>
 
-            {/* Footer */}
             <div className="px-6 py-5 border-t flex justify-end gap-3 bg-slate-50/20">
               <button
                 type="button"
@@ -685,16 +661,13 @@ const ProductDashboard = () => {
         </div>
       )}
 
-     
-         // EDIT / DELETE MODAL//
-    
+      {/* EDIT / DELETE MODAL */}
       {isEditModalOpen && selectedProduct && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <form
             onSubmit={handleUpdate}
             className="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[95vh] text-left"
           >
-            {/* Header */}
             <div className="px-6 py-5 border-b flex justify-between items-start">
               <div>
                 <h2 className="text-lg font-bold">Edit Product</h2>
@@ -705,7 +678,6 @@ const ProductDashboard = () => {
               </button>
             </div>
 
-            {/* Body */}
             <div className="p-6 overflow-y-auto space-y-5">
 
               {editErrors._server && (
@@ -714,7 +686,6 @@ const ProductDashboard = () => {
                 </div>
               )}
 
-              {/* Title */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Title *</label>
                 <input
@@ -725,7 +696,6 @@ const ProductDashboard = () => {
                 {editErrors.title && <p className="text-red-500 text-[10px] font-bold">{editErrors.title}</p>}
               </div>
 
-              {/* Description */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Description</label>
                 <textarea
@@ -736,7 +706,6 @@ const ProductDashboard = () => {
                 />
               </div>
 
-              {/* Location */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Location</label>
                 <input
@@ -747,7 +716,6 @@ const ProductDashboard = () => {
                 />
               </div>
 
-              {/* Category + Price */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold uppercase text-slate-500">Sub-category</label>
@@ -774,7 +742,6 @@ const ProductDashboard = () => {
                 </div>
               </div>
 
-              {/* SKU + Quality */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold uppercase text-slate-500">SKU</label>
@@ -799,14 +766,12 @@ const ProductDashboard = () => {
                 </div>
               </div>
 
-              {/* Variants (edit) */}
               <VariantSection
                 sizes={selectedProduct.sizes   || []}
                 colors={selectedProduct.colors || []}
                 isEdit={true}
               />
 
-              {/* Image */}
               <div className="space-y-2">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Product Image</label>
                 <div className="flex gap-3 items-center">
@@ -841,7 +806,6 @@ const ProductDashboard = () => {
                 <p className="text-[10px] text-slate-400">JPEG, PNG or WebP · max 5 MB</p>
               </div>
 
-              {/* Publish toggle */}
               <div className="flex items-center justify-between pt-2">
                 <div>
                   <p className="text-[12px] font-bold text-slate-800 uppercase">Publish immediately</p>
@@ -856,7 +820,6 @@ const ProductDashboard = () => {
               </div>
             </div>
 
-            {/* Footer */}
             <div className="px-6 py-5 border-t flex items-center justify-between bg-slate-50/20">
               <button
                 type="button" onClick={handleDelete} disabled={isLoading}
@@ -884,11 +847,10 @@ const ProductDashboard = () => {
         </div>
       )}
 
-      {/* ─── DELETE CONFIRMATION MODAL ─────────────────────────────────────────── */}
+      {/* DELETE CONFIRMATION MODAL */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden text-center p-8 relative">
-            {/* Close button */}
             <button
               onClick={() => setIsDeleteModalOpen(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
@@ -896,7 +858,6 @@ const ProductDashboard = () => {
               <X size={18} />
             </button>
 
-            {/* Warning icon */}
             <div className="flex justify-center mb-5">
               <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center">
                 <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
@@ -905,13 +866,11 @@ const ProductDashboard = () => {
               </div>
             </div>
 
-            {/* Text */}
             <h2 className="text-[17px] font-bold text-slate-900 mb-2">Delete this product?</h2>
             <p className="text-[12px] text-slate-500 leading-relaxed mb-7">
               This product will be permanently deleted from your store and cannot be recovered.
             </p>
 
-            {/* Buttons */}
             <div className="flex gap-3">
               <button
                 onClick={confirmDelete}
@@ -941,15 +900,18 @@ const ProductDashboard = () => {
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
-const SidebarLink = ({ href, icon, label, active = false }) => (
-  <a
-    href={href}
+
+const SidebarLink = ({ to, icon, label, active = false }) => (
+  <Link
+    to={to}
     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all ${
-      active ? 'bg-slate-50 text-[#125852]' : 'text-slate-400 hover:text-slate-900'
+      active
+        ? 'bg-[#E0F2F1] text-[#125852]'
+        : 'text-slate-400 hover:text-slate-900'
     }`}
   >
     {icon}<span>{label}</span>
-  </a>
+  </Link>
 );
 
 const StatCard = ({ label, value, icon }) => (
