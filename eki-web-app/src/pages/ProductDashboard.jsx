@@ -27,14 +27,14 @@ const COLOR_OPTIONS = [
   'Beige', 'Maroon', 'Teal', 'Gold', 'Silver',
 ];
 
-// // Dot colours for visual swatches in the UI
-// const COLOR_SWATCHES = {
-//   Black: '#1a1a1a', White: '#f5f5f5', Red: '#ef4444', Blue: '#3b82f6',
-//   Green: '#22c55e', Yellow: '#eab308', Orange: '#f97316', Purple: '#a855f7',
-//   Pink: '#ec4899', Brown: '#92400e', Grey: '#6b7280', Navy: '#1e3a5f',
-//   Beige: '#d2b48c', Maroon: '#800000', Teal: '#14b8a6', Gold: '#d4af37',
-//   Silver: '#c0c0c0',
-// };
+// Dot colours for visual swatches in the UI
+const COLOR_SWATCHES = {
+  Black: '#1a1a1a', White: '#f5f5f5', Red: '#ef4444', Blue: '#3b82f6',
+  Green: '#22c55e', Yellow: '#eab308', Orange: '#f97316', Purple: '#a855f7',
+  Pink: '#ec4899', Brown: '#92400e', Grey: '#6b7280', Navy: '#1e3a5f',
+  Beige: '#d2b48c', Maroon: '#800000', Teal: '#14b8a6', Gold: '#d4af37',
+  Silver: '#c0c0c0',
+};
 
 const getCurrencySymbol = (country) => {
   const map = {
@@ -1177,6 +1177,15 @@ const StatCard = ({ label, value, icon }) => (
 
 // ── UPDATED ProductCard: shows color-variant image thumbnails instead of "X photos" badge ──
 const ProductCard = ({ product, currencySymbol, onClick }) => {
+  // Local copy so ProductCard is self-contained regardless of bundle splitting
+  const COLOR_SWATCHES = {
+    Black: '#1a1a1a', White: '#f5f5f5', Red: '#ef4444', Blue: '#3b82f6',
+    Green: '#22c55e', Yellow: '#eab308', Orange: '#f97316', Purple: '#a855f7',
+    Pink: '#ec4899', Brown: '#92400e', Grey: '#6b7280', Navy: '#1e3a5f',
+    Beige: '#d2b48c', Maroon: '#800000', Teal: '#14b8a6', Gold: '#d4af37',
+    Silver: '#c0c0c0',
+  };
+
   const rawQty = product.inventory_quality || product.qty || 'Medium';
   const qty = QTY_DISPLAY[rawQty] || rawQty;
 
