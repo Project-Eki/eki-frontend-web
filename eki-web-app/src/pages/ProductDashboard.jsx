@@ -1175,10 +1175,12 @@ const StatCard = ({ label, value, icon }) => (
   </div>
 );
 
-// ── UPDATED ProductCard: shows color-variant image thumbnails instead of "X photos" badge ──
+// ── ProductCard: main image shown, clicking the photo count badge reveals color variant thumbnails ──
 const ProductCard = ({ product, currencySymbol, onClick }) => {
-  // Local copy so ProductCard is self-contained regardless of bundle splitting
-  const COLOR_SWATCHES = {
+  const [activeColorIdx, setActiveColorIdx] = React.useState(0);
+  const [showColorPicker, setShowColorPicker] = React.useState(false);
+
+  const LOCAL_SWATCHES = {
     Black: '#1a1a1a', White: '#f5f5f5', Red: '#ef4444', Blue: '#3b82f6',
     Green: '#22c55e', Yellow: '#eab308', Orange: '#f97316', Purple: '#a855f7',
     Pink: '#ec4899', Brown: '#92400e', Grey: '#6b7280', Navy: '#1e3a5f',
@@ -1196,9 +1198,8 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
     return 'bg-teal-50 text-teal-600';
   };
 
-  const sku = product.sku || product.detail?.sku || product.listing_detail?.sku || '';
+  const sku    = product.sku || product.detail?.sku || product.listing_detail?.sku || '';
   const images = product.images ?? [];
-  const imageUrl = images[0]?.image || product.image_url || null;
 
   const parseSaved = (val) => {
     if (!val) return [];
@@ -1208,35 +1209,127 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
   const sizes  = parseSaved(product.sizes  || product.size_variants);
   const colors = parseSaved(product.colors || product.color_variants);
 
-  // Build color→image map: images after index 0 are treated as color variant photos
-  // Each subsequent image maps to the color at that position (best-effort)
-  const colorImages = colors.map((color, i) => ({
+  // Each color maps to the image at index (colorIdx + 1); index 0 is always the main photo
+  const colorVariants = colors.map((color, i) => ({
     color,
-    src: images[i + 1]?.image || null, // index 0 is main; i+1 maps to color i
+    src: images[i + 1]?.image || null,
   }));
 
+  // Active main image: when color picker open use selected color image, else images[0]
+  const activeVariantSrc = showColorPicker && colorVariants[activeColorIdx]?.src || null;
+  const mainImageUrl     = activeVariantSrc || images[0]?.image || product.image_url || null;
+  const totalPhotos      = images.length;
+
+  // Build the tray items — prefer color-labelled variants; fall back to raw image list
+  const trayItems = colorVariants.length > 0
+    ? colorVariants
+    : images.map((img, i) => ({ color: null, src: img.image, idx: i }));
+
   return (
-    <div onClick={onClick} className="bg-white rounded-xl border border-slate-100 overflow-hidden hover:shadow-lg transition-all group cursor-pointer">
-      <div className="relative h-48 bg-slate-50 p-4 flex items-center justify-center">
-        {imageUrl ? (
-          <img src={imageUrl} alt={product.title} className="w-full h-full object-contain" />
+    <div className="bg-white rounded-xl border border-slate-100 overflow-hidden hover:shadow-lg transition-all group cursor-pointer">
+
+      {/* ── Main image area ── */}
+      <div className="relative h-48 bg-slate-50 p-4 flex items-center justify-center" onClick={onClick}>
+        {mainImageUrl ? (
+          <img src={mainImageUrl} alt={product.title} className="w-full h-full object-contain transition-all duration-300" />
         ) : (
           <ShoppingBag className="text-slate-200" size={40} />
         )}
+
+        {/* Quality badge */}
         <span className={`absolute top-3 right-3 px-2.5 py-1 rounded-md text-[9px] font-black uppercase shadow-sm ${getQualityColor()}`}>
           {qty}
         </span>
+
+        {/* Live/Draft badge */}
         <span className={`absolute bottom-3 right-3 px-2 py-0.5 rounded-md text-[8px] font-black uppercase ${
           product.is_published ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
         }`}>
           {product.is_published ? 'Live' : 'Draft'}
         </span>
+
+        {/* Edit pencil */}
         <div className="absolute top-3 left-3 bg-white/90 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
           <Pencil size={12} className="text-[#125852]" />
         </div>
+
+        {/* ── Photo count button — always visible when >1 image, click toggles tray ── */}
+        {totalPhotos > 0 && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setShowColorPicker((v) => !v); }}
+            className={`absolute bottom-3 left-3 text-white text-[8px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 transition-all shadow ${
+              showColorPicker
+                ? 'bg-[#F5B841] hover:bg-[#E0A83B]'
+                : 'bg-black/60 hover:bg-black/80'
+            }`}
+          >
+            <ImagePlus size={9} />
+            {totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}
+            <span className="ml-0.5">{showColorPicker ? '▲' : '▼'}</span>
+          </button>
+        )}
       </div>
 
-      <div className="p-5 border-t border-slate-50">
+      {/* ── Color / image tray — expands when badge is clicked ── */}
+      {showColorPicker && trayItems.length > 0 && (
+        <div
+          className="px-3 pt-2.5 pb-3 bg-white border-t-2 border-[#F5B841]/30"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <p className="text-[9px] font-bold text-slate-400 uppercase mb-2 tracking-wider">
+            {colorVariants.length > 0 ? 'Select Color' : 'All Photos'}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {trayItems.map(({ color, src }, i) => (
+              <button
+                key={color ?? i}
+                type="button"
+                title={color ?? `Photo ${i + 1}`}
+                onClick={() => setActiveColorIdx(i)}
+                className={`relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 transition-all border-2 ${
+                  activeColorIdx === i
+                    ? 'border-[#F5B841] shadow-lg scale-105'
+                    : 'border-slate-200 hover:border-[#F5B841]/60 hover:scale-102'
+                }`}
+              >
+                {src ? (
+                  <img src={src} alt={color ?? `Photo ${i + 1}`} className="w-full h-full object-cover" />
+                ) : (
+                  <div
+                    className="w-full h-full flex items-center justify-center bg-slate-100"
+                    style={color ? { backgroundColor: (LOCAL_SWATCHES[color] || '#ccc') + '22' } : {}}
+                  >
+                    {color ? (
+                      <span
+                        className="w-7 h-7 rounded-full border-2 border-white shadow"
+                        style={{ backgroundColor: LOCAL_SWATCHES[color] || '#ccc' }}
+                      />
+                    ) : (
+                      <ShoppingBag size={16} className="text-slate-300" />
+                    )}
+                  </div>
+                )}
+                {/* Label strip */}
+                <span
+                  className="absolute bottom-0 left-0 right-0 text-center text-[5px] font-black py-px truncate px-0.5"
+                  style={{
+                    backgroundColor: color
+                      ? (LOCAL_SWATCHES[color] || '#125852') + 'dd'
+                      : 'rgba(0,0,0,0.55)',
+                    color: '#fff',
+                  }}
+                >
+                  {color ? color.toUpperCase() : `#${i + 1}`}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Card body ── */}
+      <div className="p-5 border-t border-slate-50" onClick={onClick}>
         <p className="text-[9px] font-black text-[#125852] uppercase mb-1 tracking-wider">{product.category}</p>
         <h4 className="text-[13px] font-bold text-slate-900 mb-1 truncate">{product.title}</h4>
         <div className="text-[10px] text-slate-400 font-medium mb-2 uppercase">
@@ -1252,60 +1345,18 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
           </div>
         )}
 
-        {/* ── REPLACED: color-variant image thumbnails (like the screenshot's "Select Color" row) ── */}
-        {colorImages.length > 0 && (
-          <div className="mb-3">
-            <p className="text-[9px] font-bold text-slate-400 uppercase mb-1.5">Color Variants</p>
-            <div className="flex flex-wrap gap-1.5">
-              {colorImages.slice(0, 5).map(({ color, src }, i) => (
-                <div
-                  key={color}
-                  title={color}
-                  className={`relative w-10 h-10 rounded-lg overflow-hidden border-2 flex-shrink-0 transition-all ${
-                    i === 0 ? 'border-[#F5B841]' : 'border-slate-200'
-                  }`}
-                >
-                  {src ? (
-                    <img src={src} alt={color} className="w-full h-full object-cover" />
-                  ) : (
-                    /* Fallback: solid swatch when no image uploaded yet */
-                    <div
-                      className="w-full h-full flex items-center justify-center"
-                      style={{ backgroundColor: (COLOR_SWATCHES[color] || '#ccc') + '33' }}
-                    >
-                      <span
-                        className="w-5 h-5 rounded-full border border-white shadow-sm"
-                        style={{ backgroundColor: COLOR_SWATCHES[color] || '#ccc' }}
-                      />
-                    </div>
-                  )}
-                  {/* Color name tooltip strip */}
-                  <span
-                    className="absolute bottom-0 left-0 right-0 text-center text-[5px] font-black py-px truncate"
-                    style={{ backgroundColor: (COLOR_SWATCHES[color] || '#125852') + 'cc', color: '#fff' }}
-                  >
-                    {color.toUpperCase()}
-                  </span>
-                </div>
-              ))}
-              {colorImages.length > 5 && (
-                <div className="w-10 h-10 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center flex-shrink-0">
-                  <span className="text-[8px] font-bold text-slate-400">+{colorImages.length - 5}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Fallback: if no colors defined, show plain color dot swatches as before */}
-        {colorImages.length === 0 && colors.length > 0 && (
+        {/* Dot swatches row (always visible, compact) */}
+        {colors.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-3">
-            {colors.slice(0, 8).map((c) => (
+            {colors.slice(0, 8).map((c, i) => (
               <span
                 key={c}
                 title={c}
-                className="w-4 h-4 rounded-full border border-slate-200 shadow-sm flex-shrink-0"
-                style={{ backgroundColor: COLOR_SWATCHES[c] || '#ccc' }}
+                onClick={(e) => { e.stopPropagation(); setActiveColorIdx(i); setShowColorPicker(true); }}
+                className={`w-4 h-4 rounded-full border-2 shadow-sm flex-shrink-0 cursor-pointer transition-transform hover:scale-110 ${
+                  activeColorIdx === i && showColorPicker ? 'border-[#F5B841]' : 'border-white'
+                }`}
+                style={{ backgroundColor: LOCAL_SWATCHES[c] || '#ccc' }}
               />
             ))}
             {colors.length > 8 && (
