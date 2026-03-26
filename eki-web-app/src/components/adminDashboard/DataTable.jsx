@@ -14,7 +14,7 @@ const statusStyles = {
   Rejected: 'bg-red-100 text-red-700',
 };
 
-const DataTable = ({ title, columns, data = [], onView, onEdit, onDelete, tableType = 'default' }) => {
+const DataTable = ({ title, columns, data = [], onView, onEdit, onDelete, tableType = 'default',hideActions = false }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
 
@@ -121,6 +121,7 @@ const DataTable = ({ title, columns, data = [], onView, onEdit, onDelete, tableT
         title={getModalTitle()}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        hideActions={hideActions}   // PASS IT THROUGH
       />
     </>
   );

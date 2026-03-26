@@ -17,8 +17,8 @@ import {
   SignoutUser,
 } from '../services/authService';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-// SIZE_OPTIONS must exactly match Django's ProductSize choices
+
+// SIZE_OPTIONS 
 const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'one_size'];
 const COLOR_OPTIONS = [
   'Black', 'White', 'Red', 'Blue', 'Green', 'Yellow',
@@ -56,6 +56,7 @@ const ProductDashboard = () => {
   const [products, setProducts]                     = useState([]);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen]       = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen]   = useState(false);
   const [selectedProduct, setSelectedProduct]       = useState(null);
   const [isPublished, setIsPublished]               = useState(true);
   const [isLoading, setIsLoading]                   = useState(false);
@@ -278,9 +279,13 @@ const ProductDashboard = () => {
   };
 
   // ── DELETE ────────────────────────────────────────────────────────────────
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!selectedProduct?.id) return;
-    if (!window.confirm(`Delete "${selectedProduct.title}"? This cannot be undone.`)) return;
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleteModalOpen(false);
     setIsLoading(true);
     try {
       await deleteProductListing(selectedProduct.id);
@@ -498,9 +503,9 @@ const ProductDashboard = () => {
         </main>
       </div>
 
-      {/* ══════════════════════════════════════════════
+      {/*
           CREATE PRODUCT MODAL
-      ══════════════════════════════════════════════ */}
+       */}
       {isProductModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <form
@@ -680,9 +685,9 @@ const ProductDashboard = () => {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════
-          EDIT / DELETE MODAL
-      ══════════════════════════════════════════════ */}
+     
+         // EDIT / DELETE MODAL//
+    
       {isEditModalOpen && selectedProduct && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <form
@@ -876,6 +881,53 @@ const ProductDashboard = () => {
               </div>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* ─── DELETE CONFIRMATION MODAL ─────────────────────────────────────────── */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden text-center p-8 relative">
+            {/* Close button */}
+            <button
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Warning icon */}
+            <div className="flex justify-center mb-5">
+              <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
+                  <span className="text-red-500 text-xl font-black">!</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Text */}
+            <h2 className="text-[17px] font-bold text-slate-900 mb-2">Delete this product?</h2>
+            <p className="text-[12px] text-slate-500 leading-relaxed mb-7">
+              This product will be permanently deleted from your store and cannot be recovered.
+            </p>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={confirmDelete}
+                disabled={isLoading}
+                className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white text-[12px] font-bold rounded-xl transition-all active:scale-95 disabled:opacity-60"
+              >
+                {isLoading ? 'Deleting...' : 'Delete'}
+              </button>
+              <button
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="flex-1 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-[12px] font-bold rounded-xl transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
