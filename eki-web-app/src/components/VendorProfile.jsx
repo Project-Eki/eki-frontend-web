@@ -1,20 +1,18 @@
 import React from 'react';
-import { Mail, Ban, FileText, CheckCircle, Loader2, User,
-         Phone, MapPin, Clock, Hash, Building2 } from 'lucide-react';
+import {
+  Ban, FileText, CheckCircle, Loader2, User,
+  Phone, MapPin, Clock, Hash, Building2, AlertTriangle
+} from 'lucide-react';
 
-// Document status row component
 const DocRow = ({ label, hasDoc }) => (
   <div className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
     <span className="text-xs text-gray-600">{label}</span>
-    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-      hasDoc ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"
-    }`}>
+    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${hasDoc ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"}`}>
       {hasDoc ? "Submitted" : "Missing"}
     </span>
   </div>
 );
 
-// Info row component
 const InfoRow = ({ icon: Icon, label, value }) => (
   <div className="flex items-start gap-2.5 py-2 border-b border-gray-50 last:border-0">
     <Icon size={13} className="text-gray-400 mt-0.5 shrink-0" />
@@ -25,38 +23,40 @@ const InfoRow = ({ icon: Icon, label, value }) => (
   </div>
 );
 
-const VendorProfile = ({ vendor, onApprove, onSuspend, actionLoading }) => {
-  const isPending   = vendor.status === "Pending";
+// VendorProfile
+//
+// Props:
+//   vendor           — vendor data object
+//   onApprove        — called when Approve is clicked
+//   onSuspend        — called when Suspend is clicked
+//   onReviewDocuments — NEW: opens the DocumentReviewModal in parent
+//   onTerminate      — NEW: opens the TerminateVendorModal in parent
+//   actionLoading    — disables buttons during API calls
+const VendorProfile = ({ vendor, onApprove, onSuspend, onReviewDocuments, onTerminate, actionLoading }) => {
+  const isPending   = vendor.status === "Pending" || vendor.status === "under_review";
   const isApproved  = vendor.status === "Approved" || vendor.status === "Verified";
   const isSuspended = vendor.status === "Suspended";
 
-  // Count how many documents were submitted
   const docList = [
-    { label: "Government Issued ID",      has: vendor.hasGovId    },
-    { label: "Country Issued ID",         has: vendor.hasCountryId},
-    { label: "Business License",          has: vendor.hasLicense  },
-    { label: "Tax Certificate",           has: vendor.hasTaxCert  },
-    { label: "Incorporation Certificate", has: vendor.hasIncCert  },
+    { label: "Government Issued ID",      has: vendor.hasGovId     },
+    { label: "Country Issued ID",         has: vendor.hasCountryId },
+    { label: "Business License",          has: vendor.hasLicense   },
+    { label: "Tax Certificate",           has: vendor.hasTaxCert   },
+    { label: "Incorporation Certificate", has: vendor.hasIncCert   },
   ];
   const submittedCount = docList.filter(d => d.has).length;
 
   return (
     <div className="p-6 space-y-6">
 
-      {/* ── Top: Avatar + name + status ── */}
+      {/* Avatar + name + status */}
       <div className="flex items-center gap-4">
-        {/* Profile picture from vendor profile API, fallback to initials */}
         {vendor.profilePicture ? (
-          <img
-            src={vendor.profilePicture}
-            alt={vendor.name}
-            className="w-16 h-16 rounded-full object-cover border-2 border-gray-100 shrink-0"
-          />
+          <img src={vendor.profilePicture} alt={vendor.name}
+            className="w-16 h-16 rounded-full object-cover border-2 border-gray-100 shrink-0"/>
         ) : (
           <div className="w-16 h-16 rounded-full bg-teal-50 flex items-center justify-center shrink-0 border-2 border-teal-100">
-            <span className="text-xl font-bold text-teal-600">
-              {(vendor.name || "?")[0].toUpperCase()}
-            </span>
+            <span className="text-xl font-bold text-teal-600">{(vendor.name || "?")[0].toUpperCase()}</span>
           </div>
         )}
         <div>
@@ -66,85 +66,67 @@ const VendorProfile = ({ vendor, onApprove, onSuspend, actionLoading }) => {
             isApproved  ? "bg-green-50 text-green-600 border-green-100" :
             isSuspended ? "bg-red-50 text-red-500 border-red-100" :
                           "bg-yellow-50 text-yellow-600 border-yellow-100"
-          }`}>
-            {vendor.status}
-          </span>
+          }`}>{vendor.status}</span>
         </div>
       </div>
 
-      {/* ── Business Information — from onboarding steps ── */}
+      {/* Business Information */}
       <div>
-        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
-          Business Information
-        </h4>
+        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Business Information</h4>
         <div className="bg-gray-50 rounded-xl px-4 py-1">
-          <InfoRow icon={Building2} label="Business Name"     value={vendor.businessName}     />
-          <InfoRow icon={FileText}  label="Business Type"     value={vendor.businessType}     />
-          <InfoRow icon={Hash}      label="Category"          value={vendor.businessCategory}  />
-          <InfoRow icon={Phone}     label="Business Phone"    value={vendor.businessPhone}     />
-          <InfoRow icon={Mail}      label="Business Email"    value={vendor.businessEmail}     />
-          <InfoRow icon={Hash}      label="Registration No."  value={vendor.registrationNo}    />
-          <InfoRow icon={Hash}      label="Tax ID (TIN)"      value={vendor.taxId}             />
+          <InfoRow icon={Building2} label="Business Name"    value={vendor.businessName}    />
+          <InfoRow icon={FileText}  label="Business Type"    value={vendor.businessType}    />
+          <InfoRow icon={Hash}      label="Category"         value={vendor.businessCategory}/>
+          <InfoRow icon={Phone}     label="Business Phone"   value={vendor.businessPhone}   />
+          {/* FIX: removed Mail row since we removed the Email button — consistency */}
+          <InfoRow icon={Hash}      label="Registration No." value={vendor.registrationNo}  />
+          <InfoRow icon={Hash}      label="Tax ID (TIN)"     value={vendor.taxId}           />
         </div>
       </div>
 
-      {/* ── Location — from onboarding step 4 ── */}
+      {/* Location */}
       <div>
-        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
-          Location
-        </h4>
+        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Location</h4>
         <div className="bg-gray-50 rounded-xl px-4 py-1">
-          <InfoRow icon={MapPin} label="Address"  value={vendor.address} />
-          <InfoRow icon={MapPin} label="City"     value={vendor.city}    />
-          <InfoRow icon={MapPin} label="Country"  value={vendor.country} />
+          <InfoRow icon={MapPin} label="Address" value={vendor.address}/>
+          <InfoRow icon={MapPin} label="City"    value={vendor.city}   />
+          <InfoRow icon={MapPin} label="Country" value={vendor.country}/>
         </div>
       </div>
 
-      {/* ── Operating Hours ── */}
+      {/* Operating Hours */}
       <div>
-        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
-          Operating Hours
-        </h4>
+        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Operating Hours</h4>
         <div className="bg-gray-50 rounded-xl px-4 py-1">
-          <InfoRow icon={Clock} label="Opens"  value={vendor.openingTime} />
-          <InfoRow icon={Clock} label="Closes" value={vendor.closingTime} />
+          <InfoRow icon={Clock} label="Opens"  value={vendor.openingTime}/>
+          <InfoRow icon={Clock} label="Closes" value={vendor.closingTime}/>
         </div>
       </div>
 
-      {/* ── Submitted Documents — from onboarding step 5 ── */}
+      {/* Documents */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-            Documents
-          </h4>
+          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Documents</h4>
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
             submittedCount === 5 ? "bg-green-50 text-green-600" :
-            submittedCount > 0  ? "bg-amber-50 text-amber-600"  :
+            submittedCount > 0  ? "bg-amber-50 text-amber-600" :
                                    "bg-red-50 text-red-500"
-          }`}>
-            {submittedCount}/5 submitted
-          </span>
+          }`}>{submittedCount}/5 submitted</span>
         </div>
         <div className="bg-gray-50 rounded-xl px-4 py-1">
-          {docList.map(d => (
-            <DocRow key={d.label} label={d.label} hasDoc={d.has} />
-          ))}
+          {docList.map(d => <DocRow key={d.label} label={d.label} hasDoc={d.has}/>)}
         </div>
-        {/* Review Documents button — now opens a descriptive view */}
-        {/* When backend adds document URLs, replace this alert with a download/preview */}
+
+        {/* Review Documents — now opens the DocumentReviewModal in AdminManagement */}
         <button
-          onClick={() => alert(
-            `Documents for ${vendor.name}:\n\n` +
-            docList.map(d => `${d.has ? "✓" : "✗"} ${d.label}`).join("\n") +
-            `\n\n${submittedCount}/5 documents submitted.\n\nFull document viewing requires the backend to provide document URLs.`
-          )}
+          onClick={onReviewDocuments}
           className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 bg-[#234E4D] text-white text-xs font-bold rounded-xl hover:opacity-90 transition-opacity shadow-sm"
         >
-          <FileText size={14} /> Review Documents ({submittedCount}/5)
+          <FileText size={14}/> Review Documents ({submittedCount}/5)
         </button>
       </div>
 
-      {/* ── Pending: days + approval deadline ── */}
+      {/* Days pending row */}
       {isPending && (
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-amber-50 p-3 rounded-xl text-center border border-amber-100">
@@ -158,43 +140,44 @@ const VendorProfile = ({ vendor, onApprove, onSuspend, actionLoading }) => {
         </div>
       )}
 
-      {/* ── Action Buttons ── */}
+      {/* ── ACTION BUTTONS ──
+      */}
       <div className="space-y-2 pt-2 border-t border-gray-100">
+        {/* Approve — only for pending/under_review */}
         {isPending && (
-          <button
-            onClick={onApprove}
-            disabled={actionLoading}
-            className="w-full flex items-center justify-center gap-2 py-2.5 bg-green-600 text-white text-xs font-bold rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
-          >
-            {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+          <button onClick={onApprove} disabled={actionLoading}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-green-600 text-white text-xs font-bold rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50">
+            {actionLoading ? <Loader2 size={14} className="animate-spin"/> : <CheckCircle size={14}/>}
             Approve Vendor
           </button>
         )}
 
-        <div className="flex gap-2">
-          <button className="flex-1 flex items-center justify-center gap-2 py-2 border border-gray-200 rounded-xl text-[11px] font-bold text-gray-600 hover:bg-gray-50 transition-colors">
-            <Mail size={13} /> Email Vendor
+        {/* Reinstate — only for suspended */}
+        {isSuspended && (
+          <button onClick={onApprove} disabled={actionLoading}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-green-600 text-white text-xs font-bold rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50">
+            {actionLoading ? <Loader2 size={14} className="animate-spin"/> : <CheckCircle size={14}/>}
+            Reinstate Vendor
           </button>
+        )}
+
+        <div className="flex gap-2">
+          {/* Suspend — shown when not already suspended */}
           {!isSuspended && (
-            <button
-              onClick={onSuspend}
-              disabled={actionLoading}
-              className="flex-1 flex items-center justify-center gap-2 py-2 border border-red-100 rounded-xl text-[11px] font-bold text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
-            >
-              {actionLoading ? <Loader2 size={13} className="animate-spin" /> : <Ban size={13} />}
+            <button onClick={onSuspend} disabled={actionLoading}
+              className="flex-1 flex items-center justify-center gap-2 py-2 border border-orange-100 rounded-xl text-[11px] font-bold text-orange-500 hover:bg-orange-50 transition-colors disabled:opacity-50">
+              {actionLoading ? <Loader2 size={13} className="animate-spin"/> : <Ban size={13}/>}
               Suspend
             </button>
           )}
-          {isSuspended && (
-            <button
-              onClick={onApprove}
-              disabled={actionLoading}
-              className="flex-1 flex items-center justify-center gap-2 py-2 border border-green-100 rounded-xl text-[11px] font-bold text-green-600 hover:bg-green-50 transition-colors disabled:opacity-50"
-            >
-              {actionLoading ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle size={13} />}
-              Reinstate
-            </button>
-          )}
+
+          {/* Terminate — always shown, opens confirmation modal */}
+          {/* This is a destructive action — it requires the admin to type TERMINATE */}
+          <button onClick={onTerminate} disabled={actionLoading}
+            className={`${!isSuspended ? 'flex-1' : 'w-full'} flex items-center justify-center gap-2 py-2 border border-red-200 rounded-xl text-[11px] font-bold text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50`}>
+            <AlertTriangle size={13}/>
+            Terminate
+          </button>
         </div>
       </div>
     </div>
@@ -202,6 +185,214 @@ const VendorProfile = ({ vendor, onApprove, onSuspend, actionLoading }) => {
 };
 
 export default VendorProfile;
+
+
+
+
+// import React from 'react';
+// import { Mail, Ban, FileText, CheckCircle, Loader2, User,
+//          Phone, MapPin, Clock, Hash, Building2 } from 'lucide-react';
+
+// // Document status row component
+// const DocRow = ({ label, hasDoc }) => (
+//   <div className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+//     <span className="text-xs text-gray-600">{label}</span>
+//     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+//       hasDoc ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"
+//     }`}>
+//       {hasDoc ? "Submitted" : "Missing"}
+//     </span>
+//   </div>
+// );
+
+// // Info row component
+// const InfoRow = ({ icon: Icon, label, value }) => (
+//   <div className="flex items-start gap-2.5 py-2 border-b border-gray-50 last:border-0">
+//     <Icon size={13} className="text-gray-400 mt-0.5 shrink-0" />
+//     <div className="flex-1 min-w-0">
+//       <p className="text-[10px] font-bold text-gray-400 uppercase">{label}</p>
+//       <p className="text-xs text-gray-700 font-medium mt-0.5 break-words">{value || "—"}</p>
+//     </div>
+//   </div>
+// );
+
+// const VendorProfile = ({ vendor, onApprove, onSuspend, actionLoading }) => {
+//   const isPending   = vendor.status === "Pending";
+//   const isApproved  = vendor.status === "Approved" || vendor.status === "Verified";
+//   const isSuspended = vendor.status === "Suspended";
+
+//   // Count how many documents were submitted
+//   const docList = [
+//     { label: "Government Issued ID",      has: vendor.hasGovId    },
+//     { label: "Country Issued ID",         has: vendor.hasCountryId},
+//     { label: "Business License",          has: vendor.hasLicense  },
+//     { label: "Tax Certificate",           has: vendor.hasTaxCert  },
+//     { label: "Incorporation Certificate", has: vendor.hasIncCert  },
+//   ];
+//   const submittedCount = docList.filter(d => d.has).length;
+
+//   return (
+//     <div className="p-6 space-y-6">
+
+//       {/* ── Top: Avatar + name + status ── */}
+//       <div className="flex items-center gap-4">
+//         {/* Profile picture from vendor profile API, fallback to initials */}
+//         {vendor.profilePicture ? (
+//           <img
+//             src={vendor.profilePicture}
+//             alt={vendor.name}
+//             className="w-16 h-16 rounded-full object-cover border-2 border-gray-100 shrink-0"
+//           />
+//         ) : (
+//           <div className="w-16 h-16 rounded-full bg-teal-50 flex items-center justify-center shrink-0 border-2 border-teal-100">
+//             <span className="text-xl font-bold text-teal-600">
+//               {(vendor.name || "?")[0].toUpperCase()}
+//             </span>
+//           </div>
+//         )}
+//         <div>
+//           <h3 className="font-bold text-gray-900 text-base">{vendor.name}</h3>
+//           <p className="text-xs text-gray-500">{vendor.email || "—"}</p>
+//           <span className={`mt-1.5 inline-block px-2.5 py-0.5 text-[10px] font-bold rounded-full uppercase border ${
+//             isApproved  ? "bg-green-50 text-green-600 border-green-100" :
+//             isSuspended ? "bg-red-50 text-red-500 border-red-100" :
+//                           "bg-yellow-50 text-yellow-600 border-yellow-100"
+//           }`}>
+//             {vendor.status}
+//           </span>
+//         </div>
+//       </div>
+
+//       {/* ── Business Information — from onboarding steps ── */}
+//       <div>
+//         <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+//           Business Information
+//         </h4>
+//         <div className="bg-gray-50 rounded-xl px-4 py-1">
+//           <InfoRow icon={Building2} label="Business Name"     value={vendor.businessName}     />
+//           <InfoRow icon={FileText}  label="Business Type"     value={vendor.businessType}     />
+//           <InfoRow icon={Hash}      label="Category"          value={vendor.businessCategory}  />
+//           <InfoRow icon={Phone}     label="Business Phone"    value={vendor.businessPhone}     />
+//           <InfoRow icon={Mail}      label="Business Email"    value={vendor.businessEmail}     />
+//           <InfoRow icon={Hash}      label="Registration No."  value={vendor.registrationNo}    />
+//           <InfoRow icon={Hash}      label="Tax ID (TIN)"      value={vendor.taxId}             />
+//         </div>
+//       </div>
+
+//       {/* ── Location — from onboarding step 4 ── */}
+//       <div>
+//         <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+//           Location
+//         </h4>
+//         <div className="bg-gray-50 rounded-xl px-4 py-1">
+//           <InfoRow icon={MapPin} label="Address"  value={vendor.address} />
+//           <InfoRow icon={MapPin} label="City"     value={vendor.city}    />
+//           <InfoRow icon={MapPin} label="Country"  value={vendor.country} />
+//         </div>
+//       </div>
+
+//       {/* ── Operating Hours ── */}
+//       <div>
+//         <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+//           Operating Hours
+//         </h4>
+//         <div className="bg-gray-50 rounded-xl px-4 py-1">
+//           <InfoRow icon={Clock} label="Opens"  value={vendor.openingTime} />
+//           <InfoRow icon={Clock} label="Closes" value={vendor.closingTime} />
+//         </div>
+//       </div>
+
+//       {/* ── Submitted Documents — from onboarding step 5 ── */}
+//       <div>
+//         <div className="flex items-center justify-between mb-3">
+//           <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+//             Documents
+//           </h4>
+//           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+//             submittedCount === 5 ? "bg-green-50 text-green-600" :
+//             submittedCount > 0  ? "bg-amber-50 text-amber-600"  :
+//                                    "bg-red-50 text-red-500"
+//           }`}>
+//             {submittedCount}/5 submitted
+//           </span>
+//         </div>
+//         <div className="bg-gray-50 rounded-xl px-4 py-1">
+//           {docList.map(d => (
+//             <DocRow key={d.label} label={d.label} hasDoc={d.has} />
+//           ))}
+//         </div>
+//         {/* Review Documents button — now opens a descriptive view */}
+//         {/* When backend adds document URLs, replace this alert with a download/preview */}
+//         <button
+//           onClick={() => alert(
+//             `Documents for ${vendor.name}:\n\n` +
+//             docList.map(d => `${d.has ? "✓" : "✗"} ${d.label}`).join("\n") +
+//             `\n\n${submittedCount}/5 documents submitted.\n\nFull document viewing requires the backend to provide document URLs.`
+//           )}
+//           className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 bg-[#234E4D] text-white text-xs font-bold rounded-xl hover:opacity-90 transition-opacity shadow-sm"
+//         >
+//           <FileText size={14} /> Review Documents ({submittedCount}/5)
+//         </button>
+//       </div>
+
+//       {/* ── Pending: days + approval deadline ── */}
+//       {isPending && (
+//         <div className="grid grid-cols-2 gap-3">
+//           <div className="bg-amber-50 p-3 rounded-xl text-center border border-amber-100">
+//             <p className="text-[9px] text-amber-600 font-bold uppercase mb-1">Days Pending</p>
+//             <p className="text-lg font-black text-amber-700">{vendor.daysPending ?? "—"}</p>
+//           </div>
+//           <div className="bg-gray-50 p-3 rounded-xl text-center">
+//             <p className="text-[9px] text-gray-400 font-bold uppercase mb-1">Submitted</p>
+//             <p className="text-xs font-bold text-gray-700">{vendor.submitted || "—"}</p>
+//           </div>
+//         </div>
+//       )}
+
+//       {/* ── Action Buttons ── */}
+//       <div className="space-y-2 pt-2 border-t border-gray-100">
+//         {isPending && (
+//           <button
+//             onClick={onApprove}
+//             disabled={actionLoading}
+//             className="w-full flex items-center justify-center gap-2 py-2.5 bg-green-600 text-white text-xs font-bold rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
+//           >
+//             {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+//             Approve Vendor
+//           </button>
+//         )}
+
+//         <div className="flex gap-2">
+//           <button className="flex-1 flex items-center justify-center gap-2 py-2 border border-gray-200 rounded-xl text-[11px] font-bold text-gray-600 hover:bg-gray-50 transition-colors">
+//             <Mail size={13} /> Email Vendor
+//           </button>
+//           {!isSuspended && (
+//             <button
+//               onClick={onSuspend}
+//               disabled={actionLoading}
+//               className="flex-1 flex items-center justify-center gap-2 py-2 border border-red-100 rounded-xl text-[11px] font-bold text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+//             >
+//               {actionLoading ? <Loader2 size={13} className="animate-spin" /> : <Ban size={13} />}
+//               Suspend
+//             </button>
+//           )}
+//           {isSuspended && (
+//             <button
+//               onClick={onApprove}
+//               disabled={actionLoading}
+//               className="flex-1 flex items-center justify-center gap-2 py-2 border border-green-100 rounded-xl text-[11px] font-bold text-green-600 hover:bg-green-50 transition-colors disabled:opacity-50"
+//             >
+//               {actionLoading ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle size={13} />}
+//               Reinstate
+//             </button>
+//           )}
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default VendorProfile;
 
 
 
