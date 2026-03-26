@@ -101,7 +101,7 @@ const Login = () => {
       <Navbar />
 
       <div className="flex-1 flex w-full overflow-hidden">
-        {/* Left Side: Image Section - Takes exactly half */}
+        {/*  Image Section */}
         <div className="hidden lg:block lg:w-1/2 relative overflow-hidden bg-white">
           {/* Decorative Shapes */}
           <div className="absolute -top-6 -left-6 w-32 h-32 border-4 border-[#235E5DFF] rounded-full opacity-20 z-10"></div>
@@ -109,7 +109,7 @@ const Login = () => {
           <div className="absolute top-1/3 -left-8 w-24 h-24 border-4 border-[#235E5DFF] rounded-lg opacity-10 transform -rotate-12 z-10"></div>
           <div className="absolute bottom-1/4 -right-8 w-28 h-28 border-4 border-[#EFB034] rounded-full opacity-20 z-10"></div>
           
-          {/* Image Container - Full height and width */}
+          {/* Image Container  */}
           <div className="relative z-20 w-full h-full flex items-center justify-center p-8">
             <div className="relative w-full h-full max-h-[70vh]">
               <img
@@ -122,7 +122,7 @@ const Login = () => {
           </div>
         </div>
 
-        {/* Right Side: Login Form Section - Takes exactly half */}
+        {/*  Login Form Section  */}
         <div className="w-full lg:w-1/2 flex items-center justify-center bg-white overflow-y-auto">
           <div className="w-full max-w-md px-8 py-6">
             <div className="mb-5 text-left">
