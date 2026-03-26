@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom' // Added useNavigate
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faSearch,
@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 
 const Navbar = () => {
   const { t, i18n } = useTranslation()
+  const navigate = useNavigate() // Added navigate hook
   const [isOpen, setIsOpen] = useState(false)
   const [isLanguageOpen, setIsLanguageOpen] = useState(false)
 
@@ -32,6 +33,29 @@ const Navbar = () => {
 
   const currentLanguage = languages.find(lang => lang.code === i18n.resolvedLanguage) || languages[0]
 
+  // Handle home navigation
+  const handleHomeClick = (e) => {
+    e.preventDefault()
+    // Check if we're on the home page
+    if (window.location.pathname === '/') {
+      // If on home page, scroll to home section
+      const homeSection = document.getElementById('home')
+      if (homeSection) {
+        homeSection.scrollIntoView({ behavior: 'smooth' })
+      }
+    } else {
+      // If not on home page, navigate to home page
+      navigate('/')
+      // After navigation, scroll to home section
+      setTimeout(() => {
+        const homeSection = document.getElementById('home')
+        if (homeSection) {
+          homeSection.scrollIntoView({ behavior: 'smooth' })
+        }
+      }, 100)
+    }
+  }
+
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">
       <div className="container mx-auto px-4 flex justify-between items-center h-14">
@@ -41,7 +65,7 @@ const Navbar = () => {
             <img 
               src={logoImage} 
               alt="Eki Logo" 
-              className="h-12 w-auto object-contain" // Increased from h-10 to h-12
+              className="h-12 w-auto object-contain"
             />
           </Link>
         </div>
@@ -50,9 +74,12 @@ const Navbar = () => {
         <div className="hidden lg:flex items-center">
           <ul className="flex list-none gap-4 items-center">
             <li>
-              <a href="#home" className="text-gray-700 text-sm font-semibold hover:text-[#efb034] transition-colors">
+              <button
+                onClick={handleHomeClick}
+                className="text-gray-700 text-sm font-semibold hover:text-[#efb034] transition-colors cursor-pointer"
+              >
                 {t('nav.home')}
-              </a>
+              </button>
             </li>
             <li>
               <Link to="/Login" className="text-gray-700 text-sm font-semibold hover:text-[#efb034] transition-colors">
@@ -117,15 +144,24 @@ const Navbar = () => {
         }`}
       >
         <div className="p-4 space-y-3">
+          <button
+            onClick={() => {
+              handleHomeClick()
+              setIsOpen(false)
+            }}
+            className="block w-full text-left font-medium text-gray-800 text-sm"
+          >
+            {t('nav.home')}
+          </button>
           <Link
-            to="/signin"
+            to="/Login"
             className="block font-medium text-gray-800 text-sm"
             onClick={() => setIsOpen(false)}
           >
             {t('nav.login')}
           </Link>
           <Link
-            to="/signup"
+            to="/vendorOnboarding"
             className="block w-full text-center bg-[#efb034] text-white py-2 rounded-lg text-sm font-bold"
             onClick={() => setIsOpen(false)}
           >

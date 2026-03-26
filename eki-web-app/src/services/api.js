@@ -69,7 +69,7 @@ api.interceptors.response.use(
 
 export default api;
 
-/* --- AUTH & REGISTRATION --- */
+/*  AUTH & REGISTRATION  */
 
 // Sign In (Your requirement: File name is "sign in")
 export const SigninUser = async ({ email, password }) => {
@@ -164,7 +164,7 @@ export const changePassword = async ({
   return response.data;
 };
 
-/* --- VENDOR ONBOARDING & PROFILE --- */
+/*  VENDOR ONBOARDING & PROFILE  */
 export const completeVendorOnboarding = async (formData) => {
   const data = new FormData();
 
@@ -270,7 +270,7 @@ export const updateVendorProfile = async (changedFields) => {
   return response.data;
 };
 
-/* --- LISTINGS & SERVICES --- */
+/*  LISTINGS & SERVICES  */
 
 // Fetch only "service" type listings
 export const getServices = async (status = '') => {

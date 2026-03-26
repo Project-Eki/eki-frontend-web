@@ -206,7 +206,7 @@ const VendorDashboard = () => {
         <nav className="flex-1 px-4 space-y-1">
           <SidebarLink to="/dashboard"         icon={<LayoutDashboard size={18} />} label="Dashboard" active />
           <SidebarLink to="/product-dashboard" icon={<ShoppingBag size={18} />}    label="Products" />
-          <SidebarLink to="/service"           icon={<Plus size={18} />}            label="Services" />
+          <SidebarLink to="/servicemanagement"           icon={<Plus size={18} />}            label="Services" />
           <SidebarLink to="/order-management"  icon={<Truck size={18} />}           label="Orders" />
           <SidebarLink to="/payment"           icon={<CreditCard size={18} />}      label="Payments" />
           <SidebarLink to="/reviews"           icon={<MessageSquare size={18} />}   label="Reviews" />
