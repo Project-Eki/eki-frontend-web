@@ -19,7 +19,7 @@ import {
   SignoutUser,
 } from '../services/authService';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Constants
 const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'one_size'];
 const COLOR_OPTIONS = [
   'Black', 'White', 'Red', 'Blue', 'Green', 'Yellow',
@@ -56,7 +56,7 @@ const CATEGORIES = [
 const MAX_IMAGES_PER_COLOR = 3;
 const MAX_GENERAL_IMAGES   = 6;
 
-// ─── blank form factory ───────────────────────────────────────────────────────
+// ─── blank form fact
 const blankForm = () => ({
   title: '', category: '', price: '', sku: '', qty: 'Medium',
   location: '', description: '',
@@ -68,7 +68,7 @@ const blankForm = () => ({
   colorImageFiles: {},
 });
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Main Component 
 const ProductDashboard = () => {
   const [viewType, setViewType]                     = useState('grid');
   const [products, setProducts]                     = useState([]);
@@ -136,7 +136,7 @@ const ProductDashboard = () => {
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: null }));
   };
 
-  // ─── General image handlers (create) ─────────────────────────────────────
+  // ─── General image handlers (create) 
   const handleFilesChange = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -162,7 +162,7 @@ const ProductDashboard = () => {
     }));
   };
 
-  // ─── Color image handlers (create) ───────────────────────────────────────
+  // ─── Color image handlers (create) 
   const handleColorFilesChange = (color, e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -195,7 +195,7 @@ const ProductDashboard = () => {
     }));
   };
 
-  // ─── General image handlers (edit) ───────────────────────────────────────
+  // ─── General image handlers (edit) 
   const handleEditFilesChange = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -236,7 +236,7 @@ const ProductDashboard = () => {
     }
   };
 
-  // ─── Color image handlers (edit) ─────────────────────────────────────────
+  // ─── Color image handlers (edit) 
   const handleEditColorFilesChange = (color, e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -269,7 +269,7 @@ const ProductDashboard = () => {
     }));
   };
 
-  // ─── Chip toggles ─────────────────────────────────────────────────────────
+  // ─── Chip toggles ────────────────
   const toggleChip = (field, value, isEdit = false) => {
     if (isEdit) {
       setSelectedProduct((prev) => {
@@ -432,7 +432,7 @@ const ProductDashboard = () => {
     p.sku?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // ─── VariantSection ───────────────────────────────────────────────────────
+  // ─── VariantSection ──────────────
   const VariantSection = ({ sizes, colors, isEdit = false }) => (
     <div className="space-y-5 border border-slate-100 rounded-xl p-4 bg-slate-50/50">
       <h4 className="text-[11px] font-bold uppercase text-slate-600 tracking-wider">Product Variants</h4>
@@ -491,7 +491,7 @@ const ProductDashboard = () => {
     </div>
   );
 
-  // ─── General ImageGrid ────────────────────────────────────────────────────
+  // ─── General ImageGrid ───────────
   const ImageGrid = ({
     existingImages = [],
     pendingImages  = [],
@@ -558,7 +558,7 @@ const ProductDashboard = () => {
     );
   };
 
-  // ─── ColorImageSection ────────────────────────────────────────────────────
+  // ─── ColorImageSection ───────────
   // Renders one upload row per selected color so buyers can see each colour variant
   const ColorImageSection = ({ colors, colorImageFiles, isEdit = false }) => {
     if (!colors || colors.length === 0) return null;
@@ -654,7 +654,8 @@ const ProductDashboard = () => {
           <img src={logo} alt="Eki" className="h-8 w-auto object-contain" />
         </div>
         <nav className="flex-1 px-4 space-y-1">
-          <SidebarLink to="/dashboard"         icon={<LayoutDashboard size={18} />} label="Dashboard" />
+          {/* ── FIXED: sidebar links now point to correct routes ── */}
+          <SidebarLink to="/vendor-dashboard"  icon={<LayoutDashboard size={18} />} label="Dashboard" />
           <SidebarLink to="/product-dashboard" icon={<ShoppingBag size={18} />}     label="Products" active />
           <SidebarLink to="/service"           icon={<Plus size={18} />}             label="Services" />
           <SidebarLink to="/order-management"  icon={<Truck size={18} />}            label="Orders" />
@@ -781,7 +782,7 @@ const ProductDashboard = () => {
         </main>
       </div>
 
-      {/* ── CREATE PRODUCT MODAL ─────────────────────────────────────────────── */}
+      {/* ── CREATE PRODUCT MODAL  */}
       {isProductModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <form
@@ -935,7 +936,7 @@ const ProductDashboard = () => {
         </div>
       )}
 
-      {/* ── EDIT / DELETE MODAL ──────────────────────────────────────────────── */}
+      {/* EDIT / DELETE MODAL  */}
       {isEditModalOpen && selectedProduct && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <form
@@ -1152,7 +1153,7 @@ const ProductDashboard = () => {
   );
 };
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// Sub-components 
 const SidebarLink = ({ to, icon, label, active = false }) => (
   <Link
     to={to}
@@ -1174,6 +1175,7 @@ const StatCard = ({ label, value, icon }) => (
   </div>
 );
 
+// ── UPDATED ProductCard: shows color-variant image thumbnails instead of "X photos" badge ──
 const ProductCard = ({ product, currencySymbol, onClick }) => {
   const rawQty = product.inventory_quality || product.qty || 'Medium';
   const qty = QTY_DISPLAY[rawQty] || rawQty;
@@ -1188,7 +1190,6 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
   const sku = product.sku || product.detail?.sku || product.listing_detail?.sku || '';
   const images = product.images ?? [];
   const imageUrl = images[0]?.image || product.image_url || null;
-  const imageCount = images.length;
 
   const parseSaved = (val) => {
     if (!val) return [];
@@ -1197,6 +1198,13 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
   };
   const sizes  = parseSaved(product.sizes  || product.size_variants);
   const colors = parseSaved(product.colors || product.color_variants);
+
+  // Build color→image map: images after index 0 are treated as color variant photos
+  // Each subsequent image maps to the color at that position (best-effort)
+  const colorImages = colors.map((color, i) => ({
+    color,
+    src: images[i + 1]?.image || null, // index 0 is main; i+1 maps to color i
+  }));
 
   return (
     <div onClick={onClick} className="bg-white rounded-xl border border-slate-100 overflow-hidden hover:shadow-lg transition-all group cursor-pointer">
@@ -1209,11 +1217,6 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
         <span className={`absolute top-3 right-3 px-2.5 py-1 rounded-md text-[9px] font-black uppercase shadow-sm ${getQualityColor()}`}>
           {qty}
         </span>
-        {imageCount > 1 && (
-          <span className="absolute bottom-3 left-3 bg-black/50 text-white text-[8px] font-bold px-2 py-0.5 rounded-full">
-            {imageCount} photos
-          </span>
-        )}
         <span className={`absolute bottom-3 right-3 px-2 py-0.5 rounded-md text-[8px] font-black uppercase ${
           product.is_published ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
         }`}>
@@ -1240,8 +1243,53 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
           </div>
         )}
 
-        {/* Color swatches on the card */}
-        {colors.length > 0 && (
+        {/* ── REPLACED: color-variant image thumbnails (like the screenshot's "Select Color" row) ── */}
+        {colorImages.length > 0 && (
+          <div className="mb-3">
+            <p className="text-[9px] font-bold text-slate-400 uppercase mb-1.5">Color Variants</p>
+            <div className="flex flex-wrap gap-1.5">
+              {colorImages.slice(0, 5).map(({ color, src }, i) => (
+                <div
+                  key={color}
+                  title={color}
+                  className={`relative w-10 h-10 rounded-lg overflow-hidden border-2 flex-shrink-0 transition-all ${
+                    i === 0 ? 'border-[#F5B841]' : 'border-slate-200'
+                  }`}
+                >
+                  {src ? (
+                    <img src={src} alt={color} className="w-full h-full object-cover" />
+                  ) : (
+                    /* Fallback: solid swatch when no image uploaded yet */
+                    <div
+                      className="w-full h-full flex items-center justify-center"
+                      style={{ backgroundColor: (COLOR_SWATCHES[color] || '#ccc') + '33' }}
+                    >
+                      <span
+                        className="w-5 h-5 rounded-full border border-white shadow-sm"
+                        style={{ backgroundColor: COLOR_SWATCHES[color] || '#ccc' }}
+                      />
+                    </div>
+                  )}
+                  {/* Color name tooltip strip */}
+                  <span
+                    className="absolute bottom-0 left-0 right-0 text-center text-[5px] font-black py-px truncate"
+                    style={{ backgroundColor: (COLOR_SWATCHES[color] || '#125852') + 'cc', color: '#fff' }}
+                  >
+                    {color.toUpperCase()}
+                  </span>
+                </div>
+              ))}
+              {colorImages.length > 5 && (
+                <div className="w-10 h-10 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center flex-shrink-0">
+                  <span className="text-[8px] font-bold text-slate-400">+{colorImages.length - 5}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Fallback: if no colors defined, show plain color dot swatches as before */}
+        {colorImages.length === 0 && colors.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-3">
             {colors.slice(0, 8).map((c) => (
               <span
