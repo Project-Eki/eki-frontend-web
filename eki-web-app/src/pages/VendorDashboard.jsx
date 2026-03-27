@@ -13,7 +13,7 @@ import {
 import {
   LayoutDashboard, Package, ChevronRight, Plus,
   ListChecks, AlertCircle, Star, X, Upload, Tag, Box,
-  LogOut, ShoppingBag, Truck, CreditCard, MessageSquare, Trash2,
+  LogOut, ShoppingBag, Truck, CreditCard, MessageSquare, Trash2, Settings,
 } from 'lucide-react';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -200,22 +200,34 @@ const VendorDashboard = () => {
 
       {/* SIDEBAR */}
       <aside className="w-64 bg-white border-r border-white flex flex-col sticky top-0 h-screen z-50">
+        {/* ── Eki Vendor Overview in Poppins */}
         <div className="p-6 mb-4">
-          {/* <img src={logo} alt="Eki" className="h-8 w-auto object-contain" /> */}
+          <span
+            className="text-[15px] font-bold text-[#125852] tracking-tight leading-tight"
+            style={{ fontFamily: "'Poppins', sans-serif" }}
+          >
+            {/* Eki Vendor Overview */}
+          </span>
         </div>
+
         <nav className="flex-1 px-4 space-y-1">
           <SidebarLink to="/dashboard"         icon={<LayoutDashboard size={18} />} label="Dashboard" active />
           <SidebarLink to="/product-dashboard" icon={<ShoppingBag size={18} />}    label="Products" />
-          <SidebarLink to="/servicemanagement"           icon={<Plus size={18} />}            label="Services" />
+          <SidebarLink to="/servicemanagement" icon={<Plus size={18} />}            label="Services" />
           <SidebarLink to="/order-management"  icon={<Truck size={18} />}           label="Orders" />
           <SidebarLink to="/payment"           icon={<CreditCard size={18} />}      label="Payments" />
-          <SidebarLink to="/reviews"           icon={<MessageSquare size={18} />}   label="Reviews" />
+          <SidebarLink to="/reviews" icon={<MessageSquare size={18} />} label="Reviews" />
         </nav>
-        <div className="p-4 border-t border-white">
+
+        <div className="p-4 border-t border-white mt-auto space-y-1">
+          {/* ── Settings in black */}
+          <SidebarLink to="/settings" icon={<Settings size={18} />} label="Settings" />
+          <div className="h-px bg-slate-100 my-1" />
+          {/* ── Logout in gold */}
           <Link
             to="/"
             onClick={SignoutUser}
-            className="flex items-center gap-3 px-3 py-2 w-full text-red-500 hover:bg-red-50 rounded-lg text-[11px] font-bold"
+            className="flex items-center gap-3 px-3 py-2 w-full text-[#F5B841] hover:bg-[#F5B841]/10 rounded-lg text-[11px] font-bold transition-all"
           >
             <LogOut size={18} /> <span>Log out</span>
           </Link>
@@ -233,10 +245,16 @@ const VendorDashboard = () => {
         )}
 
         <main className="p-8 max-w-[1400px] mx-auto w-full">
+          {/* ── Header — "Eki Vendor Overview" replaces "Eki Vendor Command Center" */}
           <header className="mb-8 text-left">
-            <h1 className="text-2xl font-bold text-[#1A1A1A]">Eki Vendor Command Center</h1>
+            <h1
+              className="text-2xl font-bold text-[#1A1A1A]"
+              style={{ fontFamily: "'Poppins', sans-serif" }}
+            >
+              Eki Vendor Overview
+            </h1>
             <p className="text-slate-400 text-sm">
-              Monitoring activity for{' '}
+              {/* Monitoring activity for{' '} */}
               <span className="font-semibold text-slate-600">{vendorData.storeName || '—'}</span>
               {vendorData.country && (
                 <span className="ml-2 text-[11px] bg-slate-100 px-2 py-0.5 rounded-full text-slate-500">
@@ -367,9 +385,9 @@ const VendorDashboard = () => {
                 </div>
               </div>
 
-              {/* INVENTORY ALERTS */}
+              {/* INVENTORY ALERTS — gold theme */}
               <div className="bg-white p-6 rounded-xl border border-white shadow-sm text-left">
-                <div className="flex items-center gap-2 mb-4 text-[#E53935]">
+                <div className="flex items-center gap-2 mb-4 text-[#F5B841]">
                   <AlertCircle size={16} />
                   <h3 className="font-bold text-xs uppercase tracking-tighter">Inventory Alerts</h3>
                 </div>
@@ -377,7 +395,7 @@ const VendorDashboard = () => {
                   {inventoryAlerts.length > 0 ? inventoryAlerts.map((alert, i) => (
                     <div key={i} className="flex justify-between items-center text-[11px] border-b border-white pb-2 last:border-0">
                       <span className="font-bold text-slate-700">{alert.title}</span>
-                      <span className="text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded">
+                      <span className="text-[#F5B841] font-bold bg-[#F5B841]/10 px-2 py-0.5 rounded">
                         {alert.quantity ?? 0} left
                       </span>
                     </div>
@@ -391,7 +409,7 @@ const VendorDashboard = () => {
               <div className="bg-white p-6 rounded-xl border border-white shadow-sm text-left">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-bold text-xs uppercase tracking-tighter">Recent Reviews</h3>
-                  <Link to="/reviews" className="text-[#125852] text-[10px] font-bold hover:underline uppercase tracking-tighter">VIEW ALL</Link>
+                  <Link to="/reviews" className="text-[#F5B841] text-[10px] font-bold hover:underline uppercase tracking-tighter">VIEW ALL</Link>
                 </div>
                 <div className="space-y-4">
                   {reviews.length > 0 ? reviews.map((r, i) => (
