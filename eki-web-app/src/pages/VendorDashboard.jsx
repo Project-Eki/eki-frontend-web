@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import logo from '../assets/eki-logo-white.png';
+import VendorSidebar from '../components/VendorSidebar';
 import Navbar3 from '../components/adminDashboard/Navbar3';
 import {
   getVendorDashboard,
@@ -11,9 +11,9 @@ import {
 } from '../services/authService';
 
 import {
-  LayoutDashboard, Package, ChevronRight, Plus,
-  ListChecks, AlertCircle, Star, X, Upload, Tag, Box,
-  LogOut, ShoppingBag, Truck, CreditCard, MessageSquare, Trash2,
+  Package, ChevronRight, Plus,
+  ListChecks, AlertCircle, Star, X, Upload, Box,
+  CreditCard, Trash2,
 } from 'lucide-react';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -197,30 +197,8 @@ const VendorDashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
-      {/* SIDEBAR - with rounded corners and light borders */}
-      <aside className="w-56 bg-white border border-slate-200 rounded-2xl flex flex-col sticky top-3 h-[calc(100vh-1.5rem)] shadow-sm">
-        {/* Logo at the top of sidebar */}
-        <div className="p-4 pt-5 pb-4">
-          <img src={logo} alt="Eki" className="h-10 w-auto object-contain mx-auto" />
-        </div>
-        <nav className="flex-1 px-3 py-3 space-y-0.5">
-          <SidebarLink to="/dashboard"         icon={<LayoutDashboard size={16} />} label="Dashboard" active />
-          <SidebarLink to="/product-dashboard" icon={<ShoppingBag size={16} />}    label="Products" />
-          <SidebarLink to="/servicemanagement" icon={<Plus size={16} />}            label="Services" />
-          <SidebarLink to="/order-management"  icon={<Truck size={16} />}           label="Orders" />
-          <SidebarLink to="/payment"           icon={<CreditCard size={16} />}      label="Payments" />
-          <SidebarLink to="/reviews"           icon={<MessageSquare size={16} />}   label="Reviews" />
-        </nav>
-        <div className="p-3">
-          <Link
-            to="/"
-            onClick={SignoutUser}
-            className="flex items-center gap-2 px-2 py-1.5 w-full text-red-500 hover:bg-red-50 rounded-lg text-[10px] font-bold transition-colors"
-          >
-            <LogOut size={14} /> <span>Log out</span>
-          </Link>
-        </div>
-      </aside>
+      {/* VendorSidebar Component */}
+      <VendorSidebar activePage="dashboard" />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar3 />
@@ -630,19 +608,6 @@ const VendorDashboard = () => {
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
-
-const SidebarLink = ({ to, icon, label, active = false }) => (
-  <Link
-    to={to}
-    className={`flex items-center gap-2 px-2 py-2 rounded-xl text-xs font-semibold transition-all ${
-      active
-        ? 'bg-[#FFF8ED] text-[#F2B53D]'
-        : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-    }`}
-  >
-    {icon} <span>{label}</span>
-  </Link>
-);
 
 const MetricCard = ({ title, value, icon, bg = 'bg-white' }) => (
   <div className={`${bg} p-4 rounded-2xl border border-slate-200 shadow-sm text-left`}>

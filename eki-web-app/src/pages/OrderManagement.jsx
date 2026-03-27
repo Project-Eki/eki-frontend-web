@@ -1,12 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import logo from '../assets/eki-logo-white.png';
+import VendorSidebar from '../components/VendorSidebar';
 import Navbar3 from '../components/adminDashboard/Navbar3';
 import { 
-  Search, Filter, List, Bell, Package, 
-  Settings, LogOut, Download, Printer, 
-  CircleDollarSign, Clock, BarChart3,
-  LayoutDashboard, ShoppingBag, Truck, CreditCard, MessageSquare
+  Search, Filter, List, Download, Printer, 
+  CircleDollarSign, Clock, BarChart3, Package
 } from 'lucide-react';
 
 const OrderManagement = () => {
@@ -14,33 +12,8 @@ const OrderManagement = () => {
 
   return (
     <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
-      {/* SIDEBAR - with rounded corners and NO separators */}
-      <aside className="w-56 bg-white border border-slate-200 rounded-2xl flex flex-col sticky top-3 h-[calc(100vh-1.5rem)] shadow-sm">
-        {/* Logo */}
-        <div className="p-4 pt-5 pb-4">
-          <img src={logo} alt="Eki" className="h-10 w-auto object-contain mx-auto" />
-        </div>
-        
-        <nav className="flex-1 px-3 py-3 space-y-0.5">
-          <SidebarNavLink to="/vendordashboard" icon={<LayoutDashboard size={16} />} label="Dashboard" />
-          <SidebarNavLink to="/product-dashboard" icon={<ShoppingBag size={16} />} label="Products" />
-          <SidebarNavLink to="/servicemanagement" icon={<Package size={16} />} label="Services" />
-          <SidebarNavLink to="/order-management" icon={<Truck size={16} />} label="Orders" active />
-          <SidebarNavLink to="/payment" icon={<CreditCard size={16} />} label="Payments" />
-          <SidebarNavLink to="/reviews" icon={<MessageSquare size={16} />} label="Reviews" />
-          <SidebarNavLink to="/settings" icon={<Settings size={16} />} label="Store Settings" />
-        </nav>
-        
-        <div className="p-3">
-          <button
-            onClick={() => console.log('logout')}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-[11px] font-semibold text-red-500 hover:bg-red-50 transition-all duration-200"
-          >
-            <LogOut size={14} strokeWidth={1.5} />
-            <span>Log out</span>
-          </button>
-        </div>
-      </aside>
+      {/* VendorSidebar Component */}
+      <VendorSidebar activePage="orders" />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -107,7 +80,7 @@ const OrderManagement = () => {
                   <th className="px-4 py-3">Total</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 w-8"></th>
-                </tr>
+                 </tr>
               </thead>
               <tbody>
                 <tr>
@@ -145,20 +118,6 @@ const OrderManagement = () => {
     </div>
   );
 };
-
-// Sidebar Navigation Link Component - Matching VendorDashboard exactly
-const SidebarNavLink = ({ to, icon, label, active = false }) => (
-  <Link
-    to={to}
-    className={`flex items-center gap-2 px-2 py-2 rounded-xl text-xs font-semibold transition-all ${
-      active
-        ? 'bg-[#FFF8ED] text-[#F2B53D]'
-        : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-    }`}
-  >
-    {icon} <span>{label}</span>
-  </Link>
-);
 
 const StatCard = ({ title, value, sub, icon, bg }) => (
   <div className={`${bg} p-4 rounded-2xl border border-slate-200 shadow-sm text-left`}>
