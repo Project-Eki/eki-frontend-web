@@ -5,7 +5,6 @@ import Navbar3 from '../components/adminDashboard/Navbar3';
 import {
   Plus, Search, Filter, LayoutGrid, List,
   CheckCircle2, Package, ShoppingBag,
-  LayoutDashboard, Truck, CreditCard, MessageSquare, Settings, LogOut,
   X, Upload, Trash2, Pencil, Palette, Ruler, ImagePlus, ChevronDown, ChevronUp,
   ArrowRight, ArrowLeft,
 } from 'lucide-react';
@@ -743,31 +742,9 @@ const ProductDashboard = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800">
-
-      {/* SIDEBAR */}
-      <aside className="w-64 bg-white border-r border-slate-100 flex flex-col sticky top-0 h-screen z-50">
-        <div className="p-6 mb-4" />
-        <nav className="flex-1 px-4 space-y-1">
-          <SidebarLink to="/vendordashboard"   icon={<LayoutDashboard size={18} />} label="Dashboard" />
-          <SidebarLink to="/product-dashboard" icon={<ShoppingBag size={18} />}     label="Products" active />
-          <SidebarLink to="/service"           icon={<Plus size={18} />}             label="Services" />
-          <SidebarLink to="/order-management"  icon={<Truck size={18} />}            label="Orders" />
-          <SidebarLink to="/payment"           icon={<CreditCard size={18} />}       label="Payments" />
-          <SidebarLink to="/reviews"           icon={<MessageSquare size={18} />}    label="Reviews" />
-        </nav>
-        <div className="p-4 border-t border-slate-100 mt-auto space-y-1">
-          <SidebarLink to="/settings" icon={<Settings size={18} />} label="Settings" />
-          <div className="h-px bg-slate-100 my-1" />
-          <Link
-            to="/"
-            onClick={SignoutUser}
-            className="flex items-center gap-3 px-3 py-2.5 w-full text-[#F5B841] hover:bg-[#F5B841]/10 rounded-xl text-[11px] font-bold transition-all"
-          >
-            <LogOut size={18} /><span>Log out</span>
-          </Link>
-        </div>
-      </aside>
+    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
+      {/* VendorSidebar Component */}
+      <VendorSidebar activePage="products" />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar3 />
@@ -994,14 +971,10 @@ const ProductDashboard = () => {
         </footer>
       </div>
 
-      {/* ══════════════════════════════════════════════════
-          CREATE PRODUCT MODAL — STEP 1
-          Non-scrollable rectangle, all fields visible at once
-      ══════════════════════════════════════════════════ */}
+      {/* CREATE PRODUCT MODAL — STEP 1 */}
       {isProductModalOpen && formStep === 1 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left" style={{ height: 'auto' }}>
-            {/* Header */}
             <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
               <div>
                 <h2 className="text-lg font-bold">Create New Product</h2>
@@ -1017,7 +990,6 @@ const ProductDashboard = () => {
               </button>
             </div>
 
-            {/* Step indicator */}
             <div className="px-6 pt-3 pb-2 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#125852]">
@@ -1032,7 +1004,6 @@ const ProductDashboard = () => {
               </div>
             </div>
 
-            {/* All fields — no scroll, compact spacing */}
             <div className="px-6 py-3 space-y-3">
               {errors._server && (
                 <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-medium px-3 py-2 rounded-lg">
@@ -1115,7 +1086,6 @@ const ProductDashboard = () => {
               </div>
             </div>
 
-            {/* Footer */}
             <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
               <button
                 type="button"
@@ -1140,10 +1110,7 @@ const ProductDashboard = () => {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════
-          CREATE PRODUCT MODAL — STEP 2
-          Non-scrollable rectangle, all fields visible at once
-      ══════════════════════════════════════════════════ */}
+      {/* CREATE PRODUCT MODAL — STEP 2 */}
       {isProductModalOpen && formStep === 2 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <form
@@ -1151,7 +1118,6 @@ const ProductDashboard = () => {
             className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left"
             style={{ height: 'auto' }}
           >
-            {/* Header */}
             <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
               <div>
                 <h2 className="text-lg font-bold">Variants & Images</h2>
@@ -1167,7 +1133,6 @@ const ProductDashboard = () => {
               </button>
             </div>
 
-            {/* Step indicator */}
             <div className="px-6 pt-3 pb-2 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
@@ -1182,7 +1147,6 @@ const ProductDashboard = () => {
               </div>
             </div>
 
-            {/* All fields — no scroll */}
             <div className="px-6 py-3 space-y-3">
               {errors._server && (
                 <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-medium px-3 py-2 rounded-lg">
@@ -1238,7 +1202,6 @@ const ProductDashboard = () => {
               </div>
             </div>
 
-            {/* Footer */}
             <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
               <button
                 type="button"
@@ -1383,17 +1346,6 @@ const ProductDashboard = () => {
 };
 
 // ── Sub-components
-const SidebarLink = ({ to, icon, label, active = false }) => (
-  <Link
-    to={to}
-    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all ${
-      active ? 'bg-[#E0F2F1] text-[#125852]' : 'text-slate-400 hover:text-slate-900'
-    }`}
-  >
-    {icon}<span>{label}</span>
-  </Link>
-);
-
 const StatCard = ({ label, value, icon }) => (
   <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between">
     <div>
@@ -1404,7 +1356,7 @@ const StatCard = ({ label, value, icon }) => (
   </div>
 );
 
-// ── ProductCard — Heart and Star removed
+// ── ProductCard
 const ProductCard = ({ product, currencySymbol, onClick }) => {
   const LOCAL_SWATCHES = {
     Black: '#1a1a1a', White: '#f5f5f5', Red: '#ef4444', Blue: '#3b82f6',
@@ -1436,7 +1388,6 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
       className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200 cursor-pointer border border-slate-100/80 group"
       onClick={onClick}
     >
-      {/* Image area */}
       <div className="relative bg-[#F8F8F8]" style={{ aspectRatio: '1 / 1.05' }}>
         {mainImageUrl ? (
           <img
@@ -1450,7 +1401,6 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
           </div>
         )}
 
-        {/* Quality badge top-left */}
         <span
           className="absolute top-3 left-3 px-2 py-0.5 rounded-md text-[9px] font-black uppercase border"
           style={{ background: qualityStyle.bg, color: qualityStyle.text, borderColor: qualityStyle.border }}
@@ -1458,12 +1408,10 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
           {qty}
         </span>
 
-        {/* Edit icon on hover */}
         <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
           <Pencil size={12} className="text-[#125852]" />
         </div>
 
-        {/* Published badge bottom-right */}
         <span className={`absolute bottom-3 right-3 px-2 py-0.5 rounded-md text-[8px] font-black uppercase ${
           product.is_published ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
         }`}>
@@ -1471,7 +1419,6 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
         </span>
       </div>
 
-      {/* Card body */}
       <div className="px-3 pt-2.5 pb-3">
         {product.category && (
           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5 truncate">
@@ -1481,7 +1428,6 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
 
         <h4 className="text-[13px] font-bold text-slate-900 leading-tight mb-1 truncate">{product.title}</h4>
 
-        {/* Color swatches */}
         {colors.length > 0 && (
           <div className="flex items-center gap-1 mb-2">
             {colors.slice(0, 5).map((c) => (
@@ -1498,7 +1444,6 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
           </div>
         )}
 
-        {/* Size pills */}
         {sizes.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-2">
             {sizes.slice(0, 4).map((s) => (
@@ -1510,7 +1455,6 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
           </div>
         )}
 
-        {/* Price — full width now that star/rating is gone */}
         <div className="mt-2 pt-2 border-t border-slate-100">
           <p className="text-[14px] font-black text-[#125852]">
             {currencySymbol}{Number(product.price || 0).toLocaleString()}
