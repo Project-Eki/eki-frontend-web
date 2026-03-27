@@ -78,64 +78,64 @@ const Navbar3 = ({ userName = "Keilar Kirabira", userRole = "Admin", onMenuClick
 
   return (
     <>
-      <nav className="flex items-center justify-between px-6 py-3 bg-white border-b border-slate-200 rounded-b-2xl sticky top-0 z-50 h-16 shrink-0 shadow-sm">
+      <nav className="flex items-center justify-between px-5 py-2.5 bg-white border-b border-slate-200 rounded-b-2xl sticky top-0 z-50 h-14 shrink-0 shadow-sm">
         
         {/* Menu button for mobile */}
         <button 
           onClick={onMenuClick} 
-          className="md:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors mr-2"
+          className="md:hidden p-1.5 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors mr-1.5"
         >
-          <Menu size={22}/>
+          <Menu size={18}/>
         </button>
 
         {/* Empty div to maintain spacing - logo removed */}
-        <div className="w-8 md:w-0"></div>
+        <div className="w-6 md:w-0"></div>
 
         {/* Search Bar - centered */}
         <div className="flex-1 max-w-md mx-auto">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"/>
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5"/>
             <input 
               type="text" 
               placeholder="Search products, orders, customers..." 
-              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#125852] focus:border-transparent text-sm transition-all"
+              className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#125852] focus:border-transparent text-xs transition-all"
             />
           </div>
         </div>
 
         {/* Right side actions */}
-        <div className="flex items-center space-x-4 shrink-0">
+        <div className="flex items-center space-x-3 shrink-0">
 
           {/* Notification Bell */}
           <div className="relative" ref={panelRef}>
             <button 
               onClick={() => setShowNotifPanel(prev => !prev)}
-              className="relative text-slate-500 hover:text-slate-700 transition-colors p-2 hover:bg-slate-50 rounded-lg"
+              className="relative text-slate-500 hover:text-slate-700 transition-colors p-1.5 hover:bg-slate-50 rounded-lg"
             >
-              <Bell className="w-5 h-5"/>
+              <Bell className="w-4 h-4"/>
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[18px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 ring-2 ring-white">
+                <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center px-1 ring-2 ring-white">
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
             </button>
 
             {showNotifPanel && (
-              <div className="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-lg border border-slate-200 z-50 overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white">
-                  <p className="text-sm font-bold text-slate-800">Notifications</p>
+              <div className="absolute right-0 top-10 w-72 bg-white rounded-xl shadow-lg border border-slate-200 z-50 overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-100 bg-white">
+                  <p className="text-xs font-bold text-slate-800">Notifications</p>
                   {unreadCount > 0 && (
-                    <span className="text-[10px] font-bold text-[#125852] bg-[#E0F2F1] px-2 py-0.5 rounded-full">
+                    <span className="text-[9px] font-bold text-[#125852] bg-[#E0F2F1] px-1.5 py-0.5 rounded-full">
                       {unreadCount} unread
                     </span>
                   )}
                 </div>
 
-                <div className="max-h-72 overflow-y-auto">
+                <div className="max-h-64 overflow-y-auto">
                   {notifications.length === 0 ? (
-                    <div className="py-8 text-center">
-                      <p className="text-sm text-slate-400">No notifications yet</p>
-                      <p className="text-xs text-slate-300 mt-1">New vendor registrations will appear here</p>
+                    <div className="py-6 text-center">
+                      <p className="text-xs text-slate-400">No notifications yet</p>
+                      <p className="text-[9px] text-slate-300 mt-0.5">New vendor registrations will appear here</p>
                     </div>
                   ) : (
                     notifications.map(notif => {
@@ -143,16 +143,16 @@ const Navbar3 = ({ userName = "Keilar Kirabira", userRole = "Admin", onMenuClick
                       return (
                         <div key={notif.id}
                           onClick={() => !notif.is_read && handleMarkRead(notif.id)}
-                          className={`flex items-start gap-3 px-4 py-3 border-b border-slate-50 cursor-pointer transition-colors ${
+                          className={`flex items-start gap-2.5 px-3 py-2.5 border-b border-slate-50 cursor-pointer transition-colors ${
                             !notif.is_read ? "bg-[#E0F2F1]/30 hover:bg-[#E0F2F1]/50" : "hover:bg-slate-50"
                           }`}>
-                          <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${typeInfo.dot}`}/>
+                          <div className={`w-1.5 h-1.5 rounded-full mt-1 shrink-0 ${typeInfo.dot}`}/>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-slate-800 leading-tight">{notif.title}</p>
-                            <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{notif.message}</p>
-                            <p className="text-[10px] text-slate-400 mt-1">{notif.time_ago}</p>
+                            <p className="text-[11px] font-bold text-slate-800 leading-tight">{notif.title}</p>
+                            <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-2">{notif.message}</p>
+                            <p className="text-[9px] text-slate-400 mt-0.5">{notif.time_ago}</p>
                           </div>
-                          {!notif.is_read && <div className="w-1.5 h-1.5 bg-[#125852] rounded-full shrink-0 mt-2"/>}
+                          {!notif.is_read && <div className="w-1 h-1 bg-[#125852] rounded-full shrink-0 mt-1"/>}
                         </div>
                       );
                     })
@@ -160,12 +160,12 @@ const Navbar3 = ({ userName = "Keilar Kirabira", userRole = "Admin", onMenuClick
                 </div>
 
                 {notifications.length > 0 && (
-                  <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/30 flex justify-center">
+                  <div className="px-3 py-2 border-t border-slate-100 bg-slate-50/30 flex justify-center">
                     <button 
                       onClick={handleMarkAllRead}
-                      className="text-xs font-bold text-[#125852] hover:text-[#0e4440] flex items-center gap-1 transition-colors"
+                      className="text-[10px] font-bold text-[#125852] hover:text-[#0e4440] flex items-center gap-1 transition-colors"
                     >
-                      <CheckCheck size={12}/> Mark all as read
+                      <CheckCheck size={10}/> Mark all as read
                     </button>
                   </div>
                 )}
@@ -174,8 +174,8 @@ const Navbar3 = ({ userName = "Keilar Kirabira", userRole = "Admin", onMenuClick
           </div>
 
           {/* User Avatar */}
-          <div className="flex items-center pl-3 border-l border-slate-200">
-            <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-[#125852] cursor-pointer shrink-0 bg-slate-100">
+          <div className="flex items-center pl-2.5 border-l border-slate-200">
+            <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-[#125852] cursor-pointer shrink-0 bg-slate-100">
               <img src={adaefe} alt="User Avatar" className="w-full h-full object-cover"/>
             </div>
           </div>
@@ -183,7 +183,7 @@ const Navbar3 = ({ userName = "Keilar Kirabira", userRole = "Admin", onMenuClick
       </nav>
       
       {/* Spacer element to create visual separation when scrolling */}
-      <div className="h-1 bg-gradient-to-b from-slate-100 to-transparent sticky top-16 z-40 pointer-events-none"></div>
+      <div className="h-0.5 bg-gradient-to-b from-slate-100 to-transparent sticky top-14 z-40 pointer-events-none"></div>
     </>
   );
 };
