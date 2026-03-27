@@ -8,6 +8,8 @@ import {
   X, Upload, Trash2, Pencil, Palette, Ruler, ImagePlus, ChevronDown, ChevronUp,
   ArrowRight, ArrowLeft,
 } from 'lucide-react';
+import logo from '../assets/eki-logo-white.png';
+
 import {
   getProducts,
   createProductListing,
