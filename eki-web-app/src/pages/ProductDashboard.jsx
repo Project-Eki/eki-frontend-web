@@ -8,6 +8,8 @@ import {
   X, Upload, Trash2, Pencil, Palette, Ruler, ImagePlus, ChevronDown, ChevronUp,
   ArrowRight, ArrowLeft,
 } from 'lucide-react';
+import logo from '../assets/eki-logo-white.png';
+
 import {
   getProducts,
   createProductListing,
@@ -745,28 +747,30 @@ const ProductDashboard = () => {
     <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800">
 
       {/* SIDEBAR */}
-      <aside className="w-64 bg-white border-r border-slate-100 flex flex-col sticky top-0 h-screen z-50">
-        <div className="p-6 mb-4" />
-        <nav className="flex-1 px-4 space-y-1">
-          <SidebarLink to="/vendordashboard"   icon={<LayoutDashboard size={18} />} label="Dashboard" />
-          <SidebarLink to="/product-dashboard" icon={<ShoppingBag size={18} />}     label="Products" active />
-          <SidebarLink to="/service"           icon={<Plus size={18} />}             label="Services" />
-          <SidebarLink to="/order-management"  icon={<Truck size={18} />}            label="Orders" />
-          <SidebarLink to="/payment"           icon={<CreditCard size={18} />}       label="Payments" />
-          <SidebarLink to="/reviews"           icon={<MessageSquare size={18} />}    label="Reviews" />
-        </nav>
-        <div className="p-4 border-t border-slate-100 mt-auto space-y-1">
-          <SidebarLink to="/settings" icon={<Settings size={18} />} label="Settings" />
-          <div className="h-px bg-slate-100 my-1" />
-          <Link
-            to="/"
-            onClick={SignoutUser}
-            className="flex items-center gap-3 px-3 py-2.5 w-full text-[#F5B841] hover:bg-[#F5B841]/10 rounded-xl text-[11px] font-bold transition-all"
-          >
-            <LogOut size={18} /><span>Log out</span>
-          </Link>
-        </div>
-      </aside>
+       {/* SIDEBAR - with rounded corners and light borders */}
+            <aside className="w-56 bg-white border border-slate-200 rounded-2xl flex flex-col sticky top-3 h-[calc(100vh-1.5rem)] shadow-sm">
+              {/* Logo at the top of sidebar */}
+              <div className="p-4 pt-5 pb-4">
+                <img src={logo} alt="Eki" className="h-10 w-auto object-contain mx-auto" />
+              </div>
+              <nav className="flex-1 px-3 py-3 space-y-0.5">
+                <SidebarLink to="/dashboard"         icon={<LayoutDashboard size={16} />} label="Dashboard" active />
+                <SidebarLink to="/product-dashboard" icon={<ShoppingBag size={16} />}    label="Products" />
+                <SidebarLink to="/servicemanagement" icon={<Plus size={16} />}            label="Services" />
+                <SidebarLink to="/order-management"  icon={<Truck size={16} />}           label="Orders" />
+                <SidebarLink to="/payment"           icon={<CreditCard size={16} />}      label="Payments" />
+                <SidebarLink to="/reviews"           icon={<MessageSquare size={16} />}   label="Reviews" />
+              </nav>
+              <div className="p-3">
+                <Link
+                  to="/"
+                  onClick={SignoutUser}
+                  className="flex items-center gap-2 px-2 py-1.5 w-full text-red-500 hover:bg-red-50 rounded-lg text-[10px] font-bold transition-colors"
+                >
+                  <LogOut size={14} /> <span>Log out</span>
+                </Link>
+              </div>
+            </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar3 />
