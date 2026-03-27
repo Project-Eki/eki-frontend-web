@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import Navbar3 from '../components/adminDashboard/Navbar3';
-import logo from '../assets/logo.jpeg';
+import logo from '../assets/eki-logo-white.png';
 import {
   Plus, Search, Filter, LayoutGrid, List,
   CheckCircle2, Package, ShoppingBag,
@@ -60,11 +60,9 @@ const MAX_GENERAL_IMAGES   = 6;
 const blankForm = () => ({
   title: '', category: '', price: '', sku: '', qty: 'Medium',
   location: '', description: '',
-  // General (non-color) images: [{ preview, file }]
   imageFiles: [],
   sizes: [],
   colors: [],
-  // Color images: { [colorName]: [{ preview, file }] }
   colorImageFiles: {},
 });
 
@@ -87,7 +85,6 @@ const ProductDashboard = () => {
 
   const fileInputRef          = useRef(null);
   const editFileInputRef      = useRef(null);
-  // Refs for per-color file inputs (create & edit)
   const colorFileInputRefs    = useRef({});
   const editColorFileInputRefs = useRef({});
 
@@ -136,7 +133,6 @@ const ProductDashboard = () => {
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: null }));
   };
 
-  // ─── General image handlers (create) 
   const handleFilesChange = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -162,7 +158,6 @@ const ProductDashboard = () => {
     }));
   };
 
-  // ─── Color image handlers (create) 
   const handleColorFilesChange = (color, e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -195,7 +190,6 @@ const ProductDashboard = () => {
     }));
   };
 
-  // ─── General image handlers (edit) 
   const handleEditFilesChange = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -236,7 +230,6 @@ const ProductDashboard = () => {
     }
   };
 
-  // ─── Color image handlers (edit) 
   const handleEditColorFilesChange = (color, e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -269,13 +262,11 @@ const ProductDashboard = () => {
     }));
   };
 
-  // ─── Chip toggles ────────────────
   const toggleChip = (field, value, isEdit = false) => {
     if (isEdit) {
       setSelectedProduct((prev) => {
         const arr = prev[field] || [];
         const next = arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
-        // Clean up color images for deselected color
         if (field === 'colors' && arr.includes(value)) {
           const { [value]: _removed, ...rest } = prev.colorImageFiles || {};
           return { ...prev, [field]: next, colorImageFiles: rest };
@@ -303,7 +294,6 @@ const ProductDashboard = () => {
     return errs;
   };
 
-  // ─── Collect all files for upload (general + color-linked) ───────────────
   const collectAllFiles = (imageFiles, colorImageFiles) => {
     const general = (imageFiles || []).map((f) => f.file);
     const colored = Object.values(colorImageFiles || {}).flat().map((f) => f.file);
@@ -432,7 +422,6 @@ const ProductDashboard = () => {
     p.sku?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // ─── VariantSection ──────────────
   const VariantSection = ({ sizes, colors, isEdit = false }) => (
     <div className="space-y-5 border border-slate-100 rounded-xl p-4 bg-slate-50/50">
       <h4 className="text-[11px] font-bold uppercase text-slate-600 tracking-wider">Product Variants</h4>
@@ -491,7 +480,6 @@ const ProductDashboard = () => {
     </div>
   );
 
-  // ─── General ImageGrid ───────────
   const ImageGrid = ({
     existingImages = [],
     pendingImages  = [],
@@ -558,8 +546,6 @@ const ProductDashboard = () => {
     );
   };
 
-  // ─── ColorImageSection ───────────
-  // Renders one upload row per selected color so buyers can see each colour variant
   const ColorImageSection = ({ colors, colorImageFiles, isEdit = false }) => {
     if (!colors || colors.length === 0) return null;
 
@@ -585,7 +571,6 @@ const ProductDashboard = () => {
 
           return (
             <div key={color} className="space-y-2">
-              {/* Color header */}
               <div className="flex items-center gap-2">
                 <span
                   className="w-4 h-4 rounded-full border border-slate-300 flex-shrink-0 shadow-sm"
@@ -594,8 +579,6 @@ const ProductDashboard = () => {
                 <span className="text-[11px] font-bold text-slate-700">{color}</span>
                 <span className="text-[9px] text-slate-400">({images.length}/{MAX_IMAGES_PER_COLOR})</span>
               </div>
-
-              {/* Thumbnails + add button */}
               <div className="flex flex-wrap gap-2 pl-6">
                 {images.map((img, i) => (
                   <div
@@ -616,7 +599,6 @@ const ProductDashboard = () => {
                     </button>
                   </div>
                 ))}
-
                 {canAdd && (
                   <button
                     type="button"
@@ -627,8 +609,6 @@ const ProductDashboard = () => {
                     <span className="text-[8px] font-bold text-slate-400 mt-0.5">ADD</span>
                   </button>
                 )}
-
-                {/* Hidden file input per color */}
                 <input
                   type="file"
                   ref={(el) => { fileRefs.current[color] = el; }}
@@ -646,31 +626,32 @@ const ProductDashboard = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800">
-
-      {/* SIDEBAR */}
-      <aside className="w-64 bg-white border-r border-slate-100 flex flex-col sticky top-0 h-screen z-50">
-        <div className="p-6 mb-4">
-          <img src={logo} alt="Eki" className="h-8 w-auto object-contain" />
+    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-4 gap-4">
+      {/* SIDEBAR - with rounded corners and NO separators */}
+      <aside className="w-64 bg-white border border-slate-200 rounded-2xl flex flex-col sticky top-4 h-[calc(100vh-2rem)] shadow-sm">
+        {/* Logo */}
+        <div className="p-6 pt-8 pb-6">
+          <img src={logo} alt="Eki" className="h-12 w-auto object-contain mx-auto" />
         </div>
-        <nav className="flex-1 px-4 space-y-1">
-          {/* ── FIXED: sidebar links now point to correct routes ── */}
-          <SidebarLink to="/vendordashboard"  icon={<LayoutDashboard size={18} />} label="Dashboard" />
-          <SidebarLink to="/product-dashboard" icon={<ShoppingBag size={18} />}     label="Products" active />
-          <SidebarLink to="/service"           icon={<Plus size={18} />}             label="Services" />
-          <SidebarLink to="/order-management"  icon={<Truck size={18} />}            label="Orders" />
-          <SidebarLink to="/payment"           icon={<CreditCard size={18} />}       label="Payments" />
-          <SidebarLink to="/reviews"           icon={<MessageSquare size={18} />}    label="Reviews" />
+        
+        <nav className="flex-1 px-4 py-4 space-y-1">
+          <SidebarNavLink to="/vendordashboard" icon={<LayoutDashboard size={18} />} label="Dashboard" />
+          <SidebarNavLink to="/product-dashboard" icon={<ShoppingBag size={18} />} label="Products" active />
+          <SidebarNavLink to="/servicemanagement" icon={<Package size={18} />} label="Services" />
+          <SidebarNavLink to="/order-management" icon={<Truck size={18} />} label="Orders" />
+          <SidebarNavLink to="/payment" icon={<CreditCard size={18} />} label="Payments" />
+          <SidebarNavLink to="/reviews" icon={<MessageSquare size={18} />} label="Reviews" />
+          <SidebarNavLink to="/settings" icon={<Settings size={18} />} label="Store Settings" />
         </nav>
-        <div className="p-4 border-t border-slate-50 mt-auto">
-          <SidebarLink to="/settings" icon={<Settings size={18} />} label="Store Settings" />
-          <Link
-            to="/"
+        
+        <div className="p-4">
+          <button
             onClick={SignoutUser}
-            className="flex items-center gap-3 px-3 py-2 w-full text-red-500 hover:bg-red-50 rounded-lg text-[11px] font-bold mt-2"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-semibold text-red-500 hover:bg-red-50 transition-all duration-200"
           >
-            <LogOut size={18} /><span>Log out</span>
-          </Link>
+            <LogOut size={18} strokeWidth={1.5} />
+            <span>Log out</span>
+          </button>
         </div>
       </aside>
 
@@ -683,7 +664,7 @@ const ProductDashboard = () => {
           </div>
         )}
 
-        <main className="p-8 max-w-[1400px] mx-auto w-full">
+        <main className="p-8 max-w-[1400px] mx-auto w-full pb-24">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-2xl font-bold text-[#1A1A1A] tracking-tight">Product Management</h1>
@@ -698,13 +679,12 @@ const ProductDashboard = () => {
             </div>
             <button
               onClick={() => setIsProductModalOpen(true)}
-              className="bg-[#125852] text-white px-5 py-2.5 rounded-lg text-[12px] font-bold flex items-center gap-2 hover:bg-[#0e443f] transition-all active:scale-95"
+              className="bg-[#F5B841] text-white px-5 py-2.5 rounded-lg text-[12px] font-bold flex items-center gap-2 hover:bg-[#E0A83B] transition-all active:scale-95"
             >
               <Plus size={18} /> Add New Product
             </button>
           </div>
 
-          {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <StatCard label="Total Products"  value={products.length}
               icon={<Package className="text-teal-600" />} />
@@ -719,13 +699,12 @@ const ProductDashboard = () => {
               icon={<Package className="text-slate-400" />} />
           </div>
 
-          {/* Search + View toggle */}
           <div className="flex items-center justify-between mb-6">
             <div className="relative w-80">
               <input
                 type="text" placeholder="Search by title or SKU..."
                 value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-4 pr-10 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#125852] shadow-sm"
+                className="w-full pl-4 pr-10 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#F5B841] shadow-sm"
               />
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             </div>
@@ -741,7 +720,6 @@ const ProductDashboard = () => {
             </div>
           </div>
 
-          {/* Product grid / loading / empty */}
           {isFetching ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[...Array(8)].map((_, i) => (
@@ -762,7 +740,7 @@ const ProductDashboard = () => {
               <p className="text-slate-500 text-sm mb-6">Start by adding your first product to the catalog.</p>
               <button
                 onClick={() => setIsProductModalOpen(true)}
-                className="bg-[#125852] text-white px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 mx-auto hover:bg-[#0e443f]"
+                className="bg-[#F5B841] text-white px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 mx-auto hover:bg-[#E0A83B]"
               >
                 <Plus size={16} /> Add Your First Product
               </button>
@@ -780,16 +758,18 @@ const ProductDashboard = () => {
             </div>
           )}
         </main>
+
+        <footer className="bg-[#125852] text-white py-4 px-8 flex justify-between items-center text-[9px] rounded-xl mx-8 mb-4">
+          <div>Buy Smart. Sell Fast. Grow Together...</div>
+          <div>© 2026 Vendor Portal. All rights reserved.</div>
+        </footer>
       </div>
 
-      {/* ── CREATE PRODUCT MODAL  */}
+      {/* CREATE PRODUCT MODAL */}
       {isProductModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <form
-            onSubmit={handlePublish}
-            className="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[95vh] text-left"
-          >
-            <div className="px-6 py-5 border-b flex justify-between items-start">
+          <form onSubmit={handlePublish} className="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[95vh] text-left">
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-start">
               <div>
                 <h2 className="text-lg font-bold">Create New Product</h2>
                 <p className="text-[11px] text-slate-500">
@@ -800,14 +780,12 @@ const ProductDashboard = () => {
                 <X size={20} />
               </button>
             </div>
-
             <div className="p-6 overflow-y-auto space-y-5">
               {errors._server && (
                 <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-medium px-4 py-3 rounded-lg">
                   {errors._server}
                 </div>
               )}
-
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Title *</label>
                 <input
@@ -817,7 +795,6 @@ const ProductDashboard = () => {
                 />
                 {errors.title && <p className="text-red-500 text-[10px] font-bold">{errors.title}</p>}
               </div>
-
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Description</label>
                 <textarea
@@ -826,7 +803,6 @@ const ProductDashboard = () => {
                   className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none resize-none"
                 />
               </div>
-
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Location</label>
                 <input
@@ -835,14 +811,10 @@ const ProductDashboard = () => {
                   className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
                 />
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold uppercase text-slate-500">Sub-category</label>
-                  <select
-                    name="category" value={formData.category} onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none bg-white"
-                  >
+                  <select name="category" value={formData.category} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none bg-white">
                     <option value="">— Select —</option>
                     {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
                   </select>
@@ -857,78 +829,37 @@ const ProductDashboard = () => {
                   {errors.price && <p className="text-red-500 text-[10px] font-bold">{errors.price}</p>}
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold uppercase text-slate-500">SKU</label>
-                  <input
-                    type="text" name="sku" value={formData.sku} onChange={handleInputChange}
-                    placeholder="ALP-TSH-M-BLK-L-2026-0001"
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none"
-                  />
+                  <input type="text" name="sku" value={formData.sku} onChange={handleInputChange} placeholder="ALP-TSH-M-BLK-L-2026-0001" className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold uppercase text-slate-500">Quality</label>
-                  <select
-                    name="qty" value={formData.qty} onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none bg-white"
-                  >
+                  <select name="qty" value={formData.qty} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none bg-white">
                     <option value="High">High</option>
                     <option value="Medium">Medium</option>
                     <option value="Low">Low</option>
                   </select>
                 </div>
               </div>
-
-              {/* Variants (sizes + colors) */}
               <VariantSection sizes={formData.sizes} colors={formData.colors} isEdit={false} />
-
-              {/* General images */}
-              <ImageGrid
-                existingImages={[]}
-                pendingImages={formData.imageFiles}
-                onRemoveExisting={() => {}}
-                onRemovePending={removeCreateImage}
-                onAdd={() => fileInputRef.current?.click()}
-              />
-              <input
-                type="file" ref={fileInputRef} onChange={handleFilesChange}
-                className="hidden" accept="image/jpeg,image/png,image/webp" multiple
-              />
-
-              {/* Per-colour images — only shown when colours are selected */}
-              <ColorImageSection
-                colors={formData.colors}
-                colorImageFiles={formData.colorImageFiles}
-                isEdit={false}
-              />
-
+              <ImageGrid existingImages={[]} pendingImages={formData.imageFiles} onRemoveExisting={() => {}} onRemovePending={removeCreateImage} onAdd={() => fileInputRef.current?.click()} />
+              <input type="file" ref={fileInputRef} onChange={handleFilesChange} className="hidden" accept="image/jpeg,image/png,image/webp" multiple />
+              <ColorImageSection colors={formData.colors} colorImageFiles={formData.colorImageFiles} isEdit={false} />
               <div className="flex items-center justify-between pt-2">
                 <div>
                   <p className="text-[12px] font-bold text-slate-800 uppercase">Publish immediately</p>
                   <p className="text-[10px] text-slate-400">Off = saved as draft.</p>
                 </div>
-                <div
-                  onClick={() => setIsPublished((prev) => !prev)}
-                  className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-all ${isPublished ? 'bg-green-500' : 'bg-slate-200'}`}
-                >
+                <div onClick={() => setIsPublished((prev) => !prev)} className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-all ${isPublished ? 'bg-green-500' : 'bg-slate-200'}`}>
                   <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${isPublished ? 'translate-x-6' : 'translate-x-0'}`} />
                 </div>
               </div>
             </div>
-
-            <div className="px-6 py-5 border-t flex justify-end gap-3 bg-slate-50/20">
-              <button
-                type="button"
-                onClick={() => { setIsProductModalOpen(false); setFormData(blankForm()); setErrors({}); }}
-                className="px-8 py-2.5 text-[11px] font-bold border rounded-lg bg-white hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit" disabled={isLoading}
-                className="px-8 py-2.5 bg-[#F5B841] text-white rounded-lg text-[11px] font-bold uppercase shadow-sm disabled:opacity-60 hover:bg-[#E0A83B] active:scale-95 transition-all"
-              >
+            <div className="px-6 py-5 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/20">
+              <button type="button" onClick={() => { setIsProductModalOpen(false); setFormData(blankForm()); setErrors({}); }} className="px-8 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50">Cancel</button>
+              <button type="submit" disabled={isLoading} className="px-8 py-2.5 bg-[#F5B841] text-white rounded-lg text-[11px] font-bold uppercase shadow-sm disabled:opacity-60 hover:bg-[#E0A83B] active:scale-95 transition-all">
                 {isLoading ? 'Publishing...' : 'Publish Product'}
               </button>
             </div>
@@ -936,168 +867,81 @@ const ProductDashboard = () => {
         </div>
       )}
 
-      {/* EDIT / DELETE MODAL  */}
+      {/* EDIT MODAL */}
       {isEditModalOpen && selectedProduct && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <form
-            onSubmit={handleUpdate}
-            className="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[95vh] text-left"
-          >
-            <div className="px-6 py-5 border-b flex justify-between items-start">
+          <form onSubmit={handleUpdate} className="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[95vh] text-left">
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-start">
               <div>
                 <h2 className="text-lg font-bold">Edit Product</h2>
                 <p className="text-[11px] text-slate-500">Update the details for this product listing.</p>
               </div>
-              <button type="button" onClick={() => { setIsEditModalOpen(false); setSelectedProduct(null); setEditErrors({}); }}>
-                <X size={20} />
-              </button>
+              <button type="button" onClick={() => { setIsEditModalOpen(false); setSelectedProduct(null); setEditErrors({}); }}><X size={20} /></button>
             </div>
-
             <div className="p-6 overflow-y-auto space-y-5">
-              {editErrors._server && (
-                <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-medium px-4 py-3 rounded-lg">
-                  {editErrors._server}
-                </div>
-              )}
-
+              {editErrors._server && (<div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-medium px-4 py-3 rounded-lg">{editErrors._server}</div>)}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Title *</label>
-                <input
-                  type="text" value={selectedProduct.title || ''}
-                  onChange={(e) => setSelectedProduct((p) => ({ ...p, title: e.target.value }))}
-                  className={`w-full px-4 py-2.5 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${editErrors.title ? 'border-red-500' : 'border-slate-200'}`}
-                />
+                <input type="text" value={selectedProduct.title || ''} onChange={(e) => setSelectedProduct((p) => ({ ...p, title: e.target.value }))} className={`w-full px-4 py-2.5 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${editErrors.title ? 'border-red-500' : 'border-slate-200'}`} />
                 {editErrors.title && <p className="text-red-500 text-[10px] font-bold">{editErrors.title}</p>}
               </div>
-
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Description</label>
-                <textarea
-                  value={selectedProduct.description || ''}
-                  onChange={(e) => setSelectedProduct((p) => ({ ...p, description: e.target.value }))}
-                  rows="3"
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none resize-none"
-                />
+                <textarea value={selectedProduct.description || ''} onChange={(e) => setSelectedProduct((p) => ({ ...p, description: e.target.value }))} rows="3" className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none resize-none" />
               </div>
-
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Location</label>
-                <input
-                  type="text" value={selectedProduct.location || ''}
-                  onChange={(e) => setSelectedProduct((p) => ({ ...p, location: e.target.value }))}
-                  placeholder="e.g. Kampala, Uganda"
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
-                />
+                <input type="text" value={selectedProduct.location || ''} onChange={(e) => setSelectedProduct((p) => ({ ...p, location: e.target.value }))} placeholder="e.g. Kampala, Uganda" className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]" />
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold uppercase text-slate-500">Sub-category</label>
-                  <select
-                    value={selectedProduct.category || ''}
-                    onChange={(e) => setSelectedProduct((p) => ({ ...p, category: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none bg-white"
-                  >
+                  <select value={selectedProduct.category || ''} onChange={(e) => setSelectedProduct((p) => ({ ...p, category: e.target.value }))} className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none bg-white">
                     <option value="">— Select —</option>
                     {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold uppercase text-slate-500">Price ({currencySymbol}) *</label>
-                  <input
-                    type="number" value={selectedProduct.price || ''}
-                    onChange={(e) => setSelectedProduct((p) => ({ ...p, price: e.target.value }))}
-                    min="0" step="any" placeholder="0.00"
-                    className={`w-full px-4 py-2.5 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${editErrors.price ? 'border-red-500' : 'border-slate-200'}`}
-                  />
+                  <input type="number" value={selectedProduct.price || ''} onChange={(e) => setSelectedProduct((p) => ({ ...p, price: e.target.value }))} min="0" step="any" placeholder="0.00" className={`w-full px-4 py-2.5 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${editErrors.price ? 'border-red-500' : 'border-slate-200'}`} />
                   {editErrors.price && <p className="text-red-500 text-[10px] font-bold">{editErrors.price}</p>}
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold uppercase text-slate-500">SKU</label>
-                  <input
-                    type="text" value={selectedProduct.sku || ''}
-                    onChange={(e) => setSelectedProduct((p) => ({ ...p, sku: e.target.value }))}
-                    placeholder="ALP-TSH-M-BLK-L-2026-0001"
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none"
-                  />
+                  <input type="text" value={selectedProduct.sku || ''} onChange={(e) => setSelectedProduct((p) => ({ ...p, sku: e.target.value }))} placeholder="ALP-TSH-M-BLK-L-2026-0001" className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold uppercase text-slate-500">Quality</label>
-                  <select
-                    value={selectedProduct.qty || 'Medium'}
-                    onChange={(e) => setSelectedProduct((p) => ({ ...p, qty: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none bg-white"
-                  >
+                  <select value={selectedProduct.qty || 'Medium'} onChange={(e) => setSelectedProduct((p) => ({ ...p, qty: e.target.value }))} className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none bg-white">
                     <option value="High">High</option>
                     <option value="Medium">Medium</option>
                     <option value="Low">Low</option>
                   </select>
                 </div>
               </div>
-
-              {/* Variants */}
-              <VariantSection
-                sizes={selectedProduct.sizes   || []}
-                colors={selectedProduct.colors || []}
-                isEdit={true}
-              />
-
-              {/* General images */}
-              <ImageGrid
-                existingImages={selectedProduct.images || []}
-                pendingImages={selectedProduct.newImageFiles || []}
-                onRemoveExisting={handleDeleteExistingImage}
-                onRemovePending={removeNewEditImage}
-                onAdd={() => editFileInputRef.current?.click()}
-              />
-              <input
-                type="file" ref={editFileInputRef} onChange={handleEditFilesChange}
-                className="hidden" accept="image/jpeg,image/png,image/webp" multiple
-              />
-
-              {/* Per-colour images */}
-              <ColorImageSection
-                colors={selectedProduct.colors || []}
-                colorImageFiles={selectedProduct.colorImageFiles || {}}
-                isEdit={true}
-              />
-
+              <VariantSection sizes={selectedProduct.sizes || []} colors={selectedProduct.colors || []} isEdit={true} />
+              <ImageGrid existingImages={selectedProduct.images || []} pendingImages={selectedProduct.newImageFiles || []} onRemoveExisting={handleDeleteExistingImage} onRemovePending={removeNewEditImage} onAdd={() => editFileInputRef.current?.click()} />
+              <input type="file" ref={editFileInputRef} onChange={handleEditFilesChange} className="hidden" accept="image/jpeg,image/png,image/webp" multiple />
+              <ColorImageSection colors={selectedProduct.colors || []} colorImageFiles={selectedProduct.colorImageFiles || {}} isEdit={true} />
               <div className="flex items-center justify-between pt-2">
                 <div>
                   <p className="text-[12px] font-bold text-slate-800 uppercase">Published</p>
                   <p className="text-[10px] text-slate-400">Off = saved as draft.</p>
                 </div>
-                <div
-                  onClick={() => setSelectedProduct((p) => ({ ...p, is_published: !p.is_published }))}
-                  className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-all ${selectedProduct.is_published ? 'bg-green-500' : 'bg-slate-200'}`}
-                >
+                <div onClick={() => setSelectedProduct((p) => ({ ...p, is_published: !p.is_published }))} className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-all ${selectedProduct.is_published ? 'bg-green-500' : 'bg-slate-200'}`}>
                   <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${selectedProduct.is_published ? 'translate-x-6' : 'translate-x-0'}`} />
                 </div>
               </div>
             </div>
-
-            <div className="px-6 py-5 border-t flex items-center justify-between bg-slate-50/20">
-              <button
-                type="button" onClick={handleDelete} disabled={isLoading}
-                className="flex items-center gap-2 px-4 py-2.5 text-[11px] font-bold text-red-500 border border-red-200 rounded-lg bg-white hover:bg-red-50 disabled:opacity-60"
-              >
+            <div className="px-6 py-5 border-t border-slate-100 flex items-center justify-between bg-slate-50/20">
+              <button type="button" onClick={handleDelete} disabled={isLoading} className="flex items-center gap-2 px-4 py-2.5 text-[11px] font-bold text-red-500 border border-red-200 rounded-lg bg-white hover:bg-red-50 disabled:opacity-60">
                 <Trash2 size={14} /> Delete Product
               </button>
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => { setIsEditModalOpen(false); setSelectedProduct(null); setEditErrors({}); }}
-                  className="px-8 py-2.5 text-[11px] font-bold border rounded-lg bg-white hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit" disabled={isLoading}
-                  className="px-8 py-2.5 bg-[#F5B841] text-white rounded-lg text-[11px] font-bold uppercase shadow-sm disabled:opacity-60 hover:bg-[#E0A83B] active:scale-95 transition-all"
-                >
+                <button type="button" onClick={() => { setIsEditModalOpen(false); setSelectedProduct(null); setEditErrors({}); }} className="px-8 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50">Cancel</button>
+                <button type="submit" disabled={isLoading} className="px-8 py-2.5 bg-[#F5B841] text-white rounded-lg text-[11px] font-bold uppercase shadow-sm disabled:opacity-60 hover:bg-[#E0A83B] active:scale-95 transition-all">
                   {isLoading ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
@@ -1110,58 +954,32 @@ const ProductDashboard = () => {
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden text-center p-8 relative">
-            <button
-              onClick={() => setIsDeleteModalOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
-            >
-              <X size={18} />
-            </button>
-            <div className="flex justify-center mb-5">
-              <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center">
-                <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
-                  <span className="text-red-500 text-xl font-black">!</span>
-                </div>
-              </div>
-            </div>
+            <button onClick={() => setIsDeleteModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"><X size={18} /></button>
+            <div className="flex justify-center mb-5"><div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center"><div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center"><span className="text-red-500 text-xl font-black">!</span></div></div></div>
             <h2 className="text-[17px] font-bold text-slate-900 mb-2">Delete this product?</h2>
-            <p className="text-[12px] text-slate-500 leading-relaxed mb-7">
-              This product will be permanently deleted from your store and cannot be recovered.
-            </p>
+            <p className="text-[12px] text-slate-500 leading-relaxed mb-7">This product will be permanently deleted from your store and cannot be recovered.</p>
             <div className="flex gap-3">
-              <button
-                onClick={confirmDelete} disabled={isLoading}
-                className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white text-[12px] font-bold rounded-xl transition-all active:scale-95 disabled:opacity-60"
-              >
-                {isLoading ? 'Deleting...' : 'Delete'}
-              </button>
-              <button
-                onClick={() => setIsDeleteModalOpen(false)}
-                className="flex-1 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-[12px] font-bold rounded-xl transition-all"
-              >
-                Cancel
-              </button>
+              <button onClick={confirmDelete} disabled={isLoading} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white text-[12px] font-bold rounded-xl transition-all active:scale-95 disabled:opacity-60">{isLoading ? 'Deleting...' : 'Delete'}</button>
+              <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-[12px] font-bold rounded-xl transition-all">Cancel</button>
             </div>
           </div>
         </div>
       )}
-
-      <footer className="fixed bottom-0 left-64 right-0 bg-[#125852] text-white py-2 px-8 flex justify-between items-center text-[9px] z-40">
-        <div>Buy Smart. Sell Fast. Grow Together...</div>
-        <div>© 2026 Vendor Portal. All rights reserved.</div>
-      </footer>
     </div>
   );
 };
 
 // Sub-components 
-const SidebarLink = ({ to, icon, label, active = false }) => (
+const SidebarNavLink = ({ to, icon, label, active = false }) => (
   <Link
     to={to}
-    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all ${
-      active ? 'bg-[#E0F2F1] text-[#125852]' : 'text-slate-400 hover:text-slate-900'
+    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+      active
+        ? 'bg-[#FFF8ED] text-[#F2B53D]'
+        : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
     }`}
   >
-    {icon}<span>{label}</span>
+    {icon} <span>{label}</span>
   </Link>
 );
 
@@ -1175,7 +993,6 @@ const StatCard = ({ label, value, icon }) => (
   </div>
 );
 
-// ── ProductCard: main image shown, clicking the photo count badge reveals color variant thumbnails ──
 const ProductCard = ({ product, currencySymbol, onClick }) => {
   const [activeColorIdx, setActiveColorIdx] = React.useState(0);
   const [showColorPicker, setShowColorPicker] = React.useState(false);
@@ -1193,12 +1010,12 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
 
   const getQualityColor = () => {
     const q = qty.toLowerCase();
-    if (q === 'low')    return 'bg-red-50 text-red-600';
+    if (q === 'low') return 'bg-red-50 text-red-600';
     if (q === 'medium') return 'bg-orange-50 text-orange-600';
     return 'bg-teal-50 text-teal-600';
   };
 
-  const sku    = product.sku || product.detail?.sku || product.listing_detail?.sku || '';
+  const sku = product.sku || product.detail?.sku || product.listing_detail?.sku || '';
   const images = product.images ?? [];
 
   const parseSaved = (val) => {
@@ -1206,63 +1023,42 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
     if (Array.isArray(val)) return val;
     try { return JSON.parse(val); } catch { return val.split(',').map((s) => s.trim()).filter(Boolean); }
   };
-  const sizes  = parseSaved(product.sizes  || product.size_variants);
+  const sizes = parseSaved(product.sizes || product.size_variants);
   const colors = parseSaved(product.colors || product.color_variants);
 
-  // Each color maps to the image at index (colorIdx + 1); index 0 is always the main photo
   const colorVariants = colors.map((color, i) => ({
     color,
     src: images[i + 1]?.image || null,
   }));
 
-  // Active main image: when color picker open use selected color image, else images[0]
   const activeVariantSrc = showColorPicker && colorVariants[activeColorIdx]?.src || null;
-  const mainImageUrl     = activeVariantSrc || images[0]?.image || product.image_url || null;
-  const totalPhotos      = images.length;
+  const mainImageUrl = activeVariantSrc || images[0]?.image || product.image_url || null;
+  const totalPhotos = images.length;
 
-  // Build the tray items — prefer color-labelled variants; fall back to raw image list
   const trayItems = colorVariants.length > 0
     ? colorVariants
     : images.map((img, i) => ({ color: null, src: img.image, idx: i }));
 
   return (
     <div className="bg-white rounded-xl border border-slate-100 overflow-hidden hover:shadow-lg transition-all group cursor-pointer">
-
-      {/* ── Main image area ── */}
       <div className="relative h-48 bg-slate-50 p-4 flex items-center justify-center" onClick={onClick}>
         {mainImageUrl ? (
           <img src={mainImageUrl} alt={product.title} className="w-full h-full object-contain transition-all duration-300" />
         ) : (
           <ShoppingBag className="text-slate-200" size={40} />
         )}
-
-        {/* Quality badge */}
-        <span className={`absolute top-3 right-3 px-2.5 py-1 rounded-md text-[9px] font-black uppercase shadow-sm ${getQualityColor()}`}>
-          {qty}
-        </span>
-
-        {/* Live/Draft badge */}
-        <span className={`absolute bottom-3 right-3 px-2 py-0.5 rounded-md text-[8px] font-black uppercase ${
-          product.is_published ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
-        }`}>
+        <span className={`absolute top-3 right-3 px-2.5 py-1 rounded-md text-[9px] font-black uppercase shadow-sm ${getQualityColor()}`}>{qty}</span>
+        <span className={`absolute bottom-3 right-3 px-2 py-0.5 rounded-md text-[8px] font-black uppercase ${product.is_published ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
           {product.is_published ? 'Live' : 'Draft'}
         </span>
-
-        {/* Edit pencil */}
         <div className="absolute top-3 left-3 bg-white/90 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
           <Pencil size={12} className="text-[#125852]" />
         </div>
-
-        {/* ── Photo count button — always visible when >1 image, click toggles tray ── */}
         {totalPhotos > 0 && (
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setShowColorPicker((v) => !v); }}
-            className={`absolute bottom-3 left-3 text-white text-[8px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 transition-all shadow ${
-              showColorPicker
-                ? 'bg-[#F5B841] hover:bg-[#E0A83B]'
-                : 'bg-black/60 hover:bg-black/80'
-            }`}
+            className={`absolute bottom-3 left-3 text-white text-[8px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 transition-all shadow ${showColorPicker ? 'bg-[#F5B841] hover:bg-[#E0A83B]' : 'bg-black/60 hover:bg-black/80'}`}
           >
             <ImagePlus size={9} />
             {totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}
@@ -1270,16 +1066,9 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
           </button>
         )}
       </div>
-
-      {/* ── Color / image tray — expands when badge is clicked ── */}
       {showColorPicker && trayItems.length > 0 && (
-        <div
-          className="px-3 pt-2.5 pb-3 bg-white border-t-2 border-[#F5B841]/30"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <p className="text-[9px] font-bold text-slate-400 uppercase mb-2 tracking-wider">
-            {colorVariants.length > 0 ? 'Select Color' : 'All Photos'}
-          </p>
+        <div className="px-3 pt-2.5 pb-3 bg-white border-t-2 border-[#F5B841]/30" onClick={(e) => e.stopPropagation()}>
+          <p className="text-[9px] font-bold text-slate-400 uppercase mb-2 tracking-wider">{colorVariants.length > 0 ? 'Select Color' : 'All Photos'}</p>
           <div className="flex flex-wrap gap-2">
             {trayItems.map(({ color, src }, i) => (
               <button
@@ -1287,39 +1076,20 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
                 type="button"
                 title={color ?? `Photo ${i + 1}`}
                 onClick={() => setActiveColorIdx(i)}
-                className={`relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 transition-all border-2 ${
-                  activeColorIdx === i
-                    ? 'border-[#F5B841] shadow-lg scale-105'
-                    : 'border-slate-200 hover:border-[#F5B841]/60 hover:scale-102'
-                }`}
+                className={`relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 transition-all border-2 ${activeColorIdx === i ? 'border-[#F5B841] shadow-lg scale-105' : 'border-slate-200 hover:border-[#F5B841]/60 hover:scale-102'}`}
               >
                 {src ? (
                   <img src={src} alt={color ?? `Photo ${i + 1}`} className="w-full h-full object-cover" />
                 ) : (
-                  <div
-                    className="w-full h-full flex items-center justify-center bg-slate-100"
-                    style={color ? { backgroundColor: (LOCAL_SWATCHES[color] || '#ccc') + '22' } : {}}
-                  >
+                  <div className="w-full h-full flex items-center justify-center bg-slate-100" style={color ? { backgroundColor: (LOCAL_SWATCHES[color] || '#ccc') + '22' } : {}}>
                     {color ? (
-                      <span
-                        className="w-7 h-7 rounded-full border-2 border-white shadow"
-                        style={{ backgroundColor: LOCAL_SWATCHES[color] || '#ccc' }}
-                      />
+                      <span className="w-7 h-7 rounded-full border-2 border-white shadow" style={{ backgroundColor: LOCAL_SWATCHES[color] || '#ccc' }} />
                     ) : (
                       <ShoppingBag size={16} className="text-slate-300" />
                     )}
                   </div>
                 )}
-                {/* Label strip */}
-                <span
-                  className="absolute bottom-0 left-0 right-0 text-center text-[5px] font-black py-px truncate px-0.5"
-                  style={{
-                    backgroundColor: color
-                      ? (LOCAL_SWATCHES[color] || '#125852') + 'dd'
-                      : 'rgba(0,0,0,0.55)',
-                    color: '#fff',
-                  }}
-                >
+                <span className="absolute bottom-0 left-0 right-0 text-center text-[5px] font-black py-px truncate px-0.5" style={{ backgroundColor: color ? (LOCAL_SWATCHES[color] || '#125852') + 'dd' : 'rgba(0,0,0,0.55)', color: '#fff' }}>
                   {color ? color.toUpperCase() : `#${i + 1}`}
                 </span>
               </button>
@@ -1327,25 +1097,16 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
           </div>
         </div>
       )}
-
-      {/* ── Card body ── */}
       <div className="p-5 border-t border-slate-50" onClick={onClick}>
         <p className="text-[9px] font-black text-[#125852] uppercase mb-1 tracking-wider">{product.category}</p>
         <h4 className="text-[13px] font-bold text-slate-900 mb-1 truncate">{product.title}</h4>
-        <div className="text-[10px] text-slate-400 font-medium mb-2 uppercase">
-          {product.vendor_location || product.location || 'Unknown Location'}
-        </div>
-
+        <div className="text-[10px] text-slate-400 font-medium mb-2 uppercase">{product.vendor_location || product.location || 'Unknown Location'}</div>
         {sizes.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-2">
-            {sizes.slice(0, 4).map((s) => (
-              <span key={s} className="px-1.5 py-0.5 bg-slate-100 text-slate-500 text-[8px] font-bold rounded">{s}</span>
-            ))}
+            {sizes.slice(0, 4).map((s) => (<span key={s} className="px-1.5 py-0.5 bg-slate-100 text-slate-500 text-[8px] font-bold rounded">{s}</span>))}
             {sizes.length > 4 && <span className="text-[8px] text-slate-400 self-center">+{sizes.length - 4}</span>}
           </div>
         )}
-
-        {/* Dot swatches row (always visible, compact) */}
         {colors.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-3">
             {colors.slice(0, 8).map((c, i) => (
@@ -1353,27 +1114,16 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
                 key={c}
                 title={c}
                 onClick={(e) => { e.stopPropagation(); setActiveColorIdx(i); setShowColorPicker(true); }}
-                className={`w-4 h-4 rounded-full border-2 shadow-sm flex-shrink-0 cursor-pointer transition-transform hover:scale-110 ${
-                  activeColorIdx === i && showColorPicker ? 'border-[#F5B841]' : 'border-white'
-                }`}
+                className={`w-4 h-4 rounded-full border-2 shadow-sm flex-shrink-0 cursor-pointer transition-transform hover:scale-110 ${activeColorIdx === i && showColorPicker ? 'border-[#F5B841]' : 'border-white'}`}
                 style={{ backgroundColor: LOCAL_SWATCHES[c] || '#ccc' }}
               />
             ))}
-            {colors.length > 8 && (
-              <span className="text-[8px] text-slate-400 self-center">+{colors.length - 8}</span>
-            )}
+            {colors.length > 8 && (<span className="text-[8px] text-slate-400 self-center">+{colors.length - 8}</span>)}
           </div>
         )}
-
         <div className="flex justify-between items-end pt-2 border-t border-slate-100">
-          <div>
-            <p className="text-[9px] text-slate-400 uppercase font-bold">SKU</p>
-            <p className="text-[11px] font-bold text-slate-700">{sku || 'N/A'}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[9px] text-slate-400 uppercase font-bold">Price</p>
-            <p className="text-lg font-black text-[#125852]">{currencySymbol} {Number(product.price || 0).toLocaleString()}</p>
-          </div>
+          <div><p className="text-[9px] text-slate-400 uppercase font-bold">SKU</p><p className="text-[11px] font-bold text-slate-700">{sku || 'N/A'}</p></div>
+          <div className="text-right"><p className="text-[9px] text-slate-400 uppercase font-bold">Price</p><p className="text-lg font-black text-[#125852]">{currencySymbol} {Number(product.price || 0).toLocaleString()}</p></div>
         </div>
       </div>
     </div>
