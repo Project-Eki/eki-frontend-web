@@ -55,7 +55,7 @@ const VendorSidebar = ({ activePage }) => {
       <div className="p-3">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-[11px] font-semibold text-red-500 hover:bg-red-50 transition-all duration-200"
+          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-[11px] font-semibold text-[#F2B53D] hover:bg-[#F2B53D]/10 transition-all duration-200"
         >
           <LogOut size={14} strokeWidth={1.5} />
           <span>Log out</span>
