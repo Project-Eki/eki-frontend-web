@@ -212,16 +212,7 @@ const VendorDashboard = () => {
 
         <main className="p-5 max-w-[1400px] mx-auto w-full pb-16">
           <header className="mb-5 text-left">
-            <h1 className="text-xl font-bold text-[#1A1A1A]">Eki Vendor Command Center</h1>
-            <p className="text-slate-400 text-xs">
-              Monitoring activity for{' '}
-              <span className="font-semibold text-slate-600">{vendorData.storeName || '—'}</span>
-              {vendorData.country && (
-                <span className="ml-2 text-[10px] bg-slate-100 px-2 py-0.5 rounded-full text-slate-500">
-                  {vendorData.country} · {currencySymbol}
-                </span>
-              )}
-            </p>
+            <h1 className="text-xl font-bold text-[#1A1A1A]">Eki Vendor Dashboard</h1>
           </header>
 
           {/* METRIC CARDS */}

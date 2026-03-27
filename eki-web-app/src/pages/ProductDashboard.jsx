@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import VendorSidebar from '../components/VendorSidebar';
 import Navbar3 from '../components/adminDashboard/Navbar3';
@@ -6,7 +6,8 @@ import {
   Plus, Search, Filter, LayoutGrid, List,
   CheckCircle2, Package, ShoppingBag,
   X, Upload, Trash2, Pencil, Palette, Ruler, ImagePlus, ChevronDown, ChevronUp,
-  ArrowRight, ArrowLeft,
+  ArrowRight, ArrowLeft, SlidersHorizontal, Briefcase, Clock, Calendar, Star,
+  Globe, MapPin
 } from 'lucide-react';
 import logo from '../assets/eki-logo-white.png';
 
@@ -35,6 +36,14 @@ const COLOR_SWATCHES = {
   Pink: '#ec4899', Brown: '#92400e', Grey: '#6b7280', Navy: '#1e3a5f',
   Beige: '#d2b48c', Maroon: '#800000', Teal: '#14b8a6', Gold: '#d4af37',
   Silver: '#c0c0c0',
+};
+
+// COLOR MAP — used by the stat cards to pick their icon + value colors.
+const colorMap = {
+  teal:   { bg: "bg-teal-50",   icon: "text-teal-600",   val: "text-teal-700"   },
+  green:  { bg: "bg-green-50",  icon: "text-green-600",  val: "text-green-700"  },
+  amber:  { bg: "bg-amber-50",  icon: "text-amber-600",  val: "text-amber-700"  },
+  purple: { bg: "bg-purple-50", icon: "text-purple-600", val: "text-purple-700" },
 };
 
 const getCurrencySymbol = (country) => {
@@ -99,6 +108,13 @@ const getQualityStyle = (qty) => {
   return               { bg: '#FFFBF0', text: '#A07800', border: '#F5C842' };
 };
 
+// STATUS STYLE MAP — used inside ProductCard
+const STATUS_STYLE = {
+  published: "bg-green-50 text-green-700 border border-green-200",
+  active:    "bg-green-50 text-green-700 border border-green-200",
+  draft:     "bg-amber-50 text-amber-700 border border-amber-200",
+};
+
 // ─── Main Component
 const ProductDashboard = () => {
   const [viewType, setViewType]                     = useState('grid');
@@ -114,14 +130,8 @@ const ProductDashboard = () => {
   const [vendorCountry, setVendorCountry]           = useState('');
   const [businessCategory, setBusinessCategory]     = useState('retail');
   const [searchQuery, setSearchQuery]               = useState('');
-  const [searchFocused, setSearchFocused]           = useState(false);
   const [successMsg, setSuccessMsg]                 = useState('');
-
-  const [isFilterOpen, setIsFilterOpen]             = useState(false);
-  const [filterCategory, setFilterCategory]         = useState('');
-  const [filterStatus, setFilterStatus]             = useState('');
-  const [filterQuality, setFilterQuality]           = useState('');
-  const filterRef                                   = useRef(null);
+  const [sortBy, setSortBy]                         = useState("newest");
 
   const [formStep, setFormStep]                     = useState(1);
 
@@ -139,16 +149,6 @@ const ProductDashboard = () => {
   useEffect(() => {
     loadProducts();
     loadVendorInfo();
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (filterRef.current && !filterRef.current.contains(e.target)) {
-        setIsFilterOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const loadVendorInfo = async () => {
@@ -487,27 +487,56 @@ const ProductDashboard = () => {
     }
   };
 
-  const filteredProducts = products.filter((p) => {
-    const matchesSearch =
-      p.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = !filterCategory || p.category === filterCategory;
-    const matchesStatus =
-      !filterStatus ||
-      (filterStatus === 'published' && p.is_published === true) ||
-      (filterStatus === 'draft' && p.is_published !== true);
-    const rawQty = (p.inventory_quality || p.qty || '').toUpperCase();
-    const matchesQuality = !filterQuality || rawQty === filterQuality.toUpperCase();
-    return matchesSearch && matchesCategory && matchesStatus && matchesQuality;
-  });
+  // Filter and sort products
+  const filteredProducts = useMemo(() => {
+    let result = products.filter((p) => {
+      const matchesSearch =
+        p.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesSearch;
+    });
 
-  const activeFilterCount = [filterCategory, filterStatus, filterQuality].filter(Boolean).length;
+    // Sort based on sortBy
+    if (sortBy === 'price_asc') {
+      result.sort((a, b) => parseFloat(a.price || 0) - parseFloat(b.price || 0));
+    } else if (sortBy === 'price_desc') {
+      result.sort((a, b) => parseFloat(b.price || 0) - parseFloat(a.price || 0));
+    } else if (sortBy === 'newest') {
+      result.sort((a, b) => b.id - a.id);
+    } else if (sortBy === 'oldest') {
+      result.sort((a, b) => a.id - b.id);
+    }
 
-  const clearFilters = () => {
-    setFilterCategory('');
-    setFilterStatus('');
-    setFilterQuality('');
-  };
+    return result;
+  }, [products, searchQuery, sortBy]);
+
+  // ── STATS
+  const stats = useMemo(() => [
+    {
+      label: "Total Products",
+      value: products.length.toString(),
+      icon:  <Package size={18} />,
+      color: "teal",
+    },
+    {
+      label: "Active Listings",
+      value: products.filter(p => p.is_published === true).length.toString(),
+      icon:  <CheckCircle2 size={18} />,
+      color: "green",
+    },
+    {
+      label: "High Quality",
+      value: products.filter(p => (p.inventory_quality || p.qty || '').toUpperCase() === 'HIGH').length.toString(),
+      icon:  <Star size={18} />,
+      color: "amber",
+    },
+    {
+      label: "Drafts",
+      value: products.filter(p => p.is_published !== true).length.toString(),
+      icon:  <Clock size={18} />,
+      color: "purple",
+    },
+  ], [products]);
 
   // ─── VariantSection
   const VariantSection = ({ sizes, colors, isEdit = false }) => {
@@ -743,6 +772,119 @@ const ProductDashboard = () => {
     );
   };
 
+  // ─── ProductCard
+  const ProductCard = ({ product, currencySymbol, onClick }) => {
+    const rawQty = product.inventory_quality || product.qty || 'Medium';
+    const qty = QTY_DISPLAY[rawQty] || rawQty;
+    const qualityStyle = getQualityStyle(qty);
+    
+    const parseSaved = (val) => {
+      if (!val) return [];
+      if (Array.isArray(val)) return val;
+      try { return JSON.parse(val); } catch { return val.split(',').map((s) => s.trim()).filter(Boolean); }
+    };
+    const sizes = parseSaved(product.sizes || product.size_variants);
+    const colors = parseSaved(product.colors || product.color_variants);
+    
+    const mainImageUrl = product.images?.[0]?.image || product.image_url || null;
+    
+    const status = product.is_published === true || product.status === 'published' ? 'published' : 'draft';
+
+    return (
+      <div
+        className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all group cursor-pointer"
+        onClick={onClick}
+      >
+        {/* Cover image */}
+        <div className="relative h-44 overflow-hidden bg-slate-50">
+          {mainImageUrl ? (
+            <img
+              src={mainImageUrl}
+              alt={product.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-1">
+              <ShoppingBag size={28} className="text-slate-300" />
+              <span className="text-[10px] text-slate-300">No image</span>
+            </div>
+          )}
+
+          {/* Quality badge */}
+          <span
+            className="absolute top-3 left-3 px-2 py-0.5 rounded-md text-[9px] font-black uppercase border"
+            style={{ background: qualityStyle.bg, color: qualityStyle.text, borderColor: qualityStyle.border }}
+          >
+            {qty}
+          </span>
+
+          {/* Status badge */}
+          <span className={`absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0 ${STATUS_STYLE[status] || STATUS_STYLE.draft}`}>
+            {status === 'published' ? 'Live' : 'Draft'}
+          </span>
+
+          {/* Hover edit indicator */}
+          <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+            <Pencil size={12} className="text-[#125852]" />
+          </div>
+        </div>
+
+        <div className="p-4">
+          {/* Category */}
+          {product.category && (
+            <p className="text-[10px] font-bold text-slate-400 tracking-widest mb-1 truncate">
+              {product.category}
+            </p>
+          )}
+
+          {/* Title */}
+          <h3 className="font-black text-[15px] text-slate-900 leading-tight mb-1 line-clamp-1">
+            {product.title || '—'}
+          </h3>
+
+          {/* Description */}
+          <p className="text-[12px] text-slate-500 line-clamp-2 mb-3">
+            {product.description || 'No description provided.'}
+          </p>
+
+          {/* Colors and Sizes row */}
+          <div className="flex items-center justify-between text-[12px] text-slate-400 mb-3">
+            {colors.length > 0 && (
+              <div className="flex items-center gap-1">
+                <Palette size={12} />
+                <span className="text-[11px]">
+                  {colors.slice(0, 3).join(', ')}
+                  {colors.length > 3 && ` +${colors.length - 3}`}
+                </span>
+              </div>
+            )}
+            {sizes.length > 0 && (
+              <div className="flex items-center gap-1">
+                <Ruler size={12} />
+                <span className="text-[11px]">
+                  {sizes.slice(0, 3).join(', ')}
+                  {sizes.length > 3 && ` +${sizes.length - 3}`}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Price */}
+          <div className="flex items-center justify-between pt-3 border-t border-slate-50">
+            <div>
+              <span className="text-[21px] font-black text-slate-900">
+                {currencySymbol}{Number(product.price || 0).toLocaleString()}
+              </span>
+            </div>
+            <button className="text-[12px] font-bold text-teal-700 hover:text-amber-500 transition-colors flex items-center gap-1">
+              View Details <span className="text-[10px]">↗</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
       {/* VendorSidebar Component */}
@@ -757,11 +899,12 @@ const ProductDashboard = () => {
           </div>
         )}
 
-        <main className="p-5 max-w-[1400px] mx-auto w-full pb-16">
-          <div className="flex justify-between items-center mb-5">
+        <main className="flex-1 p-5 max-w-[1400px] mx-auto w-full pb-16">
+          {/* ── Page header + Create button ── */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
-              <h1 className="text-xl font-bold text-[#1A1A1A] tracking-tight">Product Management</h1>
-              <p className="text-slate-400 text-[11px]">
+              <h2 className="text-xl font-bold text-[#1A1A1A]">Product Management</h2>
+              <p className="text-slate-400 text-[11px] mt-0.5">
                 Manage your inventory, pricing, and visibility across the marketplace.
                 {vendorCountry && (
                   <span className="ml-2 bg-slate-100 px-1.5 py-0.5 rounded-full text-slate-500 text-[9px]">
@@ -770,192 +913,112 @@ const ProductDashboard = () => {
                 )}
               </p>
             </div>
+
             <button
               onClick={() => { setFormStep(1); setIsProductModalOpen(true); }}
-              className="bg-[#F5B841] text-white px-5 py-2.5 rounded-lg text-[12px] font-bold flex items-center gap-2 hover:bg-[#E0A83B] transition-all active:scale-95 shadow-sm"
+              className="bg-[#F5B841] hover:bg-[#E0A83B] text-white px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all active:scale-95 font-bold text-sm shrink-0 w-full sm:w-auto justify-center"
             >
-              <Plus size={14} /> Add New Product
+              <Plus size={18} /> Add New Product
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5">
-            <StatCard label="Total Products"  value={products.length}
-              icon={<Package size={12} className="text-teal-600" />} />
-            <StatCard label="Active Listings" value={products.filter((p) => p.is_published === true).length}
-              icon={<CheckCircle2 size={12} className="text-teal-600" />} />
-            <StatCard
-              label="High Quality"
-              value={products.filter((p) => (p.inventory_quality || p.qty || '').toUpperCase() === 'HIGH').length}
-              icon={<CheckCircle2 size={12} className="text-green-500" />}
-            />
-            <StatCard label="Drafts" value={products.filter((p) => p.is_published !== true).length}
-              icon={<Package size={12} className="text-slate-400" />} />
-          </div>
-
-          {/* Search + Filter + View toggle */}
-          <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-            <div className={`relative w-80 flex items-center border rounded-lg shadow-sm transition-all bg-white ${searchFocused ? 'border-[#F5B841] ring-1 ring-[#F5B841]' : 'border-slate-200'}`}>
-              <Search
-                className={`absolute left-3 transition-colors ${searchFocused ? 'text-[#F5B841]' : 'text-slate-400'}`}
-                size={16}
-              />
+          {/* ── Search + filter bar ── */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-5">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input
-                type="text"
-                placeholder="Search by title or SKU..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => setSearchFocused(false)}
-                className="w-full pl-9 pr-4 py-2 bg-transparent text-sm focus:outline-none rounded-lg"
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Filter by title, SKU, or keyword..."
+                className="w-full h-10 pl-10 pr-4 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#F5B841] focus:ring-1 focus:ring-[#F5B841] transition-colors"
               />
-              {searchQuery && (
-                <button type="button" onClick={() => setSearchQuery('')} className="absolute right-3 text-slate-400 hover:text-slate-600">
-                  <X size={13} />
-                </button>
-              )}
             </div>
-
-            <div className="flex items-center gap-3">
-              <div className="relative" ref={filterRef}>
+            <div className="flex gap-2 shrink-0 flex-wrap">
+              <button className="flex items-center gap-2 h-10 px-4 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:border-slate-300 transition-colors">
+                <SlidersHorizontal size={15} /> <span className="hidden sm:inline">Advanced</span> Filters
+              </button>
+              <div className="flex bg-white border border-slate-200 rounded-xl overflow-hidden">
                 <button
-                  onClick={() => setIsFilterOpen((v) => !v)}
-                  className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-xs font-bold transition-all ${
-                    activeFilterCount > 0
-                      ? 'bg-[#F5B841] text-white border-[#F5B841] shadow-sm'
-                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-[#F5B841]'
-                  }`}
+                  onClick={() => setViewType("grid")}
+                  className={`w-10 h-10 flex items-center justify-center transition-colors ${viewType === "grid" ? "bg-[#125852] text-white" : "text-slate-400 hover:text-slate-600"}`}
                 >
-                  <Filter size={14} />
-                  Filters
-                  {activeFilterCount > 0 && (
-                    <span className="bg-white text-[#F5B841] text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">
-                      {activeFilterCount}
-                    </span>
-                  )}
+                  <LayoutGrid size={15}/>
                 </button>
-
-                {isFilterOpen && (
-                  <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-slate-200 rounded-2xl shadow-2xl p-5 w-72">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-[12px] font-bold text-slate-800 uppercase tracking-wide">Filter Products</h3>
-                      {activeFilterCount > 0 && (
-                        <button onClick={clearFilters} className="text-[10px] font-bold text-[#F5B841] hover:underline">Clear all</button>
-                      )}
-                    </div>
-                    <div className="mb-4">
-                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Status</label>
-                      <div className="flex gap-2 flex-wrap">
-                        {['', 'published', 'draft'].map((s) => (
-                          <button
-                            key={s} type="button" onClick={() => setFilterStatus(s)}
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
-                              filterStatus === s ? 'bg-[#125852] text-white border-[#125852]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#125852]'
-                            }`}
-                          >
-                            {s === '' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="mb-4">
-                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Quality</label>
-                      <div className="flex gap-2 flex-wrap">
-                        {['', 'High', 'Medium', 'Low'].map((q) => (
-                          <button
-                            key={q} type="button" onClick={() => setFilterQuality(q)}
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
-                              filterQuality === q ? 'bg-[#125852] text-white border-[#125852]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#125852]'
-                            }`}
-                          >
-                            {q === '' ? 'All' : q}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Category</label>
-                      <select
-                        value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[11px] bg-white outline-none focus:border-[#125852]"
-                      >
-                        <option value="">All Categories</option>
-                        {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-                      </select>
-                    </div>
-                    <div className="mt-4 pt-3 border-t border-slate-100 text-[10px] text-slate-400 text-center">
-                      Showing {filteredProducts.length} of {products.length} products
-                    </div>
-                  </div>
-                )}
+                <button
+                  onClick={() => setViewType("list")}
+                  className={`w-10 h-10 flex items-center justify-center transition-colors ${viewType === "list" ? "bg-[#125852] text-white" : "text-slate-400 hover:text-slate-600"}`}
+                >
+                  <List size={15}/>
+                </button>
               </div>
-
-              <div className="h-8 w-[1px] bg-slate-200 mx-1" />
-              <div className="flex bg-white border border-slate-200 rounded-lg p-1">
-                <button onClick={() => setViewType('grid')} className={`p-1.5 rounded ${viewType === 'grid' ? 'bg-slate-100' : ''}`}><LayoutGrid size={16} /></button>
-                <button onClick={() => setViewType('list')} className={`p-1.5 rounded ${viewType === 'list' ? 'bg-slate-100' : ''}`}><List size={16} /></button>
+              <div className="relative">
+                <select
+                  value={sortBy}
+                  onChange={e => setSortBy(e.target.value)}
+                  className="h-10 pl-3 pr-8 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 focus:outline-none focus:border-[#F5B841] appearance-none cursor-pointer"
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="price_asc">Price: Low → High</option>
+                  <option value="price_desc">Price: High → Low</option>
+                </select>
+                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
               </div>
             </div>
           </div>
 
-          {/* Active filter pills */}
-          {activeFilterCount > 0 && (
-            <div className="flex items-center gap-2 mb-4 flex-wrap">
-              <span className="text-[10px] text-slate-400 font-bold uppercase">Active:</span>
-              {filterStatus && (
-                <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">
-                  {filterStatus}<button onClick={() => setFilterStatus('')}><X size={9} /></button>
-                </span>
-              )}
-              {filterQuality && (
-                <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">
-                  {filterQuality}<button onClick={() => setFilterQuality('')}><X size={9} /></button>
-                </span>
-              )}
-              {filterCategory && (
-                <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">
-                  {filterCategory}<button onClick={() => setFilterCategory('')}><X size={9} /></button>
-                </span>
-              )}
-            </div>
-          )}
+          {/* ── STAT CARDS ── */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+            {stats.map((s, i) => {
+              const c = colorMap[s.color];
+              return (
+                <div key={i} className="bg-white rounded-2xl border border-slate-200 px-4 py-3.5 flex items-center gap-3 shadow-sm">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${c.bg} ${c.icon}`}>
+                    {s.icon}
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide leading-none mb-0.5">
+                      {s.label}
+                    </p>
+                    <p className={`text-[20px] sm:text-[22px] font-black leading-none ${c.val}`}>
+                      {isFetching ? '—' : s.value}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
-          {/* Product grid / loading / empty */}
+          {/* ── PRODUCTS GRID ── */}
           {isFetching ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="bg-white rounded-xl border border-slate-100 overflow-hidden animate-pulse">
-                  <div className="h-40 bg-slate-100" />
-                  <div className="p-4 space-y-1.5">
-                    <div className="h-2 bg-slate-100 rounded w-1/2" />
-                    <div className="h-3 bg-slate-100 rounded w-3/4" />
-                    <div className="h-2 bg-slate-100 rounded w-full" />
+            <div className={`grid gap-4 ${viewType === "grid" ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`}>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-white rounded-2xl border border-slate-100 overflow-hidden animate-pulse">
+                  <div className="h-44 bg-slate-100" />
+                  <div className="p-4 space-y-3">
+                    <div className="h-3 bg-slate-100 rounded w-1/3" />
+                    <div className="h-4 bg-slate-100 rounded w-3/4" />
+                    <div className="h-3 bg-slate-100 rounded w-full" />
+                    <div className="h-3 bg-slate-100 rounded w-2/3" />
                   </div>
                 </div>
               ))}
             </div>
           ) : filteredProducts.length === 0 ? (
-            <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-20 text-center">
-              <ShoppingBag className="text-slate-200 mx-auto mb-4" size={48} />
-              <h3 className="text-lg font-bold text-slate-800">
-                {activeFilterCount > 0 || searchQuery ? 'No matching products' : 'No products found'}
-              </h3>
-              <p className="text-slate-500 text-sm mb-6">
-                {activeFilterCount > 0 || searchQuery
-                  ? 'Try adjusting your search or filters.'
-                  : 'Start by adding your first product to the catalog.'}
+            <div className="bg-white border border-slate-200 rounded-2xl p-16 sm:p-20 flex flex-col items-center justify-center text-center">
+              <div className="w-16 h-16 bg-[#E0F2F1] rounded-full flex items-center justify-center mb-4 text-teal-600">
+                <ShoppingBag size={32} />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">No Products Found</h3>
+              <p className="text-slate-500 max-w-xs mx-auto mt-2 text-sm">
+                {searchQuery
+                  ? 'Try a different search term.'
+                  : 'Click "Add New Product" to create your first listing.'}
               </p>
-              {!activeFilterCount && !searchQuery && (
-                <button
-                  onClick={() => { setFormStep(1); setIsProductModalOpen(true); }}
-                  className="bg-[#F5B841] text-white px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 mx-auto hover:bg-[#E0A83B]"
-                >
-                  <Plus size={16} /> Add Your First Product
-                </button>
-              )}
             </div>
           ) : (
-            <div className={viewType === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4' : 'space-y-3'}>
-              {filteredProducts.map((product) => (
+            <div className={`grid gap-4 ${viewType === "grid" ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`}>
+              {filteredProducts.map(product => (
                 <ProductCard
                   key={product.id}
                   product={product}
@@ -965,9 +1028,27 @@ const ProductDashboard = () => {
               ))}
             </div>
           )}
+
+          {/* ── Pagination ── */}
+          {!isFetching && products.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 pt-4 border-t border-slate-100">
+              <p className="text-sm text-slate-500">
+                Showing <b>{filteredProducts.length}</b> of <b>{products.length}</b> products
+              </p>
+              <div className="flex items-center gap-1">
+                <button className="h-9 px-3 sm:px-4 border border-slate-200 rounded-lg text-sm text-slate-500 hover:border-[#F5B841] hover:text-teal-700 transition-colors font-medium">
+                  Previous
+                </button>
+                <button className="w-9 h-9 rounded-lg text-sm font-bold bg-[#125852] text-white">1</button>
+                <button className="h-9 px-3 sm:px-4 bg-[#125852] text-white rounded-lg text-sm font-bold hover:bg-[#0e4440] transition-colors">
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </main>
 
-        <footer className="bg-[#125852] text-white py-2 px-8 flex justify-between items-center text-[9px] mt-auto">
+        <footer className="bg-[#125852] text-white py-2.5 px-5 flex justify-between items-center text-[8px] rounded-xl mx-5 mb-3">
           <div>Buy Smart. Sell Fast. Grow Together...</div>
           <div>© 2026 Vendor Portal. All rights reserved.</div>
         </footer>
@@ -1343,126 +1424,6 @@ const ProductDashboard = () => {
           </div>
         </div>
       )}
-    </div>
-  );
-};
-
-// ── Sub-components
-const StatCard = ({ label, value, icon }) => (
-  <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between">
-    <div>
-      <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{label}</p>
-      <p className="text-xl font-bold text-slate-800 mt-0.5">{value}</p>
-    </div>
-    <div className="p-1.5 bg-white rounded-lg shadow-sm w-fit">{icon}</div>
-  </div>
-);
-
-// ── ProductCard
-const ProductCard = ({ product, currencySymbol, onClick }) => {
-  const LOCAL_SWATCHES = {
-    Black: '#1a1a1a', White: '#f5f5f5', Red: '#ef4444', Blue: '#3b82f6',
-    Green: '#22c55e', Yellow: '#eab308', Orange: '#f97316', Purple: '#a855f7',
-    Pink: '#ec4899', Brown: '#92400e', Grey: '#6b7280', Navy: '#1e3a5f',
-    Beige: '#d2b48c', Maroon: '#800000', Teal: '#14b8a6', Gold: '#d4af37',
-    Silver: '#c0c0c0',
-  };
-
-  const rawQty = product.inventory_quality || product.qty || 'Medium';
-  const qty = QTY_DISPLAY[rawQty] || rawQty;
-  const qualityStyle = getQualityStyle(qty);
-
-  const sku = product.sku || product.detail?.sku || product.listing_detail?.sku || '';
-  const images = product.images ?? [];
-
-  const parseSaved = (val) => {
-    if (!val) return [];
-    if (Array.isArray(val)) return val;
-    try { return JSON.parse(val); } catch { return val.split(',').map((s) => s.trim()).filter(Boolean); }
-  };
-  const sizes = parseSaved(product.sizes || product.size_variants);
-  const colors = parseSaved(product.colors || product.color_variants);
-
-  const mainImageUrl = images[0]?.image || product.image_url || null;
-
-  return (
-    <div
-      className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200 cursor-pointer border border-slate-100/80 group"
-      onClick={onClick}
-    >
-      <div className="relative bg-[#F8F8F8]" style={{ aspectRatio: '1 / 1.05' }}>
-        {mainImageUrl ? (
-          <img
-            src={mainImageUrl}
-            alt={product.title}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <ShoppingBag className="text-slate-200" size={40} />
-          </div>
-        )}
-
-        <span
-          className="absolute top-3 left-3 px-2 py-0.5 rounded-md text-[9px] font-black uppercase border"
-          style={{ background: qualityStyle.bg, color: qualityStyle.text, borderColor: qualityStyle.border }}
-        >
-          {qty}
-        </span>
-
-        <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
-          <Pencil size={12} className="text-[#125852]" />
-        </div>
-
-        <span className={`absolute bottom-3 right-3 px-2 py-0.5 rounded-md text-[8px] font-black uppercase ${
-          product.is_published ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
-        }`}>
-          {product.is_published ? 'Live' : 'Draft'}
-        </span>
-      </div>
-
-      <div className="px-3 pt-2.5 pb-3">
-        {product.category && (
-          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5 truncate">
-            {product.category}
-          </p>
-        )}
-
-        <h4 className="text-[13px] font-bold text-slate-900 leading-tight mb-1 truncate">{product.title}</h4>
-
-        {colors.length > 0 && (
-          <div className="flex items-center gap-1 mb-2">
-            {colors.slice(0, 5).map((c) => (
-              <span
-                key={c}
-                title={c}
-                className="w-3 h-3 rounded-full border border-white shadow-sm flex-shrink-0"
-                style={{ backgroundColor: LOCAL_SWATCHES[c] || '#ccc' }}
-              />
-            ))}
-            {colors.length > 5 && (
-              <span className="text-[8px] text-slate-400">+{colors.length - 5}</span>
-            )}
-          </div>
-        )}
-
-        {sizes.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-2">
-            {sizes.slice(0, 4).map((s) => (
-              <span key={s} className="px-1.5 py-0.5 bg-slate-100 text-slate-500 text-[8px] font-bold rounded-md">
-                {s === 'one_size' ? 'OS' : s}
-              </span>
-            ))}
-            {sizes.length > 4 && <span className="text-[8px] text-slate-400 self-center">+{sizes.length - 4}</span>}
-          </div>
-        )}
-
-        <div className="mt-2 pt-2 border-t border-slate-100">
-          <p className="text-[14px] font-black text-[#125852]">
-            {currencySymbol}{Number(product.price || 0).toLocaleString()}
-          </p>
-        </div>
-      </div>
     </div>
   );
 };

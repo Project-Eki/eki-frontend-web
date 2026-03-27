@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Bell, Menu, CheckCheck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import adaefe from "../../assets/adaefe.jpg";
 import { getAdminNotifications, markNotificationRead } from '../../services/api';
 import api from '../../services/api';
@@ -22,6 +23,7 @@ const Navbar3 = ({ userName = "Keilar Kirabira", userRole = "Admin", onMenuClick
   const [unreadCount,    setUnreadCount]    = useState(0);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const panelRef = useRef(null);
+  const navigate = useNavigate();
 
   const loadNotifications = async () => {
     try {
@@ -76,6 +78,10 @@ const Navbar3 = ({ userName = "Keilar Kirabira", userRole = "Admin", onMenuClick
     }
   };
 
+  const handleProfileClick = () => {
+    navigate('/account-settings');
+  };
+
   return (
     <>
       <nav className="flex items-center justify-between px-5 py-2.5 bg-white border-b border-slate-200 rounded-b-2xl sticky top-0 z-50 h-14 shrink-0 shadow-sm">
@@ -94,11 +100,11 @@ const Navbar3 = ({ userName = "Keilar Kirabira", userRole = "Admin", onMenuClick
         {/* Search Bar - centered */}
         <div className="flex-1 max-w-md mx-auto">
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5"/>
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5"/>
             <input 
               type="text" 
               placeholder="Search products, orders, customers..." 
-              className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#125852] focus:border-transparent text-xs transition-all"
+              className="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded-full bg-white focus:outline-none focus:ring-1 focus:ring-[#EFB034FF] focus:border-[#EFB034FF] text-xs transition-all"
             />
           </div>
         </div>
@@ -175,7 +181,10 @@ const Navbar3 = ({ userName = "Keilar Kirabira", userRole = "Admin", onMenuClick
 
           {/* User Avatar */}
           <div className="flex items-center pl-2.5 border-l border-slate-200">
-            <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-[#125852] cursor-pointer shrink-0 bg-slate-100">
+            <div 
+              onClick={handleProfileClick}
+              className="w-8 h-8 rounded-full overflow-hidden border-2 border-[#125852] cursor-pointer shrink-0 bg-slate-100 hover:opacity-80 transition-opacity"
+            >
               <img src={adaefe} alt="User Avatar" className="w-full h-full object-cover"/>
             </div>
           </div>
