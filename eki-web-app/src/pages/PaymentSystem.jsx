@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import logo from '../assets/eki-logo-white.png';
+import Navbar3 from '../components/adminDashboard/Navbar3';
 import { 
   Search, Filter, List, Plus, Bell, Package, 
   Settings, LogOut, ChevronRight, Download, 
@@ -96,32 +97,7 @@ const PaymentSystemContent = () => {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Navbar */}
-        <header className="flex items-center justify-between px-6 py-3 bg-white border-b border-slate-200 rounded-b-2xl sticky top-0 z-50 h-16 shrink-0 shadow-sm">
-          <div className="flex-1 max-w-md mx-8">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"/>
-              <input 
-                type="text" 
-                placeholder="Search payment method..." 
-                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#F5B841] focus:border-transparent text-sm transition-all"
-              />
-            </div>
-          </div>
-          <div className="flex items-center space-x-4 shrink-0">
-            <div className="relative">
-              <button className="relative text-slate-500 hover:text-slate-700 transition-colors p-2 hover:bg-slate-50 rounded-lg">
-                <Bell size={20} />
-                <span className="absolute -top-1 -right-1 min-w-[18px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 ring-2 ring-white">3</span>
-              </button>
-            </div>
-            <div className="flex items-center pl-3 border-l border-slate-200">
-              <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-[#125852] cursor-pointer shrink-0 bg-slate-100">
-                <img src="https://ui-avatars.com/api/?name=Vendor&background=0b5d51&color=fff" className="w-full h-full object-cover" alt="profile" />
-              </div>
-            </div>
-          </div>
-        </header>
+        <Navbar3 />
 
         {/* Dashboard Body */}
         <main className="p-8 max-w-[1400px] mx-auto w-full pb-24">
