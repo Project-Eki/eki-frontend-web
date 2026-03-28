@@ -232,7 +232,7 @@ function AccountSettingsPage() {
                   </div>
 
                   <div className="relative">
-                    <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="w-full flex items-center justify-center gap-2 bg-[#125852] text-white py-2.5 rounded-lg text-[11px] font-bold shadow-sm hover:bg-[#0e4440] transition-colors">
+                    <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="w-full flex items-center justify-center gap-2 bg-[#FABB00] text-white py-2.5 rounded-lg text-[11px] font-bold shadow-sm hover:bg-[#FABBO0] transition-colors">
                       {isDropdownOpen ? '× Close Menu' : '+ Link New Account'}
                     </button>
                     {isDropdownOpen && (
