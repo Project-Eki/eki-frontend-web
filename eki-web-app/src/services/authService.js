@@ -19,7 +19,7 @@ const PUBLIC_ROUTES = [
 
 // ─── TOKEN REFRESH STATE ──────────────────────────────────────────────────────
 let isRefreshing = false;
-let failedQueue = [];
+let failedQueue  = [];
 
 const processQueue = (error, token = null) => {
   failedQueue.forEach((prom) => {
@@ -48,7 +48,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const status = error.response?.status;
+    const status          = error.response?.status;
     const originalRequest = error.config;
 
     // ── Detailed 400 logging ──────────────────────────────────────────────────
@@ -82,7 +82,7 @@ api.interceptors.response.use(
       }
 
       originalRequest._retry = true;
-      isRefreshing = true;
+      isRefreshing           = true;
 
       const refreshToken = localStorage.getItem('refresh_token');
 
@@ -132,7 +132,7 @@ const saveTokens = ({ access, refresh }) => {
 // ─── AUTHENTICATION ───────────────────────────────────────────────────────────
 export const SigninUser = async (credentials) => {
   const response = await api.post('/api/v1/accounts/login/', {
-    email: credentials.email?.trim().toLowerCase(),
+    email:    credentials.email?.trim().toLowerCase(),
     password: credentials.password,
   });
   const data = response.data?.data ?? response.data;
@@ -162,15 +162,64 @@ export const updateBuyerProfile = (data) =>
 export const getVendorProfile = () =>
   api.get('/api/v1/accounts/vendor/profile/').then((r) => r.data?.data ?? r.data);
 
-export const updateVendorProfile = (data) =>
-  api.patch('/api/v1/accounts/vendor/profile/', data).then((r) => r.data?.data ?? r.data);
+export const updateVendorProfile = async (changedFields) => {
+  // Must use FormData + multipart so that File objects (profile_picture)
+  // are transmitted correctly. Sending a File via JSON turns it into
+  // "[object Object]" which Django rejects with "not a file".
+  const formData = new FormData();
+
+  Object.keys(changedFields).forEach((key) => {
+    const value = changedFields[key];
+    if (value === null || value === undefined || value === '') return;
+
+    if (key === 'business_phone') {
+      // Ensure phone has no spaces and starts with +
+      let phone = String(value).replace(/\s/g, '');
+      if (!phone.startsWith('+')) phone = `+${phone}`;
+      formData.append(key, phone);
+    } else {
+      // File objects (profile_picture) and plain strings are both
+      // appended correctly by FormData.append()
+      formData.append(key, value);
+    }
+  });
+
+  // Do NOT set Content-Type manually — axios will set it automatically
+  // with the correct multipart boundary when the body is FormData.
+  const res = await api.patch('/api/v1/accounts/vendor/profile/', formData, {
+    headers: { 'Content-Type': undefined },
+  });
+  return res.data?.data ?? res.data;
+};
 
 // ─── VENDOR DASHBOARD ─────────────────────────────────────────────────────────
+// NOTE: If the backend 404s on /vendor/dashboard/, the function returns a safe
+// empty shell so the UI doesn't crash. Ask your backend team to confirm the
+// correct endpoint path if data never loads.
 export const getVendorDashboard = async () => {
-  const dashRes = await api.get('/api/v1/accounts/vendor/dashboard/');
-  const raw = dashRes.data?.data ?? dashRes.data ?? {};
-  const summary = raw.summary ?? {};
+  let raw     = {};
+  let summary = {};
 
+  try {
+    const dashRes = await api.get('/api/v1/accounts/vendor/dashboard/');
+    raw     = dashRes.data?.data ?? dashRes.data ?? {};
+    summary = raw.summary ?? {};
+  } catch (dashErr) {
+    // ── 404 / 500 from dashboard endpoint ──────────────────────────────────
+    // Log clearly so the backend team can see exactly what's failing.
+    console.error(
+      '[getVendorDashboard] Dashboard endpoint failed:',
+      dashErr.response?.status,
+      dashErr.response?.data ?? dashErr.message
+    );
+    console.warn(
+      '[getVendorDashboard] Tip: confirm the correct URL with your backend team.',
+      'Currently calling: /api/v1/accounts/vendor/dashboard/'
+    );
+    // Return a safe empty shell — the UI will show zeros instead of crashing.
+  }
+
+  // ── Profile (separate call — non-fatal if it also fails) ─────────────────
   let country          = 'Uganda';
   let storeName        = '';
   let vendorType       = 'Products';
@@ -178,13 +227,13 @@ export const getVendorDashboard = async () => {
 
   try {
     const profileRes = await api.get('/api/v1/accounts/vendor/profile/');
-    const p = profileRes.data?.data ?? profileRes.data ?? {};
+    const p          = profileRes.data?.data ?? profileRes.data ?? {};
     country          = p.country           || 'Uganda';
     storeName        = p.business_name     || '';
     vendorType       = p.business_type     || 'Products';
     businessCategory = p.business_category || 'retail';
   } catch (_) {
-    // non-fatal
+    // non-fatal — keep defaults
   }
 
   return {
@@ -239,18 +288,16 @@ export const getCategories = (businessCategory = null) => {
 // ─── LISTINGS (CRUD) ──────────────────────────────────────────────────────────
 
 /**
- * Normalise a single listing returned from the API so that
- * `is_published` is always a reliable boolean regardless of
- * whether the backend sends a boolean field or a status string.
+ * Normalise a single listing so `is_published` is always a reliable boolean
+ * regardless of whether the backend sends a boolean field or a status string.
  */
 const normalizeListing = (item) => ({
   ...item,
-  // Treat both a boolean true AND the string 'published' as published.
   is_published: item.is_published === true || item.status === 'published',
 });
 
 export const getProducts = async () => {
-  const res = await api.get('/api/v1/listings/');
+  const res     = await api.get('/api/v1/listings/');
   const payload = res.data?.data ?? res.data;
   if (Array.isArray(payload))          return payload.map(normalizeListing);
   if (Array.isArray(payload?.results)) return payload.results.map(normalizeListing);
@@ -260,19 +307,9 @@ export const getProducts = async () => {
 /**
  * POST /api/v1/listings/
  *
- * Accepts two variant input shapes from different forms:
- *
- * Shape A — VendorDashboard (legacy { type, value } objects):
- *   productData.variants = [{ type: 'Color', value: 'Red' }, { type: 'Size', value: 'M' }]
- *
- * Shape B — ProductDashboard (chip arrays):
- *   productData.sizes  = ['S', 'M', 'L']
- *   productData.colors = ['Black', 'White']
- *
- * The backend requires each variant object to have at least color OR size.
- * When both sizes and colors are selected, we create a cross-product so every
- * combination is represented (e.g. S×Black, S×White, M×Black, M×White).
- * If only one dimension is provided we create one variant per value.
+ * Accepts two variant input shapes:
+ *   Shape A — { type, value } objects  (VendorDashboard legacy)
+ *   Shape B — chip arrays: sizes / colors  (ProductDashboard)
  */
 export const createProductListing = async (productData) => {
   const qualityMap = {
@@ -281,47 +318,35 @@ export const createProductListing = async (productData) => {
     HIGH: 'high', MEDIUM: 'medium', LOW: 'low',
   };
 
-  // ── Build variants ────────────────────────────────────────────────────────
   let variants = [];
 
-  // Shape A: legacy { type, value } array (from VendorDashboard)
+  // Shape A
   if (Array.isArray(productData.variants) && productData.variants.length > 0) {
     productData.variants.forEach((v) => {
       if (!v.value?.trim()) return;
-      if (v.type === 'Size') {
-        variants.push({ color: '', size: v.value.trim(), stock: 0 });
-      } else if (v.type === 'Color') {
-        variants.push({ color: v.value.trim(), size: '', stock: 0 });
-      }
+      if (v.type === 'Size')  variants.push({ color: '',           size: v.value.trim(), stock: 0 });
+      if (v.type === 'Color') variants.push({ color: v.value.trim(), size: '',           stock: 0 });
     });
   }
 
-  // Shape B: chip arrays (from ProductDashboard)
+  // Shape B
   const sizes  = Array.isArray(productData.sizes)  ? productData.sizes.filter(Boolean)  : [];
   const colors = Array.isArray(productData.colors) ? productData.colors.filter(Boolean) : [];
 
   if (variants.length === 0 && (sizes.length > 0 || colors.length > 0)) {
     if (sizes.length > 0 && colors.length > 0) {
-      // Cross-product: one variant per size×color combination
-      sizes.forEach((size) => {
-        colors.forEach((color) => {
-          variants.push({ color, size, stock: 0 });
-        });
-      });
+      sizes.forEach((size) => colors.forEach((color) => variants.push({ color, size, stock: 0 })));
     } else if (sizes.length > 0) {
-      sizes.forEach((size) => variants.push({ color: '', size, stock: 0 }));
+      sizes.forEach((size)   => variants.push({ color: '',    size,  stock: 0 }));
     } else {
       colors.forEach((color) => variants.push({ color, size: '', stock: 0 }));
     }
   }
 
-  // Guarantee at least one valid variant so the backend doesn't reject the payload
-  if (variants.length === 0) {
-    variants.push({ color: 'Default', size: '', stock: 0 });
-  }
+  if (variants.length === 0) variants.push({ color: 'Default', size: '', stock: 0 });
 
   const payload = {
-    business_category: productData.business_category, // MUST come from vendor profile
+    business_category: productData.business_category,
     title:             productData.title?.trim(),
     description:       productData.description?.trim() || '',
     status:            productData.is_published ? 'published' : 'draft',
@@ -329,7 +354,6 @@ export const createProductListing = async (productData) => {
     price:             String(parseFloat(productData.price)),
     price_unit:        'item',
     location:          productData.location?.trim() || '',
-
     detail: {
       sku:        productData.sku?.trim() || '',
       base_price: String(parseFloat(productData.price)),
@@ -338,9 +362,7 @@ export const createProductListing = async (productData) => {
     },
   };
 
-  if (productData.category_id) {
-    payload.category_id = productData.category_id;
-  }
+  if (productData.category_id) payload.category_id = productData.category_id;
 
   console.log('[listings] POST /api/v1/listings/ →', JSON.stringify(payload, null, 2));
   const res = await api.post('/api/v1/listings/', payload);
@@ -348,7 +370,7 @@ export const createProductListing = async (productData) => {
 };
 
 /**
- * PATCH /api/v1/listings/<uuid:listing_id>/
+ * PATCH /api/v1/listings/<uuid>/
  * business_category is NOT sent on update.
  */
 export const updateProductListing = async (listingId, productData) => {
@@ -365,43 +387,27 @@ export const updateProductListing = async (listingId, productData) => {
     price:       String(parseFloat(productData.price)),
     price_unit:  'item',
     location:    productData.location?.trim() || '',
-
     detail: {
       sku:        productData.sku?.trim() || '',
       base_price: String(parseFloat(productData.price)),
       quality:    qualityMap[productData.qty] ?? 'medium',
-      // Variants omitted on update to preserve existing stock.
-      // Use updateProductVariant() to patch individual variants.
     },
   };
 
-  if (productData.category_id) {
-    payload.category_id = productData.category_id;
-  }
+  if (productData.category_id) payload.category_id = productData.category_id;
 
   console.log('[listings] PATCH /api/v1/listings/', listingId, '→', JSON.stringify(payload, null, 2));
   const res = await api.patch(`/api/v1/listings/${listingId}/`, payload);
   return normalizeListing(res.data?.data ?? res.data);
 };
 
-/**
- * DELETE /api/v1/listings/<uuid:listing_id>/
- */
 export const deleteProductListing = (listingId) =>
   api.delete(`/api/v1/listings/${listingId}/`).then((r) => r.data);
 
-/**
- * PATCH /api/v1/listings/<uuid:listing_id>/status/
- */
 export const updateListingStatus = (listingId, newStatus) =>
-  api
-    .patch(`/api/v1/listings/${listingId}/status/`, { status: newStatus })
-    .then((r) => r.data?.data ?? r.data);
+  api.patch(`/api/v1/listings/${listingId}/status/`, { status: newStatus })
+     .then((r) => r.data?.data ?? r.data);
 
-/**
- * POST /api/v1/listings/<uuid:listing_id>/images/
- * Uploads a single image file.
- */
 export const uploadListingImage = (listingId, imageFile) => {
   const form = new FormData();
   form.append('image', imageFile);
@@ -412,36 +418,21 @@ export const uploadListingImage = (listingId, imageFile) => {
     .then((r) => r.data?.data ?? r.data);
 };
 
-/**
- * POST /api/v1/listings/<uuid:listing_id>/images/  (multiple files)
- * Uploads an array of image files sequentially, reusing uploadListingImage.
- */
 export const uploadListingImages = async (listingId, imageFiles) => {
   const results = [];
   for (const file of imageFiles) {
-    const result = await uploadListingImage(listingId, file);
-    results.push(result);
+    results.push(await uploadListingImage(listingId, file));
   }
   return results;
 };
 
-/**
- * DELETE /api/v1/listings/<uuid:listing_id>/images/<uuid:image_id>/
- */
 export const deleteListingImage = (listingId, imageId) =>
   api.delete(`/api/v1/listings/${listingId}/images/${imageId}/`).then((r) => r.data);
 
-/**
- * PATCH /api/v1/listings/<uuid:listing_id>/variants/<uuid:variant_id>/
- */
 export const updateProductVariant = (listingId, variantId, data) =>
-  api
-    .patch(`/api/v1/listings/${listingId}/variants/${variantId}/`, data)
-    .then((r) => r.data?.data ?? r.data);
+  api.patch(`/api/v1/listings/${listingId}/variants/${variantId}/`, data)
+     .then((r) => r.data?.data ?? r.data);
 
-/**
- * DELETE /api/v1/listings/<uuid:listing_id>/variants/<uuid:variant_id>/
- */
 export const deleteProductVariant = (listingId, variantId) =>
   api.delete(`/api/v1/listings/${listingId}/variants/${variantId}/`).then((r) => r.data);
 

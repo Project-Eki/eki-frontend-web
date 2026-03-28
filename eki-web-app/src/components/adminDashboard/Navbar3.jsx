@@ -1,72 +1,91 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Bell, Menu, CheckCheck, UserCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getAdminNotifications, markNotificationRead, getVendorProfile } from '../../services/api';
-import api from '../../services/api';
+// api.js baseURL is already 'http://134.122.22.45/api/v1'
+// So all paths here must be SHORT: '/accounts/...' NOT '/api/v1/accounts/...'
+import api, { getAdminNotifications, markNotificationRead } from '../../services/api';
 
 const NOTIF_TYPE_STYLE = {
-  new_vendor:          { label: "New vendor registered",   dot: "bg-blue-500"   },
-  vendor_approved:     { label: "Vendor approved",         dot: "bg-green-500"  },
-  vendor_rejected:     { label: "Vendor rejected",         dot: "bg-red-500"    },
-  vendor_suspended:    { label: "Vendor suspended",        dot: "bg-orange-500" },
-  new_dispute:         { label: "Dispute filed",           dot: "bg-red-500"    },
-  flagged_content:     { label: "Content flagged",         dot: "bg-yellow-500" },
-  new_transaction:     { label: "New transaction",         dot: "bg-teal-500"   },
-  new_buyer:           { label: "New buyer registered",    dot: "bg-purple-500" },
-  document_submitted:  { label: "Documents submitted",     dot: "bg-indigo-500" },
-  disputed_transaction:{ label: "Transaction disputed",    dot: "bg-red-500"    },
+  new_vendor:           { label: "New vendor registered",  dot: "bg-blue-500"   },
+  vendor_approved:      { label: "Vendor approved",        dot: "bg-green-500"  },
+  vendor_rejected:      { label: "Vendor rejected",        dot: "bg-red-500"    },
+  vendor_suspended:     { label: "Vendor suspended",       dot: "bg-orange-500" },
+  new_dispute:          { label: "Dispute filed",          dot: "bg-red-500"    },
+  flagged_content:      { label: "Content flagged",        dot: "bg-yellow-500" },
+  new_transaction:      { label: "New transaction",        dot: "bg-teal-500"   },
+  new_buyer:            { label: "New buyer registered",   dot: "bg-purple-500" },
+  document_submitted:   { label: "Documents submitted",    dot: "bg-indigo-500" },
+  disputed_transaction: { label: "Transaction disputed",   dot: "bg-red-500"    },
 };
 
+// Detect whether the logged-in user is an admin by checking the stored role.
+// Adjust the localStorage key / value to match what your login response saves.
+const isAdminUser = () => {
+  const role = localStorage.getItem('user_role') || '';
+  return role.toLowerCase() === 'admin';
+};
 
-
-const Navbar3 = ({ userName = "Admin", userRole = "Admin", onMenuClick }) => {
+const Navbar3 = ({ userName = "Admin", onMenuClick, profileImage = null }) => {
   const [notifications,  setNotifications]  = useState([]);
   const [unreadCount,    setUnreadCount]    = useState(0);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
-
-  // Live profile state
-  const [profileName,   setProfileName]   = useState(userName);
-  const [avatarUrl,     setAvatarUrl]     = useState(null);
-  const [avatarError,   setAvatarError]   = useState(false);
+  const [profileName,    setProfileName]    = useState(userName);
+  // Seed avatarUrl from the prop passed by AccountSettingsPage (live update after save)
+  const [avatarUrl,      setAvatarUrl]      = useState(profileImage);
+  const [avatarError,    setAvatarError]    = useState(false);
 
   const panelRef = useRef(null);
   const navigate = useNavigate();
 
-  // ─── Fetch logged-in user profile ───────────────────────────────────────────
+  // Keep avatarUrl in sync whenever the parent passes a new profileImage prop
+  useEffect(() => {
+    if (profileImage) {
+      setAvatarUrl(profileImage);
+      setAvatarError(false);
+    }
+  }, [profileImage]);
+
+  // ─── Fetch vendor profile ─────────────────────────────────────────────────────
+  // FIX: baseURL is already '.../api/v1' so path must be '/accounts/vendor/profile/'
+  // NOT '/api/v1/accounts/vendor/profile/' — that was creating a doubled URL.
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        // Uses the existing getVendorProfile helper from api.js
-        // which calls GET /api/v1/accounts/vendor/profile/
-        // and unwraps res.data?.data ?? res.data for us
-        const data = await getVendorProfile();
+        const res  = await api.get('/accounts/vendor/profile/'); // ✅ fixed path
+        const data = res.data?.data ?? res.data;
 
-        // Backend returns: first_name, last_name, phone_number, profile_picture
         const name = (data?.first_name || data?.last_name)
           ? `${data?.first_name ?? ''} ${data?.last_name ?? ''}`.trim()
           : null;
 
-        if (name)                  setProfileName(name);
-        if (data?.profile_picture) { setAvatarUrl(data.profile_picture); setAvatarError(false); }
+        if (name) setProfileName(name);
+
+        // Only update avatar from API if the parent hasn't already passed a fresh one
+        if (data?.profile_picture && !profileImage) {
+          setAvatarUrl(data.profile_picture);
+          setAvatarError(false);
+        }
       } catch (err) {
         console.error("Failed to load profile:", err);
       }
     };
-
     fetchProfile();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Notifications ───────────────────────────────────────────────────────────
+  // ─── Notifications — admin only ───────────────────────────────────────────────
+  // FIX: Vendor tokens get 403 on /admin/notifications/.
+  // Only poll this endpoint when the user is actually an admin.
   const loadNotifications = async () => {
+    if (!isAdminUser()) return; // ✅ skip entirely for vendor users
+
     try {
       const response = await getAdminNotifications({ limit: 15 });
-      const payload = response.data || response;
-      const items =
+      const payload  = response.data || response;
+      const items    =
         payload.data?.notifications
         || payload.notifications
         || (Array.isArray(payload.data) ? payload.data : [])
         || [];
-
       setNotifications(items);
       setUnreadCount(items.filter(n => !n.is_read).length);
     } catch (err) {
@@ -78,13 +97,12 @@ const Navbar3 = ({ userName = "Admin", userRole = "Admin", onMenuClick }) => {
     loadNotifications();
     const interval = setInterval(loadNotifications, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (panelRef.current && !panelRef.current.contains(e.target)) {
+      if (panelRef.current && !panelRef.current.contains(e.target))
         setShowNotifPanel(false);
-      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -102,7 +120,8 @@ const Navbar3 = ({ userName = "Admin", userRole = "Admin", onMenuClick }) => {
 
   const handleMarkAllRead = async () => {
     try {
-      await api.post('/api/v1/accounts/admin/notifications/mark-read/', { mark_all: true });
+      // FIX: was '/api/v1/accounts/admin/...' — baseURL already includes /api/v1
+      await api.post('/accounts/admin/notifications/mark-read/', { mark_all: true }); // ✅ fixed path
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       setUnreadCount(0);
     } catch (err) {
@@ -110,13 +129,8 @@ const Navbar3 = ({ userName = "Admin", userRole = "Admin", onMenuClick }) => {
     }
   };
 
-  const handleProfileClick = () => {
-    navigate('/account-settings');
-  };
-
-  // ─── Avatar rendering helper ─────────────────────────────────────────────────
+  // ─── Avatar — photo > initials > icon ────────────────────────────────────────
   const renderAvatar = () => {
-    // Show live image if URL loaded without error
     if (avatarUrl && !avatarError) {
       return (
         <img
@@ -127,44 +141,31 @@ const Navbar3 = ({ userName = "Admin", userRole = "Admin", onMenuClick }) => {
         />
       );
     }
-
-    // Fallback: initials from the resolved name
     const initials = profileName
-      .split(' ')
-      .filter(Boolean)
-      .slice(0, 2)
-      .map(w => w[0].toUpperCase())
-      .join('');
+      .split(' ').filter(Boolean).slice(0, 2)
+      .map(w => w[0].toUpperCase()).join('');
 
     if (initials) {
       return (
-        <span className="w-full h-full flex items-center justify-center text-white text-[10px] font-bold bg-[#125852]">
+        <span className="w-full h-full flex items-center justify-center text-white text-[10px] font-bold bg-slate-500">
           {initials}
         </span>
       );
     }
-
-    // Last resort: generic icon
     return <UserCircle className="w-full h-full text-slate-400" />;
   };
 
-  // ────────────────────────────────────────────────────────────────────────────
   return (
     <>
       <nav className="flex items-center justify-between px-5 py-2.5 bg-white border-b border-slate-200 rounded-b-2xl sticky top-0 z-50 h-14 shrink-0 shadow-sm">
 
-        {/* Menu button for mobile */}
-        <button
-          onClick={onMenuClick}
-          className="md:hidden p-1.5 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors mr-1.5"
-        >
+        <button onClick={onMenuClick} className="md:hidden p-1.5 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors mr-1.5">
           <Menu size={18}/>
         </button>
 
-        {/* Empty div to maintain spacing - logo removed */}
         <div className="w-6 md:w-0"></div>
 
-        {/* Search Bar - centered */}
+        {/* Search */}
         <div className="flex-1 max-w-md mx-auto">
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5"/>
@@ -176,10 +177,9 @@ const Navbar3 = ({ userName = "Admin", userRole = "Admin", onMenuClick }) => {
           </div>
         </div>
 
-        {/* Right side actions */}
         <div className="flex items-center space-x-3 shrink-0">
 
-          {/* Notification Bell */}
+          {/* Bell — only renders panel content for admins */}
           <div className="relative" ref={panelRef}>
             <button
               onClick={() => setShowNotifPanel(prev => !prev)}
@@ -214,11 +214,13 @@ const Navbar3 = ({ userName = "Admin", userRole = "Admin", onMenuClick }) => {
                     notifications.map(notif => {
                       const typeInfo = NOTIF_TYPE_STYLE[notif.notification_type] || { label: notif.type_display, dot: "bg-slate-400" };
                       return (
-                        <div key={notif.id}
+                        <div
+                          key={notif.id}
                           onClick={() => !notif.is_read && handleMarkRead(notif.id)}
                           className={`flex items-start gap-2.5 px-3 py-2.5 border-b border-slate-50 cursor-pointer transition-colors ${
                             !notif.is_read ? "bg-[#E0F2F1]/30 hover:bg-[#E0F2F1]/50" : "hover:bg-slate-50"
-                          }`}>
+                          }`}
+                        >
                           <div className={`w-1.5 h-1.5 rounded-full mt-1 shrink-0 ${typeInfo.dot}`}/>
                           <div className="flex-1 min-w-0">
                             <p className="text-[11px] font-bold text-slate-800 leading-tight">{notif.title}</p>
@@ -246,11 +248,11 @@ const Navbar3 = ({ userName = "Admin", userRole = "Admin", onMenuClick }) => {
             )}
           </div>
 
-          {/* User Avatar */}
+          {/* Avatar */}
           <div className="flex items-center pl-2.5 border-l border-slate-200">
             <div
-              onClick={handleProfileClick}
-              className="w-8 h-8 rounded-full overflow-hidden border-2 border-[#125852] cursor-pointer shrink-0 bg-slate-100 hover:opacity-80 transition-opacity"
+              onClick={() => navigate('/account-settings')}
+              className="w-8 h-8 rounded-full overflow-hidden border-2 border-slate-300 cursor-pointer shrink-0 bg-slate-100 hover:opacity-80 transition-opacity"
             >
               {renderAvatar()}
             </div>
@@ -258,7 +260,6 @@ const Navbar3 = ({ userName = "Admin", userRole = "Admin", onMenuClick }) => {
         </div>
       </nav>
 
-      {/* Spacer element to create visual separation when scrolling */}
       <div className="h-0.5 bg-gradient-to-b from-slate-100 to-transparent sticky top-14 z-40 pointer-events-none"></div>
     </>
   );
