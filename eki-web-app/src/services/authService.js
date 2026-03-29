@@ -238,11 +238,22 @@ export const getCategories = (businessCategory = null) => {
 
 // ─── LISTINGS (CRUD) ──────────────────────────────────────────────────────────
 
+/**
+ * Normalise a single listing returned from the API so that
+ * `is_published` is always a reliable boolean regardless of
+ * whether the backend sends a boolean field or a status string.
+ */
+const normalizeListing = (item) => ({
+  ...item,
+  // Treat both a boolean true AND the string 'published' as published.
+  is_published: item.is_published === true || item.status === 'published',
+});
+
 export const getProducts = async () => {
   const res = await api.get('/api/v1/listings/');
   const payload = res.data?.data ?? res.data;
-  if (Array.isArray(payload))          return payload;
-  if (Array.isArray(payload?.results)) return payload.results;
+  if (Array.isArray(payload))          return payload.map(normalizeListing);
+  if (Array.isArray(payload?.results)) return payload.results.map(normalizeListing);
   return [];
 };
 
@@ -333,7 +344,7 @@ export const createProductListing = async (productData) => {
 
   console.log('[listings] POST /api/v1/listings/ →', JSON.stringify(payload, null, 2));
   const res = await api.post('/api/v1/listings/', payload);
-  return res.data?.data ?? res.data;
+  return normalizeListing(res.data?.data ?? res.data);
 };
 
 /**
@@ -370,7 +381,7 @@ export const updateProductListing = async (listingId, productData) => {
 
   console.log('[listings] PATCH /api/v1/listings/', listingId, '→', JSON.stringify(payload, null, 2));
   const res = await api.patch(`/api/v1/listings/${listingId}/`, payload);
-  return res.data?.data ?? res.data;
+  return normalizeListing(res.data?.data ?? res.data);
 };
 
 /**
@@ -389,6 +400,7 @@ export const updateListingStatus = (listingId, newStatus) =>
 
 /**
  * POST /api/v1/listings/<uuid:listing_id>/images/
+ * Uploads a single image file.
  */
 export const uploadListingImage = (listingId, imageFile) => {
   const form = new FormData();
@@ -398,6 +410,19 @@ export const uploadListingImage = (listingId, imageFile) => {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     .then((r) => r.data?.data ?? r.data);
+};
+
+/**
+ * POST /api/v1/listings/<uuid:listing_id>/images/  (multiple files)
+ * Uploads an array of image files sequentially, reusing uploadListingImage.
+ */
+export const uploadListingImages = async (listingId, imageFiles) => {
+  const results = [];
+  for (const file of imageFiles) {
+    const result = await uploadListingImage(listingId, file);
+    results.push(result);
+  }
+  return results;
 };
 
 /**

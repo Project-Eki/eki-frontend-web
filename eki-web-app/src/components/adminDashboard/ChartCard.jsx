@@ -27,6 +27,7 @@ const ChartCard = ({data = []}) => {
                 axisLine={false} 
                 tickLine={false} 
                 tick={{ fill: '#6b7280', fontSize: 12 }}
+                allowDecimals={false}
               />
               <Tooltip 
                 cursor={{ fill: '#f9fafb' }}

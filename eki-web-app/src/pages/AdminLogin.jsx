@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 
-import adminIllustration from '../assets/Login.jpeg'; 
+import adminIllustration from '../assets/Login.jpeg';
 import logoImage from '../assets/logo.jpeg';
 
 import { validateLoginForm } from '../utils/Validation';
@@ -22,25 +22,22 @@ const AdminLogin = () => {
     general: ''
   });
 
-  // Handle successful login
+  const isFormFilled = formData.email.trim() !== '' && formData.password.trim() !== '';
+
   const handleAuthSuccess = (data) => {
     const token = data?.access || data?.token || data?.access_token;
     const role = data?.role?.toLowerCase() || 'admin';
 
-    if (token) login(token, role); 
-    navigate('/admindashboard'); 
+    if (token) login(token, role);
+    navigate('/admindashboard');
   };
 
-  // --- Real-Time Handle Change ---
   const handleChange = (e) => {
     const { name, value } = e.target;
     const newFormData = { ...formData, [name]: value };
     setFormData(newFormData);
 
-    // Run validation on every keystroke
     const { errors } = validateLoginForm(newFormData);
-
-    // If typing and format is wrong, show the error label below
     if (value.length > 0 && errors[name]) {
       setFieldErrors(prev => ({ ...prev, [name]: errors[name], general: '' }));
     } else {
@@ -48,7 +45,6 @@ const AdminLogin = () => {
     }
   };
 
-  // --- Handle Blur (When user clicks away) ---
   const handleBlur = (e) => {
     const { name, value } = e.target;
     if (!value.trim()) {
@@ -80,128 +76,129 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 font-sans overflow-hidden">
-      <div className="flex flex-1 overflow-hidden">
+    <div className="flex flex-col h-screen bg-white font-sans overflow-hidden">
 
-        {/* Left Side Illustration */}
-        <div className="hidden lg:flex lg:w-1/2 h-full">
-          <img
-            src={adminIllustration}
-            alt="Admin Login"
-            className="h-full w-full object-cover"
-          />
+      <div className="flex-1 flex w-full overflow-hidden">
+        {/* Left Side: Image Section */}
+        <div className="hidden lg:block lg:w-1/2 relative overflow-hidden bg-white">
+          {/* Decorative Shapes */}
+          <div className="absolute -top-6 -left-6 w-32 h-32 border-4 border-[#235E5DFF] rounded-full opacity-20 z-10"></div>
+          <div className="absolute -bottom-10 -right-6 w-40 h-40 border-4 border-[#EFB034] rounded-lg opacity-20 transform rotate-12 z-10"></div>
+          <div className="absolute top-1/3 -left-8 w-24 h-24 border-4 border-[#235E5DFF] rounded-lg opacity-10 transform -rotate-12 z-10"></div>
+          <div className="absolute bottom-1/4 -right-8 w-28 h-28 border-4 border-[#EFB034] rounded-full opacity-20 z-10"></div>
+
+          {/* Image Container */}
+          <div className="relative z-20 w-full h-full flex items-center justify-center p-8">
+            <div className="relative w-full h-full max-h-[70vh]">
+              <img
+                src={adminIllustration}
+                alt="Admin Login Illustration"
+                className="w-full h-full object-cover rounded-[40px] shadow-2xl border-4 border-white/20"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#235E5D] to-[#EFB034] rounded-[40px] opacity-10 blur-3xl -z-10 scale-105"></div>
+            </div>
+          </div>
         </div>
 
-        {/* Right Side Form */}
-        <div className="flex w-full lg:w-1/2 h-full flex-col justify-center items-center p-6 bg-white overflow-y-auto">
-          <div className="w-full max-w-md flex flex-col items-center">
-
-            {/* Logo */}
-            <div className="flex h-32 w-32 mb-4 items-center justify-center overflow-hidden">
-              <img src={logoImage} alt="Logo" className="h-full w-full object-contain" />
-            </div>
-
-            {/* Heading */}
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-800">Admin Login</h2>
-              <p className="text-gray-500 mt-1 text-xs uppercase tracking-widest">
+        {/* Right Side: Login Form Section */}
+        <div className="w-full lg:w-1/2 flex items-center justify-center bg-white overflow-y-auto">
+          <div className="w-full max-w-md px-8 py-6">
+            <div className="mb-5 text-left">
+              <h2 className="text-[28px] font-black text-gray-900 leading-tight mb-2">
+                Admin Login
+              </h2>
+              <p className="text-gray-500 text-[14px] uppercase tracking-widest">
                 Authorized Personnel Only
               </p>
             </div>
 
-            {/* Form */}
-            <form className="w-full space-y-6" onSubmit={handleSubmit} noValidate>
+            <form className="w-full space-y-4" onSubmit={handleSubmit} noValidate>
 
               {fieldErrors.general && (
-                <p className="text-red-600 text-[11px] font-semibold text-center bg-red-50 py-2 rounded-md border border-red-100">
+                <div className="text-red-600 text-sm font-bold py-2 text-center bg-red-50 rounded-xl border border-red-100 mb-2">
                   {fieldErrors.general}
-                </p>
+                </div>
               )}
 
-              {/* Email Input Group */}
-              <div className="flex flex-col gap-1">
+              {/* Email Input */}
+              <div className="relative">
                 <input
                   name="email"
                   type="email"
+                  autoComplete="email"
                   value={formData.email}
                   onChange={handleChange}
                   onBlur={handleBlur}
                   placeholder="Admin Email"
-                  className={`w-full rounded-md border h-12 px-4 focus:outline-none transition-all text-sm text-gray-900
-                    ${fieldErrors.email ? 'border-red-500' : 'border-gray-300 focus:border-[#EFB034]'}`}
+                  className={`w-full rounded-xl border h-12 px-4 focus:outline-none transition-all text-sm text-slate-900 bg-white
+                    ${fieldErrors.email
+                      ? 'border-red-500 bg-red-50/10 focus:border-red-500'
+                      : 'border-slate-200 focus:border-[#EFB034] focus:ring-1 focus:ring-[#EFB034]/20'
+                    }`}
                 />
                 {fieldErrors.email && (
-                  <span className="text-[10px] text-red-500 font-medium ml-1">
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-red-500 font-bold italic pointer-events-none">
                     {fieldErrors.email}
                   </span>
                 )}
               </div>
 
-              {/* Password Input Group */}
-              <div className="flex flex-col gap-1">
-                <div className="relative">
-                  <input
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    value={formData.password}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    placeholder="Password"
-                    className={`w-full rounded-md border h-12 pl-4 pr-12 focus:outline-none transition-all text-sm text-gray-900
-                      ${fieldErrors.password ? 'border-red-500' : 'border-gray-300 focus:border-[#EFB034]'}`}
-                  />
+              {/* Password Input */}
+              <div className="relative">
+                <input
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  placeholder="Password"
+                  className={`w-full rounded-xl border h-12 px-4 pr-24 focus:outline-none transition-all text-sm text-slate-900 bg-white
+                    ${fieldErrors.password
+                      ? 'border-red-500 bg-red-50/10 focus:border-red-500'
+                      : 'border-slate-200 focus:border-[#EFB034] focus:ring-1 focus:ring-[#EFB034]/20'
+                    }`}
+                />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  {fieldErrors.password && (
+                    <span className="text-[10px] text-red-500 font-bold italic pointer-events-none">
+                      {fieldErrors.password}
+                    </span>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setShowPassword(prev => !prev)}
-                    className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors
-                      ${fieldErrors.password ? 'text-red-500' : 'text-gray-400 hover:text-gray-600'}`}
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-slate-400 hover:text-[#EFB034] transition-colors"
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                {fieldErrors.password && (
-                  <span className="text-[10px] text-red-500 font-medium ml-1">
-                    {fieldErrors.password}
-                  </span>
-                )}
               </div>
 
-              {/* Submit */}
+              {/* Login Button */}
               <button
                 type="submit"
-                disabled={isLoading}
-                style={{
-                  width: '100%',
-                  height: '48px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: '#FFFFFF',
-                  background: '#EFB034FF',
-                  borderRadius: '24px',
-                  opacity: isLoading ? 0.5 : 1,
-                }}
-                className="flex items-center justify-center transition-all active:scale-[0.98] hover:brightness-105 shadow-md"
+                disabled={isLoading || !isFormFilled}
+                className={`w-full h-12 rounded-full font-bold transition-all duration-300
+                  ${isFormFilled && !isLoading
+                    ? 'bg-[#efb034] hover:bg-[#d99c1c] hover:-translate-y-1 hover:shadow-lg text-white cursor-pointer'
+                    : 'bg-gray-300 cursor-not-allowed text-white/70'
+                  }`}
               >
-                {isLoading ? (
-                   <span className="flex items-center gap-2">
-                     <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                     </svg>
-                     Authenticating...
-                   </span>
-                ) : 'Login'}
+                {isLoading ? 'Please wait...' : 'Login'}
               </button>
 
-              {/* Exit */}
-              <div className="text-center pt-2">
-                <button
-                  type="button"
-                  onClick={() => navigate('/')}
-                  className="text-xs text-gray-500 font-bold hover:text-[#234E4D] hover:underline"
-                >
-                  Exit to Public Portal
-                </button>
+              {/* Exit Link */}
+              <div className="text-center pt-3">
+                <p className="text-[13px] text-slate-600">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/')}
+                    className="text-[#234E4D] font-semibold hover:underline"
+                  >
+                    Exit to Public Portal
+                  </button>
+                </p>
               </div>
 
             </form>
@@ -216,6 +213,7 @@ const AdminLogin = () => {
           <div>© 2026 eki™ | Ijoema Ltd</div>
         </div>
       </footer>
+
     </div>
   );
 };

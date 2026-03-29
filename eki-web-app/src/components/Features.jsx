@@ -28,28 +28,28 @@ const Features = () => {
   ]
 
   return (
-    <section className="bg-[#F8F9FAFF] py-20 md:py-16 sm:py-12 relative overflow-hidden" id="products">
+    <section className="bg-[#F8F9FAFF] py-12 md:py-10 sm:py-8 relative overflow-hidden" id="products">
       <div className="container mx-auto px-8 max-w-7xl">
         
-        <h2 className="text-4xl md:text-3xl sm:text-2xl font-bold text-center mb-4 text-gray-800 max-w-4xl mx-auto">
+        <h2 className="text-4xl md:text-3xl sm:text-2xl font-bold text-center mb-2 text-gray-800 max-w-4xl mx-auto">
           Sell Smarter, Not Harder
         </h2>
-        <p className="text-lg md:text-base text-center text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed">
+        <p className="text-lg md:text-base text-center text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
           Everything you need to showcase products, handle transactions, and build a reputation in one centralized hub.
         </p>
         
         {/* Two column layout - Left side features list, Right side image */}
-        <div className="flex flex-col lg:flex-row gap-12 items-center">
+        <div className="flex flex-col lg:flex-row gap-8 items-center justify-center">
           
           {/* Left side */}
-          <div className="w-full lg:w-1/2 space-y-8">
+          <div className="w-full lg:w-1/2 space-y-6">
             {features.map((feature, index) => (
-              <div key={index} className="flex gap-4 items-start">
-                <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-[#1A5F591A] to-[#1A5F591A] rounded-lg flex items-center justify-center text-white text-base">
+              <div key={index} className="flex gap-3 items-start">
+                <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-[#1A5F591A] to-[#1A5F591A] rounded-lg flex items-center justify-center text-white text-sm">
                   <FontAwesomeIcon icon={feature.icon} className="text-[#1A5F59FF]" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-800 mb-2">{feature.title}</h3>
+                  <h3 className="text-xl font-semibold text-gray-800 mb-1">{feature.title}</h3>
                   <p className="text-gray-600 leading-relaxed">{feature.description}</p>
                 </div>
               </div>
@@ -57,8 +57,8 @@ const Features = () => {
           </div>
           
           {/* Right side - Image preview */}
-          <div className="w-full lg:w-1/2 max-w-md"> 
-            <div className="rounded-xl overflow-hidden shadow-2xl border border-white/10">
+          <div className="w-full lg:w-1/2 flex justify-center"> 
+            <div className="rounded-xl overflow-hidden shadow-2xl border border-white/10 max-w-md w-full">
               <img 
                 src={featuresImage} 
                 alt="Vendor dashboard preview" 

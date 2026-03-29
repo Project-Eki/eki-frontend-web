@@ -1,0 +1,12 @@
+{
+  "nav": {
+    "home": "Home",
+    "login": "Accedi",
+    "signup": "Registrati"
+  },
+  "hero": {
+    "title": "Inizia a Vendere su Eki",
+    "description": "Eki ti connette a un mercato fiorente di venditori locali e fornitori di servizi, tutti con profili verificati per transazioni sicure con ritiro in loco.",
+    "button": "Diventa Venditore"
+  }
+}

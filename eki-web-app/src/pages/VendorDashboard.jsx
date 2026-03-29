@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import logo from '../assets/logo.jpeg';
+import VendorSidebar from '../components/VendorSidebar';
 import Navbar3 from '../components/adminDashboard/Navbar3';
 import {
   getVendorDashboard,
@@ -11,9 +11,9 @@ import {
 } from '../services/authService';
 
 import {
-  LayoutDashboard, Package, ChevronRight, Plus,
-  ListChecks, AlertCircle, Star, X, Upload, Tag, Box,
-  LogOut, ShoppingBag, Truck, CreditCard, MessageSquare, Trash2,
+  Package, ChevronRight, Plus,
+  ListChecks, AlertCircle, Star, X, Upload, Box,
+  CreditCard, Trash2,
 } from 'lucide-react';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -37,17 +37,16 @@ const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'one_size'];
 
 const blankForm = () => ({
   title: '',
-  category_id: '',   // UUID from /api/v1/listings/categories/
+  category_id: '',
   price: '',
   sku: '',
-  qty: 'Medium',     // maps to quality: "medium"
+  qty: 'Medium',
   location: '',
   description: '',
   image: null,
   imageFile: null,
-  // Variants: each needs at least color OR size
-  colorVariant: '',  // free text, e.g. "Red"
-  sizeVariant: '',   // one of SIZE_OPTIONS
+  colorVariant: '',
+  sizeVariant: '',
 });
 
 const VendorDashboard = () => {
@@ -63,7 +62,7 @@ const VendorDashboard = () => {
   const [recentOrders, setRecentOrders] = useState([]);
   const [inventoryAlerts, setInventoryAlerts] = useState([]);
   const [reviews, setReviews] = useState([]);
-  const [categories, setCategories] = useState([]); // from /api/v1/listings/categories/
+  const [categories, setCategories] = useState([]);
   const [isFetching, setIsFetching] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -94,17 +93,13 @@ const VendorDashboard = () => {
         setInventoryAlerts(response.inventoryAlerts || []);
         setReviews(response.reviews             || []);
 
-        // Fetch categories scoped to this vendor's business_category
         try {
           const cats = await getCategories(bc);
           setCategories(cats);
-        } catch (_) {
-          // non-fatal — dropdown will be empty but listing can still be created
-        }
+        } catch (_) {}
       }
     } catch (error) {
       console.error('Dashboard fetch error:', error);
-      // If 401 — the response interceptor handles redirect automatically
     } finally {
       setIsFetching(false);
     }
@@ -112,7 +107,6 @@ const VendorDashboard = () => {
 
   const currencySymbol = getCurrencySymbol(vendorData.country);
 
-  // True if vendor sells services (transport/tailoring/airlines/hotels)
   const SERVICE_CATEGORIES = new Set(['transport', 'tailoring', 'airlines', 'hotels']);
   const isServiceVendor = SERVICE_CATEGORIES.has(vendorData.businessCategory);
 
@@ -138,7 +132,6 @@ const VendorDashboard = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // ── Validate ──────────────────────────────────────────────────────────────
   const validate = (data) => {
     const errs = {};
     if (!data.title?.trim())
@@ -148,7 +141,6 @@ const VendorDashboard = () => {
     return errs;
   };
 
-  // ── CREATE listing ────────────────────────────────────────────────────────
   const handlePublish = async (e) => {
     e.preventDefault();
     const errs = validate(formData);
@@ -156,8 +148,6 @@ const VendorDashboard = () => {
 
     setIsLoading(true);
     try {
-      // Build variants from the two variant fields.
-      // Backend rule: each variant must have at least color OR size.
       const variants = [];
       if (formData.colorVariant?.trim()) {
         variants.push({ type: 'Color', value: formData.colorVariant.trim() });
@@ -168,14 +158,13 @@ const VendorDashboard = () => {
 
       const payload = {
         ...formData,
-        business_category: vendorData.businessCategory, // ← from vendor profile
+        business_category: vendorData.businessCategory,
         is_published: isPublished,
         variants,
       };
 
       const created = await createProductListing(payload);
 
-      // Upload image if provided and listing was created successfully
       if (formData.imageFile && created?.id) {
         try {
           await uploadListingImage(created.id, formData.imageFile);
@@ -184,7 +173,6 @@ const VendorDashboard = () => {
         }
       }
 
-      // Update active listing count locally (avoid full refetch)
       setMetrics((prev) => ({ ...prev, activeListings: prev.activeListings + 1 }));
 
       setIsModalOpen(false);
@@ -193,8 +181,6 @@ const VendorDashboard = () => {
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
       console.error('Failed to create listing:', err);
-      // The response interceptor already logged the full Django error.
-      // Show a friendly message to the user.
       const serverErrors = err.response?.data?.errors ?? err.response?.data ?? {};
       let msg = 'Failed to create listing. Please check your inputs and try again.';
 
@@ -210,80 +196,50 @@ const VendorDashboard = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800">
-
-      {/* SIDEBAR */}
-      <aside className="w-64 bg-white border-r border-slate-100 flex flex-col sticky top-0 h-screen z-50">
-        <div className="p-6 mb-4">
-          <img src={logo} alt="Eki" className="h-8 w-auto object-contain" />
-        </div>
-        <nav className="flex-1 px-4 space-y-1">
-          <SidebarLink to="/dashboard"         icon={<LayoutDashboard size={18} />} label="Dashboard" active />
-          <SidebarLink to="/product-dashboard" icon={<ShoppingBag size={18} />}    label="Products" />
-          <SidebarLink to="/service"           icon={<Plus size={18} />}            label="Services" />
-          <SidebarLink to="/order-management"  icon={<Truck size={18} />}           label="Orders" />
-          <SidebarLink to="/payment"           icon={<CreditCard size={18} />}      label="Payments" />
-          <SidebarLink to="/reviews"           icon={<MessageSquare size={18} />}   label="Reviews" />
-        </nav>
-        <div className="p-4 border-t border-slate-50">
-          <button
-            onClick={SignoutUser}
-            className="flex items-center gap-3 px-3 py-2 w-full text-red-500 hover:bg-red-50 rounded-lg text-[11px] font-bold"
-          >
-            <LogOut size={18} /> <span>Sign out</span>
-          </button>
-        </div>
-      </aside>
+    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
+      {/* VendorSidebar Component */}
+      <VendorSidebar activePage="dashboard" />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar3 />
 
         {/* Success toast */}
         {successMsg && (
-          <div className="fixed top-6 right-6 z-[200] bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-lg text-sm font-bold flex items-center gap-2 animate-pulse">
+          <div className="fixed top-6 right-6 z-[200] bg-emerald-600 text-white px-4 py-2 rounded-xl shadow-lg text-xs font-bold flex items-center gap-2 animate-pulse">
             <span>✓</span> {successMsg}
           </div>
         )}
 
-        <main className="p-8 max-w-[1400px] mx-auto w-full">
-          <header className="mb-8 text-left">
-            <h1 className="text-2xl font-bold text-[#1A1A1A]">Eki Vendor Command Center</h1>
-            <p className="text-slate-400 text-sm">
-              Monitoring activity for{' '}
-              <span className="font-semibold text-slate-600">{vendorData.storeName || '—'}</span>
-              {vendorData.country && (
-                <span className="ml-2 text-[11px] bg-slate-100 px-2 py-0.5 rounded-full text-slate-500">
-                  {vendorData.country} · {currencySymbol}
-                </span>
-              )}
-            </p>
+        <main className="p-5 max-w-[1400px] mx-auto w-full pb-16">
+          <header className="mb-5 text-left">
+            <h1 className="text-xl font-bold text-[#1A1A1A]">Eki Vendor Dashboard</h1>
           </header>
 
           {/* METRIC CARDS */}
           {isFetching ? (
-            <div className="grid grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-4 gap-3 mb-6">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="bg-white p-6 rounded-2xl border border-slate-50 animate-pulse h-28" />
+                <div key={i} className="bg-white p-4 rounded-2xl border border-slate-200 animate-pulse h-24" />
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-              <MetricCard title="Gross Sales"      value={`${currencySymbol} ${(metrics.grossSales || 0).toLocaleString()}`}     icon={<CreditCard size={18} />} />
-              <MetricCard title="Open Orders"      value={metrics.openOrders || 0}                                                icon={<Package size={18} />} />
-              <MetricCard title="Pending Payouts"  value={`${currencySymbol} ${(metrics.pendingPayouts || 0).toLocaleString()}`} icon={<Box size={18} />}      bg="bg-[#E0F2F1]" />
-              <MetricCard title="Active Listings"  value={metrics.activeListings || 0}                                           icon={<ListChecks size={18} />} bg="bg-[#FFF8E1]" />
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+              <MetricCard title="Gross Sales"     value={`${currencySymbol} ${(metrics.grossSales || 0).toLocaleString()}`}     icon={<CreditCard size={14} />} bg="bg-[#E0F2F1]" />
+              <MetricCard title="Open Orders"     value={metrics.openOrders || 0}                                                icon={<Package size={14} />}    bg="bg-[#FFF8E1]" />
+              <MetricCard title="Pending Payouts" value={`${currencySymbol} ${(metrics.pendingPayouts || 0).toLocaleString()}`} icon={<Box size={14} />}        bg="bg-[#E0F2F1]" />
+              <MetricCard title="Active Listings" value={metrics.activeListings || 0}                                           icon={<ListChecks size={14} />}  bg="bg-[#FFF8E1]" />
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <div className="lg:col-span-2 space-y-5">
 
               {/* SALES GRAPH */}
-              <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-bold text-sm uppercase tracking-tighter">Sales Performance</h3>
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="font-bold text-xs uppercase tracking-tighter">Sales Performance</h3>
                 </div>
-                <div className="h-[220px] w-full">
+                <div className="h-[180px] w-full">
                   {salesHistory.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={salesHistory}>
@@ -295,74 +251,85 @@ const VendorDashboard = () => {
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="h-full flex items-center justify-center text-slate-300 text-sm">No sales data yet</div>
+                    <div className="h-full flex items-center justify-center text-slate-300 text-xs">No sales data yet</div>
                   )}
                 </div>
               </div>
 
               {/* RECENT ORDERS */}
-              <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="p-6 border-b flex justify-between items-center">
-                  <h3 className="font-bold text-sm uppercase tracking-tighter">Recent Orders</h3>
-                  <Link to="/order-management" className="text-[#125852] text-[10px] font-bold">VIEW ALL</Link>
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-slate-100 flex justify-between items-center">
+                  <h3 className="font-bold text-xs uppercase tracking-tighter">Recent Orders</h3>
+                  <Link to="/order-management" className="text-[#125852] text-[9px] font-bold">VIEW ALL</Link>
                 </div>
                 <div className="overflow-x-auto">
                   {recentOrders.length > 0 ? (
-                    <table className="w-full text-left text-[11px]">
+                    <table className="w-full text-left text-[10px]">
                       <thead className="bg-slate-50 text-slate-400 font-bold uppercase">
                         <tr>
-                          <th className="px-6 py-4">Order ID</th>
-                          <th className="px-6 py-4">Customer</th>
-                          <th className="px-6 py-4">Total</th>
-                          <th className="px-6 py-4">Status</th>
+                          <th className="px-4 py-3">Order ID</th>
+                          <th className="px-4 py-3">Customer</th>
+                          <th className="px-4 py-3">Items</th>
+                          <th className="px-4 py-3">Total</th>
+                          <th className="px-4 py-3">Status</th>
+                          <th className="px-4 py-3">Action</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-50">
+                      <tbody className="divide-y divide-slate-100">
                         {recentOrders.map((order, i) => (
                           <tr key={i} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-6 py-4 text-[#125852] font-bold">#{order.id}</td>
-                            <td className="px-6 py-4">{order.customer}</td>
-                            <td className="px-6 py-4 font-bold">{currencySymbol} {Number(order.total || 0).toLocaleString()}</td>
-                            <td className="px-6 py-4">
-                              <span className="px-2 py-1 bg-slate-100 rounded text-[9px] uppercase font-bold">{order.status}</span>
+                            <td className="px-4 py-2.5 text-[#125852] font-bold">#{order.id}</td>
+                            <td className="px-4 py-2.5">{order.customer}</td>
+                            <td className="px-4 py-2.5">{order.items ?? '—'}</td>
+                            <td className="px-4 py-2.5 font-bold">{currencySymbol} {Number(order.total || 0).toLocaleString()}</td>
+                            <td className="px-4 py-2.5">
+                              <span className="px-2 py-0.5 bg-slate-100 rounded text-[8px] uppercase font-bold">{order.status}</span>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <Link
+                                to={`/order-management/${order.id}`}
+                                className="px-2.5 py-1 bg-[#125852] text-white rounded-lg text-[8px] font-bold uppercase hover:bg-[#0e4440] transition-colors"
+                              >
+                                View
+                              </Link>
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   ) : (
-                    <div className="p-8 text-center text-slate-300 text-sm">No recent orders</div>
+                    <div className="p-6 text-center text-slate-300 text-xs">No recent orders</div>
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-5">
 
               {/* QUICK ACTIONS */}
-              <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-                <h3 className="font-bold text-sm mb-4 uppercase tracking-tighter">Quick Actions</h3>
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <h3 className="font-bold text-xs mb-3 uppercase tracking-tighter">Quick Actions</h3>
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className="w-full flex items-center justify-between p-4 border border-slate-50 rounded-xl hover:bg-slate-50 transition-all"
+                  className="w-full flex items-center justify-between p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
                 >
-                  <div className="flex items-center gap-3 text-left">
-                    <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><Plus size={18} /></div>
-                    <div><p className="text-xs font-bold">Add New {isServiceVendor ? 'Service' : 'Product'}</p></div>
+                  <div className="flex items-center gap-2 text-left">
+                    <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg"><Plus size={14} /></div>
+                    <div><p className="text-[11px] font-bold">Add New {isServiceVendor ? 'Service' : 'Product'}</p></div>
                   </div>
-                  <ChevronRight size={14} className="text-slate-300" />
+                  <ChevronRight size={12} className="text-slate-300" />
                 </button>
               </div>
 
               {/* LAST PAYOUT */}
-              <div className="bg-[#125852] p-6 rounded-xl text-white shadow-lg relative overflow-hidden">
+              <div className="bg-[#125852] p-4 rounded-xl text-white shadow-lg relative overflow-hidden">
                 <div className="relative z-10">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-2 bg-white/10 rounded-lg"><CreditCard size={18} /></div>
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="p-1.5 bg-white/10 rounded-lg"><CreditCard size={14} /></div>
                   </div>
-                  <p className="text-[10px] text-white/70 uppercase font-bold tracking-widest mb-1">Last Payout</p>
-                  <h3 className="text-2xl font-bold mb-4">{currencySymbol} {(metrics.pendingPayouts || 0).toLocaleString()}</h3>
-                  <div className="flex justify-between items-center text-[10px]">
+                  <p className="text-[9px] text-white/70 uppercase font-bold tracking-widest mb-1">Last Payout</p>
+                  <h3 className="text-xl font-bold mb-3">{currencySymbol} {(metrics.pendingPayouts || 0).toLocaleString()}</h3>
+                  <div className="flex justify-between items-center text-[9px]">
                     <span className="text-white/60">Recent Activity</span>
                     <Link to="/payment" className="font-bold hover:underline">View History</Link>
                   </div>
@@ -370,44 +337,44 @@ const VendorDashboard = () => {
               </div>
 
               {/* INVENTORY ALERTS */}
-              <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm text-left">
-                <div className="flex items-center gap-2 mb-4 text-[#E53935]">
-                  <AlertCircle size={16} />
-                  <h3 className="font-bold text-xs uppercase tracking-tighter">Inventory Alerts</h3>
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-left">
+                <div className="flex items-center gap-1.5 mb-3 text-[#E53935]">
+                  <AlertCircle size={12} />
+                  <h3 className="font-bold text-[10px] uppercase tracking-tighter">Inventory Alerts</h3>
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {inventoryAlerts.length > 0 ? inventoryAlerts.map((alert, i) => (
-                    <div key={i} className="flex justify-between items-center text-[11px] border-b border-slate-50 pb-2 last:border-0">
+                    <div key={i} className="flex justify-between items-center text-[10px] border-b border-slate-100 pb-2 last:border-0">
                       <span className="font-bold text-slate-700">{alert.title}</span>
-                      <span className="text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded">
+                      <span className="text-red-600 font-bold bg-red-50 px-1.5 py-0.5 rounded text-[9px]">
                         {alert.quantity ?? 0} left
                       </span>
                     </div>
                   )) : (
-                    <p className="text-slate-300 text-[11px]">No low-stock alerts</p>
+                    <p className="text-slate-300 text-[10px]">No low-stock alerts</p>
                   )}
                 </div>
               </div>
 
               {/* RECENT REVIEWS */}
-              <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm text-left">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-bold text-xs uppercase tracking-tighter">Recent Reviews</h3>
-                  <Link to="/reviews" className="text-[#125852] text-[10px] font-bold hover:underline uppercase tracking-tighter">VIEW ALL</Link>
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-left">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="font-bold text-[10px] uppercase tracking-tighter">Recent Reviews</h3>
+                  <Link to="/reviews" className="text-[#125852] text-[9px] font-bold hover:underline uppercase tracking-tighter">VIEW ALL</Link>
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {reviews.length > 0 ? reviews.map((r, i) => (
-                    <Link to="/reviews" key={i} className="block text-[11px] space-y-1 hover:bg-slate-50 rounded-lg p-1 transition-colors">
+                    <Link to="/reviews" key={i} className="block text-[10px] space-y-1 hover:bg-slate-50 rounded-lg p-1 transition-colors">
                       <div className="flex text-yellow-400 gap-0.5">
                         {[...Array(5)].map((_, idx) => (
-                          <Star key={idx} size={8} fill={idx < r.rating ? 'currentColor' : 'none'} />
+                          <Star key={idx} size={7} fill={idx < r.rating ? 'currentColor' : 'none'} />
                         ))}
                       </div>
-                      <p className="text-slate-500 italic">"{r.comment}"</p>
-                      {r.reviewer && <p className="text-slate-400 text-[10px]">— {r.reviewer}</p>}
+                      <p className="text-slate-500 italic text-[9px]">"{r.comment}"</p>
+                      {r.reviewer && <p className="text-slate-400 text-[8px]">— {r.reviewer}</p>}
                     </Link>
                   )) : (
-                    <p className="text-slate-300 text-[11px]">No reviews yet</p>
+                    <p className="text-slate-300 text-[10px]">No reviews yet</p>
                   )}
                 </div>
               </div>
@@ -415,6 +382,12 @@ const VendorDashboard = () => {
             </div>
           </div>
         </main>
+
+        {/* FOOTER */}
+        <footer className="bg-[#125852] text-white py-2.5 px-5 flex justify-between items-center text-[8px] rounded-xl mx-5 mb-3">
+          <div>Buy Smart. Sell Fast. Grow Together...</div>
+          <div>© 2026 Vendor Portal. All rights reserved.</div>
+        </footer>
       </div>
 
       {/* ── CREATE LISTING MODAL ───────────────────────────────────────────────── */}
@@ -422,69 +395,64 @@ const VendorDashboard = () => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <form
             onSubmit={handlePublish}
-            className="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[95vh] text-left"
+            className="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh] text-left"
           >
             {/* Header */}
-            <div className="px-6 py-5 border-b flex justify-between items-start">
+            <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-start">
               <div>
-                <h2 className="text-lg font-bold">Create New {isServiceVendor ? 'Service' : 'Product'}</h2>
-                <p className="text-[11px] text-slate-500">
+                <h2 className="text-base font-bold">Create New {isServiceVendor ? 'Service' : 'Product'}</h2>
+                <p className="text-[10px] text-slate-500">
                   Category: <span className="font-bold text-[#125852] capitalize">{vendorData.businessCategory}</span>
                 </p>
               </div>
               <button type="button" onClick={() => { setIsModalOpen(false); resetForm(); }}>
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
             {/* Body */}
-            <div className="p-6 overflow-y-auto space-y-5">
+            <div className="p-5 overflow-y-auto space-y-4">
 
-              {/* Server error */}
               {formErrors._server && (
-                <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-medium px-4 py-3 rounded-lg">
+                <div className="bg-red-50 border border-red-200 text-red-700 text-[10px] font-medium px-3 py-2 rounded-lg">
                   {formErrors._server}
                 </div>
               )}
 
-              {/* Title */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold uppercase text-slate-500">Title *</label>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-slate-500">Title *</label>
                 <input
                   type="text" name="title" value={formData.title} onChange={handleInputChange}
                   placeholder={`e.g. ${isServiceVendor ? 'Website Design Package' : 'Premium Wireless Headphones'}`}
-                  className={`w-full px-4 py-2.5 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.title ? 'border-red-500' : 'border-slate-200'}`}
+                  className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.title ? 'border-red-500' : 'border-slate-200'}`}
                 />
-                {formErrors.title && <p className="text-red-500 text-[10px] font-bold">{formErrors.title}</p>}
+                {formErrors.title && <p className="text-red-500 text-[9px] font-bold">{formErrors.title}</p>}
               </div>
 
-              {/* Description */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold uppercase text-slate-500">Description</label>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-slate-500">Description</label>
                 <textarea
                   name="description" value={formData.description} onChange={handleInputChange}
-                  rows="3" placeholder="Describe your item..."
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none resize-none"
+                  rows="2" placeholder="Describe your item..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none resize-none"
                 />
               </div>
 
-              {/* Location */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold uppercase text-slate-500">Location</label>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-slate-500">Location</label>
                 <input
                   type="text" name="location" value={formData.location} onChange={handleInputChange}
                   placeholder="e.g. Kampala, Uganda"
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
                 />
               </div>
 
-              {/* Category (from API) + Price */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase text-slate-500">Category</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-slate-500">Category</label>
                   <select
                     name="category_id" value={formData.category_id} onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none bg-white"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
                   >
                     <option value="">— Select —</option>
                     {categories.map((cat) => (
@@ -492,34 +460,32 @@ const VendorDashboard = () => {
                     ))}
                   </select>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase text-slate-500">Price ({currencySymbol}) *</label>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-slate-500">Price ({currencySymbol}) *</label>
                   <input
                     type="number" name="price" value={formData.price} onChange={handleInputChange}
                     placeholder="0.00" min="0" step="any"
-                    className={`w-full px-4 py-2.5 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.price ? 'border-red-500' : 'border-slate-200'}`}
+                    className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.price ? 'border-red-500' : 'border-slate-200'}`}
                   />
-                  {formErrors.price && <p className="text-red-500 text-[10px] font-bold">{formErrors.price}</p>}
+                  {formErrors.price && <p className="text-red-500 text-[9px] font-bold">{formErrors.price}</p>}
                 </div>
               </div>
 
-              {/* SKU + Quality — product vendors only */}
               {!isServiceVendor && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold uppercase text-slate-500">SKU</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-slate-500">SKU</label>
                     <input
                       type="text" name="sku" value={formData.sku} onChange={handleInputChange}
                       placeholder="PRD-XXXX"
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    {/* Maps to ProductQuality: high / medium / low */}
-                    <label className="text-[11px] font-bold uppercase text-slate-500">Quality</label>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-slate-500">Quality</label>
                     <select
                       name="qty" value={formData.qty} onChange={handleInputChange}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm outline-none bg-white"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
                     >
                       <option value="High">High</option>
                       <option value="Medium">Medium</option>
@@ -529,28 +495,26 @@ const VendorDashboard = () => {
                 </div>
               )}
 
-              {/* Variants — product vendors only */}
               {!isServiceVendor && (
-                <div className="space-y-3">
-                  <h4 className="text-[11px] font-bold uppercase text-slate-700">
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-bold uppercase text-slate-700">
                     Variant <span className="text-slate-400 font-normal">(at least color or size required)</span>
                   </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold uppercase text-slate-500">Color</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-slate-500">Color</label>
                       <input
                         type="text" name="colorVariant" value={formData.colorVariant}
                         onChange={handleInputChange}
                         placeholder="e.g. Red, Navy Blue"
-                        className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm outline-none"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      {/* Size values must match ProductSize choices exactly */}
-                      <label className="text-[11px] font-bold uppercase text-slate-500">Size</label>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-slate-500">Size</label>
                       <select
                         name="sizeVariant" value={formData.sizeVariant} onChange={handleInputChange}
-                        className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm outline-none bg-white"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
                       >
                         <option value="">— None —</option>
                         {SIZE_OPTIONS.map((s) => (
@@ -562,14 +526,13 @@ const VendorDashboard = () => {
                 </div>
               )}
 
-              {/* Image upload */}
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold uppercase text-slate-500">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase text-slate-500">
                   {isServiceVendor ? 'Service Image' : 'Product Image'}
                 </label>
-                <div className="flex gap-3 items-center">
+                <div className="flex gap-2 items-center">
                   {formData.image && (
-                    <div className="w-20 h-20 rounded-lg border overflow-hidden relative group">
+                    <div className="w-16 h-16 rounded-lg border border-slate-200 overflow-hidden relative group">
                       <img src={formData.image} alt="preview" className="w-full h-full object-cover" />
                       <button
                         type="button"
@@ -577,54 +540,53 @@ const VendorDashboard = () => {
                           setFormData((p) => ({ ...p, image: null, imageFile: null }));
                           if (fileInputRef.current) fileInputRef.current.value = '';
                         }}
-                        className="absolute top-1 right-1 bg-white/80 p-1 rounded-full text-red-500 opacity-0 group-hover:opacity-100"
+                        className="absolute top-0.5 right-0.5 bg-white/80 p-0.5 rounded-full text-red-500 opacity-0 group-hover:opacity-100"
                       >
-                        <Trash2 size={12} />
+                        <Trash2 size={10} />
                       </button>
                     </div>
                   )}
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-20 h-20 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center bg-white cursor-pointer hover:bg-slate-50 hover:border-[#125852] transition-colors"
+                    className="w-16 h-16 border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center bg-white cursor-pointer hover:bg-slate-50 hover:border-[#125852] transition-colors"
                   >
-                    <Upload size={20} className="text-slate-400" />
-                    <span className="text-[9px] font-bold text-slate-400 mt-1">UPLOAD</span>
+                    <Upload size={16} className="text-slate-400" />
+                    <span className="text-[8px] font-bold text-slate-400 mt-0.5">UPLOAD</span>
                   </div>
                   <input
                     type="file" ref={fileInputRef} onChange={handleFileChange}
                     className="hidden" accept="image/jpeg,image/png,image/webp"
                   />
                 </div>
-                <p className="text-[10px] text-slate-400">JPEG, PNG or WebP · max 5 MB</p>
+                <p className="text-[8px] text-slate-400">JPEG, PNG or WebP · max 5 MB</p>
               </div>
 
-              {/* Publish toggle */}
-              <div className="flex items-center justify-between pt-2">
+              <div className="flex items-center justify-between pt-1">
                 <div>
-                  <p className="text-[12px] font-bold text-slate-800 uppercase">Publish immediately</p>
-                  <p className="text-[10px] text-slate-400">Off = saved as draft.</p>
+                  <p className="text-[11px] font-bold text-slate-800 uppercase">Publish immediately</p>
+                  <p className="text-[9px] text-slate-400">Off = saved as draft.</p>
                 </div>
                 <div
                   onClick={() => setIsPublished(!isPublished)}
-                  className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-all ${isPublished ? 'bg-green-500' : 'bg-slate-200'}`}
+                  className={`w-10 h-5 flex items-center rounded-full p-0.5 cursor-pointer transition-all ${isPublished ? 'bg-green-500' : 'bg-slate-200'}`}
                 >
-                  <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${isPublished ? 'translate-x-6' : 'translate-x-0'}`} />
+                  <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${isPublished ? 'translate-x-5' : 'translate-x-0'}`} />
                 </div>
               </div>
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-5 border-t flex justify-end gap-3 bg-slate-50/20">
+            <div className="px-5 py-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/20">
               <button
                 type="button"
                 onClick={() => { setIsModalOpen(false); resetForm(); }}
-                className="px-8 py-2.5 text-[11px] font-bold border rounded-lg bg-white hover:bg-slate-50"
+                className="px-6 py-2 text-[10px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50"
               >
                 Cancel
               </button>
               <button
                 type="submit" disabled={isLoading}
-                className="px-8 py-2.5 bg-[#F5B841] text-white rounded-lg text-[11px] font-bold uppercase shadow-sm disabled:opacity-60 hover:bg-[#E0A83B] active:scale-95 transition-all"
+                className="px-6 py-2 bg-[#F5B841] text-white rounded-lg text-[10px] font-bold uppercase shadow-sm disabled:opacity-60 hover:bg-[#E0A83B] active:scale-95 transition-all"
               >
                 {isLoading ? 'Publishing...' : `Publish ${isServiceVendor ? 'Service' : 'Product'}`}
               </button>
@@ -632,31 +594,17 @@ const VendorDashboard = () => {
           </form>
         </div>
       )}
-
-      {/* FOOTER */}
-      <footer className="fixed bottom-0 left-64 right-0 bg-[#125852] text-white py-2 px-8 flex justify-between items-center text-[9px] z-40">
-        <div>Buy Smart. Sell Fast. Grow Together...</div>
-        <div>© 2026 Vendor Portal. All rights reserved.</div>
-      </footer>
     </div>
   );
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
-const SidebarLink = ({ to, icon, label, active = false }) => (
-  <Link
-    to={to}
-    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all ${active ? 'bg-slate-50 text-[#125852]' : 'text-slate-400 hover:text-slate-900'}`}
-  >
-    {icon} <span>{label}</span>
-  </Link>
-);
 
 const MetricCard = ({ title, value, icon, bg = 'bg-white' }) => (
-  <div className={`${bg} p-6 rounded-2xl border border-slate-50 shadow-sm text-left`}>
-    <div className="p-2 bg-white rounded-lg shadow-sm w-fit mb-3">{icon}</div>
-    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">{title}</p>
-    <h3 className="text-xl font-bold text-slate-900">{value}</h3>
+  <div className={`${bg} p-4 rounded-2xl border border-slate-200 shadow-sm text-left`}>
+    <div className="p-1.5 bg-white rounded-lg shadow-sm w-fit mb-2">{icon}</div>
+    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{title}</p>
+    <h3 className="text-lg font-bold text-slate-900">{value}</h3>
   </div>
 );
 

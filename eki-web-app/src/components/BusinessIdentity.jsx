@@ -128,6 +128,13 @@ const BusinessIdentity = () => {
               <option value="electronics">Electronics</option>
               <option value="food">Food & Beverages</option>
               <option value="beauty">Beauty & Health</option>
+              <option value="home" >Home & Garden</option>
+              <option value="sports" >Sports & Outdoors</option>
+              <option value="automotive" >Automotive</option>
+              <option value="transport" >Transport</option>
+              <option value="tailoring" >Tailoring</option>
+              <option value="airlines" >Airlines</option>
+              <option value="hotels" >Hotels</option>
               <option value="other">Other</option>
             </select>
             {showError('business_category') && <InlineError message={errors.business_category} />}

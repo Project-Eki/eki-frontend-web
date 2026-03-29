@@ -31,48 +31,48 @@ const Testimonials = () => {
   ]
 
   return (
-    <section className="bg-[linear-gradient(180deg,#F3FBFAFF_0%,#A7E2DBFF_100%)] py-20 md:py-16 sm:py-12">
+    <section className="bg-[linear-gradient(180deg,#F3FBFAFF_0%,#A7E2DBFF_100%)] py-12 md:py-10 sm:py-8">
       <div className="container mx-auto px-4 max-w-7xl">
         
-        <h2 className="text-4xl md:text-3xl sm:text-2xl font-bold text-center mb-4 text-gray-800">
+        <h2 className="text-4xl md:text-3xl sm:text-2xl font-bold text-center mb-2 text-gray-800">
           Trusted by Thousands
         </h2>
-        <p className="text-lg md:text-base text-center text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed px-4">
+        <p className="text-lg md:text-base text-center text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed px-4">
           See what our community of buyers and vendors have to say about their <br className="hidden sm:block" />
           experience with Eki
         </p>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-6 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-5">
           {testimonials.map((testimonial, index) => (
             <div 
               key={index} 
-              className="bg-white p-8 md:p-6 rounded-lg relative shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+              className="bg-white p-6 md:p-5 rounded-lg relative shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
             >
               {/* Author section */}
-              <div className="flex items-center gap-4 mb-4">
+              <div className="flex items-center gap-3 mb-3">
                 <img
                   src={testimonial.image}
                   alt={testimonial.name}
-                  className="w-14 h-14 md:w-12 md:h-12 rounded-full object-cover border-3 border-[#EFB034]"
+                  className="w-12 h-12 md:w-11 md:h-11 rounded-full object-cover border-3 border-[#EFB034]"
                 />
 
                 <div>
-                  <h4 className="text-gray-800 font-semibold mb-1 text-lg md:text-base">
+                  <h4 className="text-gray-800 font-semibold mb-0.5 text-base md:text-sm">
                     {testimonial.name}
                   </h4>
-                  <p className="text-gray-500 text-sm md:text-xs">
+                  <p className="text-gray-500 text-xs">
                     {testimonial.role}
                   </p>
                 </div>
               </div>
               
               {/* Star rating */}
-              <div className="flex gap-1 mb-4">
+              <div className="flex gap-1 mb-3">
                 {[...Array(5)].map((_, i) => (
                   <FontAwesomeIcon
                     key={i}
                     icon={faStar}
-                    className={`text-xl md:text-lg ${
+                    className={`text-lg md:text-base ${
                       i < testimonial.rating ? 'text-[#EFB034]' : 'text-gray-300'
                     }`}
                   />
@@ -80,7 +80,7 @@ const Testimonials = () => {
               </div>
 
               {/* Quote text */}
-              <p className="italic text-gray-600 leading-relaxed relative z-10">
+              <p className="italic text-gray-600 leading-relaxed text-sm md:text-sm relative z-10">
                 {testimonial.quote}
               </p>
 
