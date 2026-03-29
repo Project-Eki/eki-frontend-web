@@ -6,7 +6,7 @@ import Testimonials from '../components/Testimonials';
 import TrustIndicators from '../components/TrustIndicators';
 import CTASection from '../components/CTASection';
 import Footer from "../components/Footer";
-import AppDownloadSection from '../components/AppDownloadSection';
+// import AppDownloadSection from '../components/AppDownloadSection';
 
 const Home = () => {
   return (
@@ -16,7 +16,7 @@ const Home = () => {
       <Features />
       <Testimonials />
       <TrustIndicators />
-      <AppDownloadSection />
+      {/* <AppDownloadSection /> */}
       <CTASection />
       <Footer />
     </>
