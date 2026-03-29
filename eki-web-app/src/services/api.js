@@ -213,6 +213,54 @@ export const completeVendorOnboarding = async (formData) => {
   return response.data;
 };
 
+// For final submission of vendor application (triggers UNDER_REVIEW email)
+export const submitVendorApplication = async (formData) => {
+  const data = new FormData();
+
+  Object.keys(formData).forEach((key) => {
+    // 1. Skip documents and nulls
+    if (
+      key !== "documents" &&
+      formData[key] !== null &&
+      formData[key] !== undefined
+    ) {
+      let value = formData[key];
+
+      // Force business_category to lowercase
+      if (key === "business_category") {
+        value = String(value).toLowerCase();
+      }
+
+      // Ensure phone doesn't have spaces and has a +
+      if (key === "business_phone" && value) {
+        value = value.replace(/\s/g, "");
+        if (!value.startsWith("+")) value = `+${value}`;
+      }
+
+      // Only append if the string isn't empty
+      if (value !== "") {
+        data.append(key, value);
+      }
+    }
+  });
+
+  // 2. Append documents
+  if (formData.documents) {
+    Object.keys(formData.documents).forEach((key) => {
+      if (formData.documents[key] instanceof File) {
+        data.append(key, formData.documents[key]);
+      }
+    });
+  }
+
+  // 3. IMPORTANT: Use PUT method (not PATCH) to trigger the UNDER_REVIEW email
+  const response = await api.put("/accounts/register-vendor/", data, {
+    headers: { "Content-Type": undefined },
+  });
+
+  return response.data;
+};
+
 // export const getVendorProfile = async () => {
 //   const response = await api.get("/accounts/vendor/vendorprofile/");
 //   return response.data;

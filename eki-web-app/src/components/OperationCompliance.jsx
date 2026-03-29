@@ -3,7 +3,8 @@ import { HiOutlineCloudUpload, HiCheckCircle, HiExclamationCircle } from "react-
 import ReviewPhase from "./Review all details";
 import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
 import { validateOperationCompliance } from "../utils/operationComplianceValidation";
-import { completeVendorOnboarding } from '../services/api';
+// import { completeVendorOnboarding } from '../services/api';
+import { submitVendorApplication } from "../services/api";
 
 const OperationCompliance = () => {
   const { state, dispatch } = useOnboarding();
@@ -32,7 +33,7 @@ const OperationCompliance = () => {
 const handleFinalSubmit = async () => {
   setIsLoading(true);
   try {
-    await completeVendorOnboarding(formData);
+    await submitVendorApplication(formData);
 
     // 1. Mark as submitted so the success screen shows
     // 2. Move to step 6 to trigger the final checkmark in sidebar
