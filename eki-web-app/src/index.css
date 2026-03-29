@@ -236,3 +236,9 @@
     display: none;
   }
 }
+
+
+.eki-phone .PhoneInput { display: flex; align-items: center; gap: 6px; width: 100%; }
+.eki-phone .PhoneInputInput { flex: 1; border: none; outline: none; background: transparent; font-size: 14px; color: #334155; min-width: 0; }
+.eki-phone .PhoneInputInput::placeholder { color: #cbd5e1; }
+.eki-phone .PhoneInputCountry { display: flex; align-items: center; gap: 4px; cursor: pointer; flex-shrink: 0; }
