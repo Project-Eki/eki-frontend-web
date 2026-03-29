@@ -270,6 +270,40 @@ export const updateVendorProfile = async (changedFields) => {
   return response.data;
 };
 
+
+
+// BUSINESS SETTINGS — dedicated endpoint
+// GET /api/v1/accounts/vendor/business-settings/
+export const getVendorBusinessSettings = async () => {
+  const response = await api.get("/accounts/vendor/business-settings/");
+  return response.data.data;
+};
+
+// PATCH /api/v1/accounts/vendor/business-settings/
+// Handles both text fields and file uploads (logo, documents)
+export const updateVendorBusinessSettings = async (changedFields) => {
+  const data = new FormData();
+
+  Object.entries(changedFields).forEach(([key, value]) => {
+    if (value === null || value === undefined || value === "") return;
+
+    if (key === "business_category") {
+      data.append(key, String(value).toLowerCase());
+    } else if (key === "business_phone") {
+      let phone = String(value).replace(/\s/g, "");
+      if (!phone.startsWith("+")) phone = `+${phone}`;
+      data.append(key, phone);
+    } else {
+      data.append(key, value); // Files (logo, docs) appended as-is
+    }
+  });
+
+  const response = await api.patch("/accounts/vendor/business-settings/", data, {
+    headers: { "Content-Type": undefined }, // Let axios set multipart boundary
+  });
+  return response.data.data;
+};
+
 /*  LISTINGS & SERVICES  */
 
 // Fetch only "service" type listings
