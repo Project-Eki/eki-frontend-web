@@ -3,8 +3,7 @@ import { HiOutlineCloudUpload, HiCheckCircle, HiExclamationCircle } from "react-
 import ReviewPhase from "./Review all details";
 import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
 import { validateOperationCompliance } from "../utils/operationComplianceValidation";
-// import { completeVendorOnboarding } from '../services/api';
-import { submitVendorApplication } from "../services/api";
+import { completeVendorOnboarding, submitVendorApplication } from "../services/api";
 
 const OperationCompliance = () => {
   const { state, dispatch } = useOnboarding();
@@ -33,6 +32,9 @@ const OperationCompliance = () => {
 const handleFinalSubmit = async () => {
   setIsLoading(true);
   try {
+    // Ensure the vendor profile (including files) is saved before final review submission.
+    await completeVendorOnboarding(formData);
+
     await submitVendorApplication(formData);
 
     // 1. Mark as submitted so the success screen shows
@@ -42,23 +44,25 @@ const handleFinalSubmit = async () => {
   } catch (error) {
     console.error("Registration Error:", error);
 
-    // 1. Try to get the detailed field errors (e.g., registration_number error)
-    const serverErrors = error.response?.data?.errors;
-    
-    // 2. Try to get the general message
-    const serverMessage = error.response?.data?.message;
+    const apiData = error.response?.data || {};
+    const serverErrors = apiData.errors;
+    const serverMessage =
+      apiData.message || apiData.detail || apiData.error || error.message;
 
-    if (serverErrors) {
-      // Get the first field name (e.g., "registration_number")
+    if (
+      serverErrors &&
+      typeof serverErrors === "object" &&
+      Object.keys(serverErrors).length > 0
+    ) {
       const firstField = Object.keys(serverErrors)[0];
-      // Get the first error message for that field
-      const fieldError = Array.isArray(serverErrors[firstField]) 
-        ? serverErrors[firstField][0] 
+      const fieldError = Array.isArray(serverErrors[firstField])
+        ? serverErrors[firstField][0]
         : serverErrors[firstField];
-      
-      alert(`Submission Error: ${fieldError}`);
+      alert(`Submission Error: ${fieldError || serverMessage}`);
+    } else if (Array.isArray(serverErrors) && serverErrors.length > 0) {
+      alert(`Submission Error: ${serverErrors[0]}`);
     } else if (serverMessage) {
-      alert(serverMessage);
+      alert(`Submission Error: ${serverMessage}`);
     } else {
       alert("Something went wrong. Please check your connection or try again.");
     }
