@@ -61,7 +61,7 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await api.get("/api/v1/accounts/vendor/profile/");
+        const res = await api.get("/accounts/vendor/profile/");
         const data = res.data?.data ?? res.data;
 
         const name = [data?.first_name, data?.last_name]
