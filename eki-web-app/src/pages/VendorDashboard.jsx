@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import VendorSidebar from '../components/VendorSidebar';
-import Navbar3 from '../components/adminDashboard/Navbar3';
+import Navbar3 from '../components/adminDashboard/Navbar4';
 import {
   getVendorDashboard,
   getCategories,
