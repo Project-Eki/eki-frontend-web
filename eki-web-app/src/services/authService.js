@@ -163,9 +163,7 @@ export const getVendorProfile = () =>
   api.get('/api/v1/accounts/vendor/profile/').then((r) => r.data?.data ?? r.data);
 
 export const updateVendorProfile = async (changedFields) => {
-  // Must use FormData + multipart so that File objects (profile_picture)
-  // are transmitted correctly. Sending a File via JSON turns it into
-  // "[object Object]" which Django rejects with "not a file".
+  
   const formData = new FormData();
 
   Object.keys(changedFields).forEach((key) => {
@@ -178,35 +176,29 @@ export const updateVendorProfile = async (changedFields) => {
       if (!phone.startsWith('+')) phone = `+${phone}`;
       formData.append(key, phone);
     } else {
-      // File objects (profile_picture) and plain strings are both
-      // appended correctly by FormData.append()
+     
       formData.append(key, value);
     }
   });
 
-  // Do NOT set Content-Type manually — axios will set it automatically
-  // with the correct multipart boundary when the body is FormData.
+  
   const res = await api.patch('/api/v1/accounts/vendor/profile/', formData, {
     headers: { 'Content-Type': undefined },
   });
   return res.data?.data ?? res.data;
 };
 
-// ─── VENDOR DASHBOARD ─────────────────────────────────────────────────────────
-// NOTE: If the backend 404s on /vendor/dashboard/, the function returns a safe
-// empty shell so the UI doesn't crash. Ask your backend team to confirm the
-// correct endpoint path if data never loads.
+
 export const getVendorDashboard = async () => {
   let raw     = {};
   let summary = {};
 
   try {
-    const dashRes = await api.get('/api/v1/accounts/vendor/dashboard/');
+    const dashRes = await api.get('/api/v1/accounts/vendor/command-center/');
     raw     = dashRes.data?.data ?? dashRes.data ?? {};
     summary = raw.summary ?? {};
   } catch (dashErr) {
-    // ── 404 / 500 from dashboard endpoint ──────────────────────────────────
-    // Log clearly so the backend team can see exactly what's failing.
+   
     console.error(
       '[getVendorDashboard] Dashboard endpoint failed:',
       dashErr.response?.status,
@@ -214,12 +206,12 @@ export const getVendorDashboard = async () => {
     );
     console.warn(
       '[getVendorDashboard] Tip: confirm the correct URL with your backend team.',
-      'Currently calling: /api/v1/accounts/vendor/dashboard/'
+      'Currently calling: /api/v1/accounts/vendor/command-center/'
     );
-    // Return a safe empty shell — the UI will show zeros instead of crashing.
+
   }
 
-  // ── Profile (separate call — non-fatal if it also fails) ─────────────────
+ 
   let country          = 'Uganda';
   let storeName        = '';
   let vendorType       = 'Products';
@@ -285,12 +277,7 @@ export const getCategories = (businessCategory = null) => {
     });
 };
 
-// ─── LISTINGS (CRUD) ──────────────────────────────────────────────────────────
 
-/**
- * Normalise a single listing so `is_published` is always a reliable boolean
- * regardless of whether the backend sends a boolean field or a status string.
- */
 const normalizeListing = (item) => ({
   ...item,
   is_published: item.is_published === true || item.status === 'published',
@@ -304,13 +291,7 @@ export const getProducts = async () => {
   return [];
 };
 
-/**
- * POST /api/v1/listings/
- *
- * Accepts two variant input shapes:
- *   Shape A — { type, value } objects  (VendorDashboard legacy)
- *   Shape B — chip arrays: sizes / colors  (ProductDashboard)
- */
+
 export const createProductListing = async (productData) => {
   const qualityMap = {
     High: 'high', Medium: 'medium', Low: 'low',
@@ -369,10 +350,7 @@ export const createProductListing = async (productData) => {
   return normalizeListing(res.data?.data ?? res.data);
 };
 
-/**
- * PATCH /api/v1/listings/<uuid>/
- * business_category is NOT sent on update.
- */
+
 export const updateProductListing = async (listingId, productData) => {
   const qualityMap = {
     High: 'high', Medium: 'medium', Low: 'low',
