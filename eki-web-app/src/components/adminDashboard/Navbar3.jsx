@@ -165,7 +165,7 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
   // Mark all notifications as read
   const handleMarkAllRead = async () => {
     try {
-      await api.post("/api/v1/accounts/admin/notifications/mark-read/", {
+      await api.post("/accounts/admin/notifications/mark-read/", {
         mark_all: true,
       });
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
