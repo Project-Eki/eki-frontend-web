@@ -49,6 +49,21 @@ const blankForm = () => ({
   sizeVariant: '',
 });
 
+// ─── Stat Card Component (exactly matching AdminDashboard) ───────────────────
+const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
+  <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
+    <div className="flex items-start justify-between">
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{title}</p>
+        <p className="text-2xl font-bold text-gray-900">{number}</p>
+      </div>
+      <div className={`${iconBgColor} p-2.5 rounded-xl`}>
+        <Icon size={20} className={iconColor} />
+      </div>
+    </div>
+  </div>
+);
+
 const VendorDashboard = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -215,7 +230,7 @@ const VendorDashboard = () => {
             <h1 className="text-xl font-bold text-[#1A1A1A]">Eki Vendor Dashboard</h1>
           </header>
 
-          {/* METRIC CARDS */}
+          {/* METRIC CARDS - NOW MATCHING ADMIN DASHBOARD STYLE */}
           {isFetching ? (
             <div className="grid grid-cols-4 gap-3 mb-6">
               {[...Array(4)].map((_, i) => (
@@ -224,10 +239,34 @@ const VendorDashboard = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
-              <MetricCard title="Gross Sales"     value={`${currencySymbol} ${(metrics.grossSales || 0).toLocaleString()}`}     icon={<CreditCard size={14} />} bg="bg-[#E0F2F1]" />
-              <MetricCard title="Open Orders"     value={metrics.openOrders || 0}                                                icon={<Package size={14} />}    bg="bg-[#FFF8E1]" />
-              <MetricCard title="Pending Payouts" value={`${currencySymbol} ${(metrics.pendingPayouts || 0).toLocaleString()}`} icon={<Box size={14} />}        bg="bg-[#E0F2F1]" />
-              <MetricCard title="Active Listings" value={metrics.activeListings || 0}                                           icon={<ListChecks size={14} />}  bg="bg-[#FFF8E1]" />
+              <StatCard 
+                title="Gross Sales" 
+                number={`${currencySymbol} ${(metrics.grossSales || 0).toLocaleString()}`} 
+                icon={CreditCard}
+                iconBgColor="bg-emerald-50"
+                iconColor="text-emerald-600"
+              />
+              <StatCard 
+                title="Open Orders" 
+                number={metrics.openOrders || 0} 
+                icon={Package}
+                iconBgColor="bg-blue-50"
+                iconColor="text-blue-600"
+              />
+              <StatCard 
+                title="Pending Payouts" 
+                number={`${currencySymbol} ${(metrics.pendingPayouts || 0).toLocaleString()}`} 
+                icon={Box}
+                iconBgColor="bg-orange-50"
+                iconColor="text-orange-600"
+              />
+              <StatCard 
+                title="Active Listings" 
+                number={metrics.activeListings || 0} 
+                icon={ListChecks}
+                iconBgColor="bg-indigo-50"
+                iconColor="text-indigo-600"
+              />
             </div>
           )}
 
@@ -597,15 +636,5 @@ const VendorDashboard = () => {
     </div>
   );
 };
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-const MetricCard = ({ title, value, icon, bg = 'bg-white' }) => (
-  <div className={`${bg} p-4 rounded-2xl border border-slate-200 shadow-sm text-left`}>
-    <div className="p-1.5 bg-white rounded-lg shadow-sm w-fit mb-2">{icon}</div>
-    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{title}</p>
-    <h3 className="text-lg font-bold text-slate-900">{value}</h3>
-  </div>
-);
 
 export default VendorDashboard;

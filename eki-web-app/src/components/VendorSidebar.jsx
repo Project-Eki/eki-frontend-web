@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import logo from '../assets/eki-logo-white.png';
+import logo from '../assets/eki-logo2.png';
 import { 
   LayoutDashboard, 
   ShoppingBag, 
@@ -32,12 +32,12 @@ const VendorSidebar = ({ activePage }) => {
   return (
     <aside className="w-56 flex flex-col sticky top-3 h-[calc(100vh-1.5rem)] shadow-sm rounded-2xl"
       style={{
-        background: "linear-gradient(270deg, #F3FBFAFF 0%, #A7E2DBFF 100%)"
+        background: "linear-gradient(160deg, #125852 0%, #0e4440 40%, #0b3330 100%)",
       }}
     >
       {/* Logo */}
       <div className="p-4 pt-5 pb-4">
-        <img src={logo} alt="Eki" className="h-10 w-auto object-contain mx-auto" />
+        <img src={logo} alt="Eki" className="h-14 w-auto object-contain mx-auto" />
       </div>
       
       <nav className="flex-1 px-3 py-3 space-y-0.5">
@@ -55,7 +55,7 @@ const VendorSidebar = ({ activePage }) => {
       <div className="p-3">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-[11px] font-semibold text-[#F2B53D] hover:bg-[#F2B53D]/10 transition-all duration-200"
+          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-[11px] font-semibold text-white hover:bg-white/10 transition-all duration-200"
         >
           <LogOut size={14} strokeWidth={1.5} />
           <span>Log out</span>
@@ -71,8 +71,8 @@ const SidebarNavLink = ({ to, icon, label, active = false }) => (
     className={({ isActive }) =>
       `flex items-center gap-2 px-2 py-2 rounded-xl text-xs font-semibold transition-all ${
         isActive || active
-          ? 'bg-[#FFF8ED] text-[#F2B53D]'
-          : 'text-gray-700 hover:bg-white/50 hover:text-gray-900'
+          ? 'bg-[#EFB034FF] text-white'
+          : 'text-white/80 hover:bg-white/10 hover:text-white'
       }`
     }
   >
