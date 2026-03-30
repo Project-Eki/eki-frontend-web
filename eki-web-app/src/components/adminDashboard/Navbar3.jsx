@@ -131,9 +131,10 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
 
   // ─── Close notif panel on outside click ──────────────────────────────────────
   useEffect(() => {
-    const h = (e) => {
-      if (panelRef.current && !panelRef.current.contains(e.target))
+    const handleClickOutside = (e) => {
+      if (panelRef.current && !panelRef.current.contains(e.target)) {
         setShowNotifPanel(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
