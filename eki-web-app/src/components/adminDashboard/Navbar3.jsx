@@ -34,14 +34,15 @@ const isAdminUser = () => {
 };
 
 const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
-  const [notifications,  setNotifications]  = useState([]);
-  const [unreadCount,    setUnreadCount]    = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
-  const [profileName,    setProfileName]    = useState(userName);
+  const [profileName, setProfileName] = useState(userName);
 
   // avatarUrl: starts from prop, updated by API, then kept in sync via prop changes
-  const [avatarUrl,   setAvatarUrl]   = useState(profileImage);
+  const [avatarUrl, setAvatarUrl] = useState(profileImage);
   const [avatarError, setAvatarError] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
 
   const panelRef = useRef(null);
   const navigate = useNavigate();
@@ -60,11 +61,13 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res  = await api.get('/api/v1/accounts/vendor/profile/');
+        const res = await api.get("/api/v1/accounts/vendor/profile/");
         const data = res.data?.data ?? res.data;
 
         const name = [data?.first_name, data?.last_name]
-          .filter(Boolean).join(' ').trim();
+          .filter(Boolean)
+          .join(" ")
+          .trim();
         if (name) setProfileName(name);
 
         // Only set avatar from API if the parent prop hasn't already provided one
@@ -74,7 +77,7 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
         }
       } catch (err) {
         // Non-fatal — name/avatar fallback to defaults
-        console.error('Navbar3: failed to load profile', err.message);
+        console.error("Navbar3: failed to load profile", err.message);
       }
     };
     fetchProfile();
@@ -120,7 +123,7 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
   // };
 
   useEffect(() => {
-    console.log('Navbar3 mounted, isAdminUser:', isAdminUser());
+    console.log("Navbar3 mounted, isAdminUser:", isAdminUser());
     loadNotifications();
     const interval = setInterval(loadNotifications, 60_000);
     return () => clearInterval(interval);
@@ -132,27 +135,45 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
       if (panelRef.current && !panelRef.current.contains(e.target))
         setShowNotifPanel(false);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleMarkRead = async (id) => {
-    try {
-      await markNotificationRead(notifId);
-      setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, is_read: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (err) {
-      console.error('Navbar3: failed to mark notification read', err.message);
+  // search handler
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchValue(value);
+    if (onSearch) {
+      onSearch(value);
     }
   };
 
+  // Mark single notification as read
+  const handleMarkRead = async (notifId) => {
+    try {
+      await markNotificationRead(notifId);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notifId ? { ...n, is_read: true } : n)),
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error("Navbar3: failed to mark notification read", err.message);
+    }
+  };
+
+  // Mark all notifications as read
   const handleMarkAllRead = async () => {
     try {
-      await api.post('/api/v1/accounts/admin/notifications/mark-read/', { mark_all: true });
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      await api.post("/api/v1/accounts/admin/notifications/mark-read/", {
+        mark_all: true,
+      });
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
       setUnreadCount(0);
     } catch (err) {
-      console.error('Navbar3: failed to mark all notifications read', err.message);
+      console.error(
+        "Navbar3: failed to mark all notifications read",
+        err.message,
+      );
     }
   };
 
@@ -161,7 +182,8 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
     if (avatarUrl && !avatarError) {
       return (
         <img
-          src={avatarUrl} alt={profileName}
+          src={avatarUrl}
+          alt={profileName}
           className="w-full h-full object-cover"
           onError={() => setAvatarError(true)}
         />
@@ -169,8 +191,11 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
     }
 
     const initials = profileName
-      .split(' ').filter(Boolean).slice(0, 2)
-      .map(w => w[0]?.toUpperCase() ?? '').join('');
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase() ?? "")
+      .join("");
 
     if (initials) {
       return (
@@ -186,15 +211,14 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
   return (
     <>
       <nav className="flex items-center justify-between px-5 py-2.5 bg-white border-b border-slate-200 rounded-b-2xl sticky top-0 z-50 h-14 shrink-0 shadow-sm">
-
         <button
           onClick={onMenuClick}
           className="md:hidden p-1.5 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors mr-1.5"
         >
-          <Menu size={18}/>
+          <Menu size={18} />
         </button>
 
-        <div className="w-6 md:w-0"/>
+        <div className="w-6 md:w-0" />
 
         {/* Search — fires onSearch for global table filtering */}
         <div className="flex-1 max-w-md mx-auto">
@@ -211,7 +235,6 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
         </div>
 
         <div className="flex items-center space-x-3 shrink-0">
-
           {/* Bell — only shows panel content for admins */}
           <div className="relative" ref={panelRef}>
             <button
@@ -221,7 +244,7 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
               <Bell className="w-4 h-4" />
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center px-1 ring-2 ring-white">
-                  {unreadCount > 9 ? '9+' : unreadCount}
+                  {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
             </button>
@@ -229,7 +252,9 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
             {showNotifPanel && (
               <div className="absolute right-0 top-10 w-72 bg-white rounded-xl shadow-lg border border-slate-200 z-50 overflow-hidden">
                 <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-100">
-                  <p className="text-xs font-bold text-slate-800">Notifications</p>
+                  <p className="text-xs font-bold text-slate-800">
+                    Notifications
+                  </p>
                   {unreadCount > 0 && (
                     <span className="text-[9px] font-bold text-[#125852] bg-[#E0F2F1] px-1.5 py-0.5 rounded-full">
                       {unreadCount} unread
@@ -240,36 +265,52 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
                 <div className="max-h-64 overflow-y-auto">
                   {notifications.length === 0 ? (
                     <div className="py-6 text-center">
-                      <p className="text-xs text-slate-400">No notifications yet</p>
+                      <p className="text-xs text-slate-400">
+                        No notifications yet
+                      </p>
                       <p className="text-[9px] text-slate-300 mt-0.5">
                         {isAdminUser()
-                          ? 'New vendor registrations will appear here'
-                          : 'You have no notifications'}
+                          ? "New vendor registrations will appear here"
+                          : "You have no notifications"}
                       </p>
                     </div>
                   ) : (
-                    notifications.map(notif => {
-                      const typeInfo = NOTIF_TYPE_STYLE[notif.notification_type] || {
+                    notifications.map((notif) => {
+                      const typeInfo = NOTIF_TYPE_STYLE[
+                        notif.notification_type
+                      ] || {
                         label: notif.type_display,
-                        dot:   'bg-slate-400',
+                        dot: "bg-slate-400",
                       };
                       return (
                         <div
                           key={notif.id}
-                          onClick={() => !notif.is_read && handleMarkRead(notif.id)}
+                          onClick={() =>
+                            !notif.is_read && handleMarkRead(notif.id)
+                          }
                           className={`flex items-start gap-2.5 px-3 py-2.5 border-b border-slate-50 cursor-pointer transition-colors ${
                             !notif.is_read
-                              ? 'bg-[#E0F2F1]/30 hover:bg-[#E0F2F1]/50'
-                              : 'hover:bg-slate-50'
+                              ? "bg-[#E0F2F1]/30 hover:bg-[#E0F2F1]/50"
+                              : "hover:bg-slate-50"
                           }`}
                         >
-                          <div className={`w-1.5 h-1.5 rounded-full mt-1 shrink-0 ${typeInfo.dot}`} />
+                          <div
+                            className={`w-1.5 h-1.5 rounded-full mt-1 shrink-0 ${typeInfo.dot}`}
+                          />
                           <div className="flex-1 min-w-0">
-                            <p className="text-[11px] font-bold text-slate-800 leading-tight">{notif.title}</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-2">{notif.message}</p>
-                            <p className="text-[9px] text-slate-400 mt-0.5">{notif.time_ago}</p>
+                            <p className="text-[11px] font-bold text-slate-800 leading-tight">
+                              {notif.title}
+                            </p>
+                            <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-2">
+                              {notif.message}
+                            </p>
+                            <p className="text-[9px] text-slate-400 mt-0.5">
+                              {notif.time_ago}
+                            </p>
                           </div>
-                          {!notif.is_read && <div className="w-1 h-1 bg-[#125852] rounded-full shrink-0 mt-1" />}
+                          {!notif.is_read && (
+                            <div className="w-1 h-1 bg-[#125852] rounded-full shrink-0 mt-1" />
+                          )}
                         </div>
                       );
                     })
@@ -293,7 +334,7 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
           {/* Avatar — navigates to account settings on click */}
           <div className="flex items-center pl-2.5 border-l border-slate-200">
             <div
-              onClick={() => navigate('/account-settings')}
+              onClick={() => navigate("/account-settings")}
               title="Account Settings"
               className="w-8 h-8 rounded-full overflow-hidden border-2 border-slate-300 cursor-pointer shrink-0 bg-slate-100 hover:opacity-80 transition-opacity"
             >
@@ -303,7 +344,7 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
         </div>
       </nav>
 
-      <div className="h-0.5 bg-gradient-to-b from-slate-100 to-transparent sticky top-14 z-40 pointer-events-none"/>
+      <div className="h-0.5 bg-gradient-to-b from-slate-100 to-transparent sticky top-14 z-40 pointer-events-none" />
     </>
   );
 };
