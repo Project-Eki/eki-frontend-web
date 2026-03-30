@@ -21,8 +21,10 @@ const NOTIF_TYPE_STYLE = {
 // Detect whether the logged-in user is an admin by checking the stored role.
 // Adjust the localStorage key / value to match what your login response saves.
 const isAdminUser = () => {
-  const role = localStorage.getItem('user_role') || '';
-  return role.toLowerCase() === 'admin';
+  const role =
+    localStorage.getItem("userRole") || localStorage.getItem("user_role") || "";
+  console.log("Checking admin status - role:", role); // Debug log
+  return role.toLowerCase() === "admin";
 };
 
 const Navbar3 = ({ userName = "Admin", onMenuClick, profileImage = null }) => {
@@ -76,24 +78,45 @@ const Navbar3 = ({ userName = "Admin", onMenuClick, profileImage = null }) => {
   // FIX: Vendor tokens get 403 on /admin/notifications/.
   // Only poll this endpoint when the user is actually an admin.
   const loadNotifications = async () => {
-    if (!isAdminUser()) return; // ✅ skip entirely for vendor users
+    console.log('loadNotifications called, isAdminUser:', isAdminUser());
+
+    if (!isAdminUser())
+      console.log("Not admin user, skipping notifications load");
+      return; // skip entirely for vendor users
+    }
 
     try {
+      console.log("Fetching notifications...");
       const response = await getAdminNotifications({ limit: 15 });
-      const payload  = response.data || response;
-      const items    =
-        payload.data?.notifications
-        || payload.notifications
-        || (Array.isArray(payload.data) ? payload.data : [])
-        || [];
+      console.log("Notifications response:", response);
+
+      const payload = response.data || response;
+      const items = payload.data?.notifications || payload.notifications || [];
+
+      console.log("Notifications count:", items.length);
       setNotifications(items);
-      setUnreadCount(items.filter(n => !n.is_read).length);
+      setUnreadCount(items.filter((n) => !n.is_read).length);
     } catch (err) {
       console.error("Failed to load notifications:", err);
     }
   };
+  //   try {
+  //     const response = await getAdminNotifications({ limit: 15 });
+  //     const payload  = response.data || response;
+  //     const items    =
+  //       payload.data?.notifications
+  //       || payload.notifications
+  //       || (Array.isArray(payload.data) ? payload.data : [])
+  //       || [];
+  //     setNotifications(items);
+  //     setUnreadCount(items.filter(n => !n.is_read).length);
+  //   } catch (err) {
+  //     console.error("Failed to load notifications:", err);
+  //   }
+  // };
 
   useEffect(() => {
+    console.log('Navbar3 mounted, isAdminUser:', isAdminUser());
     loadNotifications();
     const interval = setInterval(loadNotifications, 60000);
     return () => clearInterval(interval);
