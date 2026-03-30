@@ -67,7 +67,7 @@ const Sidebar = ({ mobileOpen, onClose }) => {
             <div className="flex items-center gap-2.5">
               {/* Eki logo — white version */}
               <img
-                src="/src/assets/eki-logo-white.png"
+                src="/src/assets/ekilogo-white.png"
                 alt="Eki"
                 className="h-8 w-auto object-contain"
                 onError={(e) => {
@@ -141,15 +141,16 @@ const Sidebar = ({ mobileOpen, onClose }) => {
                 <span>Settings</span>
               </NavLink>
 
-              <button
+               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-all"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold
+                           text-white/70 hover:bg-white/10 hover:text-white transition-all"
               >
                 <LogOut size={17} strokeWidth={1.8} />
                 <span>Log out</span>
               </button>
             </div>
-          </nav>
+          </nav> 
         </div>
       </div>
     </>

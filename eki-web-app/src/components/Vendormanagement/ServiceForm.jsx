@@ -1,46 +1,3 @@
-/**
- * ServiceForm.jsx
- *
- * CHANGES IN THIS VERSION:
- *
- * 1. DROPDOWN VALUES → BACKEND ENUMS
- *    All <option value="..."> now use the exact string the backend expects.
- *    The display label (what the user sees) stays readable; the value prop
- *    is what gets submitted.
- *    - Transport vehicleType: "motorcycle", "tuktuk", "saloon_car", "suv", etc.
- *    - Transport serviceMode: "ride_hailing", "airport_transfer", etc.
- *    - Airline cabinClass:    "economy", "premium_economy", "business", "first"
- *    - Airline serviceType:   "scheduled", "charter", "cargo", etc.
- *    - Hotel propertyType:    "hotel", "lodge", "guesthouse", "airbnb", etc.
- *
- * 2. PROFESSIONAL CATEGORY BUG FIXED
- *    The "Services" category now uses the vendor's sub-category (e.g. "other",
- *    "beauty", "retail") as the business_category in the payload — NOT "tailoring".
- *    Vendors who register under "other" will now have business_category: "other",
- *    which stops the backend validation error you were seeing.
- *
- * 3. STEP 1 CARD HEIGHT REDUCED
- *    Category cards changed from h-14 to h-12 to remove excess bottom space.
- *    This makes the modal feel compact like the original.
- *
- * 4. X CLOSE BUTTON added to top-right of modal header row.
- *
- * 5. STEP INDICATOR — evenly spaced (justify-between), label below each dot,
- *    connecting line fills the gap between dots (flex-1).
- *
- * 6. VIEW TOGGLE BUTTON color changed to match #F5B841 (Create New Service button).
- *
- * 7. PRE-FILL from vendor profile (GET /accounts/register-vendor/).
- *    Fields with amber ring are pre-filled but editable.
- *
- * 8. PHONE FIELD uses react-phone-input-2 flag picker (falls back to plain input).
- *    Requires: import 'react-phone-input-2/lib/style.css' in main.jsx.
- *
- * 9. COUNTRY FIELD uses i18n-iso-countries full list (falls back to curated list).
- *
- * 10. NAVBAR ALIGNMENT — fixed in ServiceManagement.jsx (see that file).
- */
-
 import React, { useState, useEffect, useRef } from "react";
 import {
   Hotel, Plane, Briefcase, Bike, Globe, MapPin, DollarSign, FileText, Clock,
@@ -53,15 +10,15 @@ import { buildListingPayload } from "../../utils/buildListingPayload";
 import api from "../../services/api";
 import { countWords, validateStep, validateAllSteps } from "../../utils/ServiceFormValidation";
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // PHONE INPUT — react-phone-input-2
-// ─────────────────────────────────────────────────────────────────────────────
+
 let PhoneInput = null;
 try { PhoneInput = require('react-phone-input-2').default; } catch (_) {}
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // COUNTRY DATA
-// ─────────────────────────────────────────────────────────────────────────────
+
 let isoCountries = null;
 try {
   const lib = require('i18n-iso-countries');
@@ -87,9 +44,9 @@ const getCountryOptions = () => {
   ].sort((a,b) => a.name.localeCompare(b.name));
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // SHARED UI ATOMS — identical to previous version
-// ─────────────────────────────────────────────────────────────────────────────
+
 const Field = ({ label, required, hint, error, children }) => (
   <div className="space-y-0.5">
     <label className="block text-[11px] font-medium text-gray-700">
@@ -149,9 +106,9 @@ const SectionHeader = ({ icon: Icon, label }) => (
   </div>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // PHONE FIELD
-// ─────────────────────────────────────────────────────────────────────────────
+
 const PhoneField = ({ value, onChange, error }) => {
   if (PhoneInput) {
     return (
@@ -173,9 +130,9 @@ const PhoneField = ({ value, onChange, error }) => {
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // COUNTRY SELECT
-// ─────────────────────────────────────────────────────────────────────────────
+
 const CountrySelect = ({ value, onChange, error }) => {
   const countries = getCountryOptions();
   return (
@@ -194,11 +151,11 @@ const CountrySelect = ({ value, onChange, error }) => {
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // STEP 2 SUB-FORMS
 // KEY FIX: All <option value="..."> now use backend-accepted enum strings.
 // Display labels (what the user sees) are kept readable.
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 const ProfessionalStep2 = ({ d, set, errors }) => (
   <div className="grid grid-cols-2 gap-2">
@@ -212,16 +169,8 @@ const ProfessionalStep2 = ({ d, set, errors }) => (
     <Field label="Sub-Category" required error={errors.category}>
       <Select value={d.category||""} onChange={e=>set("category",e.target.value)} error={errors.category}>
         <option value="">Select sub-category</option>
-        <option value="retail">Retail</option>
-        <option value="fashion">Fashion & Apparel</option>
-        <option value="electronics">Electronics</option>
-        <option value="food">Food & Beverages</option>
-        <option value="beauty">Beauty & Health</option>
-        <option value="home">Home & Garden</option>
-        <option value="sports">Sports & Outdoors</option>
-        <option value="automotive">Automotive</option>
         <option value="tailoring">Tailoring</option>
-        <option value="other">Other / Events / General</option>
+        <option value="profession">Other</option>
       </Select>
     </Field>
 
@@ -553,9 +502,9 @@ const TransportStep2 = ({ d, set, errors }) => (
   </div>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // STEP 3 — unchanged
-// ─────────────────────────────────────────────────────────────────────────────
+
 const Step3Content = ({ serviceType, d, set, errors }) => {
   const wc = countWords(d.description || "");
   const wcColor = wc > 20 ? "text-red-500" : wc > 0 ? "text-[#EFB034FF]" : "text-gray-400";
@@ -593,9 +542,9 @@ const Step3Content = ({ serviceType, d, set, errors }) => {
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // STEP 4 — unchanged
-// ─────────────────────────────────────────────────────────────────────────────
+
 const Step4Content = ({ serviceType, title, d, coverPreview, onImageClick }) => {
   const catLabel = { hotel:"Hotel", airline:"Airline", professional:"Service", transport:"Transport" }[serviceType] || "";
   return (
@@ -631,10 +580,10 @@ const Step4Content = ({ serviceType, title, d, coverPreview, onImageClick }) => 
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // CATEGORY CONFIG — same colors, reduced card height (h-12 instead of h-14)
 // to remove excess empty space at bottom of Step 1
-// ─────────────────────────────────────────────────────────────────────────────
+
 const CATEGORIES = [
   { id:"hotel",        label:"Hotels",    icon:<Hotel     size={14}/>, color:"teal" },
   { id:"airline",      label:"Airlines",  icon:<Plane     size={14}/>, color:"teal" },
@@ -644,11 +593,11 @@ const CATEGORIES = [
 const CAT_ACTIVE     = { teal:"border-[#EFB034FF] bg-[#EFB034]/10 text-[#EFB034FF]" };
 const CAT_ICON_ACTIVE = { teal:"text-[#EFB034FF]" };
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // STEP INDICATOR
 // FIX: justify-between + flex-1 lines = evenly spaced like the product form.
 // Colors: completed = golden, active = #125852 teal + white number, inactive = gray.
-// ─────────────────────────────────────────────────────────────────────────────
+
 const STEP_LABELS = ["Basics", "Details", "Description", "Publish"];
 
 const StepIndicator = ({ current }) => (
@@ -685,9 +634,9 @@ const StepIndicator = ({ current }) => (
   </div>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // MAIN COMPONENT
-// ─────────────────────────────────────────────────────────────────────────────
+
 const ServiceForm = ({ onClose }) => {
   const [step,         setStep]         = useState(1);
   const [stepErrors,   setStepErrors]   = useState({});

@@ -1,35 +1,3 @@
-/**
- * ServiceManagement.jsx
- *
- * CHANGES IN THIS VERSION:
- *
- * 1. NAVBAR ALIGNMENT
- *    The fixed navbar now starts exactly from the right edge of the sidebar.
- *    Instead of `left-0 right-0` (full width), the navbar wrapper is
- *    `left-0 right-0` but the inner Navbar3 sits inside a flex row that
- *    accounts for the sidebar width. On desktop, a sidebar-width spacer
- *    (w-[calc(14rem+0.75rem)] = 56 + 3px gap) pushes the navbar content
- *    to start where the main content starts.
- *    On mobile (< md) the spacer is hidden so the navbar is full-width.
- *
- * 2. VIEW TOGGLE BUTTON COLOR
- *    Changed from bg-[#125852] to bg-[#F5B841] to match "Create New Service" button.
- *    Inactive state: text-slate-400 (unchanged).
- *
- * 3. X BUTTON ON MODAL
- *    The modal no longer has a separate sticky header (removed — ServiceForm has
- *    its own header with X button). The modal wrapper is clean rounded-3xl.
- *    Clicking the backdrop also closes the modal.
- *
- * 4. MODAL HEIGHT
- *    Reduced from h-[580px] to h-auto max-h-[88vh] so the form content
- *    determines its own height and there is no empty space at the bottom.
- *    ServiceForm's flex-col layout fills naturally.
- *
- * 5. ALL OTHER THINGS UNCHANGED — colors, borders, margins, stat cards,
- *    service cards, filters, sort, pagination, footer.
- */
-
 import React, { useState, useEffect, useMemo } from "react";
 import { getServices } from "../services/api";
 import VendorSidebar from "../components/VendorSidebar";
@@ -43,9 +11,9 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // COLOR MAP — unchanged
-// ─────────────────────────────────────────────────────────────────────────────
+
 const colorMap = {
   teal:   { bg: "bg-teal-50",   icon: "text-teal-600",   val: "text-teal-700"   },
   green:  { bg: "bg-green-50",  icon: "text-green-600",  val: "text-green-700"  },
@@ -53,9 +21,9 @@ const colorMap = {
   purple: { bg: "bg-purple-50", icon: "text-purple-600", val: "text-purple-700" },
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // STATUS / AVAILABILITY STYLE MAPS — unchanged
-// ─────────────────────────────────────────────────────────────────────────────
+
 const STATUS_STYLE = {
   published: "bg-green-50 text-green-700 border border-green-200",
   active:    "bg-green-50 text-green-700 border border-green-200",
@@ -70,9 +38,9 @@ const AVAIL_COLOR = {
   "booked":       "text-red-500",
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // SERVICE CARD — unchanged
-// ─────────────────────────────────────────────────────────────────────────────
+
 const ServiceCard = ({ s }) => (
   <div className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all group">
     <div className="relative h-44 overflow-hidden bg-slate-50">
@@ -117,9 +85,9 @@ const ServiceCard = ({ s }) => (
   </div>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // TEAL FOOTER — provided by user, rounded, unchanged
-// ─────────────────────────────────────────────────────────────────────────────
+
 const TealFooter = () => (
   <footer className="bg-[#1D4D4C] text-white py-4 px-5 sm:px-10 flex flex-col sm:flex-row justify-between items-center gap-2 text-[11px] shrink-0 mx-3 mb-3 rounded-2xl">
     <div className="hidden sm:block">Buy Smart. Sell Fast. Grow Together...</div>
@@ -136,16 +104,16 @@ const TealFooter = () => (
   </footer>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // SIDEBAR WIDTH CONSTANT
 // Must match VendorSidebar's w-56 (= 14rem = 224px) + p-3 gap (0.75rem = 12px)
 // Used to offset the navbar content on desktop so it aligns with the main content.
-// ─────────────────────────────────────────────────────────────────────────────
+
 const SIDEBAR_W = "w-[14.75rem]"; // 14rem sidebar + 0.75rem gap
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // SERVICE MANAGEMENT PAGE
-// ─────────────────────────────────────────────────────────────────────────────
+
 const ServiceManagement = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewMode,    setViewMode]    = useState("grid");
