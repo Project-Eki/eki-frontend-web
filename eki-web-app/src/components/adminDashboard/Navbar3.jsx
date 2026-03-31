@@ -61,7 +61,7 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await api.get("/accounts/vendor/profile/");
+        const res = await api.get("/api/v1/accounts/vendor/profile/");
         const data = res.data?.data ?? res.data;
 
         const name = [data?.first_name, data?.last_name]
@@ -165,7 +165,7 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
   // Mark all notifications as read
   const handleMarkAllRead = async () => {
     try {
-      await api.post("/accounts/admin/notifications/mark-read/", {
+      await api.post("/api/v1/accounts/admin/notifications/mark-read/", {
         mark_all: true,
       });
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));

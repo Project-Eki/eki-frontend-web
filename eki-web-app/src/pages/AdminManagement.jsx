@@ -67,7 +67,7 @@ const ICON_COL = "text-orange-600";
 const DJANGO_BASE = (() => {
   const env = import.meta.env.VITE_API_BASE_URL;
   if (env) return env.replace(/\/api\/v1\/?$/, "");
-  return "http://127.0.0.1:8000";
+  return "http://134.122.22.45";
 })();
 
 const resolveUrl = (url) => {

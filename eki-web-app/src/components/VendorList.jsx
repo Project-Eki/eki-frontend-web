@@ -1,7 +1,26 @@
 import React from 'react';
 import { Filter, Download, MoreHorizontal } from 'lucide-react';
+const BUSINESS_CATEGORY_MAP = {
+  retail: "Retail",
+  fashion: "Fashion & Apparel",
+  electronics: "Electronics",
+  food: "Food & Beverages",
+  beauty: "Beauty & Health",
+  home: "Home & Garden",
+  sports: "Sports & Outdoors",
+  automotive: "Automotive",
+  transport: "Transport",
+  tailoring: "Tailoring",
+  airlines: "Airlines",
+  hotels: "Hospitality",
+  other: "Other",
+};
 
 const VendorList = ({ vendors, onSelect, selectedId }) => {
+  const getCategoryDisplay = (categoryKey) => {
+    return BUSINESS_CATEGORY_MAP[categoryKey] || categoryKey || "—";
+  };
+  
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
       <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-white">
