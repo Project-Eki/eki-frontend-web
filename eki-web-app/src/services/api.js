@@ -443,15 +443,11 @@ export const updateVerificationStatus = async (vendorId, status, rejectionReason
 };
 
 // For suspending/terminating APPROVED vendors
-export const updateVendorManagementStatus = async (vendorId, status, reason = "") => {
+export const updateVendorStatus = async (vendorId, status, reason = "") => {
   const payload = { verification_status: status };
   if (reason) payload.rejection_reason = reason;
-  
-  // This endpoint accepts 'suspended', 'terminated', 'approved', 'rejected'
-  const response = await api.patch(
-    `/accounts/admin/vendors/${vendorId}/status/`,
-    payload
-  );
+  // Use the vendor management endpoint
+  const response = await api.patch(`/accounts/admin/vendors/${vendorId}/status/`, payload);
   return response.data;
 };
 

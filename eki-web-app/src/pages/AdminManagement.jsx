@@ -50,6 +50,7 @@ import VendorProfile from "../components/VendorProfile";
 import {
   getAdminDashboard,
   updateVerificationStatus,
+  updateVendorStatus,
 } from "../services/api";
 import {
   Store, Clock, TrendingUp, X, ChevronLeft, ChevronRight,
@@ -504,19 +505,23 @@ const VendorListWithFilters = ({ vendors, onSelect, selectedId, onRefresh }) => 
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const AdminManagement = () => {
-  const [sidebarOpen,      setSidebarOpen]      = useState(false);
-  const [vendors,          setVendors]          = useState([]);
-  const [selectedVendor,   setSelectedVendor]   = useState(null);
-  const [vendorDetail,     setVendorDetail]      = useState(null);
-  const [detailLoading,    setDetailLoading]    = useState(false);
-  const [loading,          setLoading]          = useState(true);
-  const [actionLoading,    setActionLoading]    = useState(false);
-  const [stats,            setStats]            = useState({ total: "—", pending: "—", approved: "—" });
-  const [showDocReview,    setShowDocReview]    = useState(false);
-  const [showTerminate,    setShowTerminate]    = useState(false);
-  const [showReject,       setShowReject]       = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [vendors, setVendors] = useState([]);
+  const [selectedVendor, setSelectedVendor] = useState(null);
+  const [vendorDetail, setVendorDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [stats, setStats] = useState({
+    total: "—",
+    pending: "—",
+    approved: "—",
+  });
+  const [showDocReview, setShowDocReview] = useState(false);
+  const [showTerminate, setShowTerminate] = useState(false);
+  const [showReject, setShowReject] = useState(false);
   const [terminateLoading, setTerminateLoading] = useState(false);
-  const [rejectLoading,    setRejectLoading]    = useState(false);
+  const [rejectLoading, setRejectLoading] = useState(false);
 
   // ── Load data: dashboard stats + full vendor list in parallel ──────────────
   const loadData = useCallback(async () => {
@@ -529,26 +534,34 @@ const AdminManagement = () => {
 
       const dashData = dashResponse.data;
       const pipeline = dashData.verification_workflows?.pipeline || {};
-      const totalVendors = Object.values(pipeline).reduce((sum, v) => sum + (Number(v) || 0), 0);
+      const totalVendors = Object.values(pipeline).reduce(
+        (sum, v) => sum + (Number(v) || 0),
+        0,
+      );
       setStats({
-        total:    totalVendors || "—",
-        pending:  pipeline.pending  || "—",
+        total: totalVendors || "—",
+        pending: pipeline.pending || "—",
         approved: pipeline.approved || "—",
       });
 
       // Full vendor list — has business_category, has_* doc flags
-      const rawVendors  = vendorsResponse.data?.data || vendorsResponse.data || [];
+      const rawVendors =
+        vendorsResponse.data?.data || vendorsResponse.data || [];
       const vendorArray = Array.isArray(rawVendors) ? rawVendors : [];
 
       setVendors(
         vendorArray.map((v) => ({
-          id:               v.id,
-          name:             v.owner_full_name   || v.user_name      || "—",
-          email:            v.user_email        || v.business_email || "",
-          status:           normStatus(v.verification_status),
-          submitted:        v.created_at ? new Date(v.created_at).toLocaleDateString() : "—",
-          daysPending:      v.created_at
-            ? Math.floor((Date.now() - new Date(v.created_at).getTime()) / 86400000)
+          id: v.id,
+          name: v.owner_full_name || v.user_name || "—",
+          email: v.user_email || v.business_email || "",
+          status: normStatus(v.verification_status),
+          submitted: v.created_at
+            ? new Date(v.created_at).toLocaleDateString()
+            : "—",
+          daysPending: v.created_at
+            ? Math.floor(
+                (Date.now() - new Date(v.created_at).getTime()) / 86400000,
+              )
             : null,
           // FIX: docsCount computed from has_* booleans (available in /admin/vendors/)
           docsCount: [
@@ -558,12 +571,12 @@ const AdminManagement = () => {
             v.has_tax_certificate,
             v.has_incorporation_cert,
           ].filter(Boolean).length,
-          businessName:     v.business_name     || "—",
+          businessName: v.business_name || "—",
           // FIX: businessType from onboarding form (products / services / other)
-          businessType:     v.business_type     || "—",
+          businessType: v.business_type || "—",
           // FIX: businessCategory from onboarding form (retail / fashion / etc.)
           businessCategory: v.business_category || "—",
-        }))
+        })),
       );
     } catch (err) {
       console.error("AdminManagement load error:", err);
@@ -572,7 +585,9 @@ const AdminManagement = () => {
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // ── Select vendor → fetch full detail ─────────────────────────────────────
   const handleSelectVendor = async (vendor) => {
@@ -584,30 +599,32 @@ const AdminManagement = () => {
       const d = response.data?.data || response.data;
       setVendorDetail({
         ...vendor,
-        email:            d.user_email          || d.business_email || "—",
-        name:             d.user_name           || d.owner_full_name || vendor.name,
+        email: d.user_email || d.business_email || "—",
+        name: d.user_name || d.owner_full_name || vendor.name,
         // FIX: resolveUrl so profile picture works on localhost
-        profilePicture:   resolveUrl(d.profile_picture || null),
-        businessName:     d.business_name       || "—",
-        businessType:     d.business_type       || "—",
-        businessCategory: d.business_category   || "—",
-        businessPhone:    d.business_phone      || "—",
-        businessEmail:    d.business_email      || "—",
-        address:          d.address             || "—",
-        city:             d.city                || "—",
-        country:          d.country             || "—",
-        registrationNo:   d.registration_number || "—",
-        taxId:            d.tax_id              || "—",
-        openingTime:      d.opening_time        || "—",
-        closingTime:      d.closing_time        || "—",
-        verifiedAt:       d.verified_at         || "—",
-        hasGovId:         d.has_government_issued_id || false,
-        hasCountryId:     d.has_country_issued_id    || false,
-        hasLicense:       d.has_business_license     || false,
-        hasTaxCert:       d.has_tax_certificate      || false,
-        hasIncCert:       d.has_incorporation_cert   || false,
-        daysPending:      d.created_at
-          ? Math.floor((Date.now() - new Date(d.created_at).getTime()) / 86400000)
+        profilePicture: resolveUrl(d.profile_picture || null),
+        businessName: d.business_name || "—",
+        businessType: d.business_type || "—",
+        businessCategory: d.business_category || "—",
+        businessPhone: d.business_phone || "—",
+        businessEmail: d.business_email || "—",
+        address: d.address || "—",
+        city: d.city || "—",
+        country: d.country || "—",
+        registrationNo: d.registration_number || "—",
+        taxId: d.tax_id || "—",
+        openingTime: d.opening_time || "—",
+        closingTime: d.closing_time || "—",
+        verifiedAt: d.verified_at || "—",
+        hasGovId: d.has_government_issued_id || false,
+        hasCountryId: d.has_country_issued_id || false,
+        hasLicense: d.has_business_license || false,
+        hasTaxCert: d.has_tax_certificate || false,
+        hasIncCert: d.has_incorporation_cert || false,
+        daysPending: d.created_at
+          ? Math.floor(
+              (Date.now() - new Date(d.created_at).getTime()) / 86400000,
+            )
           : null,
       });
     } catch (err) {
@@ -618,21 +635,50 @@ const AdminManagement = () => {
     }
   };
 
-  const closeModal = () => { setSelectedVendor(null); setVendorDetail(null); };
+  const closeModal = () => {
+    setSelectedVendor(null);
+    setVendorDetail(null);
+  };
 
   // ── Vendor actions: Approve / Suspend / Reject / Terminate ──────────────────
   // All call updateVerificationStatus which hits PATCH /accounts/admin/verifications/{id}/
   // Backend sends email via notify_vendor_status_change automatically
-  const handleVendorAction = async (vendorId, action, reason = "") => {
+  const handleApprove = async (vendorId) => {
     setActionLoading(true);
     try {
-      await updateVerificationStatus(vendorId, action, reason);
-      const newStatus = normStatus(action);
-      setVendors((prev) => prev.map((v) => v.id === vendorId ? { ...v, status: newStatus } : v));
-      setVendorDetail((prev) => prev ? { ...prev, status: newStatus } : prev);
+      await updateVerificationStatus(vendorId, "approved");
+      const newStatus = "Approved";
+      setVendors((prev) =>
+        prev.map((v) => (v.id === vendorId ? { ...v, status: newStatus } : v)),
+      );
+      setVendorDetail((prev) => (prev ? { ...prev, status: newStatus } : prev));
     } catch (err) {
-      console.error("Vendor action failed:", err);
-      const msg = err?.response?.data?.message || err?.response?.data?.errors?.verification_status || "Action failed. Please try again.";
+      console.error("Approve failed:", err);
+      const msg = err?.response?.data?.message || "Approval failed.";
+      alert(msg);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSuspend = async () => {
+    if (!vendorDetail) return;
+    setActionLoading(true);
+    try {
+      await updateVendorStatus(
+        vendorDetail.id,
+        "suspended",
+        "Suspended by admin",
+      );
+      const newStatus = "Suspended";
+      setVendors((prev) =>
+        prev.map((v) =>
+          v.id === vendorDetail.id ? { ...v, status: newStatus } : v,
+        ),
+      );
+      setVendorDetail((prev) => (prev ? { ...prev, status: newStatus } : prev));
+    } catch (err) {
+      const msg = err?.response?.data?.message || "Suspension failed.";
       alert(msg);
     } finally {
       setActionLoading(false);
@@ -643,10 +689,14 @@ const AdminManagement = () => {
     if (!vendorDetail) return;
     setTerminateLoading(true);
     try {
-      await updateVerificationStatus(vendorDetail.id, "suspended", reason);
+      await updateVendorStatus(vendorDetail.id, "suspended", reason);
       const newStatus = "Suspended";
-      setVendors((prev) => prev.map((v) => v.id === vendorDetail.id ? { ...v, status: newStatus } : v));
-      setVendorDetail((prev) => prev ? { ...prev, status: newStatus } : prev);
+      setVendors((prev) =>
+        prev.map((v) =>
+          v.id === vendorDetail.id ? { ...v, status: newStatus } : v,
+        ),
+      );
+      setVendorDetail((prev) => (prev ? { ...prev, status: newStatus } : prev));
       setShowTerminate(false);
     } catch (err) {
       const msg = err?.response?.data?.message || "Termination failed.";
@@ -662,8 +712,12 @@ const AdminManagement = () => {
     try {
       await updateVerificationStatus(vendorDetail.id, "rejected", reason);
       const newStatus = "Rejected";
-      setVendors((prev) => prev.map((v) => v.id === vendorDetail.id ? { ...v, status: newStatus } : v));
-      setVendorDetail((prev) => prev ? { ...prev, status: newStatus } : prev);
+      setVendors((prev) =>
+        prev.map((v) =>
+          v.id === vendorDetail.id ? { ...v, status: newStatus } : v,
+        ),
+      );
+      setVendorDetail((prev) => (prev ? { ...prev, status: newStatus } : prev));
       setShowReject(false);
     } catch (err) {
       const msg = err?.response?.data?.message || "Rejection failed.";
@@ -676,35 +730,53 @@ const AdminManagement = () => {
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-[#F3F4F6] font-sans">
       <div className="flex flex-1 min-h-0">
-        <Sidebar mobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar
+          mobileOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
 
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-
           <div className="shrink-0 pr-3 pt-3">
             <Navbar3 onMenuClick={() => setSidebarOpen(true)} />
           </div>
 
           <div className="flex-1 overflow-y-auto">
             <main className="px-4 py-4 sm:px-6 space-y-5">
-
               {/* Title + refresh */}
               <div className="flex items-center justify-between">
-                <h1 className="text-lg font-bold text-gray-900">Vendor Management</h1>
+                <h1 className="text-lg font-bold text-gray-900">
+                  Vendor Management
+                </h1>
                 <button
                   onClick={loadData}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border rounded-lg transition-colors hover:opacity-90"
                   style={{ borderColor: GOLD, color: GOLD }}
                 >
-                  <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+                  <RefreshCw
+                    size={12}
+                    className={loading ? "animate-spin" : ""}
+                  />
                   Refresh
                 </button>
               </div>
 
               {/* Stat Cards — all use orange (same as AdminDashboard) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <StatCard label="Total Vendors"        value={stats.total}    type="vendors" />
-                <StatCard label="Pending Verification" value={stats.pending}  type="pending" />
-                <StatCard label="Vendors Approved"     value={stats.approved} type="earners" />
+                <StatCard
+                  label="Total Vendors"
+                  value={stats.total}
+                  type="vendors"
+                />
+                <StatCard
+                  label="Pending Verification"
+                  value={stats.pending}
+                  type="pending"
+                />
+                <StatCard
+                  label="Vendors Approved"
+                  value={stats.approved}
+                  type="earners"
+                />
               </div>
 
               {/* Vendor list */}
@@ -722,16 +794,27 @@ const AdminManagement = () => {
 
             {/* Footer — matches AdminDashboard footer exactly */}
             <footer className="bg-[#1D4D4C] text-white py-3 px-5 sm:px-10 flex flex-col sm:flex-row justify-between items-center gap-2 text-[10px] shrink-0 mx-3 mb-3 rounded-xl">
-              <div className="hidden sm:block">Buy Smart. Sell Fast. Grow Together...</div>
+              <div className="hidden sm:block">
+                Buy Smart. Sell Fast. Grow Together...
+              </div>
               <div>© 2026 Vendor Portal. All rights reserved.</div>
               <div className="flex flex-wrap justify-center gap-3">
                 <span className="relative inline-block cursor-pointer hover:underline">
-                  eki<span className="absolute text-[5px] -bottom-0 -right-2">TM</span>
+                  eki
+                  <span className="absolute text-[5px] -bottom-0 -right-2">
+                    TM
+                  </span>
                 </span>
                 <span className="cursor-pointer hover:underline">Support</span>
-                <span className="cursor-pointer hover:underline">Privacy Policy</span>
-                <span className="cursor-pointer hover:underline">Terms of Service</span>
-                <span className="cursor-pointer hover:underline">Ijoema ltd</span>
+                <span className="cursor-pointer hover:underline">
+                  Privacy Policy
+                </span>
+                <span className="cursor-pointer hover:underline">
+                  Terms of Service
+                </span>
+                <span className="cursor-pointer hover:underline">
+                  Ijoema ltd
+                </span>
               </div>
             </footer>
           </div>
@@ -743,21 +826,31 @@ const AdminManagement = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 sticky top-0 bg-white z-10">
-              <h2 className="text-sm font-bold text-gray-900">Vendor Profile</h2>
-              <button onClick={closeModal} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100">
+              <h2 className="text-sm font-bold text-gray-900">
+                Vendor Profile
+              </h2>
+              <button
+                onClick={closeModal}
+                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100"
+              >
                 <X size={16} className="text-gray-500" />
               </button>
             </div>
 
             {detailLoading ? (
               <div className="p-6 space-y-3">
-                {[1, 2, 3, 4].map((i) => <div key={i} className="bg-gray-100 h-9 rounded-xl animate-pulse" />)}
+                {[1, 2, 3, 4].map((i) => (
+                  <div
+                    key={i}
+                    className="bg-gray-100 h-9 rounded-xl animate-pulse"
+                  />
+                ))}
               </div>
             ) : vendorDetail ? (
               <VendorProfile
                 vendor={vendorDetail}
-                onApprove={() => handleVendorAction(vendorDetail.id, "approved")}
-                onSuspend={() => handleVendorAction(vendorDetail.id, "suspended", "Suspended by admin")}
+                onApprove={() => handleApprove(vendorDetail.id)}
+                onSuspend={handleSuspend}
                 onReject={() => setShowReject(true)}
                 onReviewDocuments={() => setShowDocReview(true)}
                 onTerminate={() => setShowTerminate(true)}
@@ -798,6 +891,6 @@ const AdminManagement = () => {
       )}
     </div>
   );
-};
+};;
 
 export default AdminManagement;
