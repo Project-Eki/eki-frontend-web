@@ -43,7 +43,7 @@ const InfoRow = ({ icon: Icon, label, value }) => (
  *  onTerminate       — open TerminateVendorModal in parent
  *  actionLoading     — disables buttons during API calls
  */
-const VendorProfile = ({ vendor, onApprove, onSuspend, onReject, onReviewDocuments, onTerminate, actionLoading }) => {
+const VendorProfile = ({ vendor, onApprove, onSuspend, onReject, onReviewDocuments, onTerminate, onReinstate, actionLoading }) => {
   const isPending   = vendor.status === "Pending"   || vendor.status === "under_review";
   const isApproved  = vendor.status === "Approved"  || vendor.status === "Verified";
   const isSuspended = vendor.status === "Suspended";
@@ -171,7 +171,7 @@ const VendorProfile = ({ vendor, onApprove, onSuspend, onReject, onReviewDocumen
 
         {/* Reinstate — suspended vendors */}
         {isSuspended && (
-          <button onClick={onApprove} disabled={actionLoading}
+          <button onClick={onReinstate} disabled={actionLoading}
             className="w-full flex items-center justify-center gap-2 py-2.5 bg-green-600 text-white text-xs font-bold rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50">
             {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
             Reinstate Vendor
