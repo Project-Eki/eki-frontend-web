@@ -1,34 +1,19 @@
 /**
- * ServiceManagement.jsx
- *
- * FIXES IN THIS VERSION:
- *
- * 1. TEAL COLOR BLEEDING TOP-RIGHT (the image showed a teal/green patch)
- *    Root cause: the SIDEBAR_W spacer div inside the fixed navbar had the OLD
- *    light-teal gradient. The new sidebar uses a dark-green gradient. The spacer
- *    must match. ALSO — the spacer approach causes color to bleed on any screen
- *    width between the sidebar and the navbar bg. Simplest fix: remove the spacer
- *    entirely and let Navbar3 span the full width. The navbar already visually
- *    "starts after the sidebar" because the sidebar sits beneath the navbar and
- *    the navbar is transparent up to its own bg-white. The REAL cause of the bleed
- *    was the spacer div bleeding its gradient into the top-right corner of the
- *    content area on large screens. Removing it eliminates the bleed.
- *
- * 3. EDIT / DELETE for existing service cards
- *    Each ServiceCard now has an Edit (pencil) and Delete (trash) button in
- *    the top-right corner (hover-reveal). Clicking Edit opens the ServiceForm
- *    in edit mode (passes the existing listing id + data). Clicking Delete shows
- *    a confirm dialog then calls deleteListing(id) from api.js.
- *
- * 4. TWO IMAGES
- *    ServiceForm now accepts TWO cover images instead of one. The Step 4 upload
- *    zone shows two upload slots. Both are uploaded as separate API calls to
- *    POST /listings/{id}/images/. The first image has is_primary: true, the
- *    second has is_primary: false.
+ CURRENCY FROM VENDOR PROFILE
+   On mount, fetches GET /accounts/vendor/profile/ to get the vendor's country,
+   then maps it to the correct currency symbol (same logic as ProductDashboard).
+   Price is displayed as e.g. "UGX 20,000/session" instead of "$20,000/session".
+  IMAGE FIX NOTE
+ The grey area on the service card is because the image URL returned by the
+  backend is a relative path (e.g. /media/listings/...) and the frontend
+ needs to prepend the backend base URL. The img src is now constructed as:
+ `${MEDIA_BASE}${item.images[0].image}` when the URL doesn't start with http.
+   MEDIA_BASE is set to the backend base URL (e.g. http://127.0.0.1:8000).
  */
 
 import React, { useState, useEffect, useMemo } from "react";
 import { getServices, deleteListing } from "../services/api";
+import api from "../services/api";
 import VendorSidebar from "../components/VendorSidebar";
 import Navbar3 from "../components/adminDashboard/Navbar4";
 import ServiceForm from "../components/Vendormanagement/ServiceForm";
@@ -37,80 +22,197 @@ import {
   Plus, X, Briefcase, LayoutGrid, List,
   Clock, Calendar, Star, CheckCircle, ChevronDown,
   Search, SlidersHorizontal, Globe, MapPin, Package,
-  Pencil, Trash2, AlertTriangle, Loader2
+  Pencil, Trash2, AlertTriangle, Loader2, Archive,
+  PauseCircle, FileText, TrendingUp,
 } from 'lucide-react';
 
-// CONSTANTS — unchanged
-const colorMap = {
-  teal:   { bg:"bg-teal-50",   icon:"text-teal-600",   val:"text-teal-700"   },
-  green:  { bg:"bg-green-50",  icon:"text-green-600",  val:"text-green-700"  },
-  amber:  { bg:"bg-amber-50",  icon:"text-amber-600",  val:"text-amber-700"  },
-  purple: { bg:"bg-purple-50", icon:"text-purple-600", val:"text-purple-700" },
+// ─────────────────────────────────────────────────────────────────────────────
+// MEDIA BASE — prepend to relative image paths from the backend.
+// When the backend returns "/media/listings/..." we need the full URL.
+// Change this to your production URL when deploying.
+// ─────────────────────────────────────────────────────────────────────────────
+const MEDIA_BASE = "http://127.0.0.1:8000";
+
+const resolveImage = (url) => {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;           // already absolute
+  return `${MEDIA_BASE}${url}`;                      // prepend base
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CURRENCY MAP — same as ProductDashboard
+// ─────────────────────────────────────────────────────────────────────────────
+const getCurrencySymbol = (country) => {
+  const map = {
+    uganda:'UGX', nigeria:'₦', kenya:'KES', ghana:'₵',
+    'south africa':'R', tanzania:'TZS', rwanda:'RWF', ethiopia:'ETB',
+    zambia:'ZMW', egypt:'EGP', morocco:'MAD', senegal:'CFA',
+    cameroon:'CFA', ivory:'CFA', "côte d'ivoire":'CFA',
+    angola:'AOA', mozambique:'MZN', zimbabwe:'ZWL', botswana:'BWP',
+    namibia:'NAD', malawi:'MWK', sudan:'SDG', tunisia:'TND',
+    libya:'LYD', algeria:'DZD', madagascar:'MGA', somalia:'SOS',
+    usa:'$', 'united states':'$', canada:'CA$', mexico:'MX$',
+    brazil:'R$', argentina:'$', colombia:'$', chile:'CLP',
+    peru:'S/', venezuela:'Bs', uruguay:'$U', ecuador:'$',
+    uk:'£', 'united kingdom':'£', germany:'€', france:'€',
+    italy:'€', spain:'€', portugal:'€', netherlands:'€',
+    belgium:'€', austria:'€', switzerland:'CHF', sweden:'kr',
+    norway:'kr', denmark:'kr', finland:'€', poland:'zł',
+    czechia:'Kč', hungary:'Ft', romania:'lei', bulgaria:'лв',
+    russia:'₽', ukraine:'₴', turkey:'₺',
+    china:'¥', japan:'¥', india:'₹', 'south korea':'₩',
+    indonesia:'Rp', malaysia:'RM', thailand:'฿', singapore:'S$',
+    philippines:'₱', vietnam:'₫', bangladesh:'৳', pakistan:'₨',
+    'sri lanka':'₨', nepal:'₨', myanmar:'K', cambodia:'₭',
+    'saudi arabia':'SR', uae:'AED', 'united arab emirates':'AED',
+    qatar:'QR', kuwait:'KD', bahrain:'BD', jordan:'JD',
+    israel:'₪', iran:'﷼', iraq:'IQD',
+    australia:'A$', 'new zealand':'NZ$',
+  };
+  return map[country?.toLowerCase()] || '$';
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STATUS STYLES + CONFIG
+// ─────────────────────────────────────────────────────────────────────────────
 const STATUS_STYLE = {
   published: "bg-green-50 text-green-700 border border-green-200",
   active:    "bg-green-50 text-green-700 border border-green-200",
   draft:     "bg-amber-50 text-amber-700 border border-amber-200",
   archived:  "bg-gray-100 text-gray-500 border border-gray-200",
-  paused:    "bg-gray-100 text-gray-500 border border-gray-200",
+  paused:    "bg-blue-50 text-blue-600 border border-blue-200",
 };
 
-// SERVICE CARD — with Edit + Delete buttons (hover-reveal top-right)
 // ─────────────────────────────────────────────────────────────────────────────
-const ServiceCard = ({ s, onEdit, onDelete }) => (
-  <div className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all group">
-    <div className="relative h-44 overflow-hidden bg-slate-50">
+// SERVICE CARD — with Edit + Delete + currency-aware price
+// ─────────────────────────────────────────────────────────────────────────────
+// const ServiceCard = ({ s, onEdit, onDelete, currencySymbol }) => (
+//   <div className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all group">
+//     <div className="relative h-44 overflow-hidden bg-slate-50">
+//       {s.img ? (
+//         <img src={s.img} alt={s.title}
+//           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+//           onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}
+//         />
+//       ) : null}
+//       {/* Fallback shown when no image or image fails to load */}
+//       <div
+//         className="w-full h-full flex flex-col items-center justify-center gap-1"
+//         style={{ display: s.img ? 'none' : 'flex' }}
+//       >
+//         <Package size={28} className="text-slate-300"/>
+//         <span className="text-[10px] text-slate-300">No image</span>
+//       </div>
+//       {/* Remote / in-person badge */}
+//       <span className="absolute top-3 left-3 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
+//         {s.mode === "remote" || s.mode === "online"
+//           ? <><Globe size={9}/> Remote</>
+//           : <><MapPin size={9}/> In-person</>}
+//       </span>
+//       {/* Edit + Delete — appear on hover */}
+//       <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+//         <button onClick={() => onEdit(s)}
+//           className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-[#125852] transition-colors"
+//           title="Edit service">
+//           <Pencil size={12}/>
+//         </button>
+//         <button onClick={() => onDelete(s)}
+//           className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-red-500 transition-colors"
+//           title="Delete service">
+//           <Trash2 size={12}/>
+//         </button>
+//       </div>
+//     </div>
+
+//     <div className="p-4">
+//       <div className="flex items-center justify-between mb-1.5">
+//         <span className="text-[10px] font-bold text-slate-400 tracking-widest truncate max-w-[120px]">{s.category}</span>
+//         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0 ${STATUS_STYLE[s.status] || STATUS_STYLE.draft}`}>{s.status}</span>
+//       </div>
+//       <h3 className="font-black text-[15px] text-slate-900 leading-tight mb-1 line-clamp-1">{s.title || '—'}</h3>
+//       <p className="text-[12px] text-slate-500 line-clamp-2 mb-3">{s.desc || 'No description provided.'}</p>
+//       <div className="flex items-center justify-between text-[12px] text-slate-400 mb-3">
+//         <span className="flex items-center gap-1"><Clock size={12}/> {s.duration || 'N/A'}</span>
+//         <span className="flex items-center gap-1 font-semibold text-slate-400">
+//           <Calendar size={12}/> {s.avail || 'Available'}
+//         </span>
+//       </div>
+//       <div className="flex items-center justify-between pt-3 border-t border-slate-50">
+//         <div>
+//           {/* Currency-aware price display */}
+//           <span className="text-[18px] font-black text-slate-900">
+//             {currencySymbol} {parseFloat(s.price || 0).toLocaleString()}
+//           </span>
+//           <span className="text-[11px] text-slate-400">/{s.unit || 'session'}</span>
+//         </div>
+//         <button onClick={() => onEdit(s)}
+//           className="text-[12px] font-bold text-teal-700 hover:text-amber-500 transition-colors flex items-center gap-1">
+//           Edit ↗
+//         </button>
+//       </div>
+//     </div>
+//   </div>
+// );
+const ServiceCard = ({ s, onEdit, onDelete, currencySymbol }) => (
+  <div className="bg-white rounded-xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all group">
+    <div className="relative h-36 overflow-hidden bg-slate-50">
       {s.img ? (
         <img src={s.img} alt={s.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
-      ) : (
-        <div className="w-full h-full flex flex-col items-center justify-center gap-1">
-          <Package size={28} className="text-slate-300"/>
-          <span className="text-[10px] text-slate-300">No image</span>
-        </div>
-      )}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}
+        />
+      ) : null}
+      {/* Fallback shown when no image or image fails to load */}
+      <div
+        className="w-full h-full flex flex-col items-center justify-center gap-1"
+        style={{ display: s.img ? 'none' : 'flex' }}
+      >
+        <Package size={24} className="text-slate-300"/>
+        <span className="text-[9px] text-slate-300">No image</span>
+      </div>
       {/* Remote / in-person badge */}
-      <span className="absolute top-3 left-3 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
+      <span className="absolute top-2 left-2 bg-black/50 backdrop-blur-sm text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1">
         {s.mode === "remote" || s.mode === "online"
-          ? <><Globe size={9}/> Remote</>
-          : <><MapPin size={9}/> In-person</>}
+          ? <><Globe size={8}/> Remote</>
+          : <><MapPin size={8}/> In-person</>}
       </span>
       {/* Edit + Delete — appear on hover */}
-      <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button onClick={() => onEdit(s)}
-          className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-[#125852] transition-colors"
+          className="w-6 h-6 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-[#125852] transition-colors"
           title="Edit service">
-          <Pencil size={12}/>
+          <Pencil size={10}/>
         </button>
         <button onClick={() => onDelete(s)}
-          className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-red-500 transition-colors"
+          className="w-6 h-6 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-red-500 transition-colors"
           title="Delete service">
-          <Trash2 size={12}/>
+          <Trash2 size={10}/>
         </button>
       </div>
     </div>
 
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[10px] font-bold text-slate-400 tracking-widest truncate max-w-[120px]">{s.category}</span>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0 ${STATUS_STYLE[s.status] || STATUS_STYLE.draft}`}>{s.status}</span>
+    <div className="p-3">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[9px] font-bold text-slate-400 tracking-widest truncate max-w-[120px]">{s.category}</span>
+        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase shrink-0 ${STATUS_STYLE[s.status] || STATUS_STYLE.draft}`}>{s.status}</span>
       </div>
-      <h3 className="font-black text-[15px] text-slate-900 leading-tight mb-1 line-clamp-1">{s.title || '—'}</h3>
-      <p className="text-[12px] text-slate-500 line-clamp-2 mb-3">{s.desc || 'No description provided.'}</p>
-      <div className="flex items-center justify-between text-[12px] text-slate-400 mb-3">
-        <span className="flex items-center gap-1"><Clock size={12}/> {s.duration || 'N/A'}</span>
+      <h3 className="font-black text-[13px] text-slate-900 leading-tight mb-1 line-clamp-1">{s.title || '—'}</h3>
+      <p className="text-[11px] text-slate-500 line-clamp-2 mb-2">{s.desc || 'No description provided.'}</p>
+      <div className="flex items-center justify-between text-[11px] text-slate-400 mb-2">
+        <span className="flex items-center gap-1"><Clock size={10}/> {s.duration || 'N/A'}</span>
         <span className="flex items-center gap-1 font-semibold text-slate-400">
-          <Calendar size={12}/> {s.avail || 'Available'}
+          <Calendar size={10}/> {s.avail || 'Available'}
         </span>
       </div>
-      <div className="flex items-center justify-between pt-3 border-t border-slate-50">
+      <div className="flex items-center justify-between pt-2 border-t border-slate-50">
         <div>
-          <span className="text-[21px] font-black text-slate-900">${parseFloat(s.price || 0).toLocaleString()}</span>
-          <span className="text-[11px] text-slate-400">/{s.unit || 'session'}</span>
+          <span className="text-[16px] font-black text-slate-900">
+            {currencySymbol} {parseFloat(s.price || 0).toLocaleString()}
+          </span>
+          <span className="text-[10px] text-slate-400">/{s.unit || 'session'}</span>
         </div>
         <button onClick={() => onEdit(s)}
-          className="text-[12px] font-bold text-teal-700 hover:text-amber-500 transition-colors flex items-center gap-1">
+          className="text-[11px] font-bold text-teal-700 hover:text-amber-500 transition-colors flex items-center gap-1">
           Edit 
         </button>
       </div>
@@ -145,8 +247,9 @@ const DeleteModal = ({ service, onConfirm, onCancel, isDeleting }) => (
   </div>
 );
 
-
+// ─────────────────────────────────────────────────────────────────────────────
 // TEAL FOOTER
+// ─────────────────────────────────────────────────────────────────────────────
 const TealFooter = () => (
   <footer className="bg-[#1D4D4C] text-white py-4 px-5 sm:px-10 flex flex-col sm:flex-row justify-between items-center gap-2 text-[11px] shrink-0 mx-3 mb-3 rounded-2xl">
     <div className="hidden sm:block">Buy Smart. Sell Fast. Grow Together...</div>
@@ -165,22 +268,41 @@ const TealFooter = () => (
 // SERVICE MANAGEMENT PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 const ServiceManagement = () => {
-  const [sidebarOpen,   setSidebarOpen]   = useState(false);
-  const [viewMode,      setViewMode]      = useState("grid");
-  const [search,        setSearch]        = useState("");
-  const [sortBy,        setSortBy]        = useState("newest");
-  const [services,      setServices]      = useState([]);
-  const [loading,       setLoading]       = useState(true);
-  const [refreshKey,    setRefreshKey]    = useState(0);
-  const [isModalOpen,   setIsModalOpen]   = useState(false);
-  const [editingService,setEditingService]= useState(null); // null = create, obj = edit
-  const [deleteTarget,  setDeleteTarget]  = useState(null); // service to delete
-  const [isDeleting,    setIsDeleting]    = useState(false);
-  const [deleteError,   setDeleteError]   = useState('');
+  // Mobile sidebar — for small screens
+  const [sidebarOpen,    setSidebarOpen]    = useState(false);
+  const [viewMode,       setViewMode]       = useState("grid");
+  const [search,         setSearch]         = useState("");
+  const [sortBy,         setSortBy]         = useState("newest");
+  const [statusFilter,   setStatusFilter]   = useState("all"); // interactive stat filter
+  const [services,       setServices]       = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [refreshKey,     setRefreshKey]     = useState(0);
+  const [isModalOpen,    setIsModalOpen]    = useState(false);
+  const [editingService, setEditingService] = useState(null);
+  const [deleteTarget,   setDeleteTarget]   = useState(null);
+  const [isDeleting,     setIsDeleting]     = useState(false);
+  const [deleteError,    setDeleteError]    = useState('');
+
+  // Currency from vendor profile (same as ProductDashboard)
+  const [currencySymbol, setCurrencySymbol] = useState('$');
+  const [vendorCountry,  setVendorCountry]  = useState('');
+
+  // ── Fetch vendor country for currency
+  useEffect(() => {
+    api.get('/accounts/vendor/profile/')
+      .then(res => {
+        const d = res.data?.data ?? res.data;
+        const country = d?.country || d?.business_country || '';
+        if (country) {
+          setVendorCountry(country);
+          setCurrencySymbol(getCurrencySymbol(country));
+        }
+      }).catch(() => {});
+  }, []);
 
   // ── Fetch services
   useEffect(() => {
-    const fetch = async () => {
+    const fetchMyServices = async () => {
       setLoading(true);
       try {
         const data = await getServices();
@@ -199,9 +321,12 @@ const ServiceManagement = () => {
           status:   item.status       || 'draft',
           mode:     item.detail?.delivery_mode
                     || (item.detail?.available_24h ? 'remote' : 'in-person'),
-          img:      item.images?.find(i => i.is_primary)?.image
-                    || item.images?.[0]?.image || null,
-          // keep raw for edit pre-fill
+          // FIX: resolve relative image URLs to absolute
+          img:      resolveImage(
+                      item.images?.find(i => i.is_primary)?.image
+                      || item.images?.[0]?.image
+                      || null
+                    ),
           _raw: item,
         })));
       } catch (err) {
@@ -210,13 +335,12 @@ const ServiceManagement = () => {
         setLoading(false);
       }
     };
-    fetch();
+    fetchMyServices();
   }, [refreshKey]);
 
   // ── Modal helpers
   const openCreate = () => { setEditingService(null); setIsModalOpen(true); };
   const openEdit   = (s)  => { setEditingService(s._raw); setIsModalOpen(true); };
-
   const handleFormClose = (didSave) => {
     setIsModalOpen(false);
     setEditingService(null);
@@ -240,13 +364,50 @@ const ServiceManagement = () => {
     }
   };
 
+  // ── Stats for each status (all 5)
+  const counts = useMemo(() => ({
+    all:       services.length,
+    published: services.filter(s => s.status === 'published' || s.status === 'active').length,
+    draft:     services.filter(s => s.status === 'draft').length,
+    archived:  services.filter(s => s.status === 'archived').length,
+    paused:    services.filter(s => s.status === 'paused').length,
+  }), [services]);
+
+  // ── Stat tabs config (interactive filter cards)
+  const statTabs = [
+    { key:'all',       label:'All Services',  icon:<Briefcase size={16}/>,  color:'teal',   hint:'Every service you have created' },
+    { key:'published', label:'Published',     icon:<CheckCircle size={16}/>,color:'green',  hint:'Live and visible to customers' },
+    { key:'draft',     label:'Draft',         icon:<FileText size={16}/>,   color:'amber',  hint:'Saved but not yet live' },
+    { key:'archived',  label:'Archived',      icon:<Archive size={16}/>,    color:'slate',  hint:'Hidden from customers, kept for records' },
+    { key:'paused',    label:'Paused',        icon:<PauseCircle size={16}/>,color:'blue',   hint:'Temporarily unavailable' },
+  ];
+
+  const colorMap = {
+    teal:  { bg:'bg-teal-50',  icon:'text-teal-600',  val:'text-teal-700',  active:'border-teal-500'  },
+    green: { bg:'bg-green-50', icon:'text-green-600', val:'text-green-700', active:'border-green-500' },
+    amber: { bg:'bg-amber-50', icon:'text-amber-600', val:'text-amber-700', active:'border-amber-500' },
+    slate: { bg:'bg-slate-100',icon:'text-slate-500', val:'text-slate-700', active:'border-slate-500' },
+    blue:  { bg:'bg-blue-50',  icon:'text-blue-600',  val:'text-blue-700',  active:'border-blue-500'  },
+  };
+
   // ── Filter + sort
   const filtered = useMemo(() => {
+    let list = services;
+    // Status filter from stat tabs
+    if (statusFilter !== 'all') {
+      list = list.filter(s =>
+        statusFilter === 'published'
+          ? (s.status === 'published' || s.status === 'active')
+          : s.status === statusFilter
+      );
+    }
+    // Text search
     const q = search.toLowerCase();
-    return services.filter(s =>
+    if (q) list = list.filter(s =>
       s.title.toLowerCase().includes(q) || s.category.toLowerCase().includes(q)
     );
-  }, [services, search]);
+    return list;
+  }, [services, search, statusFilter]);
 
   const sorted = useMemo(() => {
     const r = [...filtered];
@@ -257,179 +418,208 @@ const ServiceManagement = () => {
     return r;
   }, [filtered, sortBy]);
 
-  // ── Stats
-  const stats = useMemo(() => [
-    { label:"Total Services",  value:services.length.toString(), icon:<Briefcase size={18}/>, color:"teal" },
-    { label:"Active Now",      value:services.filter(s=>s.status==='published'||s.status==='active').length.toString(), icon:<CheckCircle size={18}/>, color:"green" },
-    { label:"Draft",           value:services.filter(s=>s.status==='draft').length.toString(), icon:<Calendar size={18}/>, color:"amber" },
-    { label:"Categories",      value:[...new Set(services.map(s=>s.category))].length.toString(), icon:<Star size={18}/>, color:"purple" },
-  ], [services]);
-
   return (
-    <div className="min-h-screen bg-[#FDFDFD] font-sans text-slate-800">
+    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
 
-      <div className="fixed top-0 left-0 right-0 z-50">
-        <Navbar3 onMenuClick={() => setSidebarOpen(true)} />
+      {/* ── DESKTOP SIDEBAR ── */}
+      <div className="hidden md:block shrink-0">
+        <VendorSidebar activePage="services"/>
       </div>
 
-      {/* Mobile sidebar overlay */}
+      {/* ── MOBILE SIDEBAR OVERLAY ── */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
+        <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSidebarOpen(false)}/>
-          <div className="absolute left-0 top-0 h-full w-56">
+          <div className="absolute left-0 top-0 h-full w-56 p-3">
             <VendorSidebar activePage="services"/>
           </div>
         </div>
       )}
 
-      
-      <div className="flex pt-14 h-screen overflow-hidden gap-3 pl-3 pb-3">
+      {/* ── MAIN COLUMN ── */}
+      <div className="flex-1 flex flex-col min-w-0">
 
-        {/* Sidebar — desktop only, flush to navbar with no top gap */}
-        <div className="hidden md:block shrink-0">
-          <VendorSidebar activePage="services"/>
-        </div>
+        {/* Navbar sits at top of the main column, sticky */}
+        <Navbar3 onMenuClick={() => setSidebarOpen(true)}/>
 
-        {/* Main scrollable column */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto pr-3">
+        {/* Scrollable content */}
+        <main className="flex-1 p-5 max-w-[1400px] mx-auto w-full pb-16">
 
-          <main className="flex-1 p-4 sm:p-5 max-w-[1400px] mx-auto w-full pb-16">
+          {/* Page header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-xl font-bold text-[#1A1A1A]">Service Management</h2>
+              <p className="text-slate-400 text-[11px] mt-0.5">
+                Manage your professional offerings, schedules, and service availability.
+                {vendorCountry && (
+                  <span className="ml-2 bg-slate-100 px-1.5 py-0.5 rounded-full text-slate-500 text-[9px]">
+                    {vendorCountry} · {currencySymbol}
+                  </span>
+                )}
+              </p>
+            </div>
+            <button onClick={openCreate}
+              className="bg-[#F5B841] hover:bg-[#E0A83B] text-white px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all active:scale-95 font-bold text-sm shrink-0 w-full sm:w-auto justify-center">
+              <Plus size={18}/> Create New Service
+            </button>
+          </div>
 
-            {/* Page header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <div>
-                <h2 className="text-xl font-bold text-[#1A1A1A]">Service Management</h2>
-                <p className="text-slate-400 text-[11px] mt-0.5">
-                  Manage your professional offerings, schedules, and service availability.
-                </p>
-              </div>
-              <button onClick={openCreate}
-                className="bg-[#F5B841] hover:bg-[#E0A83B] text-white px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all active:scale-95 font-bold text-sm shrink-0 w-full sm:w-auto justify-center">
-                <Plus size={18}/> Create New Service
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+            {statTabs.map(tab => {
+              const c     = colorMap[tab.color];
+              const isActive = statusFilter === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setStatusFilter(isActive ? 'all' : tab.key)}
+                  title={tab.hint}
+                  className={`bg-white rounded-2xl border px-4 py-3.5 flex items-center gap-3 shadow-sm transition-all text-left w-full
+                    ${isActive
+                      ? `border-b-2 ${c.active} border-t-slate-200 border-l-slate-200 border-r-slate-200 shadow-md`
+                      : 'border-slate-200 hover:border-slate-300 hover:shadow'
+                    }`}
+                >
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${c.bg} ${c.icon}`}>
+                    {tab.icon}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide leading-none mb-0.5 truncate">{tab.label}</p>
+                    <p className={`text-[20px] font-black leading-none ${isActive ? c.val : 'text-slate-800'}`}>
+                      {loading ? '—' : counts[tab.key]}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active filter label */}
+          {statusFilter !== 'all' && (
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-[11px] text-slate-500">
+                Showing: <span className="font-bold text-slate-700 capitalize">{statusFilter}</span> services
+              </span>
+              <button onClick={() => setStatusFilter('all')}
+                className="text-[10px] text-slate-400 hover:text-slate-600 flex items-center gap-1 border border-slate-200 rounded-full px-2 py-0.5">
+                <X size={9}/> Clear
               </button>
             </div>
+          )}
 
-            {/* Search + filter bar */}
-            <div className="flex flex-col sm:flex-row gap-3 mb-5">
-              <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16}/>
-                <input value={search} onChange={e=>setSearch(e.target.value)}
-                  placeholder="Filter by title, category, or keyword..."
-                  className="w-full h-10 pl-10 pr-4 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#F5B841] focus:ring-1 focus:ring-[#F5B841] transition-colors"/>
-              </div>
-              <div className="flex gap-2 shrink-0 flex-wrap">
-                <button className="flex items-center gap-2 h-10 px-4 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:border-slate-300 transition-colors">
-                  <SlidersHorizontal size={15}/> <span className="hidden sm:inline">Advanced</span> Filters
+          {/* Search + filter bar */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-5">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16}/>
+              <input value={search} onChange={e=>setSearch(e.target.value)}
+                placeholder="Filter by title, category, or keyword..."
+                className="w-full h-10 pl-10 pr-4 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#F5B841] focus:ring-1 focus:ring-[#F5B841] transition-colors"/>
+            </div>
+            <div className="flex gap-2 shrink-0 flex-wrap">
+              <button className="flex items-center gap-2 h-10 px-4 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:border-slate-300 transition-colors">
+                <SlidersHorizontal size={15}/> <span className="hidden sm:inline">Advanced</span> Filters
+              </button>
+              {/* View toggle */}
+              <div className="flex bg-white border border-slate-200 rounded-xl overflow-hidden">
+                <button onClick={() => setViewMode("grid")}
+                  className={`w-10 h-10 flex items-center justify-center transition-colors ${viewMode==="grid" ? "bg-[#F5B841] text-white" : "text-slate-400 hover:text-slate-600"}`}>
+                  <LayoutGrid size={15}/>
                 </button>
-                {/* View toggle — amber active to match Create button */}
-                <div className="flex bg-white border border-slate-200 rounded-xl overflow-hidden">
-                  <button onClick={() => setViewMode("grid")}
-                    className={`w-10 h-10 flex items-center justify-center transition-colors ${viewMode==="grid" ? "bg-[#F5B841] text-white" : "text-slate-400 hover:text-slate-600"}`}>
-                    <LayoutGrid size={15}/>
-                  </button>
-                  <button onClick={() => setViewMode("list")}
-                    className={`w-10 h-10 flex items-center justify-center transition-colors ${viewMode==="list" ? "bg-[#F5B841] text-white" : "text-slate-400 hover:text-slate-600"}`}>
-                    <List size={15}/>
-                  </button>
-                </div>
-                <div className="relative">
-                  <select value={sortBy} onChange={e=>setSortBy(e.target.value)}
-                    className="h-10 pl-3 pr-8 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 focus:outline-none focus:border-[#F5B841] appearance-none cursor-pointer">
-                    <option value="newest">Newest First</option>
-                    <option value="oldest">Oldest First</option>
-                    <option value="price_asc">Price: Low → High</option>
-                    <option value="price_desc">Price: High → Low</option>
-                  </select>
-                  <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
-                </div>
+                <button onClick={() => setViewMode("list")}
+                  className={`w-10 h-10 flex items-center justify-center transition-colors ${viewMode==="list" ? "bg-[#F5B841] text-white" : "text-slate-400 hover:text-slate-600"}`}>
+                  <List size={15}/>
+                </button>
+              </div>
+              <div className="relative">
+                <select value={sortBy} onChange={e=>setSortBy(e.target.value)}
+                  className="h-10 pl-3 pr-8 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 focus:outline-none focus:border-[#F5B841] appearance-none cursor-pointer">
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="price_asc">Price: Low → High</option>
+                  <option value="price_desc">Price: High → Low</option>
+                </select>
+                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
               </div>
             </div>
+          </div>
 
-            {/* STAT CARDS */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-              {stats.map((s,i) => {
-                const c = colorMap[s.color];
-                return (
-                  <div key={i} className="bg-white rounded-2xl border border-slate-200 px-4 py-3.5 flex items-center gap-3 shadow-sm">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${c.bg} ${c.icon}`}>{s.icon}</div>
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide leading-none mb-0.5">{s.label}</p>
-                      <p className={`text-[20px] sm:text-[22px] font-black leading-none ${c.val}`}>{loading ? '—' : s.value}</p>
-                    </div>
-                  </div>
-                );
-              })}
+          {/* DELETE ERROR BANNER */}
+          {deleteError && (
+            <div className="mb-4 flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl text-xs">
+              <AlertTriangle size={13}/> {deleteError}
+              <button onClick={() => setDeleteError('')} className="ml-auto"><X size={12}/></button>
             </div>
+          )}
 
-            {/* DELETE ERROR BANNER */}
-            {deleteError && (
-              <div className="mb-4 flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl text-xs">
-                <AlertTriangle size={13}/> {deleteError}
-                <button onClick={() => setDeleteError('')} className="ml-auto"><X size={12}/></button>
-              </div>
-            )}
-
-            {/* SERVICES GRID / LIST */}
-            {loading ? (
-              <div className={`grid gap-4 ${viewMode==="grid" ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`}>
-                {Array.from({length:6}).map((_,i)=>(
-                  <div key={i} className="bg-white rounded-2xl border border-slate-100 overflow-hidden animate-pulse">
-                    <div className="h-44 bg-slate-100"/>
-                    <div className="p-4 space-y-3">
-                      <div className="h-3 bg-slate-100 rounded w-1/3"/>
-                      <div className="h-4 bg-slate-100 rounded w-3/4"/>
-                      <div className="h-3 bg-slate-100 rounded w-full"/>
-                      <div className="h-3 bg-slate-100 rounded w-2/3"/>
-                    </div>
+          {/* SERVICES GRID */}
+          {loading ? (
+            <div className={`grid gap-4 ${viewMode==="grid" ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`}>
+              {Array.from({length:6}).map((_,i)=>(
+                <div key={i} className="bg-white rounded-2xl border border-slate-100 overflow-hidden animate-pulse">
+                  <div className="h-44 bg-slate-100"/>
+                  <div className="p-4 space-y-3">
+                    <div className="h-3 bg-slate-100 rounded w-1/3"/>
+                    <div className="h-4 bg-slate-100 rounded w-3/4"/>
+                    <div className="h-3 bg-slate-100 rounded w-full"/>
+                    <div className="h-3 bg-slate-100 rounded w-2/3"/>
                   </div>
-                ))}
-              </div>
-            ) : sorted.length === 0 ? (
-              <div className="bg-white border border-slate-200 rounded-2xl p-16 sm:p-20 flex flex-col items-center justify-center text-center">
-                <div className="w-16 h-16 bg-[#E0F2F1] rounded-full flex items-center justify-center mb-4 text-teal-600">
-                  <Briefcase size={32}/>
                 </div>
-                <h3 className="text-lg font-bold text-slate-900">No Services Found</h3>
-                <p className="text-slate-500 max-w-xs mx-auto mt-2 text-sm">
-                  {search ? 'Try a different search term.' : 'Click "Create New Service" to add your first listing.'}
-                </p>
+              ))}
+            </div>
+          ) : sorted.length === 0 ? (
+            <div className="bg-white border border-slate-200 rounded-2xl p-16 sm:p-20 flex flex-col items-center justify-center text-center">
+              <div className="w-16 h-16 bg-[#E0F2F1] rounded-full flex items-center justify-center mb-4 text-teal-600">
+                <Briefcase size={32}/>
               </div>
-            ) : (
-              <div className={`grid gap-4 ${viewMode==="grid" ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`}>
-                {sorted.map(s => (
-                  <ServiceCard key={s.id} s={s}
-                    onEdit={openEdit}
-                    onDelete={handleDeleteRequest}/>
-                ))}
+              <h3 className="text-lg font-bold text-slate-900">
+                {statusFilter !== 'all'
+                  ? `No ${statusFilter} services`
+                  : 'No Services Found'}
+              </h3>
+              <p className="text-slate-500 max-w-xs mx-auto mt-2 text-sm">
+                {search
+                  ? 'Try a different search term.'
+                  : statusFilter !== 'all'
+                    ? `You have no services with status "${statusFilter}" yet.`
+                    : 'Click "Create New Service" to add your first listing.'}
+              </p>
+              {statusFilter !== 'all' && (
+                <button onClick={() => setStatusFilter('all')}
+                  className="mt-4 text-sm font-bold text-teal-700 hover:underline">
+                  View all services
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className={`grid gap-4 ${viewMode==="grid" ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`}>
+              {sorted.map(s => (
+                <ServiceCard key={s.id} s={s}
+                  onEdit={openEdit}
+                  onDelete={handleDeleteRequest}
+                  currencySymbol={currencySymbol}/>
+              ))}
+            </div>
+          )}
+
+          {/* PAGINATION */}
+          {!loading && services.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 pt-4 border-t border-slate-100">
+              <p className="text-sm text-slate-500">
+                Showing <b>{sorted.length}</b> of <b>{services.length}</b> services
+              </p>
+              <div className="flex items-center gap-1">
+                <button className="h-9 px-3 sm:px-4 border border-slate-200 rounded-lg text-sm text-slate-500 hover:border-[#F5B841] hover:text-teal-700 transition-colors font-medium">Previous</button>
+                <button className="w-9 h-9 rounded-lg text-sm font-bold bg-[#125852] text-white">1</button>
+                <button className="h-9 px-3 sm:px-4 bg-[#125852] text-white rounded-lg text-sm font-bold hover:bg-[#0e4440] transition-colors">Next</button>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* PAGINATION */}
-            {!loading && services.length > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 pt-4 border-t border-slate-100">
-                <p className="text-sm text-slate-500">
-                  Showing <b>{sorted.length}</b> of <b>{services.length}</b> services
-                </p>
-                <div className="flex items-center gap-1">
-                  <button className="h-9 px-3 sm:px-4 border border-slate-200 rounded-lg text-sm text-slate-500 hover:border-[#F5B841] hover:text-teal-700 transition-colors font-medium">Previous</button>
-                  <button className="w-9 h-9 rounded-lg text-sm font-bold bg-[#125852] text-white">1</button>
-                  <button className="h-9 px-3 sm:px-4 bg-[#125852] text-white rounded-lg text-sm font-bold hover:bg-[#0e4440] transition-colors">Next</button>
-                </div>
-              </div>
-            )}
+        </main>
 
-          </main>
-
-          <TealFooter/>
-        </div>
+        <TealFooter/>
       </div>
 
-      {/*
-        ── SERVICE FORM MODAL ──
-        max-w-xl (slightly smaller than 2xl for better proportions).
-        max-h-[88vh] — no fixed height, form fills naturally.
-        editingService passed to ServiceForm for pre-fill in edit mode.
-      */}
+      {/* ── SERVICE FORM MODAL ── */}
       {isModalOpen && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-3 sm:p-4"
@@ -441,7 +631,7 @@ const ServiceManagement = () => {
         </div>
       )}
 
-      {/* ── DELETE CONFIRM MODAL */}
+      {/* ── DELETE CONFIRM MODAL ── */}
       {deleteTarget && (
         <DeleteModal
           service={deleteTarget}
