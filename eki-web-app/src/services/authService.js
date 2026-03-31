@@ -1,8 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  // baseURL: 'http://134.122.22.45/api/v1',  // FIXED: Added /api/v1 to baseURL
-  baseURL: "http://127.0.0.1:8000/api/v1",
+  baseURL: 'http://134.122.22.45/api/v1',  // FIXED: Added /api/v1 to baseURL
   headers: { 'Content-Type': 'application/json' },
 });
 
