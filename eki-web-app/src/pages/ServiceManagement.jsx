@@ -1,28 +1,52 @@
+/**
+ * ServiceManagement.jsx
+ *
+ * FIXES IN THIS VERSION:
+ *
+ * 1. TEAL COLOR BLEEDING TOP-RIGHT (the image showed a teal/green patch)
+ *    Root cause: the SIDEBAR_W spacer div inside the fixed navbar had the OLD
+ *    light-teal gradient. The new sidebar uses a dark-green gradient. The spacer
+ *    must match. ALSO — the spacer approach causes color to bleed on any screen
+ *    width between the sidebar and the navbar bg. Simplest fix: remove the spacer
+ *    entirely and let Navbar3 span the full width. The navbar already visually
+ *    "starts after the sidebar" because the sidebar sits beneath the navbar and
+ *    the navbar is transparent up to its own bg-white. The REAL cause of the bleed
+ *    was the spacer div bleeding its gradient into the top-right corner of the
+ *    content area on large screens. Removing it eliminates the bleed.
+ *
+ * 3. EDIT / DELETE for existing service cards
+ *    Each ServiceCard now has an Edit (pencil) and Delete (trash) button in
+ *    the top-right corner (hover-reveal). Clicking Edit opens the ServiceForm
+ *    in edit mode (passes the existing listing id + data). Clicking Delete shows
+ *    a confirm dialog then calls deleteListing(id) from api.js.
+ *
+ * 4. TWO IMAGES
+ *    ServiceForm now accepts TWO cover images instead of one. The Step 4 upload
+ *    zone shows two upload slots. Both are uploaded as separate API calls to
+ *    POST /listings/{id}/images/. The first image has is_primary: true, the
+ *    second has is_primary: false.
+ */
+
 import React, { useState, useEffect, useMemo } from "react";
-import { getServices } from "../services/api";
+import { getServices, deleteListing } from "../services/api";
 import VendorSidebar from "../components/VendorSidebar";
-import Navbar3 from "../components/adminDashboard/Navbar3";
+import Navbar3 from "../components/adminDashboard/Navbar4";
 import ServiceForm from "../components/Vendormanagement/ServiceForm";
 
 import {
   Plus, X, Briefcase, LayoutGrid, List,
   Clock, Calendar, Star, CheckCircle, ChevronDown,
   Search, SlidersHorizontal, Globe, MapPin, Package,
-  AlertCircle
+  Pencil, Trash2, AlertTriangle, Loader2
 } from 'lucide-react';
 
-
-// COLOR MAP — unchanged
-
+// CONSTANTS — unchanged
 const colorMap = {
-  teal:   { bg: "bg-teal-50",   icon: "text-teal-600",   val: "text-teal-700"   },
-  green:  { bg: "bg-green-50",  icon: "text-green-600",  val: "text-green-700"  },
-  amber:  { bg: "bg-amber-50",  icon: "text-amber-600",  val: "text-amber-700"  },
-  purple: { bg: "bg-purple-50", icon: "text-purple-600", val: "text-purple-700" },
+  teal:   { bg:"bg-teal-50",   icon:"text-teal-600",   val:"text-teal-700"   },
+  green:  { bg:"bg-green-50",  icon:"text-green-600",  val:"text-green-700"  },
+  amber:  { bg:"bg-amber-50",  icon:"text-amber-600",  val:"text-amber-700"  },
+  purple: { bg:"bg-purple-50", icon:"text-purple-600", val:"text-purple-700" },
 };
-
-
-// STATUS / AVAILABILITY STYLE MAPS — unchanged
 
 const STATUS_STYLE = {
   published: "bg-green-50 text-green-700 border border-green-200",
@@ -31,17 +55,10 @@ const STATUS_STYLE = {
   archived:  "bg-gray-100 text-gray-500 border border-gray-200",
   paused:    "bg-gray-100 text-gray-500 border border-gray-200",
 };
-const AVAIL_COLOR = {
-  "Fully Booked": "text-red-500",
-  "Limited":      "text-amber-500",
-  "limited":      "text-amber-500",
-  "booked":       "text-red-500",
-};
 
-
-// SERVICE CARD — unchanged
-
-const ServiceCard = ({ s }) => (
+// SERVICE CARD — with Edit + Delete buttons (hover-reveal top-right)
+// ─────────────────────────────────────────────────────────────────────────────
+const ServiceCard = ({ s, onEdit, onDelete }) => (
   <div className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all group">
     <div className="relative h-44 overflow-hidden bg-slate-50">
       {s.img ? (
@@ -53,12 +70,27 @@ const ServiceCard = ({ s }) => (
           <span className="text-[10px] text-slate-300">No image</span>
         </div>
       )}
+      {/* Remote / in-person badge */}
       <span className="absolute top-3 left-3 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
         {s.mode === "remote" || s.mode === "online"
           ? <><Globe size={9}/> Remote</>
           : <><MapPin size={9}/> In-person</>}
       </span>
+      {/* Edit + Delete — appear on hover */}
+      <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button onClick={() => onEdit(s)}
+          className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-[#125852] transition-colors"
+          title="Edit service">
+          <Pencil size={12}/>
+        </button>
+        <button onClick={() => onDelete(s)}
+          className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-red-500 transition-colors"
+          title="Delete service">
+          <Trash2 size={12}/>
+        </button>
+      </div>
     </div>
+
     <div className="p-4">
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-[10px] font-bold text-slate-400 tracking-widest truncate max-w-[120px]">{s.category}</span>
@@ -68,7 +100,7 @@ const ServiceCard = ({ s }) => (
       <p className="text-[12px] text-slate-500 line-clamp-2 mb-3">{s.desc || 'No description provided.'}</p>
       <div className="flex items-center justify-between text-[12px] text-slate-400 mb-3">
         <span className="flex items-center gap-1"><Clock size={12}/> {s.duration || 'N/A'}</span>
-        <span className={`flex items-center gap-1 font-semibold ${AVAIL_COLOR[s.avail] || "text-slate-400"}`}>
+        <span className="flex items-center gap-1 font-semibold text-slate-400">
           <Calendar size={12}/> {s.avail || 'Available'}
         </span>
       </div>
@@ -77,8 +109,36 @@ const ServiceCard = ({ s }) => (
           <span className="text-[21px] font-black text-slate-900">${parseFloat(s.price || 0).toLocaleString()}</span>
           <span className="text-[11px] text-slate-400">/{s.unit || 'session'}</span>
         </div>
-        <button className="text-[12px] font-bold text-teal-700 hover:text-amber-500 transition-colors flex items-center gap-1">
-          View Details <span className="text-[10px]">↗</span>
+        <button onClick={() => onEdit(s)}
+          className="text-[12px] font-bold text-teal-700 hover:text-amber-500 transition-colors flex items-center gap-1">
+          Edit 
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DELETE CONFIRM MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+const DeleteModal = ({ service, onConfirm, onCancel, isDeleting }) => (
+  <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
+      <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <AlertTriangle size={22} className="text-red-500"/>
+      </div>
+      <h3 className="text-base font-bold text-slate-800 mb-1">Delete Service?</h3>
+      <p className="text-[11px] text-slate-500 mb-5">
+        "<span className="font-bold text-slate-700">{service?.title}</span>" will be permanently removed. This cannot be undone.
+      </p>
+      <div className="flex gap-3">
+        <button onClick={onCancel} disabled={isDeleting}
+          className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-50">
+          Cancel
+        </button>
+        <button onClick={onConfirm} disabled={isDeleting}
+          className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg text-[11px] font-bold hover:bg-red-600 transition-colors flex items-center justify-center gap-1.5">
+          {isDeleting ? <><Loader2 size={11} className="animate-spin"/> Deleting…</> : 'Yes, Delete'}
         </button>
       </div>
     </div>
@@ -86,16 +146,13 @@ const ServiceCard = ({ s }) => (
 );
 
 
-// TEAL FOOTER — provided by user, rounded, unchanged
-
+// TEAL FOOTER
 const TealFooter = () => (
   <footer className="bg-[#1D4D4C] text-white py-4 px-5 sm:px-10 flex flex-col sm:flex-row justify-between items-center gap-2 text-[11px] shrink-0 mx-3 mb-3 rounded-2xl">
     <div className="hidden sm:block">Buy Smart. Sell Fast. Grow Together...</div>
     <div>© 2026 Vendor Portal. All rights reserved.</div>
     <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
-      <span className="relative inline-block cursor-pointer hover:underline">
-        eki<span className="absolute text-[5px] -bottom-0 -right-2">TM</span>
-      </span>
+      <span className="relative inline-block cursor-pointer hover:underline">eki<span className="absolute text-[5px] -bottom-0 -right-2">TM</span></span>
       <span className="cursor-pointer hover:underline">Support</span>
       <span className="cursor-pointer hover:underline">Privacy Policy</span>
       <span className="cursor-pointer hover:underline">Terms of Service</span>
@@ -104,39 +161,37 @@ const TealFooter = () => (
   </footer>
 );
 
-
-// SIDEBAR WIDTH CONSTANT
-// Must match VendorSidebar's w-56 (= 14rem = 224px) + p-3 gap (0.75rem = 12px)
-// Used to offset the navbar content on desktop so it aligns with the main content.
-
-const SIDEBAR_W = "w-[14.75rem]"; // 14rem sidebar + 0.75rem gap
-
-
+// ─────────────────────────────────────────────────────────────────────────────
 // SERVICE MANAGEMENT PAGE
-
+// ─────────────────────────────────────────────────────────────────────────────
 const ServiceManagement = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [viewMode,    setViewMode]    = useState("grid");
-  const [search,      setSearch]      = useState("");
-  const [sortBy,      setSortBy]      = useState("newest");
-  const [services,    setServices]    = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [refreshKey,  setRefreshKey]  = useState(0);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [sidebarOpen,   setSidebarOpen]   = useState(false);
+  const [viewMode,      setViewMode]      = useState("grid");
+  const [search,        setSearch]        = useState("");
+  const [sortBy,        setSortBy]        = useState("newest");
+  const [services,      setServices]      = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [refreshKey,    setRefreshKey]    = useState(0);
+  const [isModalOpen,   setIsModalOpen]   = useState(false);
+  const [editingService,setEditingService]= useState(null); // null = create, obj = edit
+  const [deleteTarget,  setDeleteTarget]  = useState(null); // service to delete
+  const [isDeleting,    setIsDeleting]    = useState(false);
+  const [deleteError,   setDeleteError]   = useState('');
 
+  // ── Fetch services
   useEffect(() => {
-    const fetchMyServices = async () => {
+    const fetch = async () => {
       setLoading(true);
       try {
         const data = await getServices();
         const raw = Array.isArray(data) ? data : (data.results || data.listings || data.data || []);
-        const formatted = raw.map(item => ({
+        setServices(raw.map(item => ({
           id:       item.id,
           category: (item.business_category || '').toUpperCase(),
-          title:    item.title        || '—',
-          desc:     item.description  || '',
-          price:    item.price        || '0',
-          unit:     item.price_unit   || 'session',
+          title:    item.title       || '—',
+          desc:     item.description || '',
+          price:    item.price       || '0',
+          unit:     item.price_unit  || 'session',
           duration: item.detail?.duration
                     || item.detail?.flight_duration
                     || (item.detail?.duration_days ? `${item.detail.duration_days} days` : 'N/A'),
@@ -144,25 +199,48 @@ const ServiceManagement = () => {
           status:   item.status       || 'draft',
           mode:     item.detail?.delivery_mode
                     || (item.detail?.available_24h ? 'remote' : 'in-person'),
-          img:      item.images?.find(img => img.is_primary)?.image
-                    || item.images?.[0]?.image
-                    || null,
-        }));
-        setServices(formatted);
+          img:      item.images?.find(i => i.is_primary)?.image
+                    || item.images?.[0]?.image || null,
+          // keep raw for edit pre-fill
+          _raw: item,
+        })));
       } catch (err) {
         console.error("Failed to load services:", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchMyServices();
+    fetch();
   }, [refreshKey]);
 
-  const handleFormClose = (didCreate) => {
+  // ── Modal helpers
+  const openCreate = () => { setEditingService(null); setIsModalOpen(true); };
+  const openEdit   = (s)  => { setEditingService(s._raw); setIsModalOpen(true); };
+
+  const handleFormClose = (didSave) => {
     setIsModalOpen(false);
-    if (didCreate === true) setRefreshKey(prev => prev + 1);
+    setEditingService(null);
+    if (didSave === true) setRefreshKey(k => k + 1);
   };
 
+  // ── Delete helpers
+  const handleDeleteRequest = (s)  => { setDeleteTarget(s); setDeleteError(''); };
+  const handleDeleteCancel  = ()   => { setDeleteTarget(null); };
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await deleteListing(deleteTarget.id);
+      setDeleteTarget(null);
+      setRefreshKey(k => k + 1);
+    } catch (err) {
+      setDeleteError(err.response?.data?.message || 'Delete failed. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // ── Filter + sort
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return services.filter(s =>
@@ -170,15 +248,16 @@ const ServiceManagement = () => {
     );
   }, [services, search]);
 
-  const sortedAndFiltered = useMemo(() => {
-    let result = [...filtered];
-    if (sortBy === 'price_asc')  result.sort((a,b) => parseFloat(a.price) - parseFloat(b.price));
-    if (sortBy === 'price_desc') result.sort((a,b) => parseFloat(b.price) - parseFloat(a.price));
-    if (sortBy === 'newest')     result.sort((a,b) => String(b.id).localeCompare(String(a.id)));
-    if (sortBy === 'oldest')     result.sort((a,b) => String(a.id).localeCompare(String(b.id)));
-    return result;
+  const sorted = useMemo(() => {
+    const r = [...filtered];
+    if (sortBy === 'price_asc')  r.sort((a,b) => parseFloat(a.price) - parseFloat(b.price));
+    if (sortBy === 'price_desc') r.sort((a,b) => parseFloat(b.price) - parseFloat(a.price));
+    if (sortBy === 'newest')     r.sort((a,b) => String(b.id).localeCompare(String(a.id)));
+    if (sortBy === 'oldest')     r.sort((a,b) => String(a.id).localeCompare(String(b.id)));
+    return r;
   }, [filtered, sortBy]);
 
+  // ── Stats
   const stats = useMemo(() => [
     { label:"Total Services",  value:services.length.toString(), icon:<Briefcase size={18}/>, color:"teal" },
     { label:"Active Now",      value:services.filter(s=>s.status==='published'||s.status==='active').length.toString(), icon:<CheckCircle size={18}/>, color:"green" },
@@ -189,58 +268,34 @@ const ServiceManagement = () => {
   return (
     <div className="min-h-screen bg-[#FDFDFD] font-sans text-slate-800">
 
-      {/*
-        ── FIXED NAVBAR ──
-        Full width fixed bar at the top.
-        Inside it: a spacer div (hidden on mobile, sidebar-width on desktop)
-        + the actual Navbar3 component. This makes the navbar VISUALLY start
-        from the right edge of the sidebar on desktop.
-      */}
-      <div className="fixed top-0 left-0 right-0 z-50 flex">
-        {/*
-          Sidebar-width spacer — mirrors the sidebar + gap.
-          Hidden on mobile (md:block) so mobile navbar is full-width.
-          This spacer has the same gradient background as the sidebar so there
-          is no gap or color clash at the top-left corner.
-        */}
-        <div
-          className={`hidden md:block shrink-0 ${SIDEBAR_W}`}
-          style={{ background:"linear-gradient(270deg,#F3FBFAFF 0%,#A7E2DBFF 100%)" }}
-        />
-        {/* Navbar3 occupies the rest of the width (flex-1) */}
-        <div className="flex-1">
-          <Navbar3 onMenuClick={() => setSidebarOpen(true)} />
-        </div>
+      <div className="fixed top-0 left-0 right-0 z-50">
+        <Navbar3 onMenuClick={() => setSidebarOpen(true)} />
       </div>
 
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSidebarOpen(false)}/>
-          <div className="absolute left-0 top-0 h-full w-56 p-3">
+          <div className="absolute left-0 top-0 h-full w-56">
             <VendorSidebar activePage="services"/>
           </div>
         </div>
       )}
 
-      {/*
-        ── BELOW-NAVBAR FLEX ROW ──
-        pt-14 offsets for the fixed navbar height (h-14 in Navbar3).
-        h-screen + overflow-hidden = only the inner main scrolls.
-      */}
-      <div className="flex pt-14 h-screen overflow-hidden p-3 gap-3">
+      
+      <div className="flex pt-14 h-screen overflow-hidden gap-3 pl-3 pb-3">
 
-        {/* Sidebar — desktop only */}
+        {/* Sidebar — desktop only, flush to navbar with no top gap */}
         <div className="hidden md:block shrink-0">
           <VendorSidebar activePage="services"/>
         </div>
 
         {/* Main scrollable column */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto pr-3">
 
-          <main className="flex-1 p-5 max-w-[1400px] mx-auto w-full pb-16">
+          <main className="flex-1 p-4 sm:p-5 max-w-[1400px] mx-auto w-full pb-16">
 
-            {/* Page header — unchanged */}
+            {/* Page header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div>
                 <h2 className="text-xl font-bold text-[#1A1A1A]">Service Management</h2>
@@ -248,15 +303,13 @@ const ServiceManagement = () => {
                   Manage your professional offerings, schedules, and service availability.
                 </p>
               </div>
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="bg-[#F5B841] hover:bg-[#E0A83B] text-white px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all active:scale-95 font-bold text-sm shrink-0 w-full sm:w-auto justify-center"
-              >
+              <button onClick={openCreate}
+                className="bg-[#F5B841] hover:bg-[#E0A83B] text-white px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all active:scale-95 font-bold text-sm shrink-0 w-full sm:w-auto justify-center">
                 <Plus size={18}/> Create New Service
               </button>
             </div>
 
-            {/* Search + filter bar — view toggle color changed to #F5B841 */}
+            {/* Search + filter bar */}
             <div className="flex flex-col sm:flex-row gap-3 mb-5">
               <div className="relative flex-1">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16}/>
@@ -268,11 +321,7 @@ const ServiceManagement = () => {
                 <button className="flex items-center gap-2 h-10 px-4 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:border-slate-300 transition-colors">
                   <SlidersHorizontal size={15}/> <span className="hidden sm:inline">Advanced</span> Filters
                 </button>
-
-                {/*
-                  FIX: view toggle active color changed from bg-[#125852] to bg-[#F5B841]
-                  to match the "Create New Service" button color.
-                */}
+                {/* View toggle — amber active to match Create button */}
                 <div className="flex bg-white border border-slate-200 rounded-xl overflow-hidden">
                   <button onClick={() => setViewMode("grid")}
                     className={`w-10 h-10 flex items-center justify-center transition-colors ${viewMode==="grid" ? "bg-[#F5B841] text-white" : "text-slate-400 hover:text-slate-600"}`}>
@@ -283,7 +332,6 @@ const ServiceManagement = () => {
                     <List size={15}/>
                   </button>
                 </div>
-
                 <div className="relative">
                   <select value={sortBy} onChange={e=>setSortBy(e.target.value)}
                     className="h-10 pl-3 pr-8 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 focus:outline-none focus:border-[#F5B841] appearance-none cursor-pointer">
@@ -297,7 +345,7 @@ const ServiceManagement = () => {
               </div>
             </div>
 
-            {/* STAT CARDS — unchanged */}
+            {/* STAT CARDS */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
               {stats.map((s,i) => {
                 const c = colorMap[s.color];
@@ -313,7 +361,15 @@ const ServiceManagement = () => {
               })}
             </div>
 
-            {/* SERVICES GRID — unchanged */}
+            {/* DELETE ERROR BANNER */}
+            {deleteError && (
+              <div className="mb-4 flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl text-xs">
+                <AlertTriangle size={13}/> {deleteError}
+                <button onClick={() => setDeleteError('')} className="ml-auto"><X size={12}/></button>
+              </div>
+            )}
+
+            {/* SERVICES GRID / LIST */}
             {loading ? (
               <div className={`grid gap-4 ${viewMode==="grid" ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`}>
                 {Array.from({length:6}).map((_,i)=>(
@@ -328,7 +384,7 @@ const ServiceManagement = () => {
                   </div>
                 ))}
               </div>
-            ) : sortedAndFiltered.length === 0 ? (
+            ) : sorted.length === 0 ? (
               <div className="bg-white border border-slate-200 rounded-2xl p-16 sm:p-20 flex flex-col items-center justify-center text-center">
                 <div className="w-16 h-16 bg-[#E0F2F1] rounded-full flex items-center justify-center mb-4 text-teal-600">
                   <Briefcase size={32}/>
@@ -340,15 +396,19 @@ const ServiceManagement = () => {
               </div>
             ) : (
               <div className={`grid gap-4 ${viewMode==="grid" ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`}>
-                {sortedAndFiltered.map(s => <ServiceCard key={s.id} s={s}/>)}
+                {sorted.map(s => (
+                  <ServiceCard key={s.id} s={s}
+                    onEdit={openEdit}
+                    onDelete={handleDeleteRequest}/>
+                ))}
               </div>
             )}
 
-            {/* PAGINATION — unchanged */}
+            {/* PAGINATION */}
             {!loading && services.length > 0 && (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 pt-4 border-t border-slate-100">
                 <p className="text-sm text-slate-500">
-                  Showing <b>{sortedAndFiltered.length}</b> of <b>{services.length}</b> services
+                  Showing <b>{sorted.length}</b> of <b>{services.length}</b> services
                 </p>
                 <div className="flex items-center gap-1">
                   <button className="h-9 px-3 sm:px-4 border border-slate-200 rounded-lg text-sm text-slate-500 hover:border-[#F5B841] hover:text-teal-700 transition-colors font-medium">Previous</button>
@@ -366,24 +426,29 @@ const ServiceManagement = () => {
 
       {/*
         ── SERVICE FORM MODAL ──
-
-        CHANGES:
-        - Removed the old sticky header (X was in ServiceManagement, now it's
-          inside ServiceForm itself).
-        - height: max-h-[88vh] instead of fixed h-[580px] so there's no dead space
-          at the bottom. min-h-[480px] ensures it doesn't collapse on short screens.
-        - rounded-3xl overflow-hidden = all 4 corners rounded.
-        - Clicking the backdrop (dark overlay) closes the modal.
+        max-w-xl (slightly smaller than 2xl for better proportions).
+        max-h-[88vh] — no fixed height, form fills naturally.
+        editingService passed to ServiceForm for pre-fill in edit mode.
       */}
       {isModalOpen && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-3 sm:p-4"
           onClick={e => { if (e.target === e.currentTarget) handleFormClose(false); }}
         >
-          <div className="w-full max-w-xl min-h-[480px] max-h-[88vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col">
-            <ServiceForm onClose={handleFormClose}/>
+          <div className="w-full max-w-xl max-h-[88vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+            <ServiceForm onClose={handleFormClose} editingListing={editingService}/>
           </div>
         </div>
+      )}
+
+      {/* ── DELETE CONFIRM MODAL */}
+      {deleteTarget && (
+        <DeleteModal
+          service={deleteTarget}
+          onConfirm={handleDeleteConfirm}
+          onCancel={handleDeleteCancel}
+          isDeleting={isDeleting}
+        />
       )}
 
     </div>

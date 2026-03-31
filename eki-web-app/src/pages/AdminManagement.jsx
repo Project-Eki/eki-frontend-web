@@ -1,48 +1,3 @@
-/**
- * AdminManagement.jsx
- *
- * Fixes:
- *
- * 1. Business category / Days / Docs not showing
- *    ROOT CAUSE: The dashboard endpoint's pending_verifications only has summary
- *    fields. The full vendor list GET /accounts/admin/vendors/ has business_category,
- *    has_government_issued_id etc. We now call BOTH in parallel and use the full list.
- *
- * 2. Document 404 locally (works on DigitalOcean)
- *    ROOT CAUSE: On localhost Django runs on :8000, Vite on :5173 — different origins.
- *    Django returns a RELATIVE path like /media/vendor/documents/file.jpg.
- *    The browser requests it from Vite (:5173) which has no /media folder → 404.
- *    FIX (frontend): resolveUrl() prepends DJANGO_BASE to relative paths.
- *    FIX (backend, required): Add to Django urls.py in development:
- *      from django.conf import settings
- *      from django.conf.urls.static import static
- *      urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
- *    And in settings.py:
- *      MEDIA_URL = '/media/'
- *      MEDIA_ROOT = BASE_DIR / 'media'
- *
- * 3. Vendor actions (Approve / Suspend / Reject / Terminate)
- *    - All four buttons now call updateVerificationStatus correctly
- *    - Status reflected immediately in UI (optimistic update)
- *    - Backend sends email via notify_vendor_status_change (already in views.py)
- *    - Reject added as a new button (requires rejection_reason)
- *
- * 4. Profile picture sync
- *    - VendorDetail loads profile_picture from GET /accounts/admin/vendors/{id}/
- *      which returns the URL from the User table (updated by Account Settings)
- *    - resolveUrl() applied to profile_picture too so it works on localhost
- *
- * 5. Footer matches AdminDashboard footer exactly
- *
- * 6. Filter + Export on VendorList now functional
- *    - Status filter pills (gold) filter the displayed vendors
- *    - Export downloads a CSV of the currently filtered vendor list
- *
- * 7. Stat card icons use orange colour (same as AdminDashboard)
- *
- * 8. Performance: loadData uses Promise.all — only 2 parallel requests
- */
-
 import React, { useState, useEffect, useCallback } from "react";
 import Sidebar      from "../components/adminDashboard/Sidebar";
 import Navbar3      from "../components/adminDashboard/Navbar3";
@@ -64,7 +19,7 @@ const GOLD     = "#EFB034";
 const ICON_BG  = "bg-orange-50";
 const ICON_COL = "text-orange-600";
 
-// ── Django base URL for resolving relative media paths ────────────────────────
+//Django base URL for resolving relative media paths 
 const DJANGO_BASE = (() => {
   const env = import.meta.env.VITE_API_BASE_URL;
   if (env) return env.replace(/\/api\/v1\/?$/, "");
@@ -84,7 +39,7 @@ const normStatus = (s) => {
   return String(s).charAt(0).toUpperCase() + String(s).slice(1);
 };
 
-// ── Stat card ─────────────────────────────────────────────────────────────────
+//Stat card 
 const StatCard = ({ label, value, type }) => {
   const icons = {
     vendors: Store,
@@ -107,7 +62,7 @@ const StatCard = ({ label, value, type }) => {
   );
 };
 
-// ── Document Review Modal ──────────────────────────────────────────────────────
+//Document Review Modal 
 const DocumentReviewModal = ({ vendorId, vendorName, onClose }) => {
   const [docs,    setDocs]    = useState(null);
   const [loading, setLoading] = useState(true);
@@ -202,7 +157,7 @@ const DocumentReviewModal = ({ vendorId, vendorName, onClose }) => {
   );
 };
 
-// ── Reject Modal (new) ────────────────────────────────────────────────────────
+//  Reject Modal 
 const RejectVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
   const [reason, setReason] = useState("");
   return (
@@ -245,7 +200,7 @@ const RejectVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
   );
 };
 
-// ── Terminate Modal ────────────────────────────────────────────────────────────
+// Terminate Modal
 const TerminateVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
   const [confirmText, setConfirmText] = useState("");
   const [reason,      setReason]      = useState("");
@@ -551,7 +506,7 @@ const VendorListWithFilters = ({ vendors, onSelect, selectedId, onRefresh }) => 
   );
 };
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+//Main Page 
 const AdminManagement = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [vendors, setVendors] = useState([]);
@@ -573,7 +528,7 @@ const AdminManagement = () => {
   const [showReinstate, setShowReinstate] = useState(false);
 const [reinstateLoading, setReinstateLoading] = useState(false);
 
-  // ── Load data: dashboard stats + full vendor list in parallel ──────────────
+  //Load data: dashboard stats + full vendor list in parallel 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -639,7 +594,7 @@ const [reinstateLoading, setReinstateLoading] = useState(false);
     loadData();
   }, [loadData]);
 
-  // ── Select vendor → fetch full detail ─────────────────────────────────────
+  //Select vendor → fetch full detail
   const handleSelectVendor = async (vendor) => {
     setSelectedVendor(vendor);
     setVendorDetail(null);
