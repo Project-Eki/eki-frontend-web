@@ -294,6 +294,54 @@ const TerminateVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
   );
 };
 
+// ── Reinstate Modal ────────────────────────────────────────────────────────────
+const ReinstateVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
+  const [reason, setReason] = useState("");
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-green-100 bg-green-50">
+          <div className="flex items-center gap-2">
+            <RefreshCw size={16} className="text-green-600" />
+            <h2 className="text-sm font-bold text-green-800">Reinstate Vendor</h2>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-green-100">
+            <X size={16} className="text-green-600" />
+          </button>
+        </div>
+        <div className="p-5 space-y-3.5">
+          <p className="text-xs text-gray-600">
+            This will reinstate <strong>{vendor?.name}</strong>. They will regain access to their account.
+          </p>
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-gray-700">Reason (Optional)</label>
+            <textarea
+              rows={2}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Why is this vendor being reinstated?"
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-green-400"
+            />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50">
+              Cancel
+            </button>
+            <button
+              onClick={() => onConfirm(reason)}
+              disabled={loading}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-green-600 text-white text-xs font-bold rounded-xl hover:bg-green-700 disabled:opacity-40"
+            >
+              {loading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+              Reinstate Vendor
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ── VendorList with Filter + Export + Search + Pagination ─────────────────────
 const STATUS_OPTIONS = ["All", "Pending", "Approved", "Rejected", "Suspended"];
 
@@ -522,6 +570,8 @@ const AdminManagement = () => {
   const [showReject, setShowReject] = useState(false);
   const [terminateLoading, setTerminateLoading] = useState(false);
   const [rejectLoading, setRejectLoading] = useState(false);
+  const [showReinstate, setShowReinstate] = useState(false);
+const [reinstateLoading, setReinstateLoading] = useState(false);
 
   // ── Load data: dashboard stats + full vendor list in parallel ──────────────
   const loadData = useCallback(async () => {
@@ -727,6 +777,28 @@ const AdminManagement = () => {
     }
   };
 
+  const handleReinstate = async (reason) => {
+  if (!vendorDetail) return;
+  setReinstateLoading(true);
+  try {
+    await updateVendorStatus(vendorDetail.id, "approved", reason || "Reinstated by admin");
+    const newStatus = "Approved";
+    setVendors((prev) =>
+      prev.map((v) =>
+        v.id === vendorDetail.id ? { ...v, status: newStatus } : v,
+      ),
+    );
+    setVendorDetail((prev) => (prev ? { ...prev, status: newStatus } : prev));
+    setShowReinstate(false);
+    alert("Vendor has been reinstated successfully.");
+  } catch (err) {
+    const msg = err?.response?.data?.message || "Reinstatement failed.";
+    alert(msg);
+  } finally {
+    setReinstateLoading(false);
+  }
+};
+
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-[#F3F4F6] font-sans">
       <div className="flex flex-1 min-h-0">
@@ -854,6 +926,7 @@ const AdminManagement = () => {
                 onReject={() => setShowReject(true)}
                 onReviewDocuments={() => setShowDocReview(true)}
                 onTerminate={() => setShowTerminate(true)}
+                onReinstate={() => setShowReinstate(true)}
                 actionLoading={actionLoading}
               />
             ) : null}
@@ -887,6 +960,16 @@ const AdminManagement = () => {
           onConfirm={handleTerminate}
           onClose={() => setShowTerminate(false)}
           loading={terminateLoading}
+        />
+      )}
+
+      {/* Reinstate modal */}
+      {showReinstate && vendorDetail && (
+        <ReinstateVendorModal
+          vendor={vendorDetail}
+          onConfirm={handleReinstate}
+          onClose={() => setShowReinstate(false)}
+          loading={reinstateLoading}
         />
       )}
     </div>
