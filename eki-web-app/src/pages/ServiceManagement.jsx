@@ -1,116 +1,219 @@
 /**
- * ServiceManagement.jsx
- *
- * CHANGES IN THIS VERSION:
- *
- * 1. NAVBAR ALIGNMENT
- *    The fixed navbar now starts exactly from the right edge of the sidebar.
- *    Instead of `left-0 right-0` (full width), the navbar wrapper is
- *    `left-0 right-0` but the inner Navbar3 sits inside a flex row that
- *    accounts for the sidebar width. On desktop, a sidebar-width spacer
- *    (w-[calc(14rem+0.75rem)] = 56 + 3px gap) pushes the navbar content
- *    to start where the main content starts.
- *    On mobile (< md) the spacer is hidden so the navbar is full-width.
- *
- * 2. VIEW TOGGLE BUTTON COLOR
- *    Changed from bg-[#125852] to bg-[#F5B841] to match "Create New Service" button.
- *    Inactive state: text-slate-400 (unchanged).
- *
- * 3. X BUTTON ON MODAL
- *    The modal no longer has a separate sticky header (removed — ServiceForm has
- *    its own header with X button). The modal wrapper is clean rounded-3xl.
- *    Clicking the backdrop also closes the modal.
- *
- * 4. MODAL HEIGHT
- *    Reduced from h-[580px] to h-auto max-h-[88vh] so the form content
- *    determines its own height and there is no empty space at the bottom.
- *    ServiceForm's flex-col layout fills naturally.
- *
- * 5. ALL OTHER THINGS UNCHANGED — colors, borders, margins, stat cards,
- *    service cards, filters, sort, pagination, footer.
+ CURRENCY FROM VENDOR PROFILE
+   On mount, fetches GET /accounts/vendor/profile/ to get the vendor's country,
+   then maps it to the correct currency symbol (same logic as ProductDashboard).
+   Price is displayed as e.g. "UGX 20,000/session" instead of "$20,000/session".
+  IMAGE FIX NOTE
+ The grey area on the service card is because the image URL returned by the
+  backend is a relative path (e.g. /media/listings/...) and the frontend
+ needs to prepend the backend base URL. The img src is now constructed as:
+ `${MEDIA_BASE}${item.images[0].image}` when the URL doesn't start with http.
+   MEDIA_BASE is set to the backend base URL (e.g. http://127.0.0.1:8000).
  */
 
 import React, { useState, useEffect, useMemo } from "react";
-import { getServices } from "../services/api";
+import { getServices, deleteListing } from "../services/api";
+import api from "../services/api";
 import VendorSidebar from "../components/VendorSidebar";
-import Navbar3 from "../components/adminDashboard/Navbar3";
+import Navbar3 from "../components/adminDashboard/Navbar4";
 import ServiceForm from "../components/Vendormanagement/ServiceForm";
 
 import {
   Plus, X, Briefcase, LayoutGrid, List,
   Clock, Calendar, Star, CheckCircle, ChevronDown,
   Search, SlidersHorizontal, Globe, MapPin, Package,
-  AlertCircle
+  Pencil, Trash2, AlertTriangle, Loader2, Archive,
+  PauseCircle, FileText, TrendingUp,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COLOR MAP — unchanged
+// MEDIA BASE — prepend to relative image paths from the backend.
+// When the backend returns "/media/listings/..." we need the full URL.
+// Change this to your production URL when deploying.
 // ─────────────────────────────────────────────────────────────────────────────
-const colorMap = {
-  teal:   { bg: "bg-teal-50",   icon: "text-teal-600",   val: "text-teal-700"   },
-  green:  { bg: "bg-green-50",  icon: "text-green-600",  val: "text-green-700"  },
-  amber:  { bg: "bg-amber-50",  icon: "text-amber-600",  val: "text-amber-700"  },
-  purple: { bg: "bg-purple-50", icon: "text-purple-600", val: "text-purple-700" },
+const MEDIA_BASE = "http://127.0.0.1:8000";
+
+const resolveImage = (url) => {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;           // already absolute
+  return `${MEDIA_BASE}${url}`;                      // prepend base
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STATUS / AVAILABILITY STYLE MAPS — unchanged
+// CURRENCY MAP — same as ProductDashboard
+// ─────────────────────────────────────────────────────────────────────────────
+const getCurrencySymbol = (country) => {
+  const map = {
+    uganda:'UGX', nigeria:'₦', kenya:'KES', ghana:'₵',
+    'south africa':'R', tanzania:'TZS', rwanda:'RWF', ethiopia:'ETB',
+    zambia:'ZMW', egypt:'EGP', morocco:'MAD', senegal:'CFA',
+    cameroon:'CFA', ivory:'CFA', "côte d'ivoire":'CFA',
+    angola:'AOA', mozambique:'MZN', zimbabwe:'ZWL', botswana:'BWP',
+    namibia:'NAD', malawi:'MWK', sudan:'SDG', tunisia:'TND',
+    libya:'LYD', algeria:'DZD', madagascar:'MGA', somalia:'SOS',
+    usa:'$', 'united states':'$', canada:'CA$', mexico:'MX$',
+    brazil:'R$', argentina:'$', colombia:'$', chile:'CLP',
+    peru:'S/', venezuela:'Bs', uruguay:'$U', ecuador:'$',
+    uk:'£', 'united kingdom':'£', germany:'€', france:'€',
+    italy:'€', spain:'€', portugal:'€', netherlands:'€',
+    belgium:'€', austria:'€', switzerland:'CHF', sweden:'kr',
+    norway:'kr', denmark:'kr', finland:'€', poland:'zł',
+    czechia:'Kč', hungary:'Ft', romania:'lei', bulgaria:'лв',
+    russia:'₽', ukraine:'₴', turkey:'₺',
+    china:'¥', japan:'¥', india:'₹', 'south korea':'₩',
+    indonesia:'Rp', malaysia:'RM', thailand:'฿', singapore:'S$',
+    philippines:'₱', vietnam:'₫', bangladesh:'৳', pakistan:'₨',
+    'sri lanka':'₨', nepal:'₨', myanmar:'K', cambodia:'₭',
+    'saudi arabia':'SR', uae:'AED', 'united arab emirates':'AED',
+    qatar:'QR', kuwait:'KD', bahrain:'BD', jordan:'JD',
+    israel:'₪', iran:'﷼', iraq:'IQD',
+    australia:'A$', 'new zealand':'NZ$',
+  };
+  return map[country?.toLowerCase()] || '$';
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STATUS STYLES + CONFIG
 // ─────────────────────────────────────────────────────────────────────────────
 const STATUS_STYLE = {
   published: "bg-green-50 text-green-700 border border-green-200",
   active:    "bg-green-50 text-green-700 border border-green-200",
   draft:     "bg-amber-50 text-amber-700 border border-amber-200",
   archived:  "bg-gray-100 text-gray-500 border border-gray-200",
-  paused:    "bg-gray-100 text-gray-500 border border-gray-200",
-};
-const AVAIL_COLOR = {
-  "Fully Booked": "text-red-500",
-  "Limited":      "text-amber-500",
-  "limited":      "text-amber-500",
-  "booked":       "text-red-500",
+  paused:    "bg-blue-50 text-blue-600 border border-blue-200",
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SERVICE CARD — unchanged
+// SERVICE CARD — with Edit + Delete + currency-aware price
 // ─────────────────────────────────────────────────────────────────────────────
-const ServiceCard = ({ s }) => (
-  <div className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all group">
-    <div className="relative h-44 overflow-hidden bg-slate-50">
+// const ServiceCard = ({ s, onEdit, onDelete, currencySymbol }) => (
+//   <div className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all group">
+//     <div className="relative h-44 overflow-hidden bg-slate-50">
+//       {s.img ? (
+//         <img src={s.img} alt={s.title}
+//           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+//           onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}
+//         />
+//       ) : null}
+//       {/* Fallback shown when no image or image fails to load */}
+//       <div
+//         className="w-full h-full flex flex-col items-center justify-center gap-1"
+//         style={{ display: s.img ? 'none' : 'flex' }}
+//       >
+//         <Package size={28} className="text-slate-300"/>
+//         <span className="text-[10px] text-slate-300">No image</span>
+//       </div>
+//       {/* Remote / in-person badge */}
+//       <span className="absolute top-3 left-3 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
+//         {s.mode === "remote" || s.mode === "online"
+//           ? <><Globe size={9}/> Remote</>
+//           : <><MapPin size={9}/> In-person</>}
+//       </span>
+//       {/* Edit + Delete — appear on hover */}
+//       <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+//         <button onClick={() => onEdit(s)}
+//           className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-[#125852] transition-colors"
+//           title="Edit service">
+//           <Pencil size={12}/>
+//         </button>
+//         <button onClick={() => onDelete(s)}
+//           className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-red-500 transition-colors"
+//           title="Delete service">
+//           <Trash2 size={12}/>
+//         </button>
+//       </div>
+//     </div>
+
+//     <div className="p-4">
+//       <div className="flex items-center justify-between mb-1.5">
+//         <span className="text-[10px] font-bold text-slate-400 tracking-widest truncate max-w-[120px]">{s.category}</span>
+//         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0 ${STATUS_STYLE[s.status] || STATUS_STYLE.draft}`}>{s.status}</span>
+//       </div>
+//       <h3 className="font-black text-[15px] text-slate-900 leading-tight mb-1 line-clamp-1">{s.title || '—'}</h3>
+//       <p className="text-[12px] text-slate-500 line-clamp-2 mb-3">{s.desc || 'No description provided.'}</p>
+//       <div className="flex items-center justify-between text-[12px] text-slate-400 mb-3">
+//         <span className="flex items-center gap-1"><Clock size={12}/> {s.duration || 'N/A'}</span>
+//         <span className="flex items-center gap-1 font-semibold text-slate-400">
+//           <Calendar size={12}/> {s.avail || 'Available'}
+//         </span>
+//       </div>
+//       <div className="flex items-center justify-between pt-3 border-t border-slate-50">
+//         <div>
+//           {/* Currency-aware price display */}
+//           <span className="text-[18px] font-black text-slate-900">
+//             {currencySymbol} {parseFloat(s.price || 0).toLocaleString()}
+//           </span>
+//           <span className="text-[11px] text-slate-400">/{s.unit || 'session'}</span>
+//         </div>
+//         <button onClick={() => onEdit(s)}
+//           className="text-[12px] font-bold text-teal-700 hover:text-amber-500 transition-colors flex items-center gap-1">
+//           Edit ↗
+//         </button>
+//       </div>
+//     </div>
+//   </div>
+// );
+const ServiceCard = ({ s, onEdit, onDelete, currencySymbol }) => (
+  <div className="bg-white rounded-xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all group">
+    <div className="relative h-36 overflow-hidden bg-slate-50">
       {s.img ? (
         <img src={s.img} alt={s.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
-      ) : (
-        <div className="w-full h-full flex flex-col items-center justify-center gap-1">
-          <Package size={28} className="text-slate-300"/>
-          <span className="text-[10px] text-slate-300">No image</span>
-        </div>
-      )}
-      <span className="absolute top-3 left-3 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
-        {s.mode === "remote" || s.mode === "online"
-          ? <><Globe size={9}/> Remote</>
-          : <><MapPin size={9}/> In-person</>}
-      </span>
-    </div>
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[10px] font-bold text-slate-400 tracking-widest truncate max-w-[120px]">{s.category}</span>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0 ${STATUS_STYLE[s.status] || STATUS_STYLE.draft}`}>{s.status}</span>
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}
+        />
+      ) : null}
+      {/* Fallback shown when no image or image fails to load */}
+      <div
+        className="w-full h-full flex flex-col items-center justify-center gap-1"
+        style={{ display: s.img ? 'none' : 'flex' }}
+      >
+        <Package size={24} className="text-slate-300"/>
+        <span className="text-[9px] text-slate-300">No image</span>
       </div>
-      <h3 className="font-black text-[15px] text-slate-900 leading-tight mb-1 line-clamp-1">{s.title || '—'}</h3>
-      <p className="text-[12px] text-slate-500 line-clamp-2 mb-3">{s.desc || 'No description provided.'}</p>
-      <div className="flex items-center justify-between text-[12px] text-slate-400 mb-3">
-        <span className="flex items-center gap-1"><Clock size={12}/> {s.duration || 'N/A'}</span>
-        <span className={`flex items-center gap-1 font-semibold ${AVAIL_COLOR[s.avail] || "text-slate-400"}`}>
-          <Calendar size={12}/> {s.avail || 'Available'}
+      {/* Remote / in-person badge */}
+      <span className="absolute top-2 left-2 bg-black/50 backdrop-blur-sm text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1">
+        {s.mode === "remote" || s.mode === "online"
+          ? <><Globe size={8}/> Remote</>
+          : <><MapPin size={8}/> In-person</>}
+      </span>
+      {/* Edit + Delete — appear on hover */}
+      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button onClick={() => onEdit(s)}
+          className="w-6 h-6 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-[#125852] transition-colors"
+          title="Edit service">
+          <Pencil size={10}/>
+        </button>
+        <button onClick={() => onDelete(s)}
+          className="w-6 h-6 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-red-500 transition-colors"
+          title="Delete service">
+          <Trash2 size={10}/>
+        </button>
+      </div>
+    </div>
+
+    <div className="p-3">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[9px] font-bold text-slate-400 tracking-widest truncate max-w-[120px]">{s.category}</span>
+        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase shrink-0 ${STATUS_STYLE[s.status] || STATUS_STYLE.draft}`}>{s.status}</span>
+      </div>
+      <h3 className="font-black text-[13px] text-slate-900 leading-tight mb-1 line-clamp-1">{s.title || '—'}</h3>
+      <p className="text-[11px] text-slate-500 line-clamp-2 mb-2">{s.desc || 'No description provided.'}</p>
+      <div className="flex items-center justify-between text-[11px] text-slate-400 mb-2">
+        <span className="flex items-center gap-1"><Clock size={10}/> {s.duration || 'N/A'}</span>
+        <span className="flex items-center gap-1 font-semibold text-slate-400">
+          <Calendar size={10}/> {s.avail || 'Available'}
         </span>
       </div>
-      <div className="flex items-center justify-between pt-3 border-t border-slate-50">
+      <div className="flex items-center justify-between pt-2 border-t border-slate-50">
         <div>
-          <span className="text-[21px] font-black text-slate-900">${parseFloat(s.price || 0).toLocaleString()}</span>
-          <span className="text-[11px] text-slate-400">/{s.unit || 'session'}</span>
+          <span className="text-[16px] font-black text-slate-900">
+            {currencySymbol} {parseFloat(s.price || 0).toLocaleString()}
+          </span>
+          <span className="text-[10px] text-slate-400">/{s.unit || 'session'}</span>
         </div>
-        <button className="text-[12px] font-bold text-teal-700 hover:text-amber-500 transition-colors flex items-center gap-1">
-          View Details <span className="text-[10px]">↗</span>
+        <button onClick={() => onEdit(s)}
+          className="text-[11px] font-bold text-teal-700 hover:text-amber-500 transition-colors flex items-center gap-1">
+          Edit 
         </button>
       </div>
     </div>
@@ -118,16 +221,41 @@ const ServiceCard = ({ s }) => (
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TEAL FOOTER — provided by user, rounded, unchanged
+// DELETE CONFIRM MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+const DeleteModal = ({ service, onConfirm, onCancel, isDeleting }) => (
+  <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
+      <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <AlertTriangle size={22} className="text-red-500"/>
+      </div>
+      <h3 className="text-base font-bold text-slate-800 mb-1">Delete Service?</h3>
+      <p className="text-[11px] text-slate-500 mb-5">
+        "<span className="font-bold text-slate-700">{service?.title}</span>" will be permanently removed. This cannot be undone.
+      </p>
+      <div className="flex gap-3">
+        <button onClick={onCancel} disabled={isDeleting}
+          className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-50">
+          Cancel
+        </button>
+        <button onClick={onConfirm} disabled={isDeleting}
+          className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg text-[11px] font-bold hover:bg-red-600 transition-colors flex items-center justify-center gap-1.5">
+          {isDeleting ? <><Loader2 size={11} className="animate-spin"/> Deleting…</> : 'Yes, Delete'}
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEAL FOOTER
 // ─────────────────────────────────────────────────────────────────────────────
 const TealFooter = () => (
   <footer className="bg-[#1D4D4C] text-white py-4 px-5 sm:px-10 flex flex-col sm:flex-row justify-between items-center gap-2 text-[11px] shrink-0 mx-3 mb-3 rounded-2xl">
     <div className="hidden sm:block">Buy Smart. Sell Fast. Grow Together...</div>
     <div>© 2026 Vendor Portal. All rights reserved.</div>
     <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
-      <span className="relative inline-block cursor-pointer hover:underline">
-        eki<span className="absolute text-[5px] -bottom-0 -right-2">TM</span>
-      </span>
+      <span className="relative inline-block cursor-pointer hover:underline">eki<span className="absolute text-[5px] -bottom-0 -right-2">TM</span></span>
       <span className="cursor-pointer hover:underline">Support</span>
       <span className="cursor-pointer hover:underline">Privacy Policy</span>
       <span className="cursor-pointer hover:underline">Terms of Service</span>
@@ -137,38 +265,55 @@ const TealFooter = () => (
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SIDEBAR WIDTH CONSTANT
-// Must match VendorSidebar's w-56 (= 14rem = 224px) + p-3 gap (0.75rem = 12px)
-// Used to offset the navbar content on desktop so it aligns with the main content.
-// ─────────────────────────────────────────────────────────────────────────────
-const SIDEBAR_W = "w-[14.75rem]"; // 14rem sidebar + 0.75rem gap
-
-// ─────────────────────────────────────────────────────────────────────────────
 // SERVICE MANAGEMENT PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 const ServiceManagement = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [viewMode,    setViewMode]    = useState("grid");
-  const [search,      setSearch]      = useState("");
-  const [sortBy,      setSortBy]      = useState("newest");
-  const [services,    setServices]    = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [refreshKey,  setRefreshKey]  = useState(0);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Mobile sidebar — for small screens
+  const [sidebarOpen,    setSidebarOpen]    = useState(false);
+  const [viewMode,       setViewMode]       = useState("grid");
+  const [search,         setSearch]         = useState("");
+  const [sortBy,         setSortBy]         = useState("newest");
+  const [statusFilter,   setStatusFilter]   = useState("all"); // interactive stat filter
+  const [services,       setServices]       = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [refreshKey,     setRefreshKey]     = useState(0);
+  const [isModalOpen,    setIsModalOpen]    = useState(false);
+  const [editingService, setEditingService] = useState(null);
+  const [deleteTarget,   setDeleteTarget]   = useState(null);
+  const [isDeleting,     setIsDeleting]     = useState(false);
+  const [deleteError,    setDeleteError]    = useState('');
 
+  // Currency from vendor profile (same as ProductDashboard)
+  const [currencySymbol, setCurrencySymbol] = useState('$');
+  const [vendorCountry,  setVendorCountry]  = useState('');
+
+  // ── Fetch vendor country for currency
+  useEffect(() => {
+    api.get('/accounts/vendor/profile/')
+      .then(res => {
+        const d = res.data?.data ?? res.data;
+        const country = d?.country || d?.business_country || '';
+        if (country) {
+          setVendorCountry(country);
+          setCurrencySymbol(getCurrencySymbol(country));
+        }
+      }).catch(() => {});
+  }, []);
+
+  // ── Fetch services
   useEffect(() => {
     const fetchMyServices = async () => {
       setLoading(true);
       try {
         const data = await getServices();
         const raw = Array.isArray(data) ? data : (data.results || data.listings || data.data || []);
-        const formatted = raw.map(item => ({
+        setServices(raw.map(item => ({
           id:       item.id,
           category: (item.business_category || '').toUpperCase(),
-          title:    item.title        || '—',
-          desc:     item.description  || '',
-          price:    item.price        || '0',
-          unit:     item.price_unit   || 'session',
+          title:    item.title       || '—',
+          desc:     item.description || '',
+          price:    item.price       || '0',
+          unit:     item.price_unit  || 'session',
           duration: item.detail?.duration
                     || item.detail?.flight_duration
                     || (item.detail?.duration_days ? `${item.detail.duration_days} days` : 'N/A'),
@@ -176,11 +321,14 @@ const ServiceManagement = () => {
           status:   item.status       || 'draft',
           mode:     item.detail?.delivery_mode
                     || (item.detail?.available_24h ? 'remote' : 'in-person'),
-          img:      item.images?.find(img => img.is_primary)?.image
-                    || item.images?.[0]?.image
-                    || null,
-        }));
-        setServices(formatted);
+          // FIX: resolve relative image URLs to absolute
+          img:      resolveImage(
+                      item.images?.find(i => i.is_primary)?.image
+                      || item.images?.[0]?.image
+                      || null
+                    ),
+          _raw: item,
+        })));
       } catch (err) {
         console.error("Failed to load services:", err);
       } finally {
@@ -190,64 +338,97 @@ const ServiceManagement = () => {
     fetchMyServices();
   }, [refreshKey]);
 
-  const handleFormClose = (didCreate) => {
+  // ── Modal helpers
+  const openCreate = () => { setEditingService(null); setIsModalOpen(true); };
+  const openEdit   = (s)  => { setEditingService(s._raw); setIsModalOpen(true); };
+  const handleFormClose = (didSave) => {
     setIsModalOpen(false);
-    if (didCreate === true) setRefreshKey(prev => prev + 1);
+    setEditingService(null);
+    if (didSave === true) setRefreshKey(k => k + 1);
   };
 
+  // ── Delete helpers
+  const handleDeleteRequest = (s)  => { setDeleteTarget(s); setDeleteError(''); };
+  const handleDeleteCancel  = ()   => { setDeleteTarget(null); };
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await deleteListing(deleteTarget.id);
+      setDeleteTarget(null);
+      setRefreshKey(k => k + 1);
+    } catch (err) {
+      setDeleteError(err.response?.data?.message || 'Delete failed. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // ── Stats for each status (all 5)
+  const counts = useMemo(() => ({
+    all:       services.length,
+    published: services.filter(s => s.status === 'published' || s.status === 'active').length,
+    draft:     services.filter(s => s.status === 'draft').length,
+    archived:  services.filter(s => s.status === 'archived').length,
+    paused:    services.filter(s => s.status === 'paused').length,
+  }), [services]);
+
+  // ── Stat tabs config (interactive filter cards)
+  const statTabs = [
+    { key:'all',       label:'All Services',  icon:<Briefcase size={16}/>,  color:'teal',   hint:'Every service you have created' },
+    { key:'published', label:'Published',     icon:<CheckCircle size={16}/>,color:'green',  hint:'Live and visible to customers' },
+    { key:'draft',     label:'Draft',         icon:<FileText size={16}/>,   color:'amber',  hint:'Saved but not yet live' },
+    { key:'archived',  label:'Archived',      icon:<Archive size={16}/>,    color:'slate',  hint:'Hidden from customers, kept for records' },
+    { key:'paused',    label:'Paused',        icon:<PauseCircle size={16}/>,color:'blue',   hint:'Temporarily unavailable' },
+  ];
+
+  const colorMap = {
+    teal:  { bg:'bg-teal-50',  icon:'text-teal-600',  val:'text-teal-700',  active:'border-teal-500'  },
+    green: { bg:'bg-green-50', icon:'text-green-600', val:'text-green-700', active:'border-green-500' },
+    amber: { bg:'bg-amber-50', icon:'text-amber-600', val:'text-amber-700', active:'border-amber-500' },
+    slate: { bg:'bg-slate-100',icon:'text-slate-500', val:'text-slate-700', active:'border-slate-500' },
+    blue:  { bg:'bg-blue-50',  icon:'text-blue-600',  val:'text-blue-700',  active:'border-blue-500'  },
+  };
+
+  // ── Filter + sort
   const filtered = useMemo(() => {
+    let list = services;
+    // Status filter from stat tabs
+    if (statusFilter !== 'all') {
+      list = list.filter(s =>
+        statusFilter === 'published'
+          ? (s.status === 'published' || s.status === 'active')
+          : s.status === statusFilter
+      );
+    }
+    // Text search
     const q = search.toLowerCase();
-    return services.filter(s =>
+    if (q) list = list.filter(s =>
       s.title.toLowerCase().includes(q) || s.category.toLowerCase().includes(q)
     );
-  }, [services, search]);
+    return list;
+  }, [services, search, statusFilter]);
 
-  const sortedAndFiltered = useMemo(() => {
-    let result = [...filtered];
-    if (sortBy === 'price_asc')  result.sort((a,b) => parseFloat(a.price) - parseFloat(b.price));
-    if (sortBy === 'price_desc') result.sort((a,b) => parseFloat(b.price) - parseFloat(a.price));
-    if (sortBy === 'newest')     result.sort((a,b) => String(b.id).localeCompare(String(a.id)));
-    if (sortBy === 'oldest')     result.sort((a,b) => String(a.id).localeCompare(String(b.id)));
-    return result;
+  const sorted = useMemo(() => {
+    const r = [...filtered];
+    if (sortBy === 'price_asc')  r.sort((a,b) => parseFloat(a.price) - parseFloat(b.price));
+    if (sortBy === 'price_desc') r.sort((a,b) => parseFloat(b.price) - parseFloat(a.price));
+    if (sortBy === 'newest')     r.sort((a,b) => String(b.id).localeCompare(String(a.id)));
+    if (sortBy === 'oldest')     r.sort((a,b) => String(a.id).localeCompare(String(b.id)));
+    return r;
   }, [filtered, sortBy]);
 
-  const stats = useMemo(() => [
-    { label:"Total Services",  value:services.length.toString(), icon:<Briefcase size={18}/>, color:"teal" },
-    { label:"Active Now",      value:services.filter(s=>s.status==='published'||s.status==='active').length.toString(), icon:<CheckCircle size={18}/>, color:"green" },
-    { label:"Draft",           value:services.filter(s=>s.status==='draft').length.toString(), icon:<Calendar size={18}/>, color:"amber" },
-    { label:"Categories",      value:[...new Set(services.map(s=>s.category))].length.toString(), icon:<Star size={18}/>, color:"purple" },
-  ], [services]);
-
   return (
-    <div className="min-h-screen bg-[#FDFDFD] font-sans text-slate-800">
+    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
 
-      {/*
-        ── FIXED NAVBAR ──
-        Full width fixed bar at the top.
-        Inside it: a spacer div (hidden on mobile, sidebar-width on desktop)
-        + the actual Navbar3 component. This makes the navbar VISUALLY start
-        from the right edge of the sidebar on desktop.
-      */}
-      <div className="fixed top-0 left-0 right-0 z-50 flex">
-        {/*
-          Sidebar-width spacer — mirrors the sidebar + gap.
-          Hidden on mobile (md:block) so mobile navbar is full-width.
-          This spacer has the same gradient background as the sidebar so there
-          is no gap or color clash at the top-left corner.
-        */}
-        <div
-          className={`hidden md:block shrink-0 ${SIDEBAR_W}`}
-          style={{ background:"linear-gradient(270deg,#F3FBFAFF 0%,#A7E2DBFF 100%)" }}
-        />
-        {/* Navbar3 occupies the rest of the width (flex-1) */}
-        <div className="flex-1">
-          <Navbar3 onMenuClick={() => setSidebarOpen(true)} />
-        </div>
+      {/* ── DESKTOP SIDEBAR ── */}
+      <div className="hidden md:block shrink-0">
+        <VendorSidebar activePage="services"/>
       </div>
 
-      {/* Mobile sidebar overlay */}
+      {/* ── MOBILE SIDEBAR OVERLAY ── */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
+        <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSidebarOpen(false)}/>
           <div className="absolute left-0 top-0 h-full w-56 p-3">
             <VendorSidebar activePage="services"/>
@@ -255,167 +436,209 @@ const ServiceManagement = () => {
         </div>
       )}
 
-      {/*
-        ── BELOW-NAVBAR FLEX ROW ──
-        pt-14 offsets for the fixed navbar height (h-14 in Navbar3).
-        h-screen + overflow-hidden = only the inner main scrolls.
-      */}
-      <div className="flex pt-14 h-screen overflow-hidden p-3 gap-3">
+      {/* ── MAIN COLUMN ── */}
+      <div className="flex-1 flex flex-col min-w-0">
 
-        {/* Sidebar — desktop only */}
-        <div className="hidden md:block shrink-0">
-          <VendorSidebar activePage="services"/>
-        </div>
+        {/* Navbar sits at top of the main column, sticky */}
+        <Navbar3 onMenuClick={() => setSidebarOpen(true)}/>
 
-        {/* Main scrollable column */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        {/* Scrollable content */}
+        <main className="flex-1 p-5 max-w-[1400px] mx-auto w-full pb-16">
 
-          <main className="flex-1 p-5 max-w-[1400px] mx-auto w-full pb-16">
+          {/* Page header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-xl font-bold text-[#1A1A1A]">Service Management</h2>
+              <p className="text-slate-400 text-[11px] mt-0.5">
+                Manage your professional offerings, schedules, and service availability.
+                {vendorCountry && (
+                  <span className="ml-2 bg-slate-100 px-1.5 py-0.5 rounded-full text-slate-500 text-[9px]">
+                    {vendorCountry} · {currencySymbol}
+                  </span>
+                )}
+              </p>
+            </div>
+            <button onClick={openCreate}
+              className="bg-[#F5B841] hover:bg-[#E0A83B] text-white px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all active:scale-95 font-bold text-sm shrink-0 w-full sm:w-auto justify-center">
+              <Plus size={18}/> Create New Service
+            </button>
+          </div>
 
-            {/* Page header — unchanged */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <div>
-                <h2 className="text-xl font-bold text-[#1A1A1A]">Service Management</h2>
-                <p className="text-slate-400 text-[11px] mt-0.5">
-                  Manage your professional offerings, schedules, and service availability.
-                </p>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="bg-[#F5B841] hover:bg-[#E0A83B] text-white px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all active:scale-95 font-bold text-sm shrink-0 w-full sm:w-auto justify-center"
-              >
-                <Plus size={18}/> Create New Service
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+            {statTabs.map(tab => {
+              const c     = colorMap[tab.color];
+              const isActive = statusFilter === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setStatusFilter(isActive ? 'all' : tab.key)}
+                  title={tab.hint}
+                  className={`bg-white rounded-2xl border px-4 py-3.5 flex items-center gap-3 shadow-sm transition-all text-left w-full
+                    ${isActive
+                      ? `border-b-2 ${c.active} border-t-slate-200 border-l-slate-200 border-r-slate-200 shadow-md`
+                      : 'border-slate-200 hover:border-slate-300 hover:shadow'
+                    }`}
+                >
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${c.bg} ${c.icon}`}>
+                    {tab.icon}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide leading-none mb-0.5 truncate">{tab.label}</p>
+                    <p className={`text-[20px] font-black leading-none ${isActive ? c.val : 'text-slate-800'}`}>
+                      {loading ? '—' : counts[tab.key]}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active filter label */}
+          {statusFilter !== 'all' && (
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-[11px] text-slate-500">
+                Showing: <span className="font-bold text-slate-700 capitalize">{statusFilter}</span> services
+              </span>
+              <button onClick={() => setStatusFilter('all')}
+                className="text-[10px] text-slate-400 hover:text-slate-600 flex items-center gap-1 border border-slate-200 rounded-full px-2 py-0.5">
+                <X size={9}/> Clear
               </button>
             </div>
+          )}
 
-            {/* Search + filter bar — view toggle color changed to #F5B841 */}
-            <div className="flex flex-col sm:flex-row gap-3 mb-5">
-              <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16}/>
-                <input value={search} onChange={e=>setSearch(e.target.value)}
-                  placeholder="Filter by title, category, or keyword..."
-                  className="w-full h-10 pl-10 pr-4 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#F5B841] focus:ring-1 focus:ring-[#F5B841] transition-colors"/>
-              </div>
-              <div className="flex gap-2 shrink-0 flex-wrap">
-                <button className="flex items-center gap-2 h-10 px-4 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:border-slate-300 transition-colors">
-                  <SlidersHorizontal size={15}/> <span className="hidden sm:inline">Advanced</span> Filters
+          {/* Search + filter bar */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-5">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16}/>
+              <input value={search} onChange={e=>setSearch(e.target.value)}
+                placeholder="Filter by title, category, or keyword..."
+                className="w-full h-10 pl-10 pr-4 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#F5B841] focus:ring-1 focus:ring-[#F5B841] transition-colors"/>
+            </div>
+            <div className="flex gap-2 shrink-0 flex-wrap">
+              <button className="flex items-center gap-2 h-10 px-4 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:border-slate-300 transition-colors">
+                <SlidersHorizontal size={15}/> <span className="hidden sm:inline">Advanced</span> Filters
+              </button>
+              {/* View toggle */}
+              <div className="flex bg-white border border-slate-200 rounded-xl overflow-hidden">
+                <button onClick={() => setViewMode("grid")}
+                  className={`w-10 h-10 flex items-center justify-center transition-colors ${viewMode==="grid" ? "bg-[#F5B841] text-white" : "text-slate-400 hover:text-slate-600"}`}>
+                  <LayoutGrid size={15}/>
                 </button>
-
-                {/*
-                  FIX: view toggle active color changed from bg-[#125852] to bg-[#F5B841]
-                  to match the "Create New Service" button color.
-                */}
-                <div className="flex bg-white border border-slate-200 rounded-xl overflow-hidden">
-                  <button onClick={() => setViewMode("grid")}
-                    className={`w-10 h-10 flex items-center justify-center transition-colors ${viewMode==="grid" ? "bg-[#F5B841] text-white" : "text-slate-400 hover:text-slate-600"}`}>
-                    <LayoutGrid size={15}/>
-                  </button>
-                  <button onClick={() => setViewMode("list")}
-                    className={`w-10 h-10 flex items-center justify-center transition-colors ${viewMode==="list" ? "bg-[#F5B841] text-white" : "text-slate-400 hover:text-slate-600"}`}>
-                    <List size={15}/>
-                  </button>
-                </div>
-
-                <div className="relative">
-                  <select value={sortBy} onChange={e=>setSortBy(e.target.value)}
-                    className="h-10 pl-3 pr-8 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 focus:outline-none focus:border-[#F5B841] appearance-none cursor-pointer">
-                    <option value="newest">Newest First</option>
-                    <option value="oldest">Oldest First</option>
-                    <option value="price_asc">Price: Low → High</option>
-                    <option value="price_desc">Price: High → Low</option>
-                  </select>
-                  <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
-                </div>
+                <button onClick={() => setViewMode("list")}
+                  className={`w-10 h-10 flex items-center justify-center transition-colors ${viewMode==="list" ? "bg-[#F5B841] text-white" : "text-slate-400 hover:text-slate-600"}`}>
+                  <List size={15}/>
+                </button>
+              </div>
+              <div className="relative">
+                <select value={sortBy} onChange={e=>setSortBy(e.target.value)}
+                  className="h-10 pl-3 pr-8 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 focus:outline-none focus:border-[#F5B841] appearance-none cursor-pointer">
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="price_asc">Price: Low → High</option>
+                  <option value="price_desc">Price: High → Low</option>
+                </select>
+                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
               </div>
             </div>
+          </div>
 
-            {/* STAT CARDS — unchanged */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-              {stats.map((s,i) => {
-                const c = colorMap[s.color];
-                return (
-                  <div key={i} className="bg-white rounded-2xl border border-slate-200 px-4 py-3.5 flex items-center gap-3 shadow-sm">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${c.bg} ${c.icon}`}>{s.icon}</div>
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide leading-none mb-0.5">{s.label}</p>
-                      <p className={`text-[20px] sm:text-[22px] font-black leading-none ${c.val}`}>{loading ? '—' : s.value}</p>
-                    </div>
-                  </div>
-                );
-              })}
+          {/* DELETE ERROR BANNER */}
+          {deleteError && (
+            <div className="mb-4 flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl text-xs">
+              <AlertTriangle size={13}/> {deleteError}
+              <button onClick={() => setDeleteError('')} className="ml-auto"><X size={12}/></button>
             </div>
+          )}
 
-            {/* SERVICES GRID — unchanged */}
-            {loading ? (
-              <div className={`grid gap-4 ${viewMode==="grid" ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`}>
-                {Array.from({length:6}).map((_,i)=>(
-                  <div key={i} className="bg-white rounded-2xl border border-slate-100 overflow-hidden animate-pulse">
-                    <div className="h-44 bg-slate-100"/>
-                    <div className="p-4 space-y-3">
-                      <div className="h-3 bg-slate-100 rounded w-1/3"/>
-                      <div className="h-4 bg-slate-100 rounded w-3/4"/>
-                      <div className="h-3 bg-slate-100 rounded w-full"/>
-                      <div className="h-3 bg-slate-100 rounded w-2/3"/>
-                    </div>
+          {/* SERVICES GRID */}
+          {loading ? (
+            <div className={`grid gap-4 ${viewMode==="grid" ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`}>
+              {Array.from({length:6}).map((_,i)=>(
+                <div key={i} className="bg-white rounded-2xl border border-slate-100 overflow-hidden animate-pulse">
+                  <div className="h-44 bg-slate-100"/>
+                  <div className="p-4 space-y-3">
+                    <div className="h-3 bg-slate-100 rounded w-1/3"/>
+                    <div className="h-4 bg-slate-100 rounded w-3/4"/>
+                    <div className="h-3 bg-slate-100 rounded w-full"/>
+                    <div className="h-3 bg-slate-100 rounded w-2/3"/>
                   </div>
-                ))}
-              </div>
-            ) : sortedAndFiltered.length === 0 ? (
-              <div className="bg-white border border-slate-200 rounded-2xl p-16 sm:p-20 flex flex-col items-center justify-center text-center">
-                <div className="w-16 h-16 bg-[#E0F2F1] rounded-full flex items-center justify-center mb-4 text-teal-600">
-                  <Briefcase size={32}/>
                 </div>
-                <h3 className="text-lg font-bold text-slate-900">No Services Found</h3>
-                <p className="text-slate-500 max-w-xs mx-auto mt-2 text-sm">
-                  {search ? 'Try a different search term.' : 'Click "Create New Service" to add your first listing.'}
-                </p>
+              ))}
+            </div>
+          ) : sorted.length === 0 ? (
+            <div className="bg-white border border-slate-200 rounded-2xl p-16 sm:p-20 flex flex-col items-center justify-center text-center">
+              <div className="w-16 h-16 bg-[#E0F2F1] rounded-full flex items-center justify-center mb-4 text-teal-600">
+                <Briefcase size={32}/>
               </div>
-            ) : (
-              <div className={`grid gap-4 ${viewMode==="grid" ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`}>
-                {sortedAndFiltered.map(s => <ServiceCard key={s.id} s={s}/>)}
+              <h3 className="text-lg font-bold text-slate-900">
+                {statusFilter !== 'all'
+                  ? `No ${statusFilter} services`
+                  : 'No Services Found'}
+              </h3>
+              <p className="text-slate-500 max-w-xs mx-auto mt-2 text-sm">
+                {search
+                  ? 'Try a different search term.'
+                  : statusFilter !== 'all'
+                    ? `You have no services with status "${statusFilter}" yet.`
+                    : 'Click "Create New Service" to add your first listing.'}
+              </p>
+              {statusFilter !== 'all' && (
+                <button onClick={() => setStatusFilter('all')}
+                  className="mt-4 text-sm font-bold text-teal-700 hover:underline">
+                  View all services
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className={`grid gap-4 ${viewMode==="grid" ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`}>
+              {sorted.map(s => (
+                <ServiceCard key={s.id} s={s}
+                  onEdit={openEdit}
+                  onDelete={handleDeleteRequest}
+                  currencySymbol={currencySymbol}/>
+              ))}
+            </div>
+          )}
+
+          {/* PAGINATION */}
+          {!loading && services.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 pt-4 border-t border-slate-100">
+              <p className="text-sm text-slate-500">
+                Showing <b>{sorted.length}</b> of <b>{services.length}</b> services
+              </p>
+              <div className="flex items-center gap-1">
+                <button className="h-9 px-3 sm:px-4 border border-slate-200 rounded-lg text-sm text-slate-500 hover:border-[#F5B841] hover:text-teal-700 transition-colors font-medium">Previous</button>
+                <button className="w-9 h-9 rounded-lg text-sm font-bold bg-[#125852] text-white">1</button>
+                <button className="h-9 px-3 sm:px-4 bg-[#125852] text-white rounded-lg text-sm font-bold hover:bg-[#0e4440] transition-colors">Next</button>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* PAGINATION — unchanged */}
-            {!loading && services.length > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 pt-4 border-t border-slate-100">
-                <p className="text-sm text-slate-500">
-                  Showing <b>{sortedAndFiltered.length}</b> of <b>{services.length}</b> services
-                </p>
-                <div className="flex items-center gap-1">
-                  <button className="h-9 px-3 sm:px-4 border border-slate-200 rounded-lg text-sm text-slate-500 hover:border-[#F5B841] hover:text-teal-700 transition-colors font-medium">Previous</button>
-                  <button className="w-9 h-9 rounded-lg text-sm font-bold bg-[#125852] text-white">1</button>
-                  <button className="h-9 px-3 sm:px-4 bg-[#125852] text-white rounded-lg text-sm font-bold hover:bg-[#0e4440] transition-colors">Next</button>
-                </div>
-              </div>
-            )}
+        </main>
 
-          </main>
-
-          <TealFooter/>
-        </div>
+        <TealFooter/>
       </div>
 
-      {/*
-        ── SERVICE FORM MODAL ──
-
-        CHANGES:
-        - Removed the old sticky header (X was in ServiceManagement, now it's
-          inside ServiceForm itself).
-        - height: max-h-[88vh] instead of fixed h-[580px] so there's no dead space
-          at the bottom. min-h-[480px] ensures it doesn't collapse on short screens.
-        - rounded-3xl overflow-hidden = all 4 corners rounded.
-        - Clicking the backdrop (dark overlay) closes the modal.
-      */}
+      {/* ── SERVICE FORM MODAL ── */}
       {isModalOpen && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-3 sm:p-4"
           onClick={e => { if (e.target === e.currentTarget) handleFormClose(false); }}
         >
-          <div className="w-full max-w-xl min-h-[480px] max-h-[88vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col">
-            <ServiceForm onClose={handleFormClose}/>
+          <div className="w-full max-w-xl max-h-[88vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+            <ServiceForm onClose={handleFormClose} editingListing={editingService}/>
           </div>
         </div>
+      )}
+
+      {/* ── DELETE CONFIRM MODAL ── */}
+      {deleteTarget && (
+        <DeleteModal
+          service={deleteTarget}
+          onConfirm={handleDeleteConfirm}
+          onCancel={handleDeleteCancel}
+          isDeleting={isDeleting}
+        />
       )}
 
     </div>

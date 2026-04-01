@@ -433,10 +433,21 @@ export const getAdminVerifications = async () => {
 export const updateVerificationStatus = async (vendorId, status, rejectionReason = "") => {
   const payload = { verification_status: status };
   if (rejectionReason) payload.rejection_reason = rejectionReason;
+
+  // This endpoint ONLY accepts 'approved' or 'rejected'
   const response = await api.patch(
     `/accounts/admin/verifications/${vendorId}/`,
     payload
   );
+  return response.data;
+};
+
+// For suspending/terminating APPROVED vendors
+export const updateVendorStatus = async (vendorId, status, reason = "") => {
+  const payload = { verification_status: status };
+  if (reason) payload.rejection_reason = reason;
+  // Use the vendor management endpoint
+  const response = await api.patch(`/accounts/admin/vendors/${vendorId}/status/`, payload);
   return response.data;
 };
 
