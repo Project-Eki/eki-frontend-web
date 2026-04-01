@@ -5,7 +5,7 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// ─── PUBLIC ROUTES (no token attached) ───────────────────────────────────────
+// ─── PUBLIC ROUTES (no token attached) ──────────────────────────────────────
 const PUBLIC_ROUTES = [
   '/accounts/login/',
   '/accounts/reset-password/',
