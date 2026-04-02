@@ -62,12 +62,12 @@ const Sidebar = ({ mobileOpen, onClose }) => {
           }}
         >
 
-          {/* ── Logo area ─────────────────────────────────────────────── */}
+          {/*Logo area  */}
           <div className="px-5 pt-5 pb-4 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5">
               {/* Eki logo — white version */}
               <img
-                src="/src/assets/eki-logo-white.png"
+                src="/src/assets/eki-logo2.png"
                 alt="Eki"
                 className="h-8 w-auto object-contain"
                 onError={(e) => {
@@ -97,7 +97,7 @@ const Sidebar = ({ mobileOpen, onClose }) => {
           {/* Subtle divider */}
           <div className="mx-5 border-t border-white/10 mb-3 shrink-0" />
 
-          {/* ── Nav links ──────────────────────────────────────────────── */}
+          {/*Nav links */}
           <nav className="flex-1 px-3 flex flex-col overflow-y-auto">
             <ul className="space-y-0.5">
               {menuItems.map((item) => (
@@ -124,7 +124,7 @@ const Sidebar = ({ mobileOpen, onClose }) => {
               ))}
             </ul>
 
-            {/* ── Settings + Logout ─────────────────────────────────── */}
+            {/*Settings + Logout  */}
             <div className="mt-auto pb-2 pt-4 border-t border-white/10 space-y-0.5">
               <NavLink
                 to="/settings"
@@ -141,15 +141,16 @@ const Sidebar = ({ mobileOpen, onClose }) => {
                 <span>Settings</span>
               </NavLink>
 
-              <button
+               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-all"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold
+                           text-white/70 hover:bg-white/10 hover:text-white transition-all"
               >
                 <LogOut size={17} strokeWidth={1.8} />
                 <span>Log out</span>
               </button>
             </div>
-          </nav>
+          </nav> 
         </div>
       </div>
     </>

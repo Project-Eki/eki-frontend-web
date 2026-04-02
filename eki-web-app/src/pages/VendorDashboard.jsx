@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import VendorSidebar from '../components/VendorSidebar';
-import Navbar3 from '../components/adminDashboard/Navbar3';
+import Navbar3 from '../components/adminDashboard/Navbar4';
 import {
   getVendorDashboard,
   getCategories,
@@ -20,17 +20,7 @@ import {
   AreaChart, Area,
 } from 'recharts';
 
-// ─── Currency helper ──────────────────────────────────────────────────────────
-const getCurrencySymbol = (country) => {
-  const map = {
-    uganda: 'UGX', nigeria: '₦', kenya: 'KES', ghana: 'GHS',
-    'south africa': 'ZAR', usa: '$', 'united states': '$',
-    uk: '£', 'united kingdom': '£', tanzania: 'TZS', rwanda: 'RWF',
-    ethiopia: 'ETB', zambia: 'ZMW', zimbabwe: 'ZWL', egypt: 'EGP',
-    morocco: 'MAD', senegal: 'XOF', ivory: 'XOF', cameroon: 'XAF',
-  };
-  return map[country?.toLowerCase()] || '$';
-};
+// Currency symbol is now supplied by the backend via vendorData.currencySymbol
 
 // ─── These match backend ProductSize choices exactly ─────────────────────────
 const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'one_size'];
@@ -71,6 +61,7 @@ const VendorDashboard = () => {
   // ── Data states ───────────────────────────────────────────────────────────
   const [vendorData, setVendorData] = useState({
     storeName: '', vendorType: 'Products', country: 'Uganda', businessCategory: 'retail',
+    currencySymbol: 'UGX', // fallback only; overwritten by backend
   });
   const [metrics, setMetrics] = useState({ grossSales: 0, openOrders: 0, pendingPayouts: 0, activeListings: 0 });
   const [salesHistory, setSalesHistory] = useState([]);
@@ -101,6 +92,7 @@ const VendorDashboard = () => {
           vendorType:       response.vendorType       || 'Products',
           country:          response.country          || 'Uganda',
           businessCategory: bc,
+          currencySymbol:   response.currencySymbol   || 'UGX',
         });
         setMetrics(response.metrics || { grossSales: 0, openOrders: 0, pendingPayouts: 0, activeListings: 0 });
         setSalesHistory(response.salesHistory   || []);
@@ -120,7 +112,7 @@ const VendorDashboard = () => {
     }
   };
 
-  const currencySymbol = getCurrencySymbol(vendorData.country);
+  const currencySymbol = vendorData.currencySymbol;
 
   const SERVICE_CATEGORIES = new Set(['transport', 'tailoring', 'airlines', 'hotels']);
   const isServiceVendor = SERVICE_CATEGORIES.has(vendorData.businessCategory);
@@ -230,7 +222,7 @@ const VendorDashboard = () => {
             <h1 className="text-xl font-bold text-[#1A1A1A]">Eki Vendor Dashboard</h1>
           </header>
 
-          {/* METRIC CARDS - NOW MATCHING ADMIN DASHBOARD STYLE */}
+          {/* METRIC CARDS */}
           {isFetching ? (
             <div className="grid grid-cols-4 gap-3 mb-6">
               {[...Array(4)].map((_, i) => (
@@ -239,30 +231,30 @@ const VendorDashboard = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
-              <StatCard 
-                title="Gross Sales" 
-                number={`${currencySymbol} ${(metrics.grossSales || 0).toLocaleString()}`} 
+              <StatCard
+                title="Gross Sales"
+                number={`${currencySymbol} ${(metrics.grossSales || 0).toLocaleString()}`}
                 icon={CreditCard}
                 iconBgColor="bg-emerald-50"
                 iconColor="text-emerald-600"
               />
-              <StatCard 
-                title="Open Orders" 
-                number={metrics.openOrders || 0} 
+              <StatCard
+                title="Open Orders"
+                number={metrics.openOrders || 0}
                 icon={Package}
                 iconBgColor="bg-blue-50"
                 iconColor="text-blue-600"
               />
-              <StatCard 
-                title="Pending Payouts" 
-                number={`${currencySymbol} ${(metrics.pendingPayouts || 0).toLocaleString()}`} 
+              <StatCard
+                title="Pending Payouts"
+                number={`${currencySymbol} ${(metrics.pendingPayouts || 0).toLocaleString()}`}
                 icon={Box}
                 iconBgColor="bg-orange-50"
                 iconColor="text-orange-600"
               />
-              <StatCard 
-                title="Active Listings" 
-                number={metrics.activeListings || 0} 
+              <StatCard
+                title="Active Listings"
+                number={metrics.activeListings || 0}
                 icon={ListChecks}
                 iconBgColor="bg-indigo-50"
                 iconColor="text-indigo-600"
@@ -375,9 +367,9 @@ const VendorDashboard = () => {
                 </div>
               </div>
 
-              {/* INVENTORY ALERTS */}
+              {/* INVENTORY ALERTS — icon and badge now gold */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-left">
-                <div className="flex items-center gap-1.5 mb-3 text-[#E53935]">
+                <div className="flex items-center gap-1.5 mb-3 text-[#F5B841]">
                   <AlertCircle size={12} />
                   <h3 className="font-bold text-[10px] uppercase tracking-tighter">Inventory Alerts</h3>
                 </div>
@@ -385,7 +377,7 @@ const VendorDashboard = () => {
                   {inventoryAlerts.length > 0 ? inventoryAlerts.map((alert, i) => (
                     <div key={i} className="flex justify-between items-center text-[10px] border-b border-slate-100 pb-2 last:border-0">
                       <span className="font-bold text-slate-700">{alert.title}</span>
-                      <span className="text-red-600 font-bold bg-red-50 px-1.5 py-0.5 rounded text-[9px]">
+                      <span className="text-[#F5B841] font-bold bg-yellow-50 px-1.5 py-0.5 rounded text-[9px]">
                         {alert.quantity ?? 0} left
                       </span>
                     </div>

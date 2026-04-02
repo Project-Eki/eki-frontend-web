@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import VendorSidebar from '../components/VendorSidebar';
-import Navbar3 from '../components/adminDashboard/Navbar3';
+import Navbar3 from '../components/adminDashboard/Navbar4';
 import { validateAccountData } from '../utils/validationUtils';
 import { getVendorProfile, updateVendorProfile } from '../services/authService';
 
@@ -11,13 +11,14 @@ function AccountSettingsPage() {
     firstName:        '',
     lastName:         '',
     email:            '',
-    phone:            '',
-    profileImage:     null, // preview URL (blob while pending, server URL after save)
-    profileImageFile: null, // File object — only set when user picks a new photo
+    phone:            '',  // This will map to business_phone
+    profileImage:     null,
+    profileImageFile: null,
   });
 
   // Stable server URL fed to Navbar3 — never a blob://
   const [navbarProfileImage, setNavbarProfileImage] = useState(null);
+  const [navbarName,         setNavbarName]         = useState('');
 
   const [isLoading,      setIsLoading]      = useState(false);
   const [linkedSocials,  setLinkedSocials]  = useState([]);
@@ -25,9 +26,17 @@ function AccountSettingsPage() {
   const [errors,         setErrors]         = useState({});
   const [saveSuccess,    setSaveSuccess]    = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
-  const [profileError,   setProfileError]   = useState(null);
 
-  const fileInputRef = useRef(null);
+  // Photo source selector: 'menu' | 'upload' | 'camera' | null
+  const [photoMenuOpen,   setPhotoMenuOpen]   = useState(false);
+  const [showCamera,      setShowCamera]      = useState(false);
+  const [cameraStream,    setCameraStream]    = useState(null);
+  const [cameraError,     setCameraError]     = useState('');
+
+  const fileInputRef  = useRef(null);
+  const videoRef      = useRef(null);
+  const canvasRef     = useRef(null);
+  const photoMenuRef  = useRef(null);
 
   const availableSocials = [
     { name: 'WhatsApp',    color: '#25D366' },
@@ -41,30 +50,64 @@ function AccountSettingsPage() {
   useEffect(() => {
     const loadProfile = async () => {
       setProfileLoading(true);
-      setProfileError(null);
       try {
         const res = await getVendorProfile();
+        // Backend returns: first_name, last_name, email, business_phone, profile_picture (from User)
         const remoteImage = res.profile_picture || null;
+        const fullName = [res.first_name, res.last_name].filter(Boolean).join(' ').trim();
 
         setUserData({
           firstName:        res.first_name   || '',
           lastName:         res.last_name    || '',
           email:            res.email        || '',
-          phone:            res.phone_number || '',
+          phone:            res.business_phone || res.phone_number || '', // Try business_phone first
           profileImage:     remoteImage,
           profileImageFile: null,
         });
 
         setNavbarProfileImage(remoteImage);
+        setNavbarName(fullName);
+        
+        console.log('Loaded profile:', {
+          name: fullName,
+          email: res.email,
+          phone: res.business_phone,
+          profileImage: remoteImage
+        });
       } catch (err) {
         console.error('Failed to load profile:', err);
-        setProfileError('Could not load your profile. Please refresh the page.');
       } finally {
         setProfileLoading(false);
       }
     };
     loadProfile();
   }, []);
+
+  // ─── Close photo menu on outside click ─────────────────────────────────────
+  useEffect(() => {
+    const handleOutside = (e) => {
+      if (photoMenuRef.current && !photoMenuRef.current.contains(e.target)) {
+        setPhotoMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, []);
+
+  // ─── Cleanup camera stream when camera closes ───────────────────────────────
+  useEffect(() => {
+    if (!showCamera && cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+      setCameraStream(null);
+    }
+  }, [showCamera]);
+
+  // ─── Attach stream to video element once both are ready ────────────────────
+  useEffect(() => {
+    if (showCamera && cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+    }
+  }, [showCamera, cameraStream]);
 
   const handleLinkSocial = (social) => {
     if (!linkedSocials.find(s => s.name === social.name)) {
@@ -77,20 +120,54 @@ function AccountSettingsPage() {
     setLinkedSocials(linkedSocials.filter(s => s.name !== name));
   };
 
-  const handleEditPhotoClick = () => fileInputRef.current?.click();
+  // ─── Photo menu actions ─────────────────────────────────────────────────────
+  const openPhotoMenu = () => setPhotoMenuOpen(prev => !prev);
+
+  const handleChooseFile = () => {
+    setPhotoMenuOpen(false);
+    fileInputRef.current?.click();
+  };
+
+  const handleOpenCamera = async () => {
+    setPhotoMenuOpen(false);
+    setCameraError('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      setCameraStream(stream);
+      setShowCamera(true);
+    } catch (err) {
+      setCameraError('Camera access denied. Please allow camera permissions in your browser.');
+    }
+  };
+
+  const handleCapturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video  = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' });
+      setUserData(prev => ({
+        ...prev,
+        profileImage:     URL.createObjectURL(blob),
+        profileImageFile: file,
+      }));
+      setShowCamera(false);
+    }, 'image/jpeg', 0.92);
+  };
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Validate file type
     const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (!allowed.includes(file.type)) {
       alert('Please select a valid image file (JPEG, PNG, or WebP).');
       return;
     }
-
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       alert('Image must be smaller than 5MB.');
       return;
@@ -98,14 +175,15 @@ function AccountSettingsPage() {
 
     setUserData(prev => ({
       ...prev,
-      profileImage:     URL.createObjectURL(file), // local preview
-      profileImageFile: file,                       // File ready for upload
+      profileImage:     URL.createObjectURL(file),
+      profileImageFile: file,
     }));
   };
 
   // ─── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     const validationErrors = validateAccountData(userData);
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
@@ -114,56 +192,57 @@ function AccountSettingsPage() {
     setSaveSuccess(false);
 
     try {
-      // Only send editable fields: phone + optional new photo
       const changedFields = {};
 
-      // Phone: react-phone-input-2 returns digits only (no +), add it back
+      // Send phone number as business_phone (matches backend field)
       if (userData.phone) {
         let phone = String(userData.phone).replace(/\s/g, '');
         if (!phone.startsWith('+')) phone = `+${phone}`;
-        changedFields.business_phone = phone;
+        changedFields.business_phone = phone; // Backend expects business_phone
       }
 
-      // Only attach photo when user actually picked a new file
+      // Handle profile picture - this goes to User model's profile_picture
       if (userData.profileImageFile instanceof File) {
         changedFields.profile_picture = userData.profileImageFile;
       }
 
+      console.log('[AccountSettings] Updating with:', changedFields);
+      
       await updateVendorProfile(changedFields);
 
-      // Re-fetch to get the confirmed hosted URL back from the server
-      let freshRemoteImage = userData.profileImage; // safe fallback (blob or old URL)
-      try {
-        const refreshed = await getVendorProfile();
-        if (refreshed.profile_picture) {
-          freshRemoteImage = refreshed.profile_picture;
-        }
-      } catch (_) {
-        // Non-fatal — visual preview still works
-      }
-
-      // Swap blob preview → stable server URL; clear pending file
+      // Re-fetch to get the confirmed data from server
+      const refreshed = await getVendorProfile();
+      
+      // Update local state with fresh data
+      const fullName = [refreshed.first_name, refreshed.last_name].filter(Boolean).join(' ').trim();
+      
       setUserData(prev => ({
         ...prev,
-        profileImage:     freshRemoteImage,
+        firstName: refreshed.first_name || prev.firstName,
+        lastName: refreshed.last_name || prev.lastName,
+        email: refreshed.email || prev.email,
+        phone: refreshed.business_phone || refreshed.phone_number || prev.phone,
+        profileImage: refreshed.profile_picture || prev.profileImage,
         profileImageFile: null,
       }));
 
-      // Update navbar avatar immediately without a page reload
-      setNavbarProfileImage(freshRemoteImage);
+      // Update navbar
+      setNavbarProfileImage(refreshed.profile_picture || null);
+      setNavbarName(fullName);
 
       setSaveSuccess(true);
-
-      // Auto-hide success banner after 3 seconds
       setTimeout(() => setSaveSuccess(false), 3000);
 
     } catch (err) {
       console.error('Save error:', err.response?.data ?? err.message);
       const backendError =
-        err.response?.data?.detail  ||
+        err.response?.data?.detail ||
         err.response?.data?.message ||
+        err.response?.data?.error ||
         'Failed to save changes. Please try again.';
-      alert(backendError);
+      
+      // Show detailed error for debugging
+      alert(`Error: ${backendError}\n\nCheck console for details`);
     } finally {
       setIsLoading(false);
     }
@@ -175,7 +254,6 @@ function AccountSettingsPage() {
   };
 
   const handleCancel = () => {
-    // Reset file picker and blob preview back to the last saved server URL
     setUserData(prev => ({
       ...prev,
       profileImage:     navbarProfileImage,
@@ -183,11 +261,9 @@ function AccountSettingsPage() {
     }));
     setSaveSuccess(false);
     setErrors({});
-    // Reset file input so the same file can be re-selected if needed
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // ─── Avatar initials fallback ────────────────────────────────────────────────
   const getInitials = () => {
     const f = userData.firstName?.trim()[0] || '';
     const l = userData.lastName?.trim()[0]  || '';
@@ -199,24 +275,54 @@ function AccountSettingsPage() {
       <VendorSidebar activePage="settings" />
 
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Pass the stable server URL so the navbar avatar updates after save */}
-        <Navbar3 profileImage={navbarProfileImage} />
+        {/* Navbar receives live avatar + name — updates immediately after save */}
+        <Navbar3
+          profileImage={navbarProfileImage}
+          userName={navbarName}
+        />
 
         <main className="flex-1 p-5 max-w-[1400px] mx-auto w-full pb-16">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-xl font-bold text-[#1A1A1A] mb-6">Account Settings</h1>
 
-            {/* Global error banner (server down / load failure) */}
-            {profileError && (
-              <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
-                <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
-                </svg>
-                {profileError}
+            {/* Camera modal */}
+            {showCamera && (
+              <div className="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl overflow-hidden shadow-2xl w-full max-w-md">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                    <p className="text-sm font-bold text-slate-800">Take a Photo</p>
+                    <button
+                      onClick={() => setShowCamera(false)}
+                      className="text-slate-400 hover:text-slate-600 text-lg font-bold leading-none"
+                    >×</button>
+                  </div>
+                  <div className="relative bg-black">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full aspect-video object-cover"
+                    />
+                    <canvas ref={canvasRef} className="hidden" />
+                  </div>
+                  <div className="p-4 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={handleCapturePhoto}
+                      className="w-14 h-14 bg-[#125852] hover:bg-[#0e4440] rounded-full flex items-center justify-center shadow-lg transition-colors"
+                    >
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                          d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* Skeleton while loading */}
             {profileLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-6">
@@ -235,7 +341,8 @@ function AccountSettingsPage() {
 
                   {/* ── Profile Overview Card ───────────────────────────────── */}
                   <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 text-center">
-                    <div className="relative inline-block mb-3">
+                    <div className="relative inline-block mb-3" ref={photoMenuRef}>
+                      {/* Avatar */}
                       <div className="w-20 h-20 rounded-full mx-auto bg-slate-100 border-2 border-slate-200 overflow-hidden flex items-center justify-center">
                         {userData.profileImage ? (
                           <img
@@ -261,15 +368,49 @@ function AccountSettingsPage() {
                       {/* Edit pencil button */}
                       <button
                         type="button"
-                        onClick={handleEditPhotoClick}
+                        onClick={openPhotoMenu}
                         title="Change profile photo"
-                        className="absolute bottom-0 right-0 bg-white border border-slate-200 p-1.5 rounded-full text-slate-400 hover:text-[#125852] shadow-sm transition-colors"
+                        className="absolute bottom-0 right-0 bg-white border border-slate-200 p-1.5 rounded-full text-slate-400 hover:text-[#125852] shadow-sm transition-colors z-10"
                       >
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
                         </svg>
                       </button>
+
+                      {/* Photo source dropdown */}
+                      {photoMenuOpen && (
+                        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-48 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={handleChooseFile}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors border-b border-slate-100"
+                          >
+                            <svg className="w-4 h-4 text-[#125852]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            Choose from gallery
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleOpenCamera}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                          >
+                            <svg className="w-4 h-4 text-[#125852]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                            Take a photo
+                          </button>
+                        </div>
+                      )}
                     </div>
+
+                    {/* Camera permission error */}
+                    {cameraError && (
+                      <p className="text-[10px] text-red-500 font-medium mt-1 mb-2">{cameraError}</p>
+                    )}
 
                     <h2 className="text-lg font-bold text-slate-800 leading-tight">
                       {userData.firstName || userData.lastName
@@ -280,7 +421,6 @@ function AccountSettingsPage() {
                       {userData.email || 'email@example.com'}
                     </p>
 
-                    {/* Pending-photo indicator */}
                     {userData.profileImageFile && (
                       <p className="text-[10px] text-amber-600 font-semibold mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 inline-block">
                         📷 New photo selected — click <strong>Save Changes</strong> to upload
@@ -375,14 +515,14 @@ function AccountSettingsPage() {
                           type="button"
                           onClick={handleCancel}
                           disabled={isLoading}
-                          className="px-6 py-2 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                          className="px-6 py-2 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 disabled:opacity-50 transition-colors cursor-pointer"
                         >
                           Cancel
                         </button>
                         <button
                           type="submit"
                           disabled={isLoading}
-                          className="px-6 py-2 text-[11px] font-bold bg-[#F5B841] text-white rounded-lg shadow-sm hover:bg-[#E0A83B] disabled:opacity-50 transition-all"
+                          className="px-6 py-2 text-[11px] font-bold bg-[#F5B841] text-white rounded-lg shadow-sm hover:bg-[#E0A83B] disabled:opacity-50 transition-all cursor-pointer"
                         >
                           {isLoading ? (
                             <span className="flex items-center gap-2">
@@ -453,8 +593,9 @@ function AccountSettingsPage() {
                             <span className="text-[11px] text-slate-700 font-semibold">{social.name} Connected</span>
                           </div>
                           <button
+                            type="button"
                             onClick={() => handleUnlink(social.name)}
-                            className="text-red-500 text-[9px] font-bold uppercase hover:underline"
+                            className="text-red-500 text-[9px] font-bold uppercase hover:underline cursor-pointer"
                           >
                             Unlink
                           </button>
@@ -469,7 +610,7 @@ function AccountSettingsPage() {
                       <button
                         type="button"
                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                        className="w-full flex items-center justify-center gap-2 bg-[#FABB00] text-white py-2.5 rounded-lg text-[11px] font-bold shadow-sm hover:bg-[#e0aa00] transition-colors"
+                        className="w-full flex items-center justify-center gap-2 bg-[#FABB00] text-white py-2.5 rounded-lg text-[11px] font-bold shadow-sm hover:bg-[#e0aa00] transition-colors cursor-pointer"
                       >
                         {isDropdownOpen ? '× Close Menu' : '+ Link New Account'}
                       </button>
@@ -480,7 +621,7 @@ function AccountSettingsPage() {
                               type="button"
                               key={social.name}
                               onClick={() => handleLinkSocial(social)}
-                              className="w-full text-left px-4 py-2.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3 border-b last:border-none transition-colors"
+                              className="w-full text-left px-4 py-2.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3 border-b last:border-none transition-colors cursor-pointer"
                             >
                               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: social.color }}/>
                               {social.name}

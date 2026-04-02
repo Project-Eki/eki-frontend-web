@@ -1,20 +1,20 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://134.122.22.45',
+  baseURL: 'http://134.122.22.45/api/v1',  // FIXED: Added /api/v1 to baseURL
   headers: { 'Content-Type': 'application/json' },
 });
 
-// ─── PUBLIC ROUTES (no token attached) ───────────────────────────────────────
+// ─── PUBLIC ROUTES (no token attached) ──────────────────────────────────────
 const PUBLIC_ROUTES = [
-  '/api/v1/accounts/login/',
-  '/api/v1/accounts/reset-password/',
-  '/api/v1/accounts/verify-email/',
-  '/api/v1/accounts/resend-code/',
-  '/api/v1/accounts/confirm-password-reset/',
-  '/api/v1/accounts/register-buyer/',
-  '/api/v1/accounts/register-vendor/',
-  '/api/v1/accounts/token-refresh/',
+  '/accounts/login/',
+  '/accounts/reset-password/',
+  '/accounts/verify-email/',
+  '/accounts/resend-code/',
+  '/accounts/confirm-password-reset/',
+  '/accounts/register-buyer/',
+  '/accounts/register-vendor/',
+  '/accounts/token-refresh/',
 ];
 
 // ─── TOKEN REFRESH STATE ──────────────────────────────────────────────────────
@@ -98,7 +98,7 @@ api.interceptors.response.use(
 
       try {
         const res = await axios.post(
-          'http://134.122.22.45/api/v1/accounts/token-refresh/',
+          'http://134.122.22.45/api/v1/accounts/token-refresh/',  // FIXED: Added /api/v1
           { refresh: refreshToken }
         );
         const newAccess = res.data?.access || res.data?.data?.access;
@@ -131,12 +131,20 @@ const saveTokens = ({ access, refresh }) => {
 
 // ─── AUTHENTICATION ───────────────────────────────────────────────────────────
 export const SigninUser = async (credentials) => {
-  const response = await api.post('/api/v1/accounts/login/', {
+  const response = await api.post('/accounts/login/', {  // FIXED: Removed /api/v1
     email:    credentials.email?.trim().toLowerCase(),
     password: credentials.password,
   });
   const data = response.data?.data ?? response.data;
   saveTokens({ access: data?.access, refresh: data?.refresh });
+
+  // ── Cache profile fields at login so pages can fall back to them ──────────
+  if (data?.first_name)  localStorage.setItem('vendor_first_name', data.first_name);
+  if (data?.last_name)   localStorage.setItem('vendor_last_name',  data.last_name);
+  if (data?.email)       localStorage.setItem('vendor_email',      data.email);
+  if (data?.role)        localStorage.setItem('vendor_role',       data.role);
+  if (data?.phone_number) localStorage.setItem('vendor_phone_number', data.phone_number);
+
   return response.data;
 };
 
@@ -146,80 +154,211 @@ export const SignoutUser = () => {
 };
 
 export const verifyOtp = (data) =>
-  api.post('/api/v1/accounts/verify-email/', data).then((r) => r.data);
+  api.post('/accounts/verify-email/', data).then((r) => r.data);  // FIXED
 
 export const resendOtp = (email) =>
-  api.post('/api/v1/accounts/resend-code/', { email }).then((r) => r.data);
+  api.post('/accounts/resend-code/', { email }).then((r) => r.data);  // FIXED
 
 // ─── BUYER PROFILE ────────────────────────────────────────────────────────────
 export const getBuyerProfile = () =>
-  api.get('/api/v1/accounts/buyer/profile/').then((r) => r.data?.data ?? r.data);
+  api.get('/accounts/buyer/profile/').then((r) => r.data?.data ?? r.data);  // FIXED
 
 export const updateBuyerProfile = (data) =>
-  api.patch('/api/v1/accounts/buyer/profile/', data).then((r) => r.data?.data ?? r.data);
+  api.patch('/accounts/buyer/profile/', data).then((r) => r.data?.data ?? r.data);  // FIXED
 
 // ─── VENDOR PROFILE ───────────────────────────────────────────────────────────
-export const getVendorProfile = () =>
-  api.get('/api/v1/accounts/vendor/profile/').then((r) => r.data?.data ?? r.data);
+let _profileCache    = null;
+let _profileFetching = null;
+
+export const clearProfileCache = () => { 
+  _profileCache = null; 
+};
+
+export const getVendorProfile = async () => {
+  if (_profileCache) {
+    console.log('[getVendorProfile] Using cached profile');
+    return _profileCache;
+  }
+  if (_profileFetching) {
+    console.log('[getVendorProfile] Waiting for existing request');
+    return _profileFetching;
+  }
+
+  _profileFetching = (async () => {
+    try {
+      console.log('[getVendorProfile] Fetching from API...');
+      const r = await api.get('/accounts/vendor/profile/');  // FIXED: Removed /api/v1
+      const data = r.data?.data ?? r.data;
+      
+      console.log('[getVendorProfile] API Response:', data);
+
+      // Cache fresh values in localStorage
+      if (data?.first_name) localStorage.setItem('vendor_first_name', data.first_name);
+      if (data?.last_name) localStorage.setItem('vendor_last_name', data.last_name);
+      if (data?.email) localStorage.setItem('vendor_email', data.email);
+      if (data?.profile_picture) localStorage.setItem('vendor_profile_picture', data.profile_picture);
+      if (data?.phone_number) localStorage.setItem('vendor_phone_number', data.phone_number);
+
+      _profileCache = data;
+      return data;
+    } catch (err) {
+      const status = err.response?.status;
+      const responseData = err.response?.data;
+      
+      console.error('[getVendorProfile] Error details:', {
+        status,
+        data: responseData,
+        message: err.message
+      });
+
+      // 500 / 404 = endpoint not ready — serve localStorage cache silently
+      if (status === 500 || status === 404) {
+        console.warn('[getVendorProfile] Backend returned', status, '— using localStorage fallback');
+        
+        const fallback = {
+          first_name: localStorage.getItem('vendor_first_name') || '',
+          last_name: localStorage.getItem('vendor_last_name') || '',
+          email: localStorage.getItem('vendor_email') || '',
+          profile_picture: localStorage.getItem('vendor_profile_picture') || null,
+          phone_number: localStorage.getItem('vendor_phone_number') || '',
+        };
+        
+        console.log('[getVendorProfile] Fallback data:', fallback);
+        _profileCache = fallback;
+        return fallback;
+      }
+
+      throw err;
+    } finally {
+      _profileFetching = null;
+    }
+  })();
+
+  return _profileFetching;
+};
 
 export const updateVendorProfile = async (changedFields) => {
-  
   const formData = new FormData();
 
   Object.keys(changedFields).forEach((key) => {
     const value = changedFields[key];
     if (value === null || value === undefined || value === '') return;
 
+    // Map business_phone to phone_number for backend
     if (key === 'business_phone') {
-      // Ensure phone has no spaces and starts with +
       let phone = String(value).replace(/\s/g, '');
       if (!phone.startsWith('+')) phone = `+${phone}`;
-      formData.append(key, phone);
-    } else {
-     
+      formData.append('phone_number', phone);
+    } 
+    // Handle profile picture correctly
+    else if (key === 'profile_picture' && value instanceof File) {
+      formData.append('profile_picture', value);
+    }
+    // Handle other fields
+    else {
       formData.append(key, value);
     }
   });
 
-  
-  const res = await api.patch('/api/v1/accounts/vendor/profile/', formData, {
-    headers: { 'Content-Type': undefined },
+  console.log('[updateVendorProfile] Sending:', {
+    fields: Array.from(formData.entries()).map(([k, v]) => 
+      `${k}: ${v instanceof File ? `File(${v.name})` : v}`
+    )
   });
-  return res.data?.data ?? res.data;
+
+  try {
+    const res = await api.patch('/accounts/vendor/profile/', formData, {  // FIXED: Removed /api/v1
+      headers: { 'Content-Type': undefined },
+    });
+
+    clearProfileCache();
+    
+    const responseData = res.data?.data ?? res.data;
+    if (responseData) {
+      if (responseData.first_name) localStorage.setItem('vendor_first_name', responseData.first_name);
+      if (responseData.last_name) localStorage.setItem('vendor_last_name', responseData.last_name);
+      if (responseData.email) localStorage.setItem('vendor_email', responseData.email);
+      if (responseData.profile_picture) localStorage.setItem('vendor_profile_picture', responseData.profile_picture);
+      if (responseData.phone_number) localStorage.setItem('vendor_phone_number', responseData.phone_number);
+    }
+
+    return res.data?.data ?? res.data;
+  } catch (error) {
+    console.error('[updateVendorProfile] Error:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
+    throw error;
+  }
 };
 
+// ─── VENDOR NOTIFICATIONS ─────────────────────────────────────────────────────
+const NOTIFICATIONS_ENDPOINT_READY = false;
 
+export const getVendorNotifications = async ({ limit = 15 } = {}) => {
+  if (!NOTIFICATIONS_ENDPOINT_READY) return { notifications: [] };
+
+  try {
+    const r = await api.get(`/accounts/vendor/notifications/?limit=${limit}`);  // FIXED
+    const payload = r.data?.data ?? r.data;
+    if (Array.isArray(payload)) return { notifications: payload };
+    if (Array.isArray(payload?.notifications)) return payload;
+    if (Array.isArray(payload?.results)) return { notifications: payload.results };
+    return { notifications: [] };
+  } catch (err) {
+    const status = err.response?.status;
+    if (status === 404 || status === 500) return { notifications: [] };
+    throw err;
+  }
+};
+
+export const markVendorNotificationRead = async (notifId) => {
+  if (!NOTIFICATIONS_ENDPOINT_READY) return null;
+  try {
+    const r = await api.patch(`/accounts/vendor/notifications/${notifId}/`, { is_read: true });  // FIXED
+    return r.data?.data ?? r.data;
+  } catch (err) {
+    if (err.response?.status === 404 || err.response?.status === 500) return null;
+    throw err;
+  }
+};
+
+export const markAllVendorNotificationsRead = async () => {
+  if (!NOTIFICATIONS_ENDPOINT_READY) return null;
+  try {
+    const r = await api.post('/accounts/vendor/notifications/mark-read/', { mark_all: true });  // FIXED
+    return r.data?.data ?? r.data;
+  } catch (err) {
+    if (err.response?.status === 404 || err.response?.status === 500) return null;
+    throw err;
+  }
+};
+
+// ─── VENDOR DASHBOARD ─────────────────────────────────────────────────────────
 export const getVendorDashboard = async () => {
   let raw     = {};
   let summary = {};
 
   try {
-    const dashRes = await api.get('/api/v1/accounts/vendor/command-center/');
+    const dashRes = await api.get('/accounts/vendor/command-center/');  // FIXED
     raw     = dashRes.data?.data ?? dashRes.data ?? {};
     summary = raw.summary ?? {};
   } catch (dashErr) {
-   
     console.error(
       '[getVendorDashboard] Dashboard endpoint failed:',
       dashErr.response?.status,
       dashErr.response?.data ?? dashErr.message
     );
-    console.warn(
-      '[getVendorDashboard] Tip: confirm the correct URL with your backend team.',
-      'Currently calling: /api/v1/accounts/vendor/command-center/'
-    );
-
   }
 
- 
   let country          = 'Uganda';
   let storeName        = '';
   let vendorType       = 'Products';
   let businessCategory = 'retail';
 
   try {
-    const profileRes = await api.get('/api/v1/accounts/vendor/profile/');
-    const p          = profileRes.data?.data ?? profileRes.data ?? {};
+    const p          = await getVendorProfile();
     country          = p.country           || 'Uganda';
     storeName        = p.business_name     || '';
     vendorType       = p.business_type     || 'Products';
@@ -270,13 +409,12 @@ export const getVendorDashboard = async () => {
 export const getCategories = (businessCategory = null) => {
   const params = businessCategory ? `?business_category=${businessCategory}` : '';
   return api
-    .get(`/api/v1/listings/categories/${params}`)
+    .get(`/listings/categories/${params}`)  // FIXED: Removed /api/v1
     .then((r) => {
       const payload = r.data?.data ?? r.data;
       return Array.isArray(payload) ? payload : [];
     });
 };
-
 
 const normalizeListing = (item) => ({
   ...item,
@@ -284,13 +422,12 @@ const normalizeListing = (item) => ({
 });
 
 export const getProducts = async () => {
-  const res     = await api.get('/api/v1/listings/');
+  const res = await api.get('/listings/');  // FIXED
   const payload = res.data?.data ?? res.data;
-  if (Array.isArray(payload))          return payload.map(normalizeListing);
+  if (Array.isArray(payload)) return payload.map(normalizeListing);
   if (Array.isArray(payload?.results)) return payload.results.map(normalizeListing);
   return [];
 };
-
 
 export const createProductListing = async (productData) => {
   const qualityMap = {
@@ -301,16 +438,14 @@ export const createProductListing = async (productData) => {
 
   let variants = [];
 
-  // Shape A
   if (Array.isArray(productData.variants) && productData.variants.length > 0) {
     productData.variants.forEach((v) => {
       if (!v.value?.trim()) return;
-      if (v.type === 'Size')  variants.push({ color: '',           size: v.value.trim(), stock: 0 });
-      if (v.type === 'Color') variants.push({ color: v.value.trim(), size: '',           stock: 0 });
+      if (v.type === 'Size')  variants.push({ color: '',            size: v.value.trim(), stock: 0 });
+      if (v.type === 'Color') variants.push({ color: v.value.trim(), size: '',            stock: 0 });
     });
   }
 
-  // Shape B
   const sizes  = Array.isArray(productData.sizes)  ? productData.sizes.filter(Boolean)  : [];
   const colors = Array.isArray(productData.colors) ? productData.colors.filter(Boolean) : [];
 
@@ -345,11 +480,10 @@ export const createProductListing = async (productData) => {
 
   if (productData.category_id) payload.category_id = productData.category_id;
 
-  console.log('[listings] POST /api/v1/listings/ →', JSON.stringify(payload, null, 2));
-  const res = await api.post('/api/v1/listings/', payload);
+  console.log('[listings] POST /listings/ →', JSON.stringify(payload, null, 2));
+  const res = await api.post('/listings/', payload);  // FIXED
   return normalizeListing(res.data?.data ?? res.data);
 };
-
 
 export const updateProductListing = async (listingId, productData) => {
   const qualityMap = {
@@ -374,23 +508,23 @@ export const updateProductListing = async (listingId, productData) => {
 
   if (productData.category_id) payload.category_id = productData.category_id;
 
-  console.log('[listings] PATCH /api/v1/listings/', listingId, '→', JSON.stringify(payload, null, 2));
-  const res = await api.patch(`/api/v1/listings/${listingId}/`, payload);
+  console.log('[listings] PATCH /listings/', listingId, '→', JSON.stringify(payload, null, 2));
+  const res = await api.patch(`/listings/${listingId}/`, payload);  // FIXED
   return normalizeListing(res.data?.data ?? res.data);
 };
 
 export const deleteProductListing = (listingId) =>
-  api.delete(`/api/v1/listings/${listingId}/`).then((r) => r.data);
+  api.delete(`/listings/${listingId}/`).then((r) => r.data);  // FIXED
 
 export const updateListingStatus = (listingId, newStatus) =>
-  api.patch(`/api/v1/listings/${listingId}/status/`, { status: newStatus })
+  api.patch(`/listings/${listingId}/status/`, { status: newStatus })  // FIXED
      .then((r) => r.data?.data ?? r.data);
 
 export const uploadListingImage = (listingId, imageFile) => {
   const form = new FormData();
   form.append('image', imageFile);
   return api
-    .post(`/api/v1/listings/${listingId}/images/`, form, {
+    .post(`/listings/${listingId}/images/`, form, {  // FIXED
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     .then((r) => r.data?.data ?? r.data);
@@ -405,23 +539,23 @@ export const uploadListingImages = async (listingId, imageFiles) => {
 };
 
 export const deleteListingImage = (listingId, imageId) =>
-  api.delete(`/api/v1/listings/${listingId}/images/${imageId}/`).then((r) => r.data);
+  api.delete(`/listings/${listingId}/images/${imageId}/`).then((r) => r.data);  // FIXED
 
 export const updateProductVariant = (listingId, variantId, data) =>
-  api.patch(`/api/v1/listings/${listingId}/variants/${variantId}/`, data)
+  api.patch(`/listings/${listingId}/variants/${variantId}/`, data)  // FIXED
      .then((r) => r.data?.data ?? r.data);
 
 export const deleteProductVariant = (listingId, variantId) =>
-  api.delete(`/api/v1/listings/${listingId}/variants/${variantId}/`).then((r) => r.data);
+  api.delete(`/listings/${listingId}/variants/${variantId}/`).then((r) => r.data);  // FIXED
 
 // ─── PASSWORDS ────────────────────────────────────────────────────────────────
 export const passwordResetRequest = (email) =>
-  api.post('/api/v1/accounts/reset-password/', { email });
+  api.post('/accounts/reset-password/', { email });  // FIXED
 
 export const passwordResetConfirm = (data) =>
-  api.post('/api/v1/accounts/confirm-password-reset/', data);
+  api.post('/accounts/confirm-password-reset/', data);  // FIXED
 
 export const changePassword = (data) =>
-  api.post('/api/v1/accounts/change-password/', data);
+  api.post('/accounts/change-password/', data);  // FIXED
 
 export default api;

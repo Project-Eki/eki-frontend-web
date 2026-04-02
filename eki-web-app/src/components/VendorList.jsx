@@ -67,8 +67,9 @@ const VendorList = ({ vendors, onSelect, selectedId }) => {
                   </td>
                   {/* Business category: retail, hotels, etc */}
                   <td className="px-5 py-3.5 text-xs text-gray-600 whitespace-nowrap capitalize">
-                    {vendor.businessCategory || "—"}
+                    {vendor.businessCategory || vendor.business_category || "—"}
                   </td>
+
                   {/* Status badge */}
                   <td className="px-5 py-3.5">
                     <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase whitespace-nowrap ${
