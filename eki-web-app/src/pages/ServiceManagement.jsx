@@ -85,19 +85,96 @@ const STATUS_STYLE = {
 
 
 // SERVICE CARD
+// const ServiceCard = ({ s, onEdit, onDelete, currencySymbol }) => (
+//   <div className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all group">
+//     <div className="relative h-44 overflow-hidden bg-slate-50">
+
+//       {/* Image — only rendered if s.img is truthy */}
+//       {s.img && (
+//         <img
+//           src={s.img}
+//           alt={s.title}
+//           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+//           onError={e => {
+//             // If image fails to load (network error, wrong URL), hide it
+//             // and show the fallback div
+//             e.currentTarget.style.display = 'none';
+//             const fallback = e.currentTarget.parentElement.querySelector('.img-fallback');
+//             if (fallback) fallback.style.display = 'flex';
+//           }}
+//         />
+//       )}
+
+//       {/* Fallback — shown when no image or image load fails */}
+//       <div
+//         className="img-fallback w-full h-full flex flex-col items-center justify-center gap-1"
+//         style={{ display: s.img ? 'none' : 'flex' }}
+//       >
+//         <Package size={28} className="text-slate-300"/>
+//         <span className="text-[10px] text-slate-300">No image</span>
+//       </div>
+
+//       {/* Remote / In-person badge */}
+//       <span className="absolute top-3 left-3 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
+//         {s.mode === "remote" || s.mode === "online"
+//           ? <><Globe size={9}/> Remote</>
+//           : <><MapPin size={9}/> In-person</>}
+//       </span>
+
+//       {/* Edit + Delete — hover reveal */}
+//       <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+//         <button onClick={() => onEdit(s)}
+//           className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-[#125852] transition-colors"
+//           title="Edit">
+//           <Pencil size={12}/>
+//         </button>
+//         <button onClick={() => onDelete(s)}
+//           className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-red-500 transition-colors"
+//           title="Delete">
+//           <Trash2 size={12}/>
+//         </button>
+//       </div>
+//     </div>
+
+//     <div className="p-4">
+//       <div className="flex items-center justify-between mb-1.5">
+//         <span className="text-[10px] font-bold text-slate-400 tracking-widest truncate max-w-[120px]">{s.category}</span>
+//         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0 ${STATUS_STYLE[s.status] || STATUS_STYLE.draft}`}>
+//           {s.status}
+//         </span>
+//       </div>
+//       <h3 className="font-black text-[15px] text-slate-900 leading-tight mb-1 line-clamp-1">{s.title || '—'}</h3>
+//       <p className="text-[12px] text-slate-500 line-clamp-2 mb-3">{s.desc || 'No description provided.'}</p>
+//       <div className="flex items-center justify-between text-[12px] text-slate-400 mb-3">
+//         <span className="flex items-center gap-1"><Clock size={12}/> {s.duration || 'N/A'}</span>
+//         <span className="flex items-center gap-1 font-semibold"><Calendar size={12}/> {s.avail || 'Available'}</span>
+//       </div>
+//       <div className="flex items-center justify-between pt-3 border-t border-slate-50">
+//         <div>
+//           <span className="text-[18px] font-black text-slate-900">
+//             {currencySymbol} {parseFloat(s.price || 0).toLocaleString()}
+//           </span>
+//           <span className="text-[11px] text-slate-400">/{s.unit || 'session'}</span>
+//         </div>
+//         <button onClick={() => onEdit(s)}
+//           className="text-[12px] font-bold text-teal-700 hover:text-amber-500 transition-colors">
+//           Edit 
+//         </button>
+//       </div>
+//     </div>
+//   </div>
+// );
 const ServiceCard = ({ s, onEdit, onDelete, currencySymbol }) => (
   <div className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all group">
-    <div className="relative h-44 overflow-hidden bg-slate-50">
+  {/* image */}
+    <div className="relative h-100 overflow-hidden bg-slate-50">
 
-      {/* Image — only rendered if s.img is truthy */}
       {s.img && (
         <img
           src={s.img}
           alt={s.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           onError={e => {
-            // If image fails to load (network error, wrong URL), hide it
-            // and show the fallback div
             e.currentTarget.style.display = 'none';
             const fallback = e.currentTarget.parentElement.querySelector('.img-fallback');
             if (fallback) fallback.style.display = 'flex';
@@ -105,59 +182,60 @@ const ServiceCard = ({ s, onEdit, onDelete, currencySymbol }) => (
         />
       )}
 
-      {/* Fallback — shown when no image or image load fails */}
+      {/* Fallback */}
       <div
         className="img-fallback w-full h-full flex flex-col items-center justify-center gap-1"
         style={{ display: s.img ? 'none' : 'flex' }}
       >
-        <Package size={28} className="text-slate-300"/>
-        <span className="text-[10px] text-slate-300">No image</span>
+        <Package size={24} className="text-slate-300"/>
+        <span className="text-[9px] text-slate-300">No image</span>
       </div>
 
-      {/* Remote / In-person badge */}
-      <span className="absolute top-3 left-3 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
+      {/* Badges - made slightly smaller */}
+      <span className="absolute top-2 left-2 bg-black/50 backdrop-blur-sm text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1">
         {s.mode === "remote" || s.mode === "online"
-          ? <><Globe size={9}/> Remote</>
-          : <><MapPin size={9}/> In-person</>}
+          ? <><Globe size={8}/> Remote</>
+          : <><MapPin size={8}/> In-person</>}
       </span>
 
-      {/* Edit + Delete — hover reveal */}
-      <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      {/* Edit + Delete buttons - slightly smaller */}
+      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button onClick={() => onEdit(s)}
-          className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-[#125852] transition-colors"
+          className="w-6 h-6 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-[#125852] transition-colors"
           title="Edit">
-          <Pencil size={12}/>
+          <Pencil size={11}/>
         </button>
         <button onClick={() => onDelete(s)}
-          className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-red-500 transition-colors"
+          className="w-6 h-6 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-red-500 transition-colors"
           title="Delete">
-          <Trash2 size={12}/>
+          <Trash2 size={11}/>
         </button>
       </div>
     </div>
 
+    {/* Content section - slightly more compact */}
     <div className="p-4">
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[10px] font-bold text-slate-400 tracking-widest truncate max-w-[120px]">{s.category}</span>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0 ${STATUS_STYLE[s.status] || STATUS_STYLE.draft}`}>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[9px] font-bold text-slate-400 tracking-widest truncate max-w-[100px]">{s.category}</span>
+        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase shrink-0 ${STATUS_STYLE[s.status] || STATUS_STYLE.draft}`}>
           {s.status}
         </span>
       </div>
-      <h3 className="font-black text-[15px] text-slate-900 leading-tight mb-1 line-clamp-1">{s.title || '—'}</h3>
-      <p className="text-[12px] text-slate-500 line-clamp-2 mb-3">{s.desc || 'No description provided.'}</p>
-      <div className="flex items-center justify-between text-[12px] text-slate-400 mb-3">
-        <span className="flex items-center gap-1"><Clock size={12}/> {s.duration || 'N/A'}</span>
-        <span className="flex items-center gap-1 font-semibold"><Calendar size={12}/> {s.avail || 'Available'}</span>
+      <h3 className="font-black text-[14px] text-slate-900 leading-tight mb-0.5 line-clamp-1">{s.title || '—'}</h3>
+      <p className="text-[11px] text-slate-500 line-clamp-2 mb-2">{s.desc || 'No description provided.'}</p>
+      <div className="flex items-center justify-between text-[11px] text-slate-400 mb-2">
+        <span className="flex items-center gap-0.5"><Clock size={11}/> {s.duration || 'N/A'}</span>
+        <span className="flex items-center gap-0.5 font-semibold"><Calendar size={11}/> {s.avail || 'Available'}</span>
       </div>
-      <div className="flex items-center justify-between pt-3 border-t border-slate-50">
+      <div className="flex items-center justify-between pt-2 border-t border-slate-50">
         <div>
-          <span className="text-[18px] font-black text-slate-900">
+          <span className="text-[16px] font-black text-slate-900">
             {currencySymbol} {parseFloat(s.price || 0).toLocaleString()}
           </span>
-          <span className="text-[11px] text-slate-400">/{s.unit || 'session'}</span>
+          <span className="text-[10px] text-slate-400">/{s.unit || 'session'}</span>
         </div>
         <button onClick={() => onEdit(s)}
-          className="text-[12px] font-bold text-teal-700 hover:text-amber-500 transition-colors">
+          className="text-[11px] font-bold text-teal-700 hover:text-amber-500 transition-colors">
           Edit 
         </button>
       </div>
