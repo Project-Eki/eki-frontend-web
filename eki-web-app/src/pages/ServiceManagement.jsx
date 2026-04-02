@@ -37,7 +37,7 @@ import { getServices, deleteListing } from "../services/api";
 import api from "../services/api";
 
 import VendorSidebar from "../components/VendorSidebar";
-import Navbar3 from "../components/adminDashboard/Navbar3";
+import Navbar4 from "../components/adminDashboard/Navbar4";
 import ServiceForm from "../components/Vendormanagement/ServiceForm";
 
 import {
@@ -585,14 +585,14 @@ const ServiceManagement = () => {
 
       {/* ── MAIN COLUMN ──
           flex-1: takes all remaining width after the sidebar
-          flex flex-col: stacks Navbar3 → main content → footer vertically
+          flex flex-col: stacks Navbar4 → main content → footer vertically
           min-w-0: prevents flex overflow issues with long text */}
       <div className="flex-1 flex flex-col min-w-0">
 
-        {/* Navbar3 renders at the top of the main column.
+        {/* Navbar4 renders at the top of the main column.
             It uses sticky top-0 internally so it stays visible when scrolling.
-            onMenuClick: called when the hamburger button inside Navbar3 is pressed */}
-        <Navbar3 onMenuClick={() => setSidebarOpen(true)}/>
+            onMenuClick: called when the hamburger button inside Navbar4 is pressed */}
+        <Navbar4 onMenuClick={() => setSidebarOpen(true)}/>
 
         {/* ── SCROLLABLE CONTENT ── */}
         <main className="flex-1 p-4 sm:p-5 max-w-[1400px] mx-auto w-full pb-16">
@@ -768,9 +768,9 @@ const ServiceManagement = () => {
                 Showing <b>{sorted.length}</b> of <b>{services.length}</b> services
               </p>
               <div className="flex items-center gap-1">
-                <button className="h-9 px-4 border border-slate-200 rounded-lg text-sm text-slate-500 hover:border-[#F5B841] font-medium">Previous</button>
-                <button className="w-9 h-9 rounded-lg text-sm font-bold bg-[#125852] text-white">1</button>
-                <button className="h-9 px-4 bg-[#125852] text-white rounded-lg text-sm font-bold hover:bg-[#0e4440]">Next</button>
+                <button className="h-9 px-4 border border-slate-200 rounded-lg text-sm text-slate-500 hover:border-[#EFB034FF] font-medium">Previous</button>
+                <button className="w-9 h-9 rounded-lg text-sm font-bold bg-[#EFB034FF] text-white">1</button>
+                <button className="h-9 px-4 bg-[#EFB034FF] text-white rounded-lg text-sm font-bold hover:bg-[#F5B841]">Next</button>
               </div>
             </div>
           )}
