@@ -20,7 +20,8 @@ import {
   AreaChart, Area,
 } from 'recharts';
 
-// Currency symbol is now supplied by the backend via vendorData.currencySymbol
+// ─── Currency helpers (mirrors utils.py exactly) ──────────────────────────────
+import { getCurrencySymbol } from '../utils/currency';
 
 // ─── These match backend ProductSize choices exactly ─────────────────────────
 const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'one_size'];
@@ -61,7 +62,6 @@ const VendorDashboard = () => {
   // ── Data states ───────────────────────────────────────────────────────────
   const [vendorData, setVendorData] = useState({
     storeName: '', vendorType: 'Products', country: 'Uganda', businessCategory: 'retail',
-    currencySymbol: 'UGX', // fallback only; overwritten by backend
   });
   const [metrics, setMetrics] = useState({ grossSales: 0, openOrders: 0, pendingPayouts: 0, activeListings: 0 });
   const [salesHistory, setSalesHistory] = useState([]);
@@ -92,7 +92,6 @@ const VendorDashboard = () => {
           vendorType:       response.vendorType       || 'Products',
           country:          response.country          || 'Uganda',
           businessCategory: bc,
-          currencySymbol:   response.currencySymbol   || 'UGX',
         });
         setMetrics(response.metrics || { grossSales: 0, openOrders: 0, pendingPayouts: 0, activeListings: 0 });
         setSalesHistory(response.salesHistory   || []);
@@ -112,7 +111,8 @@ const VendorDashboard = () => {
     }
   };
 
-  const currencySymbol = vendorData.currencySymbol;
+  // Two-step lookup: country name → ISO code → symbol (mirrors backend)
+  const currencySymbol = getCurrencySymbol(vendorData.country);
 
   const SERVICE_CATEGORIES = new Set(['transport', 'tailoring', 'airlines', 'hotels']);
   const isServiceVendor = SERVICE_CATEGORIES.has(vendorData.businessCategory);
@@ -203,7 +203,7 @@ const VendorDashboard = () => {
   };
 
   return (
-    <div className="flex min-h-screen font-sans text-slate-800 p-3 gap-3" style={{ backgroundColor: '#faf9d0' }}>
+    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
       {/* VendorSidebar Component */}
       <VendorSidebar activePage="dashboard" />
 
@@ -367,9 +367,9 @@ const VendorDashboard = () => {
                 </div>
               </div>
 
-              {/* INVENTORY ALERTS — icon and badge now gold */}
+              {/* INVENTORY ALERTS */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-left">
-                <div className="flex items-center gap-1.5 mb-3 text-[#F5B841]">
+                <div className="flex items-center gap-1.5 mb-3 text-[#E53935]">
                   <AlertCircle size={12} />
                   <h3 className="font-bold text-[10px] uppercase tracking-tighter">Inventory Alerts</h3>
                 </div>
@@ -377,7 +377,7 @@ const VendorDashboard = () => {
                   {inventoryAlerts.length > 0 ? inventoryAlerts.map((alert, i) => (
                     <div key={i} className="flex justify-between items-center text-[10px] border-b border-slate-100 pb-2 last:border-0">
                       <span className="font-bold text-slate-700">{alert.title}</span>
-                      <span className="text-[#F5B841] font-bold bg-yellow-50 px-1.5 py-0.5 rounded text-[9px]">
+                      <span className="text-red-600 font-bold bg-red-50 px-1.5 py-0.5 rounded text-[9px]">
                         {alert.quantity ?? 0} left
                       </span>
                     </div>
@@ -450,6 +450,7 @@ const VendorDashboard = () => {
                 </div>
               )}
 
+              {/* Title */}
               <div className="space-y-1">
                 <label className="text-[10px] font-bold uppercase text-slate-500">Title *</label>
                 <input
@@ -460,6 +461,7 @@ const VendorDashboard = () => {
                 {formErrors.title && <p className="text-red-500 text-[9px] font-bold">{formErrors.title}</p>}
               </div>
 
+              {/* Description */}
               <div className="space-y-1">
                 <label className="text-[10px] font-bold uppercase text-slate-500">Description</label>
                 <textarea
@@ -469,6 +471,7 @@ const VendorDashboard = () => {
                 />
               </div>
 
+              {/* Location */}
               <div className="space-y-1">
                 <label className="text-[10px] font-bold uppercase text-slate-500">Location</label>
                 <input
@@ -478,6 +481,7 @@ const VendorDashboard = () => {
                 />
               </div>
 
+              {/* Category + Price */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase text-slate-500">Category</label>
@@ -502,6 +506,7 @@ const VendorDashboard = () => {
                 </div>
               </div>
 
+              {/* SKU + Quality (products only) */}
               {!isServiceVendor && (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
@@ -526,21 +531,29 @@ const VendorDashboard = () => {
                 </div>
               )}
 
+              {/* Variants — Color (free text) + Size (products only) */}
               {!isServiceVendor && (
                 <div className="space-y-2">
                   <h4 className="text-[10px] font-bold uppercase text-slate-700">
-                    Variant <span className="text-slate-400 font-normal">(at least color or size required)</span>
+                    Variant <span className="text-slate-400 font-normal">(optional)</span>
                   </h4>
                   <div className="grid grid-cols-2 gap-3">
+
+                    {/* Color — free-text input */}
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold uppercase text-slate-500">Color</label>
                       <input
-                        type="text" name="colorVariant" value={formData.colorVariant}
+                        type="text"
+                        name="colorVariant"
+                        value={formData.colorVariant}
                         onChange={handleInputChange}
-                        placeholder="e.g. Red, Navy Blue"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
+                        placeholder="e.g. Red, Navy Blue, Olive"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] placeholder:text-slate-300"
                       />
+                      <p className="text-[8px] text-slate-400">Type any color or comma-separate multiple</p>
                     </div>
+
+                    {/* Size */}
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold uppercase text-slate-500">Size</label>
                       <select
@@ -557,6 +570,7 @@ const VendorDashboard = () => {
                 </div>
               )}
 
+              {/* Image upload */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold uppercase text-slate-500">
                   {isServiceVendor ? 'Service Image' : 'Product Image'}
@@ -592,6 +606,7 @@ const VendorDashboard = () => {
                 <p className="text-[8px] text-slate-400">JPEG, PNG or WebP · max 5 MB</p>
               </div>
 
+              {/* Publish toggle */}
               <div className="flex items-center justify-between pt-1">
                 <div>
                   <p className="text-[11px] font-bold text-slate-800 uppercase">Publish immediately</p>
@@ -606,7 +621,7 @@ const VendorDashboard = () => {
               </div>
             </div>
 
-            {/* Footer */}
+            {/* Modal Footer */}
             <div className="px-5 py-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/20">
               <button
                 type="button"
