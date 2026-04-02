@@ -346,12 +346,10 @@ export const markAllVendorNotificationsRead = async () => {
 // ─── VENDOR DASHBOARD ─────────────────────────────────────────────────────────
 export const getVendorDashboard = async () => {
   let raw = {};
-  let summary = {};
 
   try {
     const dashRes = await api.get('/accounts/vendor/command-center/');
     raw = dashRes.data?.data ?? dashRes.data ?? {};
-    summary = raw.summary ?? {};
   } catch (dashErr) {
     console.error(
       '[getVendorDashboard] Dashboard endpoint failed:',
@@ -367,18 +365,28 @@ export const getVendorDashboard = async () => {
 
   try {
     const p = await getVendorProfile();
-
-    // Backend returns business_country (from get_all_data) — fall back to
-    // country (raw field) then to the localStorage cache, then to 'Uganda'
-    country = p.business_country || p.country || localStorage.getItem('vendor_country') || 'Uganda';
+    country = p.country || 'Uganda';
     storeName = p.business_name || '';
     vendorType = p.business_type || 'Products';
     businessCategory = p.business_category || 'retail';
-
-    console.log('[getVendorDashboard] country resolved to:', country);
   } catch (_) {
     // non-fatal — keep defaults
   }
+
+  // FIXED: Use raw.metrics directly (not raw.summary)
+  const metricsData = raw.metrics || {};
+
+  // FIXED: Use raw.salesHistory directly (not raw.sales_performance.trend)
+  const salesHistoryData = raw.salesHistory || [];
+
+  // FIXED: Use raw.recentOrders directly
+  const recentOrdersData = raw.recentOrders || [];
+
+  // FIXED: Use raw.inventoryAlerts directly
+  const inventoryAlertsData = raw.inventoryAlerts || [];
+
+  // FIXED: Use raw.reviews directly
+  const reviewsData = raw.reviews || [];
 
   return {
     storeName,
@@ -387,30 +395,30 @@ export const getVendorDashboard = async () => {
     businessCategory,
 
     metrics: {
-      grossSales: Number(summary.gross_sales ?? 0),
-      openOrders: Number(summary.open_orders ?? 0),
-      pendingPayouts: Number(summary.pending_payout ?? 0),
-      activeListings: Number(summary.active_listings ?? 0),
+      grossSales: Number(metricsData.grossSales ?? 0),
+      openOrders: Number(metricsData.openOrders ?? 0),
+      pendingPayouts: Number(metricsData.pendingPayouts ?? 0),
+      activeListings: Number(metricsData.activeListings ?? 0),
     },
 
-    salesHistory: (raw.sales_performance?.trend ?? []).map((p) => ({
-      date: p.period,
-      sales: Number(p.revenue ?? 0),
+    salesHistory: salesHistoryData.map((item) => ({
+      date: item.date,
+      sales: Number(item.sales ?? 0),
     })),
 
-    recentOrders: (raw.recent_orders ?? []).map((o) => ({
-      id: o.order_id,
+    recentOrders: recentOrdersData.map((o) => ({
+      id: o.id,
       customer: o.customer,
       total: Number(o.total ?? 0),
       status: o.status,
     })),
 
-    inventoryAlerts: (raw.inventory_alerts ?? []).map((a) => ({
-      title: a.name,
-      quantity: a.stock,
+    inventoryAlerts: inventoryAlertsData.map((a) => ({
+      title: a.title,
+      quantity: a.current_stock ?? 0,
     })),
 
-    reviews: (raw.recent_reviews ?? []).map((r) => ({
+    reviews: reviewsData.map((r) => ({
       reviewer: r.reviewer,
       rating: r.rating,
       comment: r.comment,
