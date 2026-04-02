@@ -343,7 +343,7 @@ export const markAllVendorNotificationsRead = async () => {
   }
 };
 
-// ─── VENDOR DASHBOARD ─────────────────────────────────────────────────────────
+// VENDOR DASHBOARD
 export const getVendorDashboard = async () => {
   let raw = {};
 
@@ -370,22 +370,22 @@ export const getVendorDashboard = async () => {
     vendorType = p.business_type || 'Products';
     businessCategory = p.business_category || 'retail';
   } catch (_) {
-    // non-fatal — keep defaults
+
   }
 
-  // FIXED: Use raw.metrics directly (not raw.summary)
+  // Use raw.metrics directly  
   const metricsData = raw.metrics || {};
 
-  // FIXED: Use raw.salesHistory directly (not raw.sales_performance.trend)
+  //  Use raw.salesHistory directly
   const salesHistoryData = raw.salesHistory || [];
 
-  // FIXED: Use raw.recentOrders directly
+  // Use raw.recentOrders directly
   const recentOrdersData = raw.recentOrders || [];
 
-  // FIXED: Use raw.inventoryAlerts directly
+  //  Use raw.inventoryAlerts directly
   const inventoryAlertsData = raw.inventoryAlerts || [];
 
-  // FIXED: Use raw.reviews directly
+  // Use raw.reviews directly
   const reviewsData = raw.reviews || [];
 
   return {
