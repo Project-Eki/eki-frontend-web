@@ -13,7 +13,7 @@ import {
 import {
   Package, ChevronRight, Plus,
   ListChecks, AlertCircle, Star, X, Upload, Box,
-  CreditCard, Trash2, ArrowRight,
+  CreditCard, Trash2,
 } from 'lucide-react';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -39,12 +39,6 @@ const blankForm = () => ({
   colorVariant: '',
   sizeVariant: '',
 });
-
-// ─── Animated placeholder graph shown while real data is loading ─────────────
-const PLACEHOLDER_GRAPH = Array.from({ length: 12 }, (_, i) => ({
-  date: `D${i + 1}`,
-  sales: 30 + Math.round(25 * Math.sin((i / 11) * Math.PI * 2) + Math.random() * 10),
-}));
 
 // ─── Stat Card Component (exactly matching AdminDashboard) ───────────────────
 const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
@@ -80,7 +74,6 @@ const VendorDashboard = () => {
 
   // ── Modal / form states ───────────────────────────────────────────────────
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [showAlerts, setShowAlerts] = useState(false);
   const [isPublished, setIsPublished] = useState(true);
   const [formData, setFormData] = useState(blankForm());
   const [formErrors, setFormErrors] = useState({});
@@ -93,22 +86,18 @@ const VendorDashboard = () => {
     try {
       const response = await getVendorDashboard();
       if (response) {
-        const bc      = response.businessCategory || 'retail';
-        const country = response.country          || '';
-
-        // Currency is resolved via getCurrencySymbol(country) — no separate call needed.
+        const bc = response.businessCategory || 'retail';
         setVendorData({
           storeName:        response.storeName        || '',
           vendorType:       response.vendorType       || 'Products',
-          country,
+          country:          response.country          || 'Uganda',
           businessCategory: bc,
         });
-
         setMetrics(response.metrics || { grossSales: 0, openOrders: 0, pendingPayouts: 0, activeListings: 0 });
-        setSalesHistory(response.salesHistory    || []);
-        setRecentOrders(response.recentOrders    || []);
+        setSalesHistory(response.salesHistory   || []);
+        setRecentOrders(response.recentOrders   || []);
         setInventoryAlerts(response.inventoryAlerts || []);
-        setReviews(response.reviews              || []);
+        setReviews(response.reviews             || []);
 
         try {
           const cats = await getCategories(bc);
@@ -191,8 +180,7 @@ const VendorDashboard = () => {
         }
       }
 
-      // Re-fetch so active listings count is always accurate from the server
-      await fetchDashboardData();
+      setMetrics((prev) => ({ ...prev, activeListings: prev.activeListings + 1 }));
 
       setIsModalOpen(false);
       resetForm();
@@ -214,12 +202,8 @@ const VendorDashboard = () => {
     }
   };
 
-  // Decide what data to show in the graph
-  const graphData = salesHistory.length > 0 ? salesHistory : PLACEHOLDER_GRAPH;
-  const isPlaceholderGraph = salesHistory.length === 0;
-
   return (
-    <div className="flex min-h-screen bg-[#F0F2F5] font-sans text-slate-800 p-3 gap-3">
+    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
       {/* VendorSidebar Component */}
       <VendorSidebar activePage="dashboard" />
 
@@ -285,44 +269,22 @@ const VendorDashboard = () => {
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="font-bold text-xs uppercase tracking-tighter">Sales Performance</h3>
-                  {isPlaceholderGraph && (
-                    <span className="text-[8px] text-slate-400 font-medium italic bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
-                      Awaiting real data
-                    </span>
-                  )}
                 </div>
                 <div className="h-[180px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={graphData}>
-                      <defs>
-                        <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%"  stopColor="#125852" stopOpacity={isPlaceholderGraph ? 0.08 : 0.15} />
-                          <stop offset="95%" stopColor="#125852" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="date" hide />
-                      <YAxis hide />
-                      {!isPlaceholderGraph && <Tooltip />}
-                      <Area
-                        type="monotone"
-                        dataKey="sales"
-                        stroke={isPlaceholderGraph ? '#94a3b8' : '#125852'}
-                        strokeDasharray={isPlaceholderGraph ? '5 3' : undefined}
-                        fill="url(#salesGradient)"
-                        strokeWidth={isPlaceholderGraph ? 1.5 : 2}
-                        dot={false}
-                        animationDuration={2000}
-                        animationEasing="ease-in-out"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  {salesHistory.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={salesHistory}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="date" hide />
+                        <YAxis hide />
+                        <Tooltip />
+                        <Area type="monotone" dataKey="sales" stroke="#125852" fill="#125852" fillOpacity={0.05} strokeWidth={2} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-slate-300 text-xs">No sales data yet</div>
+                  )}
                 </div>
-                {isPlaceholderGraph && (
-                  <p className="text-center text-[9px] text-slate-300 mt-1">
-                    Graph will populate once sales activity is recorded
-                  </p>
-                )}
               </div>
 
               {/* RECENT ORDERS */}
@@ -405,47 +367,24 @@ const VendorDashboard = () => {
                 </div>
               </div>
 
-              {/* INVENTORY ALERTS — collapsed by default, revealed on button click */}
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm text-left overflow-hidden">
-                {/* Header row — always visible */}
-                <div className="flex items-center justify-between px-4 py-3">
-                  <div className="flex items-center gap-1.5 text-[#E53935]">
-                    <AlertCircle size={12} />
-                    <h3 className="font-bold text-[10px] uppercase tracking-tighter">Inventory Alerts</h3>
-                    {inventoryAlerts.length > 0 && (
-                      <span className="ml-1 bg-red-500 text-white text-[7px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                        {inventoryAlerts.length}
-                      </span>
-                    )}
-                  </div>
-                  {/* Gold toggle button */}
-                  <button
-                    onClick={() => setShowAlerts((v) => !v)}
-                    className="flex items-center gap-1 px-2.5 py-1 bg-[#F5B841] hover:bg-[#E0A83B] active:scale-95 text-white rounded-lg text-[8px] font-bold uppercase tracking-wider transition-all shadow-sm"
-                  >
-                    {showAlerts ? 'Hide' : 'View Alerts'}
-                    <ArrowRight
-                      size={9}
-                      className={`transition-transform duration-200 ${showAlerts ? 'rotate-90' : ''}`}
-                    />
-                  </button>
+              {/* INVENTORY ALERTS */}
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-left">
+                <div className="flex items-center gap-1.5 mb-3 text-[#E53935]">
+                  <AlertCircle size={12} />
+                  <h3 className="font-bold text-[10px] uppercase tracking-tighter">Inventory Alerts</h3>
                 </div>
-
-                {/* Collapsible body */}
-                {showAlerts && (
-                  <div className="px-4 pb-4 border-t border-slate-100 pt-3 space-y-3">
-                    {inventoryAlerts.length > 0 ? inventoryAlerts.map((alert, i) => (
-                      <div key={i} className="flex justify-between items-center text-[10px] border-b border-slate-100 pb-2 last:border-0">
-                        <span className="font-bold text-slate-700">{alert.title}</span>
-                        <span className="text-red-600 font-bold bg-red-50 px-1.5 py-0.5 rounded text-[9px]">
-                          {alert.quantity ?? 0} left
-                        </span>
-                      </div>
-                    )) : (
-                      <p className="text-slate-400 text-[10px]">No low-stock alerts at the moment.</p>
-                    )}
-                  </div>
-                )}
+                <div className="space-y-3">
+                  {inventoryAlerts.length > 0 ? inventoryAlerts.map((alert, i) => (
+                    <div key={i} className="flex justify-between items-center text-[10px] border-b border-slate-100 pb-2 last:border-0">
+                      <span className="font-bold text-slate-700">{alert.title}</span>
+                      <span className="text-red-600 font-bold bg-red-50 px-1.5 py-0.5 rounded text-[9px]">
+                        {alert.quantity ?? 0} left
+                      </span>
+                    </div>
+                  )) : (
+                    <p className="text-slate-300 text-[10px]">No low-stock alerts</p>
+                  )}
+                </div>
               </div>
 
               {/* RECENT REVIEWS */}
@@ -557,9 +496,7 @@ const VendorDashboard = () => {
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-slate-500">
-                    Price ({currencySymbol || '—'}) *
-                  </label>
+                  <label className="text-[10px] font-bold uppercase text-slate-500">Price ({currencySymbol}) *</label>
                   <input
                     type="number" name="price" value={formData.price} onChange={handleInputChange}
                     placeholder="0.00" min="0" step="any"

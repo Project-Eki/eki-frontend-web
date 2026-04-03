@@ -443,8 +443,7 @@ const normalizeListing = (item) => ({
 });
 
 export const getProducts = async () => {
-  const params = { listing_type: 'product' };  
-  const res = await api.get('/listings/', { params });
+  const res = await api.get('/listings/');
   const payload = res.data?.data ?? res.data;
   if (Array.isArray(payload)) return payload.map(normalizeListing);
   if (Array.isArray(payload?.results)) return payload.results.map(normalizeListing);
@@ -484,7 +483,6 @@ export const createProductListing = async (productData) => {
   if (variants.length === 0) variants.push({ color: 'Default', size: '', stock: 0 });
 
   const payload = {
-    listing_type: 'product',
     business_category: productData.business_category,
     title: productData.title?.trim(),
     description: productData.description?.trim() || '',
@@ -516,7 +514,6 @@ export const updateProductListing = async (listingId, productData) => {
   };
 
   const payload = {
-    listing_type: 'product',
     title: productData.title?.trim(),
     description: productData.description?.trim() || '',
     status: productData.is_published ? 'published' : 'draft',
