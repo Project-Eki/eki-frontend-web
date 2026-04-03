@@ -1,124 +1,136 @@
 /**
- CURRENCY FROM VENDOR PROFILE
-   On mount, fetches GET /accounts/vendor/profile/ to get the vendor's country,
-   then maps it to the correct currency symbol (same logic as ProductDashboard).
-   Price is displayed as e.g. "UGX 20,000/session" instead of "$20,000/session".
-  IMAGE FIX NOTE
- The grey area on the service card is because the image URL returned by the
-  backend is a relative path (e.g. /media/listings/...) and the frontend
- needs to prepend the backend base URL. The img src is now constructed as:
- `${MEDIA_BASE}${item.images[0].image}` when the URL doesn't start with http.
-   MEDIA_BASE is set to the backend base URL (e.g. http://127.0.0.1:8000).
+ * 1. IMAGES FIXED
+ *    The backend returns relative URLs like "/media/listings/images/2026/04/pants.jpg".
+ *    MEDIA_BASE is now derived from api.defaults.baseURL so it automatically
+ *    works on both localhost and DigitalOcean without any manual changes.
+ *    api.defaults.baseURL = "http://127.0.0.1:8000/api/v1"
+ *    → MEDIA_BASE = "http://127.0.0.1:8000"
+ *    → image URL = "http://127.0.0.1:8000/media/listings/images/2026/04/pants.jpg"
+ *
+ * 2. CURRENCY FROM currency.js
+ *    Now imports getCurrencySymbol from src/utils/currency.js .
+ *    Falls back to fetching /accounts/register-vendor/ if /vendor/profile/ has no country.
  */
 
 import React, { useState, useEffect, useMemo } from "react";
 import { getServices, deleteListing } from "../services/api";
 import api from "../services/api";
 import VendorSidebar from "../components/VendorSidebar";
-import Navbar3 from "../components/adminDashboard/Navbar4";
+import Navbar4 from "../components/adminDashboard/Navbar4";
 import ServiceForm from "../components/Vendormanagement/ServiceForm";
+
+//Import currency utility 
+// If the import fails (file not found), the fallback function below is used.
+let getCurrencySymbol;
+try {
+  getCurrencySymbol = require('../utils/currency').getCurrencySymbol;
+  // If  mfile uses a default export, use this instead:
+  // getCurrencySymbol = require('../utils/currency').default;
+} catch (_) {
+  // Fallback if currency.js doesn't exist or has a different export name
+  getCurrencySymbol = (country) => {
+    if (!country) return 'UGX'; // Default to UGX since this is a Uganda-based platform
+    const map = {
+      'uganda': 'UGX', 'kenya': 'KES', 'tanzania': 'TZS',
+      'rwanda': 'RWF', 'ethiopia': 'ETB', 'nigeria': '₦',
+      'ghana': '₵', 'south africa': 'R', 'zambia': 'ZMW',
+      'egypt': 'EGP', 'morocco': 'MAD', 'united states': '$', 'usa': '$',
+      'united kingdom': '£', 'uk': '£', 'germany': '€', 'france': '€',
+      'india': '₹', 'china': '¥', 'japan': '¥',
+      'united arab emirates': 'AED', 'uae': 'AED',
+      'saudi arabia': 'SAR', 'australia': 'A$', 'canada': 'CA$',
+    };
+    return map[country.toLowerCase().trim()] || 'UGX';
+  };
+}
 
 import {
   Plus, X, Briefcase, LayoutGrid, List,
-  Clock, Calendar, Star, CheckCircle, ChevronDown,
+  Clock, Calendar, CheckCircle, ChevronDown,
   Search, SlidersHorizontal, Globe, MapPin, Package,
-  Pencil, Trash2, AlertTriangle, Loader2, Archive,
-  PauseCircle, FileText, TrendingUp,
+  Pencil, Trash2, AlertTriangle, Loader2, Archive, FileText,
 } from 'lucide-react';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MEDIA BASE — prepend to relative image paths from the backend.
-// When the backend returns "/media/listings/..." we need the full URL.
-// Change this to your production URL when deploying.
-// ─────────────────────────────────────────────────────────────────────────────
-const MEDIA_BASE = "http://127.0.0.1:8000";
 
+// MEDIA_BASE
+// Derived automatically from the axios instance baseURL.
+// When you change baseURL in api.js, images update automatically.
+//
+// Example on localhost:
+//   api.defaults.baseURL = "http://127.0.0.1:8000/api/v1"
+//   → MEDIA_BASE = "http://127.0.0.1:8000"
+//
+// Example on DigitalOcean:
+//   api.defaults.baseURL = "http://134.122.22.45/api/v1"
+//   → MEDIA_BASE = "http://134.122.22.45"
+const MEDIA_BASE = (api.defaults.baseURL || 'http://127.0.0.1:8000')
+  .replace('/api/v1', '')
+  .replace(/\/$/, '');
+
+// Converts a backend image path to a full URL the browser can load.
+// "/media/listings/img.jpg" → "http://127.0.0.1:8000/media/listings/img.jpg"
 const resolveImage = (url) => {
   if (!url) return null;
-  if (url.startsWith('http')) return url;           // already absolute
-  return `${MEDIA_BASE}${url}`;                      // prepend base
+  if (url.startsWith('http')) return url; // already absolute
+  return `${MEDIA_BASE}${url}`;            // prepend server base
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CURRENCY MAP — same as ProductDashboard
-// ─────────────────────────────────────────────────────────────────────────────
-const getCurrencySymbol = (country) => {
-  const map = {
-    uganda:'UGX', nigeria:'₦', kenya:'KES', ghana:'₵',
-    'south africa':'R', tanzania:'TZS', rwanda:'RWF', ethiopia:'ETB',
-    zambia:'ZMW', egypt:'EGP', morocco:'MAD', senegal:'CFA',
-    cameroon:'CFA', ivory:'CFA', "côte d'ivoire":'CFA',
-    angola:'AOA', mozambique:'MZN', zimbabwe:'ZWL', botswana:'BWP',
-    namibia:'NAD', malawi:'MWK', sudan:'SDG', tunisia:'TND',
-    libya:'LYD', algeria:'DZD', madagascar:'MGA', somalia:'SOS',
-    usa:'$', 'united states':'$', canada:'CA$', mexico:'MX$',
-    brazil:'R$', argentina:'$', colombia:'$', chile:'CLP',
-    peru:'S/', venezuela:'Bs', uruguay:'$U', ecuador:'$',
-    uk:'£', 'united kingdom':'£', germany:'€', france:'€',
-    italy:'€', spain:'€', portugal:'€', netherlands:'€',
-    belgium:'€', austria:'€', switzerland:'CHF', sweden:'kr',
-    norway:'kr', denmark:'kr', finland:'€', poland:'zł',
-    czechia:'Kč', hungary:'Ft', romania:'lei', bulgaria:'лв',
-    russia:'₽', ukraine:'₴', turkey:'₺',
-    china:'¥', japan:'¥', india:'₹', 'south korea':'₩',
-    indonesia:'Rp', malaysia:'RM', thailand:'฿', singapore:'S$',
-    philippines:'₱', vietnam:'₫', bangladesh:'৳', pakistan:'₨',
-    'sri lanka':'₨', nepal:'₨', myanmar:'K', cambodia:'₭',
-    'saudi arabia':'SR', uae:'AED', 'united arab emirates':'AED',
-    qatar:'QR', kuwait:'KD', bahrain:'BD', jordan:'JD',
-    israel:'₪', iran:'﷼', iraq:'IQD',
-    australia:'A$', 'new zealand':'NZ$',
-  };
-  return map[country?.toLowerCase()] || '$';
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STATUS STYLES + CONFIG
-// ─────────────────────────────────────────────────────────────────────────────
+// STATUS BADGE STYLES
 const STATUS_STYLE = {
   published: "bg-green-50 text-green-700 border border-green-200",
   active:    "bg-green-50 text-green-700 border border-green-200",
   draft:     "bg-amber-50 text-amber-700 border border-amber-200",
   archived:  "bg-gray-100 text-gray-500 border border-gray-200",
-  paused:    "bg-blue-50 text-blue-600 border border-blue-200",
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SERVICE CARD — with Edit + Delete + currency-aware price
-// ─────────────────────────────────────────────────────────────────────────────
+
+// SERVICE CARD
 // const ServiceCard = ({ s, onEdit, onDelete, currencySymbol }) => (
 //   <div className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all group">
 //     <div className="relative h-44 overflow-hidden bg-slate-50">
-//       {s.img ? (
-//         <img src={s.img} alt={s.title}
+
+//       {/* Image — only rendered if s.img is truthy */}
+//       {s.img && (
+//         <img
+//           src={s.img}
+//           alt={s.title}
 //           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-//           onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}
+//           onError={e => {
+//             // If image fails to load (network error, wrong URL), hide it
+//             // and show the fallback div
+//             e.currentTarget.style.display = 'none';
+//             const fallback = e.currentTarget.parentElement.querySelector('.img-fallback');
+//             if (fallback) fallback.style.display = 'flex';
+//           }}
 //         />
-//       ) : null}
-//       {/* Fallback shown when no image or image fails to load */}
+//       )}
+
+//       {/* Fallback — shown when no image or image load fails */}
 //       <div
-//         className="w-full h-full flex flex-col items-center justify-center gap-1"
+//         className="img-fallback w-full h-full flex flex-col items-center justify-center gap-1"
 //         style={{ display: s.img ? 'none' : 'flex' }}
 //       >
 //         <Package size={28} className="text-slate-300"/>
 //         <span className="text-[10px] text-slate-300">No image</span>
 //       </div>
-//       {/* Remote / in-person badge */}
+
+//       {/* Remote / In-person badge */}
 //       <span className="absolute top-3 left-3 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
 //         {s.mode === "remote" || s.mode === "online"
 //           ? <><Globe size={9}/> Remote</>
 //           : <><MapPin size={9}/> In-person</>}
 //       </span>
-//       {/* Edit + Delete — appear on hover */}
+
+//       {/* Edit + Delete — hover reveal */}
 //       <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
 //         <button onClick={() => onEdit(s)}
 //           className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-[#125852] transition-colors"
-//           title="Edit service">
+//           title="Edit">
 //           <Pencil size={12}/>
 //         </button>
 //         <button onClick={() => onDelete(s)}
 //           className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-red-500 transition-colors"
-//           title="Delete service">
+//           title="Delete">
 //           <Trash2 size={12}/>
 //         </button>
 //       </div>
@@ -127,82 +139,93 @@ const STATUS_STYLE = {
 //     <div className="p-4">
 //       <div className="flex items-center justify-between mb-1.5">
 //         <span className="text-[10px] font-bold text-slate-400 tracking-widest truncate max-w-[120px]">{s.category}</span>
-//         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0 ${STATUS_STYLE[s.status] || STATUS_STYLE.draft}`}>{s.status}</span>
+//         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0 ${STATUS_STYLE[s.status] || STATUS_STYLE.draft}`}>
+//           {s.status}
+//         </span>
 //       </div>
 //       <h3 className="font-black text-[15px] text-slate-900 leading-tight mb-1 line-clamp-1">{s.title || '—'}</h3>
 //       <p className="text-[12px] text-slate-500 line-clamp-2 mb-3">{s.desc || 'No description provided.'}</p>
 //       <div className="flex items-center justify-between text-[12px] text-slate-400 mb-3">
 //         <span className="flex items-center gap-1"><Clock size={12}/> {s.duration || 'N/A'}</span>
-//         <span className="flex items-center gap-1 font-semibold text-slate-400">
-//           <Calendar size={12}/> {s.avail || 'Available'}
-//         </span>
+//         <span className="flex items-center gap-1 font-semibold"><Calendar size={12}/> {s.avail || 'Available'}</span>
 //       </div>
 //       <div className="flex items-center justify-between pt-3 border-t border-slate-50">
 //         <div>
-//           {/* Currency-aware price display */}
 //           <span className="text-[18px] font-black text-slate-900">
 //             {currencySymbol} {parseFloat(s.price || 0).toLocaleString()}
 //           </span>
 //           <span className="text-[11px] text-slate-400">/{s.unit || 'session'}</span>
 //         </div>
 //         <button onClick={() => onEdit(s)}
-//           className="text-[12px] font-bold text-teal-700 hover:text-amber-500 transition-colors flex items-center gap-1">
-//           Edit ↗
+//           className="text-[12px] font-bold text-teal-700 hover:text-amber-500 transition-colors">
+//           Edit 
 //         </button>
 //       </div>
 //     </div>
 //   </div>
 // );
 const ServiceCard = ({ s, onEdit, onDelete, currencySymbol }) => (
-  <div className="bg-white rounded-xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all group">
-    <div className="relative h-36 overflow-hidden bg-slate-50">
-      {s.img ? (
-        <img src={s.img} alt={s.title}
+  <div className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all group">
+  {/* image */}
+    <div className="relative h-100 overflow-hidden bg-slate-50">
+
+      {s.img && (
+        <img
+          src={s.img}
+          alt={s.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}
+          onError={e => {
+            e.currentTarget.style.display = 'none';
+            const fallback = e.currentTarget.parentElement.querySelector('.img-fallback');
+            if (fallback) fallback.style.display = 'flex';
+          }}
         />
-      ) : null}
-      {/* Fallback shown when no image or image fails to load */}
+      )}
+
+      {/* Fallback */}
       <div
-        className="w-full h-full flex flex-col items-center justify-center gap-1"
+        className="img-fallback w-full h-full flex flex-col items-center justify-center gap-1"
         style={{ display: s.img ? 'none' : 'flex' }}
       >
         <Package size={24} className="text-slate-300"/>
         <span className="text-[9px] text-slate-300">No image</span>
       </div>
-      {/* Remote / in-person badge */}
+
+      {/* Badges - made slightly smaller */}
       <span className="absolute top-2 left-2 bg-black/50 backdrop-blur-sm text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1">
         {s.mode === "remote" || s.mode === "online"
           ? <><Globe size={8}/> Remote</>
           : <><MapPin size={8}/> In-person</>}
       </span>
-      {/* Edit + Delete — appear on hover */}
+
+      {/* Edit + Delete buttons - slightly smaller */}
       <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button onClick={() => onEdit(s)}
           className="w-6 h-6 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-[#125852] transition-colors"
-          title="Edit service">
-          <Pencil size={10}/>
+          title="Edit">
+          <Pencil size={11}/>
         </button>
         <button onClick={() => onDelete(s)}
           className="w-6 h-6 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-red-500 transition-colors"
-          title="Delete service">
-          <Trash2 size={10}/>
+          title="Delete">
+          <Trash2 size={11}/>
         </button>
       </div>
     </div>
 
-    <div className="p-3">
+    {/* Content section - slightly more compact */}
+    <div className="p-4">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[9px] font-bold text-slate-400 tracking-widest truncate max-w-[120px]">{s.category}</span>
-        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase shrink-0 ${STATUS_STYLE[s.status] || STATUS_STYLE.draft}`}>{s.status}</span>
+        <span className="text-[9px] font-bold text-slate-400 tracking-widest truncate max-w-[100px]">{s.category}</span>
+        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase shrink-0 ${STATUS_STYLE[s.status] || STATUS_STYLE.draft}`}>
+          {s.status}
+        </span>
       </div>
-      <h3 className="font-black text-[13px] text-slate-900 leading-tight mb-1 line-clamp-1">{s.title || '—'}</h3>
+      <h3 className="font-black text-[14px] text-slate-900 leading-tight mb-0.5 line-clamp-1">{s.title || '—'}</h3>
       <p className="text-[11px] text-slate-500 line-clamp-2 mb-2">{s.desc || 'No description provided.'}</p>
       <div className="flex items-center justify-between text-[11px] text-slate-400 mb-2">
-        <span className="flex items-center gap-1"><Clock size={10}/> {s.duration || 'N/A'}</span>
-        <span className="flex items-center gap-1 font-semibold text-slate-400">
-          <Calendar size={10}/> {s.avail || 'Available'}
-        </span>
+        <span className="flex items-center gap-0.5"><Clock size={11}/> {s.duration || 'N/A'}</span>
+        <span className="flex items-center gap-0.5 font-semibold"><Calendar size={11}/> {s.avail || 'Available'}</span>
       </div>
       <div className="flex items-center justify-between pt-2 border-t border-slate-50">
         <div>
@@ -212,7 +235,7 @@ const ServiceCard = ({ s, onEdit, onDelete, currencySymbol }) => (
           <span className="text-[10px] text-slate-400">/{s.unit || 'session'}</span>
         </div>
         <button onClick={() => onEdit(s)}
-          className="text-[11px] font-bold text-teal-700 hover:text-amber-500 transition-colors flex items-center gap-1">
+          className="text-[11px] font-bold text-teal-700 hover:text-amber-500 transition-colors">
           Edit 
         </button>
       </div>
@@ -220,9 +243,9 @@ const ServiceCard = ({ s, onEdit, onDelete, currencySymbol }) => (
   </div>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // DELETE CONFIRM MODAL
-// ─────────────────────────────────────────────────────────────────────────────
+
 const DeleteModal = ({ service, onConfirm, onCancel, isDeleting }) => (
   <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
     <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
@@ -239,7 +262,7 @@ const DeleteModal = ({ service, onConfirm, onCancel, isDeleting }) => (
           Cancel
         </button>
         <button onClick={onConfirm} disabled={isDeleting}
-          className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg text-[11px] font-bold hover:bg-red-600 transition-colors flex items-center justify-center gap-1.5">
+          className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg text-[11px] font-bold hover:bg-red-600 flex items-center justify-center gap-1.5">
           {isDeleting ? <><Loader2 size={11} className="animate-spin"/> Deleting…</> : 'Yes, Delete'}
         </button>
       </div>
@@ -247,9 +270,9 @@ const DeleteModal = ({ service, onConfirm, onCancel, isDeleting }) => (
   </div>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // TEAL FOOTER
-// ─────────────────────────────────────────────────────────────────────────────
+
 const TealFooter = () => (
   <footer className="bg-[#1D4D4C] text-white py-4 px-5 sm:px-10 flex flex-col sm:flex-row justify-between items-center gap-2 text-[11px] shrink-0 mx-3 mb-3 rounded-2xl">
     <div className="hidden sm:block">Buy Smart. Sell Fast. Grow Together...</div>
@@ -264,16 +287,16 @@ const TealFooter = () => (
   </footer>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SERVICE MANAGEMENT PAGE
-// ─────────────────────────────────────────────────────────────────────────────
+
+// MAIN COMPONENT
+
 const ServiceManagement = () => {
-  // Mobile sidebar — for small screens
+
   const [sidebarOpen,    setSidebarOpen]    = useState(false);
   const [viewMode,       setViewMode]       = useState("grid");
   const [search,         setSearch]         = useState("");
   const [sortBy,         setSortBy]         = useState("newest");
-  const [statusFilter,   setStatusFilter]   = useState("all"); // interactive stat filter
+  const [statusFilter,   setStatusFilter]   = useState("all");
   const [services,       setServices]       = useState([]);
   const [loading,        setLoading]        = useState(true);
   const [refreshKey,     setRefreshKey]     = useState(0);
@@ -282,31 +305,75 @@ const ServiceManagement = () => {
   const [deleteTarget,   setDeleteTarget]   = useState(null);
   const [isDeleting,     setIsDeleting]     = useState(false);
   const [deleteError,    setDeleteError]    = useState('');
-
-  // Currency from vendor profile (same as ProductDashboard)
-  const [currencySymbol, setCurrencySymbol] = useState('$');
+  const [currencySymbol, setCurrencySymbol] = useState('UGX');
   const [vendorCountry,  setVendorCountry]  = useState('');
 
-  // ── Fetch vendor country for currency
+  // ── Fetch vendor country for currency ──────────────────────────────────────
+  // The API response for listings does NOT include the vendor's country.
+  // We must fetch the vendor profile separately.
+  //
+  // We check /accounts/register-vendor/ because that's where the country
+  // is stored during onboarding (via completeVendorOnboarding in api.js).
+  // The /accounts/vendor/profile/ endpoint may or may not include it.
   useEffect(() => {
-    api.get('/accounts/vendor/profile/')
-      .then(res => {
+    const loadCurrency = async () => {
+      try {
+        // Primary: check vendor profile endpoint
+        const res = await api.get('/accounts/vendor/profile/');
         const d = res.data?.data ?? res.data;
-        const country = d?.country || d?.business_country || '';
+
+        // Log full response so you can find the exact field name
+        console.log('[Currency DEBUG] /vendor/profile/ response:', d);
+
+        const country =
+          d?.country           ||  // most common field name
+          d?.business_country  ||  // alternative from onboarding model
+          d?.vendor_country    ||
+          d?.location          ||  // some backends use location as country
+          '';
+
         if (country) {
           setVendorCountry(country);
           setCurrencySymbol(getCurrencySymbol(country));
+          return;
         }
-      }).catch(() => {});
+
+        // Fallback: the register-vendor endpoint (full onboarding data)
+        const res2 = await api.get('/accounts/register-vendor/');
+        const d2 = res2.data?.data ?? res2.data;
+
+        console.log('[Currency DEBUG] /register-vendor/ response:', d2);
+
+        const country2 =
+          d2?.country          ||
+          d2?.business_country ||
+          '';
+
+        if (country2) {
+          setVendorCountry(country2);
+          setCurrencySymbol(getCurrencySymbol(country2));
+        }
+        // If still not found, UGX is kept as default (better than $ for this platform)
+      } catch (err) {
+        console.warn('[Currency] fetch failed:', err.message);
+        // Keep UGX as sensible default for this platform
+      }
+    };
+    loadCurrency();
   }, []);
 
-  // ── Fetch services
+  // ── Fetch services ──────────────────────────────────────────────────────────
   useEffect(() => {
     const fetchMyServices = async () => {
       setLoading(true);
       try {
-        const data = await getServices();
-        const raw = Array.isArray(data) ? data : (data.results || data.listings || data.data || []);
+        const response = await getServices();
+        // Backend wraps response as: { success: true, data: [...], message: "" }
+        // So we read response.data, not the full axios response
+        const raw = Array.isArray(response)
+          ? response
+          : (response.data || response.results || response.listings || []);
+
         setServices(raw.map(item => ({
           id:       item.id,
           category: (item.business_category || '').toUpperCase(),
@@ -321,12 +388,13 @@ const ServiceManagement = () => {
           status:   item.status       || 'draft',
           mode:     item.detail?.delivery_mode
                     || (item.detail?.available_24h ? 'remote' : 'in-person'),
-          // FIX: resolve relative image URLs to absolute
-          img:      resolveImage(
-                      item.images?.find(i => i.is_primary)?.image
-                      || item.images?.[0]?.image
-                      || null
-                    ),
+          // resolveImage turns "/media/listings/img.jpg"
+          // into "http://127.0.0.1:8000/media/listings/img.jpg"
+          img: resolveImage(
+            item.images?.find(i => i.is_primary)?.image
+            || item.images?.[0]?.image
+            || null
+          ),
           _raw: item,
         })));
       } catch (err) {
@@ -338,18 +406,24 @@ const ServiceManagement = () => {
     fetchMyServices();
   }, [refreshKey]);
 
-  // ── Modal helpers
+  // ── Modal helpers ───────────────────────────────────────────────────────────
   const openCreate = () => { setEditingService(null); setIsModalOpen(true); };
-  const openEdit   = (s)  => { setEditingService(s._raw); setIsModalOpen(true); };
+  const openEdit   = (s) => { setEditingService(s._raw); setIsModalOpen(true); };
+
   const handleFormClose = (didSave) => {
+    // This function ONLY closes the modal and optionally refreshes.
+    // It does NOT navigate anywhere. If you are being redirected to /products
+    // after saving, the issue is in your App.jsx router — check that
+    // /services and /products don't share the same component or layout wrapper
+    // that navigates on state change.
     setIsModalOpen(false);
     setEditingService(null);
     if (didSave === true) setRefreshKey(k => k + 1);
   };
 
-  // ── Delete helpers
+  // ── Delete helpers ──────────────────────────────────────────────────────────
   const handleDeleteRequest = (s)  => { setDeleteTarget(s); setDeleteError(''); };
-  const handleDeleteCancel  = ()   => { setDeleteTarget(null); };
+  const handleDeleteCancel  = ()   => setDeleteTarget(null);
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
@@ -364,36 +438,32 @@ const ServiceManagement = () => {
     }
   };
 
-  // ── Stats for each status (all 5)
+  // ── Counts for stat tabs ────────────────────────────────────────────────────
   const counts = useMemo(() => ({
     all:       services.length,
     published: services.filter(s => s.status === 'published' || s.status === 'active').length,
     draft:     services.filter(s => s.status === 'draft').length,
     archived:  services.filter(s => s.status === 'archived').length,
-    paused:    services.filter(s => s.status === 'paused').length,
   }), [services]);
 
-  // ── Stat tabs config (interactive filter cards)
+  // ── 4 stat tabs (paused removed) ───────────────────────────────────────────
   const statTabs = [
-    { key:'all',       label:'All Services',  icon:<Briefcase size={16}/>,  color:'teal',   hint:'Every service you have created' },
-    { key:'published', label:'Published',     icon:<CheckCircle size={16}/>,color:'green',  hint:'Live and visible to customers' },
-    { key:'draft',     label:'Draft',         icon:<FileText size={16}/>,   color:'amber',  hint:'Saved but not yet live' },
-    { key:'archived',  label:'Archived',      icon:<Archive size={16}/>,    color:'slate',  hint:'Hidden from customers, kept for records' },
-    { key:'paused',    label:'Paused',        icon:<PauseCircle size={16}/>,color:'blue',   hint:'Temporarily unavailable' },
+    { key:'all',       label:'All Services', icon:<Briefcase size={16}/>,  color:'teal',  hint:'Every service you have created' },
+    { key:'published', label:'Published',    icon:<CheckCircle size={16}/>, color:'green', hint:'Live and visible to buyers' },
+    { key:'draft',     label:'Draft',        icon:<FileText size={16}/>,   color:'amber', hint:'Saved but not yet published' },
+    { key:'archived',  label:'Archived',     icon:<Archive size={16}/>,    color:'slate', hint:'Hidden from buyers, kept for records' },
   ];
 
   const colorMap = {
-    teal:  { bg:'bg-teal-50',  icon:'text-teal-600',  val:'text-teal-700',  active:'border-teal-500'  },
-    green: { bg:'bg-green-50', icon:'text-green-600', val:'text-green-700', active:'border-green-500' },
-    amber: { bg:'bg-amber-50', icon:'text-amber-600', val:'text-amber-700', active:'border-amber-500' },
-    slate: { bg:'bg-slate-100',icon:'text-slate-500', val:'text-slate-700', active:'border-slate-500' },
-    blue:  { bg:'bg-blue-50',  icon:'text-blue-600',  val:'text-blue-700',  active:'border-blue-500'  },
+    teal:  { bg:'bg-teal-50',  icon:'text-teal-600',  val:'text-teal-700',  active:'border-b-teal-500'  },
+    green: { bg:'bg-green-50', icon:'text-green-600', val:'text-green-700', active:'border-b-green-500' },
+    amber: { bg:'bg-amber-50', icon:'text-amber-600', val:'text-amber-700', active:'border-b-amber-500' },
+    slate: { bg:'bg-slate-100',icon:'text-slate-500', val:'text-slate-600', active:'border-b-slate-500' },
   };
 
-  // ── Filter + sort
+  // ── Filter + sort ───────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     let list = services;
-    // Status filter from stat tabs
     if (statusFilter !== 'all') {
       list = list.filter(s =>
         statusFilter === 'published'
@@ -401,8 +471,7 @@ const ServiceManagement = () => {
           : s.status === statusFilter
       );
     }
-    // Text search
-    const q = search.toLowerCase();
+    const q = search.toLowerCase().trim();
     if (q) list = list.filter(s =>
       s.title.toLowerCase().includes(q) || s.category.toLowerCase().includes(q)
     );
@@ -421,12 +490,12 @@ const ServiceManagement = () => {
   return (
     <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
 
-      {/* ── DESKTOP SIDEBAR ── */}
+      {/* Desktop sidebar */}
       <div className="hidden md:block shrink-0">
         <VendorSidebar activePage="services"/>
       </div>
 
-      {/* ── MOBILE SIDEBAR OVERLAY ── */}
+      {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSidebarOpen(false)}/>
@@ -436,21 +505,18 @@ const ServiceManagement = () => {
         </div>
       )}
 
-      {/* ── MAIN COLUMN ── */}
+      {/* Main column */}
       <div className="flex-1 flex flex-col min-w-0">
+        <Navbar4 onMenuClick={() => setSidebarOpen(true)}/>
 
-        {/* Navbar sits at top of the main column, sticky */}
-        <Navbar3 onMenuClick={() => setSidebarOpen(true)}/>
+        <main className="flex-1 p-4 sm:p-5 max-w-[1400px] mx-auto w-full pb-16">
 
-        {/* Scrollable content */}
-        <main className="flex-1 p-5 max-w-[1400px] mx-auto w-full pb-16">
-
-          {/* Page header */}
+          {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
               <h2 className="text-xl font-bold text-[#1A1A1A]">Service Management</h2>
               <p className="text-slate-400 text-[11px] mt-0.5">
-                Manage your professional offerings, schedules, and service availability.
+                Manage your professional offerings and service availability.
                 {vendorCountry && (
                   <span className="ml-2 bg-slate-100 px-1.5 py-0.5 rounded-full text-slate-500 text-[9px]">
                     {vendorCountry} · {currencySymbol}
@@ -464,20 +530,21 @@ const ServiceManagement = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+          {/* 4 interactive stat tabs */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
             {statTabs.map(tab => {
-              const c     = colorMap[tab.color];
+              const c = colorMap[tab.color];
               const isActive = statusFilter === tab.key;
               return (
                 <button
                   key={tab.key}
                   onClick={() => setStatusFilter(isActive ? 'all' : tab.key)}
                   title={tab.hint}
-                  className={`bg-white rounded-2xl border px-4 py-3.5 flex items-center gap-3 shadow-sm transition-all text-left w-full
+                  className={`bg-white rounded-2xl border px-4 py-3.5 flex items-center gap-3 shadow-sm
+                    transition-all text-left w-full cursor-pointer
                     ${isActive
                       ? `border-b-2 ${c.active} border-t-slate-200 border-l-slate-200 border-r-slate-200 shadow-md`
-                      : 'border-slate-200 hover:border-slate-300 hover:shadow'
-                    }`}
+                      : 'border-slate-200 hover:border-slate-300 hover:shadow'}`}
                 >
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${c.bg} ${c.icon}`}>
                     {tab.icon}
@@ -493,7 +560,7 @@ const ServiceManagement = () => {
             })}
           </div>
 
-          {/* Active filter label */}
+          {/* Active filter badge */}
           {statusFilter !== 'all' && (
             <div className="flex items-center gap-2 mb-4">
               <span className="text-[11px] text-slate-500">
@@ -506,26 +573,25 @@ const ServiceManagement = () => {
             </div>
           )}
 
-          {/* Search + filter bar */}
+          {/* Search + sort toolbar */}
           <div className="flex flex-col sm:flex-row gap-3 mb-5">
             <div className="relative flex-1">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16}/>
               <input value={search} onChange={e=>setSearch(e.target.value)}
-                placeholder="Filter by title, category, or keyword..."
-                className="w-full h-10 pl-10 pr-4 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#F5B841] focus:ring-1 focus:ring-[#F5B841] transition-colors"/>
+                placeholder="Filter by title or category..."
+                className="w-full h-10 pl-10 pr-4 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#F5B841] focus:ring-1 focus:ring-[#F5B841]"/>
             </div>
             <div className="flex gap-2 shrink-0 flex-wrap">
-              <button className="flex items-center gap-2 h-10 px-4 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:border-slate-300 transition-colors">
+              <button className="flex items-center gap-2 h-10 px-4 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600">
                 <SlidersHorizontal size={15}/> <span className="hidden sm:inline">Advanced</span> Filters
               </button>
-              {/* View toggle */}
               <div className="flex bg-white border border-slate-200 rounded-xl overflow-hidden">
                 <button onClick={() => setViewMode("grid")}
-                  className={`w-10 h-10 flex items-center justify-center transition-colors ${viewMode==="grid" ? "bg-[#F5B841] text-white" : "text-slate-400 hover:text-slate-600"}`}>
+                  className={`w-10 h-10 flex items-center justify-center transition-colors ${viewMode==="grid" ? "bg-[#F5B841] text-white" : "text-slate-400"}`}>
                   <LayoutGrid size={15}/>
                 </button>
                 <button onClick={() => setViewMode("list")}
-                  className={`w-10 h-10 flex items-center justify-center transition-colors ${viewMode==="list" ? "bg-[#F5B841] text-white" : "text-slate-400 hover:text-slate-600"}`}>
+                  className={`w-10 h-10 flex items-center justify-center transition-colors ${viewMode==="list" ? "bg-[#F5B841] text-white" : "text-slate-400"}`}>
                   <List size={15}/>
                 </button>
               </div>
@@ -542,7 +608,7 @@ const ServiceManagement = () => {
             </div>
           </div>
 
-          {/* DELETE ERROR BANNER */}
+          {/* Delete error */}
           {deleteError && (
             <div className="mb-4 flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl text-xs">
               <AlertTriangle size={13}/> {deleteError}
@@ -550,7 +616,7 @@ const ServiceManagement = () => {
             </div>
           )}
 
-          {/* SERVICES GRID */}
+          {/* Service grid */}
           {loading ? (
             <div className={`grid gap-4 ${viewMode==="grid" ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`}>
               {Array.from({length:6}).map((_,i)=>(
@@ -560,7 +626,6 @@ const ServiceManagement = () => {
                     <div className="h-3 bg-slate-100 rounded w-1/3"/>
                     <div className="h-4 bg-slate-100 rounded w-3/4"/>
                     <div className="h-3 bg-slate-100 rounded w-full"/>
-                    <div className="h-3 bg-slate-100 rounded w-2/3"/>
                   </div>
                 </div>
               ))}
@@ -571,16 +636,12 @@ const ServiceManagement = () => {
                 <Briefcase size={32}/>
               </div>
               <h3 className="text-lg font-bold text-slate-900">
-                {statusFilter !== 'all'
-                  ? `No ${statusFilter} services`
-                  : 'No Services Found'}
+                {statusFilter !== 'all' ? `No ${statusFilter} services` : 'No Services Found'}
               </h3>
               <p className="text-slate-500 max-w-xs mx-auto mt-2 text-sm">
-                {search
-                  ? 'Try a different search term.'
-                  : statusFilter !== 'all'
-                    ? `You have no services with status "${statusFilter}" yet.`
-                    : 'Click "Create New Service" to add your first listing.'}
+                {search ? 'Try a different search term.'
+                  : statusFilter !== 'all' ? `You have no ${statusFilter} services yet.`
+                  : 'Click "Create New Service" to add your first listing.'}
               </p>
               {statusFilter !== 'all' && (
                 <button onClick={() => setStatusFilter('all')}
@@ -592,24 +653,27 @@ const ServiceManagement = () => {
           ) : (
             <div className={`grid gap-4 ${viewMode==="grid" ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`}>
               {sorted.map(s => (
-                <ServiceCard key={s.id} s={s}
+                <ServiceCard
+                  key={s.id}
+                  s={s}
                   onEdit={openEdit}
                   onDelete={handleDeleteRequest}
-                  currencySymbol={currencySymbol}/>
+                  currencySymbol={currencySymbol}
+                />
               ))}
             </div>
           )}
 
-          {/* PAGINATION */}
+          {/* Pagination */}
           {!loading && services.length > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 pt-4 border-t border-slate-100">
               <p className="text-sm text-slate-500">
                 Showing <b>{sorted.length}</b> of <b>{services.length}</b> services
               </p>
               <div className="flex items-center gap-1">
-                <button className="h-9 px-3 sm:px-4 border border-slate-200 rounded-lg text-sm text-slate-500 hover:border-[#F5B841] hover:text-teal-700 transition-colors font-medium">Previous</button>
-                <button className="w-9 h-9 rounded-lg text-sm font-bold bg-[#125852] text-white">1</button>
-                <button className="h-9 px-3 sm:px-4 bg-[#125852] text-white rounded-lg text-sm font-bold hover:bg-[#0e4440] transition-colors">Next</button>
+                <button className="h-9 px-4 border border-slate-200 rounded-lg text-sm text-slate-500 hover:border-[#F5B841] font-medium">Previous</button>
+                <button className="w-9 h-9 rounded-lg text-sm font-bold bg-[#EFB034FF] text-white">1</button>
+                <button className="h-9 px-4 bg-[#EFB034FF] text-white rounded-lg text-sm font-bold hover:bg-[#F5B841]">Next</button>
               </div>
             </div>
           )}
@@ -619,7 +683,7 @@ const ServiceManagement = () => {
         <TealFooter/>
       </div>
 
-      {/* ── SERVICE FORM MODAL ── */}
+      {/* Service form modal */}
       {isModalOpen && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-3 sm:p-4"
@@ -631,7 +695,7 @@ const ServiceManagement = () => {
         </div>
       )}
 
-      {/* ── DELETE CONFIRM MODAL ── */}
+      {/* Delete confirm modal */}
       {deleteTarget && (
         <DeleteModal
           service={deleteTarget}

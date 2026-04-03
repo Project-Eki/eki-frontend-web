@@ -358,8 +358,11 @@ export const updateVendorBusinessSettings = async (changedFields) => {
 export const getServices = async (status = '') => {
   const params = { listing_type: 'service' };
   if (status) params.status = status;
-  const response = await api.get("/listings/", { params });
-  return response.data;
+  const res = await api.get('/listings/', { params });
+  const payload = res.data?.data ?? res.data;
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.results)) return payload.results;
+  return [];
 };
 
 export const createListing = async (payload) => {
