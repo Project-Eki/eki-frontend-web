@@ -203,7 +203,7 @@ const VendorDashboard = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
+    <div className="flex min-h-screen bg-[#ecece7] font-popins text-slate-800 p-3 gap-3">
       {/* VendorSidebar Component */}
       <VendorSidebar activePage="dashboard" />
 
