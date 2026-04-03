@@ -365,24 +365,23 @@ export const getVendorDashboard = async () => {
 
   try {
     const p = await getVendorProfile();
-    country = p.country || 'Uganda';
+    // ── FIX: API returns business_country, not country ──────────────────────
+    country = p.business_country || p.country || localStorage.getItem('vendor_country') || 'Uganda';
     storeName = p.business_name || '';
     vendorType = p.business_type || 'Products';
     businessCategory = p.business_category || 'retail';
-  } catch (_) {
+  } catch (_) {}
 
-  }
-
-  // Use raw.metrics directly  
+  // Use raw.metrics directly
   const metricsData = raw.metrics || {};
 
-  //  Use raw.salesHistory directly
+  // Use raw.salesHistory directly
   const salesHistoryData = raw.salesHistory || [];
 
   // Use raw.recentOrders directly
   const recentOrdersData = raw.recentOrders || [];
 
-  //  Use raw.inventoryAlerts directly
+  // Use raw.inventoryAlerts directly
   const inventoryAlertsData = raw.inventoryAlerts || [];
 
   // Use raw.reviews directly
