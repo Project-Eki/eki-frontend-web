@@ -20,7 +20,59 @@ import {
   AreaChart, Area,
 } from 'recharts';
 
-// Currency symbol is now supplied by the backend via vendorData.currencySymbol
+// ─── Country → Currency Symbol map ───────────────────────────────────────────
+// The currency shown to each vendor is resolved from the country they
+// registered with during onboarding. The backend sends either:
+//   a) currencySymbol directly  →  used as-is
+//   b) country name             →  looked up in this map
+// No currency is ever hardcoded on the frontend.
+const CURRENCY_MAP = {
+  'Uganda':               'UGX',
+  'Kenya':                'KES',
+  'Tanzania':             'TZS',
+  'Rwanda':               'RWF',
+  'Burundi':              'BIF',
+  'South Sudan':          'SSP',
+  'DR Congo':             'CDF',
+  'Nigeria':              'NGN',
+  'Ghana':                'GHS',
+  'South Africa':         'ZAR',
+  'Ethiopia':             'ETB',
+  'Egypt':                'EGP',
+  'Morocco':              'MAD',
+  'Senegal':              'XOF',
+  'Ivory Coast':          'XOF',
+  'Cameroon':             'XAF',
+  'Zambia':               'ZMW',
+  'Zimbabwe':             'ZWL',
+  'Mozambique':           'MZN',
+  'Angola':               'AOA',
+  'United States':        'USD',
+  'United Kingdom':       'GBP',
+  'Germany':              'EUR',
+  'France':               'EUR',
+  'Italy':                'EUR',
+  'Spain':                'EUR',
+  'Netherlands':          'EUR',
+  'India':                'INR',
+  'China':                'CNY',
+  'Japan':                'JPY',
+  'Canada':               'CAD',
+  'Australia':            'AUD',
+  'Brazil':               'BRL',
+  'Mexico':               'MXN',
+  'United Arab Emirates': 'AED',
+  'Saudi Arabia':         'SAR',
+  'Singapore':            'SGD',
+  'Pakistan':             'PKR',
+  'Bangladesh':           'BDT',
+};
+
+// Priority: backend currencySymbol → CURRENCY_MAP lookup → 'USD' fallback
+const resolveCurrency = (country, backendSymbol) => {
+  if (backendSymbol) return backendSymbol;
+  return CURRENCY_MAP[country] || 'USD';
+};
 
 // ─── These match backend ProductSize choices exactly ─────────────────────────
 const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'one_size'];
@@ -60,8 +112,11 @@ const VendorDashboard = () => {
 
   // ── Data states ───────────────────────────────────────────────────────────
   const [vendorData, setVendorData] = useState({
-    storeName: '', vendorType: 'Products', country: 'Uganda', businessCategory: 'retail',
-    currencySymbol: 'UGX', // fallback only; overwritten by backend
+    storeName: '',
+    vendorType: 'Products',
+    country: '',
+    businessCategory: 'retail',
+    currencySymbol: '', // resolved from backend; never hardcoded
   });
   const [metrics, setMetrics] = useState({ grossSales: 0, openOrders: 0, pendingPayouts: 0, activeListings: 0 });
   const [salesHistory, setSalesHistory] = useState([]);
@@ -86,19 +141,26 @@ const VendorDashboard = () => {
     try {
       const response = await getVendorDashboard();
       if (response) {
-        const bc = response.businessCategory || 'retail';
+        const bc      = response.businessCategory || 'retail';
+        const country = response.country          || '';
+
+        // Resolve the correct currency for this vendor based on their
+        // registered country during onboarding.
+        const currency = resolveCurrency(country, response.currencySymbol);
+
         setVendorData({
           storeName:        response.storeName        || '',
           vendorType:       response.vendorType       || 'Products',
-          country:          response.country          || 'Uganda',
+          country,
           businessCategory: bc,
-          currencySymbol:   response.currencySymbol   || 'UGX',
+          currencySymbol:   currency,
         });
+
         setMetrics(response.metrics || { grossSales: 0, openOrders: 0, pendingPayouts: 0, activeListings: 0 });
-        setSalesHistory(response.salesHistory   || []);
-        setRecentOrders(response.recentOrders   || []);
+        setSalesHistory(response.salesHistory    || []);
+        setRecentOrders(response.recentOrders    || []);
         setInventoryAlerts(response.inventoryAlerts || []);
-        setReviews(response.reviews             || []);
+        setReviews(response.reviews              || []);
 
         try {
           const cats = await getCategories(bc);
@@ -203,7 +265,7 @@ const VendorDashboard = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
+    <div className="flex min-h-screen bg-[#F0F2F5] font-sans text-slate-800 p-3 gap-3">
       {/* VendorSidebar Component */}
       <VendorSidebar activePage="dashboard" />
 
@@ -492,7 +554,9 @@ const VendorDashboard = () => {
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-slate-500">Price ({currencySymbol}) *</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-500">
+                    Price ({currencySymbol || '—'}) *
+                  </label>
                   <input
                     type="number" name="price" value={formData.price} onChange={handleInputChange}
                     placeholder="0.00" min="0" step="any"
