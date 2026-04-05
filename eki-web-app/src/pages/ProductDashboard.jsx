@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import VendorSidebar from '../components/VendorSidebar';
 import Navbar3 from '../components/adminDashboard/Navbar4';
 import {
   Plus, Search, Filter, LayoutGrid, List,
-  CheckCircle2, Package, ShoppingBag,
-  X, Upload, Trash2, Pencil, Palette, Ruler, ImagePlus, ChevronDown, ChevronUp,
-  ArrowRight, ArrowLeft, Eye, ChevronLeft, ChevronRight, CreditCard, Box, ListChecks,
+  Package, ShoppingBag,
+  X, Trash2, Palette, Ruler, ImagePlus, ChevronDown, ChevronUp,
+  ArrowRight, ArrowLeft, Eye, ChevronLeft, ChevronRight,
 } from 'lucide-react';
-import logo from '../assets/eki-logo-white.png';
 
 import {
   getProducts,
@@ -18,8 +16,10 @@ import {
   uploadListingImages,
   deleteListingImage,
   getVendorDashboard,
-  SignoutUser,
 } from '../services/authService';
+
+// ─── Shared currency helper — same import as VendorDashboard ──────────────────
+import { getCurrencySymbol } from '../utils/currency';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'one_size'];
@@ -35,38 +35,6 @@ const COLOR_SWATCHES = {
   Beige: '#d2b48c', Maroon: '#800000', Teal: '#14b8a6', Gold: '#d4af37',
   Silver: '#c0c0c0',
 };
-
-const getCurrencySymbol = (country) => {
-  const map = {
-    uganda: 'UGX', nigeria: '₦', kenya: 'KES', ghana: '₵',
-    'south africa': 'R', tanzania: 'TZS', rwanda: 'RWF',
-    ethiopia: 'ETB', zambia: 'ZMW', egypt: 'EGP', morocco: 'MAD',
-    senegal: 'CFA', cameroon: 'CFA', ivory: 'CFA', "côte d'ivoire": 'CFA',
-    angola: 'AOA', mozambique: 'MZN', zimbabwe: 'ZWL', botswana: 'BWP',
-    namibia: 'NAD', malawi: 'MWK', sudan: 'SDG', tunisia: 'TND',
-    libya: 'LYD', algeria: 'DZD', madagascar: 'MGA', somalia: 'SOS',
-    usa: '$', 'united states': '$', canada: 'CA$', mexico: 'MX$',
-    brazil: 'R$', argentina: '$', colombia: '$', chile: 'CLP',
-    peru: 'S/', venezuela: 'Bs', uruguay: '$U', ecuador: '$',
-    uk: '£', 'united kingdom': '£', germany: '€', france: '€',
-    italy: '€', spain: '€', portugal: '€', netherlands: '€',
-    belgium: '€', austria: '€', switzerland: 'CHF', sweden: 'kr',
-    norway: 'kr', denmark: 'kr', finland: '€', poland: 'zł',
-    czechia: 'Kč', hungary: 'Ft', romania: 'lei', bulgaria: 'лв',
-    russia: '₽', ukraine: '₴', turkey: '₺',
-    china: '¥', japan: '¥', india: '₹', 'south korea': '₩',
-    indonesia: 'Rp', malaysia: 'RM', thailand: '฿', singapore: 'S$',
-    philippines: '₱', vietnam: '₫', bangladesh: '৳', pakistan: '₨',
-    'sri lanka': '₨', nepal: '₨', myanmar: 'K', cambodia: '₭',
-    'saudi arabia': 'SR', uae: 'AED', 'united arab emirates': 'AED',
-    qatar: 'QR', kuwait: 'KD', bahrain: 'BD', jordan: 'JD',
-    israel: '₪', iran: '﷼', iraq: 'IQD',
-    australia: 'A$', 'new zealand': 'NZ$',
-  };
-  return map[country?.toLowerCase()] || '$';
-};
-
-const QTY_DISPLAY = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' };
 const CATEGORIES = [
   'Electronics', 'Computers', 'Grocery', 'Home & Decor',
   'Fashion', 'Retail', 'Beauty', 'Others',
@@ -81,8 +49,48 @@ const countWords = (text) => {
   return text.trim().split(/\s+/).filter(Boolean).length;
 };
 
+// ─── API normalization ────────────────────────────────────────────────────────
+// API shape:  { status: "published"|"draft", price: "29.99",
+//               category: { id, name }, images: [...],
+//               detail: { sku, quality: "high"|"medium"|"low",
+//                         variants: [{ color, size, stock }] } }
+const normalizeProduct = (p) => {
+  const detail   = p.detail && typeof p.detail === 'object' ? p.detail : {};
+  const variants = Array.isArray(detail.variants) ? detail.variants : [];
+  return {
+    ...p,
+    is_published: p.status === 'published',
+    sku:          detail.sku || '',
+    qty:          (detail.quality || 'medium').toLowerCase(), // always lowercase
+    sizes:        [...new Set(variants.map(v => v.size).filter(Boolean))],
+    colors:       [...new Set(variants.map(v => v.color).filter(Boolean))],
+    totalStock:   variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0),
+    categoryName: p.category?.name || '',
+    _detail:      detail,
+    _variants:    variants,
+  };
+};
+
+// Build variants array from sizes + colors for POST / PATCH
+const buildVariants = (sizes, colors) => {
+  if (!sizes.length && !colors.length) return [];
+  const result    = [];
+  const sizeList  = sizes.length  ? sizes  : [null];
+  const colorList = colors.length ? colors : [null];
+  sizeList.forEach(size => {
+    colorList.forEach(color => {
+      result.push({
+        ...(size  ? { size }  : {}),
+        ...(color ? { color } : {}),
+        stock: 0,
+      });
+    });
+  });
+  return result;
+};
+
 const blankForm = () => ({
-  title: '', category: '', price: '', sku: '', qty: 'Medium',
+  title: '', category: '', price: '', sku: '', qty: 'medium',
   location: '', description: '',
   imageFiles: [],
   sizes: [],
@@ -96,77 +104,86 @@ const isStep1Valid = (data) =>
   !isNaN(Number(data.price)) &&
   Number(data.price) > 0;
 
+// quality always lowercase from API
 const getQualityStyle = (qty) => {
   const q = (qty || '').toLowerCase();
-  if (q === 'high')   return { bg: '#FFF8E7', text: '#B8860B', border: '#F5B841' };
-  if (q === 'low')    return { bg: '#FFF3E0', text: '#C07000', border: '#E09030' };
-  return               { bg: '#FFFBF0', text: '#A07800', border: '#F5C842' };
+  if (q === 'high') return { bg: '#FFF8E7', text: '#B8860B', border: '#F5B841' };
+  if (q === 'low')  return { bg: '#FFF3E0', text: '#C07000', border: '#E09030' };
+  return             { bg: '#FFFBF0', text: '#A07800', border: '#F5C842' };
 };
 
-// ─── Stat Card Component (exactly matching VendorDashboard) ───────────────────
-const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
-  <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
-    <div className="flex items-start justify-between">
-      <div className="space-y-2">
-        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{title}</p>
-        <p className="text-2xl font-bold text-gray-900">{number}</p>
-      </div>
-      <div className={`${iconBgColor} p-2.5 rounded-xl`}>
-        <Icon size={20} className={iconColor} />
-      </div>
+// ─── StatCard ─────────────────────────────────────────────────────────────────
+const StatCard = ({ label, value, icon }) => (
+  <div className="bg-white rounded-xl border border-slate-100 p-4 flex items-center gap-3 shadow-sm">
+    <div className="w-8 h-8 bg-teal-50 rounded-lg flex items-center justify-center flex-shrink-0">{icon}</div>
+    <div>
+      <p className="text-[10px] font-bold uppercase text-slate-400">{label}</p>
+      <p className="text-xl font-black text-slate-800">{value}</p>
     </div>
   </div>
 );
 
-// ─── ProductCard (unchanged) ──────────────────────────────────────────────────
+// ─── ProductCard — matches reference screenshot ───────────────────────────────
 const ProductCard = ({ product, currencySymbol, onClick }) => {
-  const qStyle = getQualityStyle(product.inventory_quality || product.qty);
-  const mainImage = product.images?.[0]?.image || null;
+  const detail     = product.detail && typeof product.detail === 'object' ? product.detail : {};
+  const variants   = Array.isArray(detail.variants) ? detail.variants : (product._variants || []);
+  const isLive     = product.status === 'published' || product.is_published === true;
+  const sku        = detail.sku || product.sku || '—';
+  const totalStock = variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+  const mainImage  = product.images?.find(i => i.is_primary)?.image
+                  || product.images?.[0]?.image || null;
+  const catName    = product.category?.name || product.categoryName || '';
+
   return (
     <div
       onClick={onClick}
       className="bg-white rounded-xl border border-slate-100 overflow-hidden cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all group"
     >
-      <div className="relative h-40 bg-slate-50">
+      <div className="relative h-48 bg-slate-50 flex items-center justify-center overflow-hidden">
         {mainImage ? (
-          <img src={mainImage} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          <img src={mainImage} alt={product.title}
+            className="w-full h-full object-contain p-3 group-hover:scale-105 transition-transform duration-300"
+          />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <ShoppingBag size={32} className="text-slate-200" />
-          </div>
+          <ShoppingBag size={40} className="text-slate-200" />
         )}
         <div className="absolute top-2 right-2">
-          <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${product.is_published === true ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-            {product.is_published === true ? 'LIVE' : 'DRAFT'}
+          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm ${isLive ? 'bg-[#125852] text-white' : 'bg-slate-200 text-slate-500'}`}>
+            {isLive ? 'In Stock' : 'Draft'}
           </span>
         </div>
       </div>
       <div className="p-3 space-y-1">
-        <p className="text-[9px] font-bold uppercase text-slate-400">{product.category || '—'}</p>
-        <p className="text-[13px] font-bold text-slate-800 truncate">{product.title}</p>
-        <div className="flex items-center justify-between pt-0.5">
-          <p className="text-[13px] font-black text-[#125852]">{currencySymbol} {Number(product.price || 0).toLocaleString()}</p>
-          <span
-            className="text-[8px] font-black px-2 py-0.5 rounded-full border"
-            style={{ background: qStyle.bg, color: qStyle.text, borderColor: qStyle.border }}
-          >
-            {(product.inventory_quality || product.qty || 'Medium').toUpperCase()}
-          </span>
+        {catName && <p className="text-[10px] font-bold uppercase text-[#125852] tracking-wide">{catName}</p>}
+        <p className="text-[14px] font-bold text-slate-800 leading-snug truncate">{product.title}</p>
+        <p className="text-[11px] text-slate-400 font-mono">SKU: {sku}</p>
+        <div className="h-px bg-slate-100 !mt-2 !mb-1" />
+        <div className="flex items-end justify-between pt-0.5">
+          <div>
+            <p className="text-[9px] font-bold uppercase text-slate-400 mb-0.5">Stock</p>
+            <p className="text-[13px] font-black text-slate-700">{totalStock} units</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[9px] font-bold uppercase text-slate-400 mb-0.5">Price</p>
+            <p className="text-[15px] font-black text-[#125852]">
+              {currencySymbol} {Number(product.price || 0).toLocaleString(undefined, {
+                minimumFractionDigits: 2, maximumFractionDigits: 2,
+              })}
+            </p>
+          </div>
         </div>
-        {product.sku && <p className="text-[9px] text-slate-400 font-mono truncate">{product.sku}</p>}
       </div>
     </div>
   );
 };
 
-// ─── Color Image Preview Modal (defined OUTSIDE main component — never recreated) ─
+// ─── Color Image Preview Modal ─────────────────────────────────────────────────
 const ColorImagePreviewModal = ({ color, images, onClose }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   if (!images || images.length === 0) return null;
   const goNext = () => setCurrentIndex((i) => (i + 1) % images.length);
   const goPrev = () => setCurrentIndex((i) => (i - 1 + images.length) % images.length);
   const currentSrc = images[currentIndex]?.preview || images[currentIndex]?.image || null;
-
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
@@ -176,22 +193,19 @@ const ColorImagePreviewModal = ({ color, images, onClose }) => {
             <span className="text-[12px] font-bold text-slate-800">{color}</span>
             <span className="text-[10px] text-slate-400">({images.length} photo{images.length !== 1 ? 's' : ''})</span>
           </div>
-          <button type="button" onClick={onClose} className="p-1 rounded-full hover:bg-slate-100 transition-colors">
-            <X size={14} className="text-slate-500" />
-          </button>
+          <button type="button" onClick={onClose} className="p-1 rounded-full hover:bg-slate-100"><X size={14} className="text-slate-500" /></button>
         </div>
         <div className="relative bg-[#F8F8F8]" style={{ aspectRatio: '1 / 1.1' }}>
-          {currentSrc ? (
-            <img src={currentSrc} alt={`${color} ${currentIndex + 1}`} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center"><ShoppingBag size={40} className="text-slate-200" /></div>
-          )}
+          {currentSrc
+            ? <img src={currentSrc} alt={`${color} ${currentIndex + 1}`} className="w-full h-full object-cover" />
+            : <div className="w-full h-full flex items-center justify-center"><ShoppingBag size={40} className="text-slate-200" /></div>
+          }
           {images.length > 1 && (
             <>
-              <button type="button" onClick={goPrev} className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-md rounded-full w-8 h-8 flex items-center justify-center transition-all">
+              <button type="button" onClick={goPrev} className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-md rounded-full w-8 h-8 flex items-center justify-center">
                 <ChevronLeft size={16} className="text-slate-700" />
               </button>
-              <button type="button" onClick={goNext} className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-md rounded-full w-8 h-8 flex items-center justify-center transition-all">
+              <button type="button" onClick={goNext} className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-md rounded-full w-8 h-8 flex items-center justify-center">
                 <ChevronRight size={16} className="text-slate-700" />
               </button>
             </>
@@ -211,7 +225,7 @@ const ColorImagePreviewModal = ({ color, images, onClose }) => {
                 <button key={i} type="button" onClick={() => setCurrentIndex(i)}
                   className={`flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${i === currentIndex ? 'border-[#125852] shadow-md' : 'border-transparent opacity-60 hover:opacity-90'}`}
                 >
-                  {src ? <img src={src} alt={`Thumb ${i + 1}`} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-200 flex items-center justify-center"><ShoppingBag size={14} className="text-slate-400" /></div>}
+                  {src ? <img src={src} alt={`Thumb ${i + 1}`} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-200" />}
                 </button>
               );
             })}
@@ -222,8 +236,8 @@ const ColorImagePreviewModal = ({ color, images, onClose }) => {
   );
 };
 
-// ─── StepProgressBar (defined OUTSIDE — stable, no re-creation) ───────────────
-const StepProgressBar = ({ currentStep, totalSteps = 4, labels = ['Basic Info', 'Description', 'Variants', 'Images'] }) => (
+// ─── StepProgressBar ──────────────────────────────────────────────────────────
+const StepProgressBar = ({ currentStep, labels = ['Basic Info', 'Description', 'Variants', 'Images'] }) => (
   <div className="px-6 pt-3 pb-2 flex-shrink-0">
     <div className="flex items-center gap-1.5">
       {labels.map((label, idx) => {
@@ -238,9 +252,7 @@ const StepProgressBar = ({ currentStep, totalSteps = 4, labels = ['Basic Info', 
               </span>
               <span className="hidden sm:inline">{label}</span>
             </div>
-            {idx < labels.length - 1 && (
-              <div className={`flex-1 h-0.5 rounded-full ${done ? 'bg-[#F5B841]' : 'bg-slate-200'}`} />
-            )}
+            {idx < labels.length - 1 && <div className={`flex-1 h-0.5 rounded-full ${done ? 'bg-[#F5B841]' : 'bg-slate-200'}`} />}
           </React.Fragment>
         );
       })}
@@ -248,34 +260,26 @@ const StepProgressBar = ({ currentStep, totalSteps = 4, labels = ['Basic Info', 
   </div>
 );
 
-// ─── DescriptionField (defined OUTSIDE main component) ────────────────────────
+// ─── DescriptionField (outside main — prevents focus loss on keystroke) ────────
 const DescriptionField = ({ value, onChange, error }) => {
   const words    = countWords(value);
   const tooShort = value && value.trim() && words < DESC_MIN_WORDS;
-  const tooLong  = DESC_MAX_WORDS && words > DESC_MAX_WORDS;
-  const valid    = value && value.trim() && words >= DESC_MIN_WORDS && (!DESC_MAX_WORDS || words <= DESC_MAX_WORDS);
-  const barWidth = Math.min(100, DESC_MAX_WORDS ? Math.round((words / DESC_MAX_WORDS) * 100) : 0);
+  const tooLong  = words > DESC_MAX_WORDS;
+  const valid    = value && value.trim() && words >= DESC_MIN_WORDS && words <= DESC_MAX_WORDS;
+  const barWidth = Math.min(100, Math.round((words / DESC_MAX_WORDS) * 100));
   const barColor = tooLong ? '#ef4444' : valid ? '#22c55e' : tooShort ? '#f97316' : '#e2e8f0';
-
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <label className="text-[11px] font-bold uppercase text-slate-500">
           Description <span className="text-slate-400 normal-case font-normal">({DESC_MIN_WORDS}–{DESC_MAX_WORDS} words)</span>
         </label>
-        <span className={`text-[9px] font-bold ${tooLong ? 'text-red-500' : valid ? 'text-green-500' : 'text-slate-400'}`}>
-          {words} / {DESC_MAX_WORDS}
-        </span>
+        <span className={`text-[9px] font-bold ${tooLong ? 'text-red-500' : valid ? 'text-green-500' : 'text-slate-400'}`}>{words} / {DESC_MAX_WORDS}</span>
       </div>
       <textarea
-        name="description"
-        value={value}
-        onChange={onChange}
-        rows={5}
+        name="description" value={value} onChange={onChange} rows={5}
         placeholder={`Describe your product in ${DESC_MIN_WORDS}–${DESC_MAX_WORDS} words…`}
-        className={`w-full px-3 py-2.5 border rounded-lg text-sm outline-none resize-none focus:ring-1 transition-colors ${
-          error ? 'border-red-400 focus:ring-red-300' : valid ? 'border-green-400 focus:ring-green-300' : 'border-slate-200 focus:ring-[#F5B841]'
-        }`}
+        className={`w-full px-3 py-2.5 border rounded-lg text-sm outline-none resize-none focus:ring-1 transition-colors ${error ? 'border-red-400 focus:ring-red-300' : valid ? 'border-green-400 focus:ring-green-300' : 'border-slate-200 focus:ring-[#F5B841]'}`}
       />
       <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
         <div className="h-full rounded-full transition-all duration-200" style={{ width: `${barWidth}%`, backgroundColor: barColor }} />
@@ -290,23 +294,18 @@ const DescriptionField = ({ value, onChange, error }) => {
   );
 };
 
-// ─── VariantSection (defined OUTSIDE main component) ─────────────────────────
+// ─── VariantSection (outside main — stable reference) ─────────────────────────
 const VariantSection = ({ sizes, colors, onToggleChip }) => {
   const [colorDropdownOpen, setColorDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
-
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setColorDropdownOpen(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    const handler = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setColorDropdownOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
-
   return (
     <div className="space-y-4 border border-slate-100 rounded-xl p-4 bg-slate-50/50">
       <h4 className="text-[11px] font-bold uppercase text-slate-600 tracking-wider">Product Variants</h4>
-
       {/* Sizes */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
@@ -315,14 +314,8 @@ const VariantSection = ({ sizes, colors, onToggleChip }) => {
         </div>
         <div className="flex flex-wrap gap-1.5">
           {SIZE_OPTIONS.map((size) => (
-            <button
-              key={size} type="button"
-              onClick={() => onToggleChip('sizes', size)}
-              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
-                sizes.includes(size)
-                  ? 'bg-[#125852] text-white border-[#125852]'
-                  : 'bg-white text-slate-500 border-slate-200 hover:border-[#125852] hover:text-[#125852]'
-              }`}
+            <button key={size} type="button" onClick={() => onToggleChip('sizes', size)}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${sizes.includes(size) ? 'bg-[#125852] text-white border-[#125852]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#125852] hover:text-[#125852]'}`}
             >
               {size === 'one_size' ? 'One Size' : size}
             </button>
@@ -330,7 +323,6 @@ const VariantSection = ({ sizes, colors, onToggleChip }) => {
         </div>
         {sizes.length > 0 && <p className="text-[10px] text-[#125852] font-medium">Selected: {sizes.join(', ')}</p>}
       </div>
-
       {/* Colors */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
@@ -338,22 +330,19 @@ const VariantSection = ({ sizes, colors, onToggleChip }) => {
           <label className="text-[11px] font-bold uppercase text-slate-500">Available Colors</label>
         </div>
         <div className="relative" ref={dropdownRef}>
-          <button
-            type="button"
-            onClick={() => setColorDropdownOpen((v) => !v)}
+          <button type="button" onClick={() => setColorDropdownOpen((v) => !v)}
             className="w-full flex items-center justify-between px-3 py-2 border border-slate-200 rounded-lg bg-white text-sm text-slate-600 hover:border-[#125852] transition-colors"
           >
             <div className="flex items-center gap-2 flex-wrap min-h-[18px]">
-              {colors.length === 0 ? (
-                <span className="text-slate-400 text-[12px]">Select colors…</span>
-              ) : (
-                colors.map((c) => (
+              {colors.length === 0
+                ? <span className="text-slate-400 text-[12px]">Select colors…</span>
+                : colors.map((c) => (
                   <span key={c} className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2 py-0.5 rounded-full text-[10px] font-bold">
                     <span className="w-2.5 h-2.5 rounded-full border border-white/40 flex-shrink-0" style={{ backgroundColor: COLOR_SWATCHES[c] || '#ccc' }} />
                     {c}
                   </span>
                 ))
-              )}
+              }
             </div>
             {colorDropdownOpen ? <ChevronUp size={16} className="text-slate-400 flex-shrink-0" /> : <ChevronDown size={16} className="text-slate-400 flex-shrink-0" />}
           </button>
@@ -362,14 +351,16 @@ const VariantSection = ({ sizes, colors, onToggleChip }) => {
               {COLOR_OPTIONS.map((color) => {
                 const selected = colors.includes(color);
                 return (
-                  <button
-                    key={color} type="button"
-                    onClick={() => onToggleChip('colors', color)}
+                  <button key={color} type="button" onClick={() => onToggleChip('colors', color)}
                     className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${selected ? 'bg-[#125852] text-white' : 'text-slate-600 hover:bg-slate-50'}`}
                   >
                     <span className="w-4 h-4 rounded-full border-2 border-white shadow flex-shrink-0" style={{ backgroundColor: COLOR_SWATCHES[color] || '#ccc' }} />
                     {color}
-                    {selected && <CheckCircle2 size={12} className="ml-auto" />}
+                    {selected && (
+                      <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-auto">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
+                      </svg>
+                    )}
                   </button>
                 );
               })}
@@ -382,7 +373,7 @@ const VariantSection = ({ sizes, colors, onToggleChip }) => {
   );
 };
 
-// ─── ImageGrid (defined OUTSIDE) ──────────────────────────────────────────────
+// ─── ImageGrid ────────────────────────────────────────────────────────────────
 const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, onRemovePending, onAdd }) => {
   const total      = existingImages.length + pendingImages.length;
   const canAddMore = total < MAX_GENERAL_IMAGES;
@@ -396,7 +387,7 @@ const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, 
         {existingImages.map((img, i) => (
           <div key={img.id ?? i} className="w-16 h-16 rounded-lg border border-slate-200 overflow-hidden relative group flex-shrink-0">
             <img src={img.image} alt={`Product ${i + 1}`} className="w-full h-full object-cover" />
-            {i === 0 && <span className="absolute bottom-0 left-0 right-0 bg-[#125852]/80 text-white text-[7px] font-black text-center py-0.5">MAIN</span>}
+            {(img.is_primary || i === 0) && <span className="absolute bottom-0 left-0 right-0 bg-[#125852]/80 text-white text-[7px] font-black text-center py-0.5">MAIN</span>}
             <button type="button" onClick={() => onRemoveExisting(img.id, i)} className="absolute top-0.5 right-0.5 bg-white/90 p-0.5 rounded-full text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
               <Trash2 size={9} />
             </button>
@@ -423,11 +414,8 @@ const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, 
   );
 };
 
-// ─── ColorImageSection (defined OUTSIDE) ──────────────────────────────────────
-const ColorImageSection = ({
-  colors, colorImageFiles,
-  fileRefs, onAdd, onChange, onRemove, onPreview,
-}) => {
+// ─── ColorImageSection ────────────────────────────────────────────────────────
+const ColorImageSection = ({ colors, colorImageFiles, fileRefs, onAdd, onChange, onRemove, onPreview }) => {
   if (!colors || colors.length === 0) return null;
   return (
     <div className="space-y-3 border border-slate-100 rounded-xl p-3 bg-slate-50/50">
@@ -437,8 +425,8 @@ const ColorImageSection = ({
         <span className="text-[9px] text-slate-400 ml-auto">Up to {MAX_IMAGES_PER_COLOR} per colour</span>
       </div>
       {colors.map((color) => {
-        const images   = colorImageFiles?.[color] || [];
-        const canAdd   = images.length < MAX_IMAGES_PER_COLOR;
+        const images    = colorImageFiles?.[color] || [];
+        const canAdd    = images.length < MAX_IMAGES_PER_COLOR;
         const hasImages = images.length > 0;
         return (
           <div key={color} className="space-y-1.5">
@@ -447,9 +435,7 @@ const ColorImageSection = ({
               <span className="text-[10px] font-bold text-slate-700">{color}</span>
               <span className="text-[8px] text-slate-400">({images.length}/{MAX_IMAGES_PER_COLOR})</span>
               {hasImages && (
-                <button
-                  type="button"
-                  onClick={() => onPreview(color, images)}
+                <button type="button" onClick={() => onPreview(color, images)}
                   className="ml-auto flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border transition-all hover:shadow-sm"
                   style={{
                     backgroundColor: (COLOR_SWATCHES[color] || '#125852') + '18',
@@ -479,14 +465,7 @@ const ColorImageSection = ({
                   <span className="text-[8px] font-bold text-slate-400 mt-0.5">ADD</span>
                 </button>
               )}
-              <input
-                type="file"
-                ref={(el) => { fileRefs.current[color] = el; }}
-                onChange={(e) => onChange(color, e)}
-                className="hidden"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-              />
+              <input type="file" ref={(el) => { fileRefs.current[color] = el; }} onChange={(e) => onChange(color, e)} className="hidden" accept="image/jpeg,image/png,image/webp" multiple />
             </div>
           </div>
         );
@@ -495,7 +474,7 @@ const ColorImageSection = ({
   );
 };
 
-// ─── SummaryPill — mini recap shown at top of steps 2–4 ──────────────────────
+// ─── SummaryPill ──────────────────────────────────────────────────────────────
 const SummaryPill = ({ formData, currencySymbol, currentStep, onEdit }) => (
   <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
     <div className="flex items-start justify-between">
@@ -518,36 +497,10 @@ const SummaryPill = ({ formData, currencySymbol, currentStep, onEdit }) => (
   </div>
 );
 
-// ─── Modal shell ──────────────────────────────────────────────────────────────
-const ModalShell = ({ title, subtitle, step, onClose, children, footer }) => (
-  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-    <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]">
-      {/* Header */}
-      <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
-        <div>
-          <h2 className="text-lg font-bold">{title}</h2>
-          <p className="text-[11px] text-slate-500">{subtitle}</p>
-        </div>
-        <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors">
-          <X size={20} />
-        </button>
-      </div>
-
-      {/* Progress */}
-      <StepProgressBar currentStep={step} />
-
-      {/* Body */}
-      <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
-        {children}
-      </div>
-
-      {/* Footer */}
-      <div className="px-6 py-4 border-t bg-slate-50/30 flex justify-between items-center flex-shrink-0">
-        {footer}
-      </div>
-    </div>
-  </div>
-);
+// ─── ErrorBanner ──────────────────────────────────────────────────────────────
+const ErrorBanner = ({ msg }) => msg
+  ? <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-medium px-3 py-2 rounded-lg">{msg}</div>
+  : null;
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const ProductDashboard = () => {
@@ -560,9 +513,12 @@ const ProductDashboard = () => {
   const [isPublished, setIsPublished]               = useState(true);
   const [isLoading, setIsLoading]                   = useState(false);
   const [isFetching, setIsFetching]                 = useState(true);
+
+  // ── Currency — pulled from same getVendorDashboard call as VendorDashboard ──
   const [currencySymbol, setCurrencySymbol]         = useState('$');
   const [vendorCountry, setVendorCountry]           = useState('');
   const [businessCategory, setBusinessCategory]     = useState('retail');
+
   const [searchQuery, setSearchQuery]               = useState('');
   const [searchFocused, setSearchFocused]           = useState(false);
   const [successMsg, setSuccessMsg]                 = useState('');
@@ -571,8 +527,6 @@ const ProductDashboard = () => {
   const [filterStatus, setFilterStatus]             = useState('');
   const [filterQuality, setFilterQuality]           = useState('');
   const filterRef                                   = useRef(null);
-
-  // 4-step form
   const [formStep, setFormStep]                     = useState(1);
   const [colorPreviewModal, setColorPreviewModal]   = useState(null);
 
@@ -587,31 +541,32 @@ const ProductDashboard = () => {
 
   const step1Valid = isStep1Valid(formData);
 
-  useEffect(() => {
-    loadProducts();
-    loadVendorInfo();
-  }, []);
+  useEffect(() => { loadProducts(); loadVendorInfo(); }, []);
 
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (filterRef.current && !filterRef.current.contains(e.target)) setIsFilterOpen(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    const handler = (e) => { if (filterRef.current && !filterRef.current.contains(e.target)) setIsFilterOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // Same call + same getCurrencySymbol as VendorDashboard — currency is always in sync
   const loadVendorInfo = async () => {
     try {
       const data = await getVendorDashboard();
-      if (data?.country) { setVendorCountry(data.country); setCurrencySymbol(getCurrencySymbol(data.country)); }
+      if (data?.country) {
+        setVendorCountry(data.country);
+        setCurrencySymbol(getCurrencySymbol(data.country));
+      }
       if (data?.businessCategory) setBusinessCategory(data.businessCategory);
     } catch (err) { console.error('Failed to load vendor info', err); }
   };
 
   const loadProducts = async () => {
     setIsFetching(true);
-    try { setProducts(await getProducts()); }
-    catch (err) { console.error('Failed to load products', err); }
+    try {
+      const raw = await getProducts();
+      setProducts((raw || []).map(normalizeProduct));
+    } catch (err) { console.error('Failed to load products', err); }
     finally { setIsFetching(false); }
   };
 
@@ -635,7 +590,8 @@ const ProductDashboard = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const removeCreateImage = (index) => setFormData((prev) => ({ ...prev, imageFiles: prev.imageFiles.filter((_, i) => i !== index) }));
+  const removeCreateImage = (index) =>
+    setFormData((prev) => ({ ...prev, imageFiles: prev.imageFiles.filter((_, i) => i !== index) }));
 
   const handleColorFilesChange = (color, e) => {
     const files = Array.from(e.target.files);
@@ -644,18 +600,15 @@ const ProductDashboard = () => {
     files.slice(0, remaining).forEach((file) => {
       const reader = new FileReader();
       reader.onloadend = () => setFormData((prev) => ({
-        ...prev,
-        colorImageFiles: { ...prev.colorImageFiles, [color]: [...(prev.colorImageFiles[color] || []), { preview: reader.result, file }] },
+        ...prev, colorImageFiles: { ...prev.colorImageFiles, [color]: [...(prev.colorImageFiles[color] || []), { preview: reader.result, file }] },
       }));
       reader.readAsDataURL(file);
     });
     if (colorFileInputRefs.current[color]) colorFileInputRefs.current[color].value = '';
   };
 
-  const removeColorCreateImage = (color, index) => setFormData((prev) => ({
-    ...prev,
-    colorImageFiles: { ...prev.colorImageFiles, [color]: (prev.colorImageFiles[color] || []).filter((_, i) => i !== index) },
-  }));
+  const removeColorCreateImage = (color, index) =>
+    setFormData((prev) => ({ ...prev, colorImageFiles: { ...prev.colorImageFiles, [color]: (prev.colorImageFiles[color] || []).filter((_, i) => i !== index) } }));
 
   const handleEditFilesChange = (e) => {
     const files = Array.from(e.target.files);
@@ -670,7 +623,8 @@ const ProductDashboard = () => {
     if (editFileInputRef.current) editFileInputRef.current.value = '';
   };
 
-  const removeNewEditImage = (index) => setSelectedProduct((prev) => ({ ...prev, newImageFiles: (prev.newImageFiles || []).filter((_, i) => i !== index) }));
+  const removeNewEditImage = (index) =>
+    setSelectedProduct((prev) => ({ ...prev, newImageFiles: (prev.newImageFiles || []).filter((_, i) => i !== index) }));
 
   const handleDeleteExistingImage = async (imageId, index) => {
     if (!selectedProduct?.id) return;
@@ -687,55 +641,38 @@ const ProductDashboard = () => {
     files.slice(0, remaining).forEach((file) => {
       const reader = new FileReader();
       reader.onloadend = () => setSelectedProduct((prev) => ({
-        ...prev,
-        colorImageFiles: { ...(prev.colorImageFiles || {}), [color]: [...(prev.colorImageFiles?.[color] || []), { preview: reader.result, file }] },
+        ...prev, colorImageFiles: { ...(prev.colorImageFiles || {}), [color]: [...(prev.colorImageFiles?.[color] || []), { preview: reader.result, file }] },
       }));
       reader.readAsDataURL(file);
     });
     if (editColorFileInputRefs.current[color]) editColorFileInputRefs.current[color].value = '';
   };
 
-  const removeEditColorImage = (color, index) => setSelectedProduct((prev) => ({
-    ...prev,
-    colorImageFiles: { ...(prev.colorImageFiles || {}), [color]: (prev.colorImageFiles?.[color] || []).filter((_, i) => i !== index) },
-  }));
+  const removeEditColorImage = (color, index) =>
+    setSelectedProduct((prev) => ({ ...prev, colorImageFiles: { ...(prev.colorImageFiles || {}), [color]: (prev.colorImageFiles?.[color] || []).filter((_, i) => i !== index) } }));
 
-  // toggleChip for CREATE form
   const toggleChip = (field, value) => {
     setFormData((prev) => {
       const arr  = prev[field] || [];
       const next = arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
       if (field === 'colors' && arr.includes(value)) {
-        const { [value]: _removed, ...rest } = prev.colorImageFiles || {};
+        const { [value]: _r, ...rest } = prev.colorImageFiles || {};
         return { ...prev, [field]: next, colorImageFiles: rest };
       }
       return { ...prev, [field]: next };
     });
   };
 
-  // toggleChip for EDIT form
   const toggleEditChip = (field, value) => {
     setSelectedProduct((prev) => {
       const arr  = prev[field] || [];
       const next = arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
       if (field === 'colors' && arr.includes(value)) {
-        const { [value]: _removed, ...rest } = prev.colorImageFiles || {};
+        const { [value]: _r, ...rest } = prev.colorImageFiles || {};
         return { ...prev, [field]: next, colorImageFiles: rest };
       }
       return { ...prev, [field]: next };
     });
-  };
-
-  const validateForm = (data) => {
-    const errs = {};
-    if (!data.title?.trim()) errs.title = 'Title is required';
-    if (!data.price || isNaN(Number(data.price)) || Number(data.price) <= 0) errs.price = 'Valid price is required';
-    const wordCount = countWords(data.description);
-    if (data.description && data.description.trim()) {
-      if (wordCount < DESC_MIN_WORDS) errs.description = `Too short (${wordCount} word${wordCount !== 1 ? 's' : ''}). Min ${DESC_MIN_WORDS} words.`;
-      else if (DESC_MAX_WORDS && wordCount > DESC_MAX_WORDS) errs.description = `Too long (${wordCount} words). Max ${DESC_MAX_WORDS} words.`;
-    }
-    return errs;
   };
 
   const validateStep1 = () => {
@@ -747,51 +684,54 @@ const ProductDashboard = () => {
 
   const validateStep2 = () => {
     const errs = {};
-    const wordCount = countWords(formData.description);
-    if (formData.description && formData.description.trim()) {
-      if (wordCount < DESC_MIN_WORDS) errs.description = `Too short (${wordCount} word${wordCount !== 1 ? 's' : ''}). Please write at least ${DESC_MIN_WORDS} words.`;
-      else if (DESC_MAX_WORDS && wordCount > DESC_MAX_WORDS) errs.description = `Too long (${wordCount} words). Max ${DESC_MAX_WORDS} words.`;
+    const wc = countWords(formData.description);
+    if (formData.description?.trim()) {
+      if (wc < DESC_MIN_WORDS) errs.description = `Too short (${wc} word${wc !== 1 ? 's' : ''}). Please write at least ${DESC_MIN_WORDS} words.`;
+      else if (wc > DESC_MAX_WORDS) errs.description = `Too long (${wc} words). Max ${DESC_MAX_WORDS} words.`;
     }
     return errs;
   };
 
-  const handleStep1Continue = () => {
-    const errs = validateStep1();
-    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
-    setErrors({});
-    setFormStep(2);
+  const validateForm = (data) => {
+    const errs = {};
+    if (!data.title?.trim()) errs.title = 'Title is required';
+    if (!data.price || isNaN(Number(data.price)) || Number(data.price) <= 0) errs.price = 'Valid price is required';
+    const wc = countWords(data.description);
+    if (data.description?.trim()) {
+      if (wc < DESC_MIN_WORDS) errs.description = `Too short. Min ${DESC_MIN_WORDS} words.`;
+      else if (wc > DESC_MAX_WORDS) errs.description = `Too long. Max ${DESC_MAX_WORDS} words.`;
+    }
+    return errs;
   };
 
-  const handleStep2Continue = () => {
-    const errs = validateStep2();
-    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
-    setErrors({});
-    setFormStep(3);
-  };
+  const handleStep1Continue = () => { const e = validateStep1(); if (Object.keys(e).length) { setErrors(e); return; } setErrors({}); setFormStep(2); };
+  const handleStep2Continue = () => { const e = validateStep2(); if (Object.keys(e).length) { setErrors(e); return; } setErrors({}); setFormStep(3); };
+  const handleStep3Continue = () => { setErrors({}); setFormStep(4); };
 
-  const handleStep3Continue = () => {
-    setErrors({});
-    setFormStep(4);
-  };
+  const collectAllFiles = (imageFiles, colorImageFiles) => [
+    ...(imageFiles || []).map((f) => f.file),
+    ...Object.values(colorImageFiles || {}).flat().map((f) => f.file),
+  ];
 
-  const collectAllFiles = (imageFiles, colorImageFiles) => {
-    const general = (imageFiles || []).map((f) => f.file);
-    const colored = Object.values(colorImageFiles || {}).flat().map((f) => f.file);
-    return [...general, ...colored];
-  };
-
+  // ── CREATE — sends status + detail.{ sku, quality, variants } ────────────────
   const handlePublish = async (e) => {
     e.preventDefault();
     const validationErrors = validateForm(formData);
-    if (Object.keys(validationErrors).length > 0) { setErrors(validationErrors); return; }
+    if (Object.keys(validationErrors).length) { setErrors(validationErrors); return; }
     setIsLoading(true);
     try {
       const created = await createProductListing({
-        title: formData.title, description: formData.description,
-        location: formData.location, price: formData.price,
-        sku: formData.sku, qty: formData.qty,
-        sizes: formData.sizes, colors: formData.colors,
-        is_published: isPublished, business_category: businessCategory,
+        title:             formData.title,
+        description:       formData.description,
+        location:          formData.location,
+        price:             formData.price,
+        status:            isPublished ? 'published' : 'draft',     // ← API field
+        business_category: businessCategory,
+        detail: {
+          sku:      formData.sku,
+          quality:  (formData.qty || 'medium').toLowerCase(),        // ← always lowercase
+          variants: buildVariants(formData.sizes, formData.colors),
+        },
       });
       const allFiles = collectAllFiles(formData.imageFiles, formData.colorImageFiles);
       if (allFiles.length > 0 && created?.id) await uploadListingImages(created.id, allFiles);
@@ -812,12 +752,18 @@ const ProductDashboard = () => {
     } finally { setIsLoading(false); }
   };
 
+  // ── Open edit — extract normalized fields ────────────────────────────────────
   const handleProductClick = (product) => {
+    const detail   = product.detail && typeof product.detail === 'object' ? product.detail : {};
+    const variants = Array.isArray(detail.variants) ? detail.variants : (product._variants || []);
     setSelectedProduct({
       ...product,
-      is_published:    product.is_published === true || product.status === 'published',
-      qty:             QTY_DISPLAY[product.inventory_quality] || product.qty || 'Medium',
-      location:        product.vendor_location || product.location || '',
+      is_published:    product.status === 'published',
+      sku:             detail.sku || product.sku || '',
+      qty:             (detail.quality || product.qty || 'medium').toLowerCase(),
+      location:        product.location || '',
+      sizes:           [...new Set(variants.map(v => v.size).filter(Boolean))],
+      colors:          [...new Set(variants.map(v => v.color).filter(Boolean))],
       images:          product.images || [],
       newImageFiles:   [],
       colorImageFiles: {},
@@ -826,19 +772,25 @@ const ProductDashboard = () => {
     setIsEditModalOpen(true);
   };
 
+  // ── UPDATE — sends status + detail.{ sku, quality, variants } ────────────────
   const handleUpdate = async (e) => {
     e.preventDefault();
     if (!selectedProduct?.id) return;
     const validationErrors = validateForm(selectedProduct);
-    if (Object.keys(validationErrors).length > 0) { setEditErrors(validationErrors); return; }
+    if (Object.keys(validationErrors).length) { setEditErrors(validationErrors); return; }
     setIsLoading(true);
     try {
       await updateProductListing(selectedProduct.id, {
-        title: selectedProduct.title, price: selectedProduct.price,
-        sku: selectedProduct.sku, qty: selectedProduct.qty,
-        location: selectedProduct.location, description: selectedProduct.description,
-        is_published: selectedProduct.is_published === true,
-        sizes: selectedProduct.sizes || [], colors: selectedProduct.colors || [],
+        title:       selectedProduct.title,
+        price:       selectedProduct.price,
+        location:    selectedProduct.location,
+        description: selectedProduct.description,
+        status:      selectedProduct.is_published ? 'published' : 'draft',    // ← API field
+        detail: {
+          sku:      selectedProduct.sku,
+          quality:  (selectedProduct.qty || 'medium').toLowerCase(),           // ← always lowercase
+          variants: buildVariants(selectedProduct.sizes || [], selectedProduct.colors || []),
+        },
       });
       const allFiles = collectAllFiles(selectedProduct.newImageFiles, selectedProduct.colorImageFiles);
       if (allFiles.length > 0) await uploadListingImages(selectedProduct.id, allFiles);
@@ -856,8 +808,8 @@ const ProductDashboard = () => {
     } finally { setIsLoading(false); }
   };
 
-  const handleDelete   = () => { if (!selectedProduct?.id) return; setIsDeleteModalOpen(true); };
-  const confirmDelete  = async () => {
+  const handleDelete  = () => { if (!selectedProduct?.id) return; setIsDeleteModalOpen(true); };
+  const confirmDelete = async () => {
     setIsDeleteModalOpen(false);
     setIsLoading(true);
     try {
@@ -872,46 +824,22 @@ const ProductDashboard = () => {
     } finally { setIsLoading(false); }
   };
 
+  // ── Filter — uses normalized qty (lowercase) and status ──────────────────────
   const filteredProducts = products.filter((p) => {
-    const matchesSearch   = p.title?.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = !filterCategory || p.category === filterCategory;
-    const matchesStatus   = !filterStatus || (filterStatus === 'published' && p.is_published === true) || (filterStatus === 'draft' && p.is_published !== true);
-    const rawQty          = (p.inventory_quality || p.qty || '').toUpperCase();
-    const matchesQuality  = !filterQuality || rawQty === filterQuality.toUpperCase();
+    const matchesSearch   = p.title?.toLowerCase().includes(searchQuery.toLowerCase()) || (p.sku || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = !filterCategory || (p.categoryName || '').toLowerCase() === filterCategory.toLowerCase();
+    const matchesStatus   = !filterStatus || (filterStatus === 'published' && p.is_published) || (filterStatus === 'draft' && !p.is_published);
+    const matchesQuality  = !filterQuality || (p.qty || '').toLowerCase() === filterQuality.toLowerCase();
     return matchesSearch && matchesCategory && matchesStatus && matchesQuality;
   });
 
   const activeFilterCount = [filterCategory, filterStatus, filterQuality].filter(Boolean).length;
   const clearFilters = () => { setFilterCategory(''); setFilterStatus(''); setFilterQuality(''); };
-
   const closeCreateModal = () => { setIsProductModalOpen(false); setFormData(blankForm()); setErrors({}); setFormStep(1); };
 
-  // ─── Shared footer nav buttons
-  const navButtons = (onBack, onNext, nextLabel = 'Continue', nextIcon = <ArrowRight size={13} />, nextDisabled = false, isSubmit = false) => (
-    <>
-      <button type="button" onClick={onBack} className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5">
-        <ArrowLeft size={13} /> Back
-      </button>
-      <button
-        type={isSubmit ? 'submit' : 'button'}
-        onClick={isSubmit ? undefined : onNext}
-        disabled={nextDisabled || isLoading}
-        className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${
-          nextDisabled || isLoading ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#F5B841] text-white hover:bg-[#E0A83B] cursor-pointer'
-        }`}
-      >
-        {isLoading && isSubmit ? 'Saving…' : nextLabel} {!isLoading && nextIcon}
-      </button>
-    </>
-  );
-
-  // ─── Error banner
-  const ErrorBanner = ({ msg }) => msg ? (
-    <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-medium px-3 py-2 rounded-lg">{msg}</div>
-  ) : null;
-
+  // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="flex min-h-screen bg-[#ecece7] font-sans text-slate-800 p-3 gap-3">
+    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
       <VendorSidebar activePage="products" />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -919,12 +847,13 @@ const ProductDashboard = () => {
 
         {successMsg && (
           <div className="fixed top-6 right-6 z-[200] bg-emerald-600 text-white px-4 py-2 rounded-xl shadow-lg text-xs font-bold flex items-center gap-2 animate-pulse">
-            <CheckCircle2 size={12} /> {successMsg}
+            ✓ {successMsg}
           </div>
         )}
 
         <main className="p-5 max-w-[1400px] mx-auto w-full pb-16">
-          {/* ─── Header */}
+
+          {/* Header */}
           <div className="flex justify-between items-center mb-5">
             <div>
               <h1 className="text-xl font-bold text-[#1A1A1A] tracking-tight">Product Management</h1>
@@ -945,44 +874,23 @@ const ProductDashboard = () => {
             </button>
           </div>
 
-          {/* ─── Stat cards (exactly matching VendorDashboard style) */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
-            <StatCard
-              title="Total Products"
-              number={products.length}
-              icon={Package}
-              iconBgColor="bg-emerald-50"
-              iconColor="text-emerald-600"
+          {/* Stat cards — all use API status field */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5">
+            <StatCard label="Total Products"  value={products.length} icon={<Package size={12} className="text-teal-600" />} />
+            <StatCard label="Active Listings" value={products.filter(p => p.status === 'published').length}
+              icon={<svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-teal-600"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
             />
-            <StatCard
-              title="Active Listings"
-              number={products.filter((p) => p.is_published === true).length}
-              icon={ListChecks}
-              iconBgColor="bg-blue-50"
-              iconColor="text-blue-600"
+            <StatCard label="High Quality"    value={products.filter(p => (p.qty || '').toLowerCase() === 'high').length}
+              icon={<svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-green-500"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
             />
-            <StatCard
-              title="High Quality"
-              number={products.filter((p) => (p.inventory_quality || p.qty || '').toUpperCase() === 'HIGH').length}
-              icon={Box}
-              iconBgColor="bg-orange-50"
-              iconColor="text-orange-600"
-            />
-            <StatCard
-              title="Drafts"
-              number={products.filter((p) => p.is_published !== true).length}
-              icon={CreditCard}
-              iconBgColor="bg-indigo-50"
-              iconColor="text-indigo-600"
-            />
+            <StatCard label="Drafts" value={products.filter(p => p.status === 'draft').length} icon={<Package size={12} className="text-slate-400" />} />
           </div>
 
-          {/* ─── Search + Filter + View toggle */}
+          {/* Search + Filter + View toggle */}
           <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
             <div className={`relative w-80 flex items-center border rounded-lg shadow-sm transition-all bg-white ${searchFocused ? 'border-[#F5B841] ring-1 ring-[#F5B841]' : 'border-slate-200'}`}>
               <Search className={`absolute left-3 transition-colors ${searchFocused ? 'text-[#F5B841]' : 'text-slate-400'}`} size={16} />
-              <input
-                type="text" placeholder="Search by title or SKU..."
+              <input type="text" placeholder="Search by title or SKU..."
                 value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
                 className="w-full pl-9 pr-4 py-2 bg-transparent text-sm focus:outline-none rounded-lg"
@@ -992,8 +900,7 @@ const ProductDashboard = () => {
 
             <div className="flex items-center gap-3">
               <div className="relative" ref={filterRef}>
-                <button
-                  onClick={() => setIsFilterOpen((v) => !v)}
+                <button onClick={() => setIsFilterOpen((v) => !v)}
                   className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-xs font-bold transition-all ${activeFilterCount > 0 ? 'bg-[#F5B841] text-white border-[#F5B841] shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-[#F5B841]'}`}
                 >
                   <Filter size={14} /> Filters
@@ -1020,11 +927,11 @@ const ProductDashboard = () => {
                     <div className="mb-4">
                       <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Quality</label>
                       <div className="flex gap-2 flex-wrap">
-                        {['', 'High', 'Medium', 'Low'].map((q) => (
+                        {['', 'high', 'medium', 'low'].map((q) => (
                           <button key={q} type="button" onClick={() => setFilterQuality(q)}
                             className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${filterQuality === q ? 'bg-[#125852] text-white border-[#125852]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#125852]'}`}
                           >
-                            {q === '' ? 'All' : q}
+                            {q === '' ? 'All' : q.charAt(0).toUpperCase() + q.slice(1)}
                           </button>
                         ))}
                       </div>
@@ -1044,7 +951,6 @@ const ProductDashboard = () => {
                   </div>
                 )}
               </div>
-
               <div className="h-8 w-[1px] bg-slate-200 mx-1" />
               <div className="flex bg-white border border-slate-200 rounded-lg p-1">
                 <button onClick={() => setViewType('grid')} className={`p-1.5 rounded ${viewType === 'grid' ? 'bg-slate-100' : ''}`}><LayoutGrid size={16} /></button>
@@ -1068,7 +974,7 @@ const ProductDashboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[...Array(8)].map((_, i) => (
                 <div key={i} className="bg-white rounded-xl border border-slate-100 overflow-hidden animate-pulse">
-                  <div className="h-40 bg-slate-100" />
+                  <div className="h-48 bg-slate-100" />
                   <div className="p-4 space-y-1.5">
                     <div className="h-2 bg-slate-100 rounded w-1/2" />
                     <div className="h-3 bg-slate-100 rounded w-3/4" />
@@ -1097,16 +1003,13 @@ const ProductDashboard = () => {
           )}
         </main>
 
-        {/* FOOTER - exactly matching VendorDashboard */}
-        <footer className="bg-[#125852] text-white py-2.5 px-5 flex justify-between items-center text-[8px] rounded-xl mx-5 mb-3">
+        <footer className="bg-[#125852] text-white py-2 px-8 flex justify-between items-center text-[9px] mt-auto">
           <div>Buy Smart. Sell Fast. Grow Together...</div>
           <div>© 2026 Vendor Portal. All rights reserved.</div>
         </footer>
       </div>
 
-      {/* ══════════════════════════════
-          STEP 1 — Basic Info
-      ══════════════════════════════ */}
+      {/* ══ STEP 1 — Basic Info ══════════════════════════════════════════════════ */}
       {isProductModalOpen && formStep === 1 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left">
@@ -1158,26 +1061,26 @@ const ProductDashboard = () => {
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold uppercase text-slate-500">SKU</label>
                   <input type="text" name="sku" value={formData.sku} onChange={handleInputChange}
-                    placeholder="ALP-TSH-M-BLK-L-2026-0001"
+                    placeholder="e.g. PRD-001-BLK"
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
                   />
                 </div>
                 <div className="space-y-1">
+                  {/* Quality dropdown — values are lowercase to match API */}
                   <label className="text-[11px] font-bold uppercase text-slate-500">Quality</label>
                   <select name="qty" value={formData.qty} onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
                   >
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
                   </select>
                 </div>
               </div>
             </div>
             <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
               <button type="button" onClick={closeCreateModal} className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50">Cancel</button>
-              <button
-                type="button" onClick={handleStep1Continue}
+              <button type="button" onClick={handleStep1Continue}
                 className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${step1Valid ? 'bg-[#F5B841] text-white hover:bg-[#E0A83B] cursor-pointer' : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`}
               >
                 Continue <ArrowRight size={13} />
@@ -1187,10 +1090,7 @@ const ProductDashboard = () => {
         </div>
       )}
 
-      {/* ══════════════════════════════
-          STEP 2 — Description
-          (its own isolated modal so DescriptionField is stable)
-      ══════════════════════════════ */}
+      {/* ══ STEP 2 — Description ════════════════════════════════════════════════ */}
       {isProductModalOpen && formStep === 2 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]">
@@ -1205,7 +1105,6 @@ const ProductDashboard = () => {
             <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
               <ErrorBanner msg={errors._server} />
               <SummaryPill formData={formData} currencySymbol={currencySymbol} currentStep={2} onEdit={setFormStep} />
-              {/* DescriptionField is a stable external component — typing works perfectly */}
               <DescriptionField value={formData.description} onChange={handleInputChange} error={errors.description} />
             </div>
             <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
@@ -1220,9 +1119,7 @@ const ProductDashboard = () => {
         </div>
       )}
 
-      {/* ══════════════════════════════
-          STEP 3 — Variants
-      ══════════════════════════════ */}
+      {/* ══ STEP 3 — Variants ═══════════════════════════════════════════════════ */}
       {isProductModalOpen && formStep === 3 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]">
@@ -1250,9 +1147,7 @@ const ProductDashboard = () => {
         </div>
       )}
 
-      {/* ══════════════════════════════
-          STEP 4 — Images & Publish
-      ══════════════════════════════ */}
+      {/* ══ STEP 4 — Images & Publish ═══════════════════════════════════════════ */}
       {isProductModalOpen && formStep === 4 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <form onSubmit={handlePublish} className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]">
@@ -1267,39 +1162,26 @@ const ProductDashboard = () => {
             <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
               <ErrorBanner msg={errors._server} />
               <SummaryPill formData={formData} currencySymbol={currencySymbol} currentStep={4} onEdit={setFormStep} />
-
-              {/* General images */}
               <ImageGrid
-                existingImages={[]}
-                pendingImages={formData.imageFiles}
-                onRemoveExisting={() => {}}
-                onRemovePending={removeCreateImage}
+                existingImages={[]} pendingImages={formData.imageFiles}
+                onRemoveExisting={() => {}} onRemovePending={removeCreateImage}
                 onAdd={() => fileInputRef.current?.click()}
               />
               <input ref={fileInputRef} type="file" className="hidden" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFilesChange} />
-
-              {/* Color images */}
               {formData.colors.length > 0 && (
                 <ColorImageSection
-                  colors={formData.colors}
-                  colorImageFiles={formData.colorImageFiles}
-                  fileRefs={colorFileInputRefs}
-                  onAdd={(color) => colorFileInputRefs.current[color]?.click()}
-                  onChange={handleColorFilesChange}
-                  onRemove={removeColorCreateImage}
+                  colors={formData.colors} colorImageFiles={formData.colorImageFiles}
+                  fileRefs={colorFileInputRefs} onAdd={(color) => colorFileInputRefs.current[color]?.click()}
+                  onChange={handleColorFilesChange} onRemove={removeColorCreateImage}
                   onPreview={(color, images) => setColorPreviewModal({ color, images })}
                 />
               )}
-
-              {/* Publish toggle */}
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                 <div>
                   <p className="text-[11px] font-bold text-slate-700">Publish immediately</p>
                   <p className="text-[9px] text-slate-400">Toggle off to save as a draft</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsPublished((v) => !v)}
+                <button type="button" onClick={() => setIsPublished((v) => !v)}
                   className={`relative w-11 h-6 rounded-full transition-colors ${isPublished ? 'bg-[#125852]' : 'bg-slate-300'}`}
                 >
                   <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${isPublished ? 'left-5' : 'left-0.5'}`} />
@@ -1310,21 +1192,17 @@ const ProductDashboard = () => {
               <button type="button" onClick={() => setFormStep(3)} className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5">
                 <ArrowLeft size={13} /> Back
               </button>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${isLoading ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#FABB00] text-white hover:bg-[#FABBO0] cursor-pointer'}`}
+              <button type="submit" disabled={isLoading}
+                className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${isLoading ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#F5B841] text-white hover:bg-[#E0A83B] cursor-pointer'}`}
               >
-                {isLoading ? 'Publishing…' : (isPublished ? ' Publish Product' : ' Save as Draft')}
+                {isLoading ? 'Publishing…' : isPublished ? 'Publish Product' : 'Save as Draft'}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* ══════════════════════════════
-          EDIT MODAL (unchanged logic)
-      ══════════════════════════════ */}
+      {/* ══ EDIT MODAL ══════════════════════════════════════════════════════════ */}
       {isEditModalOpen && selectedProduct && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <form onSubmit={handleUpdate} className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]">
@@ -1337,51 +1215,53 @@ const ProductDashboard = () => {
             </div>
             <div className="px-6 py-4 space-y-3 overflow-y-auto flex-1">
               <ErrorBanner msg={editErrors._server} />
-
               <div className="space-y-1">
                 <label className="text-[10px] font-bold uppercase text-slate-500">Title *</label>
-                <input type="text" value={selectedProduct.title} onChange={(e) => setSelectedProduct((p) => ({ ...p, title: e.target.value }))}
+                <input type="text" value={selectedProduct.title}
+                  onChange={(e) => setSelectedProduct((p) => ({ ...p, title: e.target.value }))}
                   className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${editErrors.title ? 'border-red-500' : 'border-slate-200'}`}
                 />
                 {editErrors.title && <p className="text-red-500 text-[9px] font-bold">{editErrors.title}</p>}
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase text-slate-500">Price ({currencySymbol}) *</label>
-                  <input type="number" value={selectedProduct.price} onChange={(e) => setSelectedProduct((p) => ({ ...p, price: e.target.value }))} min="0" step="any"
+                  <input type="number" value={selectedProduct.price}
+                    onChange={(e) => setSelectedProduct((p) => ({ ...p, price: e.target.value }))}
+                    min="0" step="any"
                     className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${editErrors.price ? 'border-red-500' : 'border-slate-200'}`}
                   />
                   {editErrors.price && <p className="text-red-500 text-[9px] font-bold">{editErrors.price}</p>}
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase text-slate-500">SKU</label>
-                  <input type="text" value={selectedProduct.sku || ''} onChange={(e) => setSelectedProduct((p) => ({ ...p, sku: e.target.value }))}
+                  <input type="text" value={selectedProduct.sku || ''}
+                    onChange={(e) => setSelectedProduct((p) => ({ ...p, sku: e.target.value }))}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
                   />
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
+                  {/* Quality dropdown — lowercase values to match API */}
                   <label className="text-[10px] font-bold uppercase text-slate-500">Quality</label>
-                  <select value={selectedProduct.qty || 'Medium'} onChange={(e) => setSelectedProduct((p) => ({ ...p, qty: e.target.value }))}
+                  <select value={selectedProduct.qty || 'medium'}
+                    onChange={(e) => setSelectedProduct((p) => ({ ...p, qty: e.target.value }))}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
                   >
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
                   </select>
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase text-slate-500">Location</label>
-                  <input type="text" value={selectedProduct.location || ''} onChange={(e) => setSelectedProduct((p) => ({ ...p, location: e.target.value }))}
+                  <input type="text" value={selectedProduct.location || ''}
+                    onChange={(e) => setSelectedProduct((p) => ({ ...p, location: e.target.value }))}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
                   />
                 </div>
               </div>
-
-              {/* Description in edit — also using the external DescriptionField */}
               <DescriptionField
                 value={selectedProduct.description || ''}
                 onChange={(e) => {
@@ -1390,9 +1270,7 @@ const ProductDashboard = () => {
                 }}
                 error={editErrors.description}
               />
-
               <VariantSection sizes={selectedProduct.sizes || []} colors={selectedProduct.colors || []} onToggleChip={toggleEditChip} />
-
               <ImageGrid
                 existingImages={selectedProduct.images || []}
                 pendingImages={selectedProduct.newImageFiles || []}
@@ -1401,7 +1279,6 @@ const ProductDashboard = () => {
                 onAdd={() => editFileInputRef.current?.click()}
               />
               <input ref={editFileInputRef} type="file" className="hidden" accept="image/jpeg,image/png,image/webp" multiple onChange={handleEditFilesChange} />
-
               {(selectedProduct.colors || []).length > 0 && (
                 <ColorImageSection
                   colors={selectedProduct.colors || []}
@@ -1413,15 +1290,12 @@ const ProductDashboard = () => {
                   onPreview={(color, images) => setColorPreviewModal({ color, images })}
                 />
               )}
-
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                 <div>
                   <p className="text-[11px] font-bold text-slate-700">Published</p>
                   <p className="text-[9px] text-slate-400">Toggle to publish or save as draft</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedProduct((p) => ({ ...p, is_published: !p.is_published }))}
+                <button type="button" onClick={() => setSelectedProduct((p) => ({ ...p, is_published: !p.is_published }))}
                   className={`relative w-11 h-6 rounded-full transition-colors ${selectedProduct.is_published ? 'bg-[#125852]' : 'bg-slate-300'}`}
                 >
                   <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${selectedProduct.is_published ? 'left-5' : 'left-0.5'}`} />
@@ -1433,18 +1307,16 @@ const ProductDashboard = () => {
                 <Trash2 size={12} /> Delete
               </button>
               <button type="submit" disabled={isLoading}
-                className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${isLoading ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#FABB00] text-white hover:bg-[#FABBO0]'}`}
+                className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${isLoading ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#F5B841] text-white hover:bg-[#E0A83B]'}`}
               >
-                {isLoading ? 'Saving…' : ' Save Changes'}
+                {isLoading ? 'Saving…' : 'Save Changes'}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* ══════════════════════════════
-          DELETE CONFIRM MODAL
-      ══════════════════════════════ */}
+      {/* ══ DELETE CONFIRM ═══════════════════════════════════════════════════════ */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
