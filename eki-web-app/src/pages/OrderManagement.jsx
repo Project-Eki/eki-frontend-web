@@ -22,6 +22,21 @@ const STATUS_STYLES = {
 
 const TAB_FILTERS = ['All', 'Pending', 'Confirmed', 'Completed', 'Cancelled'];
 
+// ─── Stat Card Component (MUST be defined BEFORE it's used) ───────────────────
+const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
+  <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
+    <div className="flex items-start justify-between">
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{title}</p>
+        <p className="text-2xl font-bold text-gray-900">{number}</p>
+      </div>
+      <div className={`${iconBgColor} p-2.5 rounded-xl`}>
+        <Icon size={20} className={iconColor} />
+      </div>
+    </div>
+  </div>
+);
+
 const OrderManagement = () => {
   const [orders,      setOrders]      = useState([]);
   const [isFetching,  setIsFetching]  = useState(true);
@@ -98,35 +113,35 @@ const OrderManagement = () => {
             </div>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5">
+          {/* Stats Grid - Updated to match VendorDashboard style */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
             <StatCard
               title="Total Orders"
-              value={isFetching ? '—' : String(totalOrders)}
-              sub={`${totalOrders} order${totalOrders !== 1 ? 's' : ''} received`}
-              icon={<Package size={14} className="text-teal-600" />}
-              bg="bg-[#E0F2F1]"
+              number={isFetching ? '—' : String(totalOrders)}
+              icon={Package}
+              iconBgColor="bg-emerald-50"
+              iconColor="text-emerald-600"
             />
             <StatCard
               title="Active Orders"
-              value={isFetching ? '—' : String(activeOrders)}
-              sub={`${activeOrders} in progress`}
-              icon={<Clock size={14} className="text-orange-500" />}
-              bg="bg-[#FFF8E1]"
+              number={isFetching ? '—' : String(activeOrders)}
+              icon={Clock}
+              iconBgColor="bg-blue-50"
+              iconColor="text-blue-600"
             />
             <StatCard
               title="Revenue"
-              value={isFetching ? '—' : `${currencySymbol} ${revenue.toLocaleString()}`}
-              sub="From all orders"
-              icon={<CircleDollarSign size={14} className="text-teal-600" />}
-              bg="bg-[#E0F2F1]"
+              number={isFetching ? '—' : `${currencySymbol} ${revenue.toLocaleString()}`}
+              icon={CircleDollarSign}
+              iconBgColor="bg-orange-50"
+              iconColor="text-orange-600"
             />
             <StatCard
               title="Avg. Processing"
-              value="—"
-              sub="Processing time"
-              icon={<BarChart3 size={14} className="text-orange-500" />}
-              bg="bg-[#FFF8E1]"
+              number="—"
+              icon={BarChart3}
+              iconBgColor="bg-indigo-50"
+              iconColor="text-indigo-600"
             />
           </div>
 
