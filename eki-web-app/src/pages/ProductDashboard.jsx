@@ -6,7 +6,7 @@ import {
   Plus, Search, Filter, LayoutGrid, List,
   CheckCircle2, Package, ShoppingBag,
   X, Upload, Trash2, Pencil, Palette, Ruler, ImagePlus, ChevronDown, ChevronUp,
-  ArrowRight, ArrowLeft, Eye, ChevronLeft, ChevronRight,
+  ArrowRight, ArrowLeft, Eye, ChevronLeft, ChevronRight, CreditCard, Box, ListChecks,
 } from 'lucide-react';
 import logo from '../assets/eki-logo-white.png';
 
@@ -103,13 +103,17 @@ const getQualityStyle = (qty) => {
   return               { bg: '#FFFBF0', text: '#A07800', border: '#F5C842' };
 };
 
-// ─── StatCard (unchanged) ─────────────────────────────────────────────────────
-const StatCard = ({ label, value, icon }) => (
-  <div className="bg-white rounded-xl border border-slate-100 p-4 flex items-center gap-3 shadow-sm">
-    <div className="w-8 h-8 bg-teal-50 rounded-lg flex items-center justify-center flex-shrink-0">{icon}</div>
-    <div>
-      <p className="text-[10px] font-bold uppercase text-slate-400">{label}</p>
-      <p className="text-xl font-black text-slate-800">{value}</p>
+// ─── Stat Card Component (exactly matching VendorDashboard) ───────────────────
+const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
+  <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
+    <div className="flex items-start justify-between">
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{title}</p>
+        <p className="text-2xl font-bold text-gray-900">{number}</p>
+      </div>
+      <div className={`${iconBgColor} p-2.5 rounded-xl`}>
+        <Icon size={20} className={iconColor} />
+      </div>
     </div>
   </div>
 );
@@ -244,9 +248,7 @@ const StepProgressBar = ({ currentStep, totalSteps = 4, labels = ['Basic Info', 
   </div>
 );
 
-// ─── DescriptionField (defined OUTSIDE main component — THIS fixes the typing bug) ─
-// When defined inside, React recreates this component on every parent render,
-// destroying the input's DOM node and resetting focus/cursor on every keystroke.
+// ─── DescriptionField (defined OUTSIDE main component) ────────────────────────
 const DescriptionField = ({ value, onChange, error }) => {
   const words    = countWords(value);
   const tooShort = value && value.trim() && words < DESC_MIN_WORDS;
@@ -909,7 +911,7 @@ const ProductDashboard = () => {
   ) : null;
 
   return (
-    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
+    <div className="flex min-h-screen bg-[#ecece7] font-sans text-slate-800 p-3 gap-3">
       <VendorSidebar activePage="products" />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -943,12 +945,36 @@ const ProductDashboard = () => {
             </button>
           </div>
 
-          {/* ─── Stat cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5">
-            <StatCard label="Total Products"  value={products.length}                                                                          icon={<Package size={12} className="text-teal-600" />} />
-            <StatCard label="Active Listings" value={products.filter((p) => p.is_published === true).length}                                   icon={<CheckCircle2 size={12} className="text-teal-600" />} />
-            <StatCard label="High Quality"    value={products.filter((p) => (p.inventory_quality || p.qty || '').toUpperCase() === 'HIGH').length} icon={<CheckCircle2 size={12} className="text-green-500" />} />
-            <StatCard label="Drafts"          value={products.filter((p) => p.is_published !== true).length}                                   icon={<Package size={12} className="text-slate-400" />} />
+          {/* ─── Stat cards (exactly matching VendorDashboard style) */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+            <StatCard
+              title="Total Products"
+              number={products.length}
+              icon={Package}
+              iconBgColor="bg-emerald-50"
+              iconColor="text-emerald-600"
+            />
+            <StatCard
+              title="Active Listings"
+              number={products.filter((p) => p.is_published === true).length}
+              icon={ListChecks}
+              iconBgColor="bg-blue-50"
+              iconColor="text-blue-600"
+            />
+            <StatCard
+              title="High Quality"
+              number={products.filter((p) => (p.inventory_quality || p.qty || '').toUpperCase() === 'HIGH').length}
+              icon={Box}
+              iconBgColor="bg-orange-50"
+              iconColor="text-orange-600"
+            />
+            <StatCard
+              title="Drafts"
+              number={products.filter((p) => p.is_published !== true).length}
+              icon={CreditCard}
+              iconBgColor="bg-indigo-50"
+              iconColor="text-indigo-600"
+            />
           </div>
 
           {/* ─── Search + Filter + View toggle */}
@@ -1071,7 +1097,8 @@ const ProductDashboard = () => {
           )}
         </main>
 
-        <footer className="bg-[#125852] text-white py-2 px-8 flex justify-between items-center text-[9px] mt-auto">
+        {/* FOOTER - exactly matching VendorDashboard */}
+        <footer className="bg-[#125852] text-white py-2.5 px-5 flex justify-between items-center text-[8px] rounded-xl mx-5 mb-3">
           <div>Buy Smart. Sell Fast. Grow Together...</div>
           <div>© 2026 Vendor Portal. All rights reserved.</div>
         </footer>

@@ -4,14 +4,30 @@ import VendorSidebar from '../components/VendorSidebar';
 import Navbar3 from '../components/adminDashboard/Navbar4';
 import { 
   Search, Filter, List, Download, Printer, 
-  CircleDollarSign, Clock, BarChart3, Package
+  CircleDollarSign, Clock, BarChart3, Package,
+  CreditCard, Box, ListChecks, CheckCircle
 } from 'lucide-react';
+
+// ─── Stat Card Component (exactly matching VendorDashboard) ───────────────────
+const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
+  <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
+    <div className="flex items-start justify-between">
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{title}</p>
+        <p className="text-2xl font-bold text-gray-900">{number}</p>
+      </div>
+      <div className={`${iconBgColor} p-2.5 rounded-xl`}>
+        <Icon size={20} className={iconColor} />
+      </div>
+    </div>
+  </div>
+);
 
 const OrderManagement = () => {
   const orders = []; // Array is empty, no dummy rows will show
 
   return (
-    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
+    <div className="flex min-h-screen bg-[#ecece7] font-sans text-slate-800 p-3 gap-3">
       {/* VendorSidebar Component */}
       <VendorSidebar activePage="orders" />
 
@@ -36,12 +52,36 @@ const OrderManagement = () => {
             </div>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5">
-            <StatCard title="Total Orders" value="0" sub="0% from last month" icon={<Package size={14} className="text-teal-600"/>} bg="bg-[#E0F2F1]" />
-            <StatCard title="Active Orders" value="0" sub="0 urgent orders" icon={<Clock size={14} className="text-orange-500"/>} bg="bg-[#FFF8E1]" />
-            <StatCard title="Revenue" value="UGX 0" sub="0% increase" icon={<CircleDollarSign size={14} className="text-teal-600"/>} bg="bg-[#E0F2F1]" />
-            <StatCard title="Avg. Processing" value="0 Days" sub="0 days from avg." icon={<BarChart3 size={14} className="text-orange-500"/>} bg="bg-[#FFF8E1]" />
+          {/* Stats Grid - Using VendorDashboard style StatCards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+            <StatCard
+              title="Total Orders"
+              number="0"
+              icon={Package}
+              iconBgColor="bg-emerald-50"
+              iconColor="text-emerald-600"
+            />
+            <StatCard
+              title="Active Orders"
+              number="0"
+              icon={Clock}
+              iconBgColor="bg-blue-50"
+              iconColor="text-blue-600"
+            />
+            <StatCard
+              title="Revenue"
+              number="UGX 0"
+              icon={CircleDollarSign}
+              iconBgColor="bg-orange-50"
+              iconColor="text-orange-600"
+            />
+            <StatCard
+              title="Avg. Processing"
+              number="0 Days"
+              icon={BarChart3}
+              iconBgColor="bg-indigo-50"
+              iconColor="text-indigo-600"
+            />
           </div>
 
           {/* Search and Filters */}
@@ -80,7 +120,7 @@ const OrderManagement = () => {
                   <th className="px-4 py-3">Total</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 w-8"></th>
-                 </tr>
+                </tr>
               </thead>
               <tbody>
                 <tr>
@@ -109,7 +149,7 @@ const OrderManagement = () => {
           </div>
         </main>
 
-        {/* Footer */}
+        {/* Footer - exactly matching VendorDashboard */}
         <footer className="bg-[#125852] text-white py-2.5 px-5 flex justify-between items-center text-[8px] rounded-xl mx-5 mb-3">
           <div>Buy Smart. Sell Fast. Grow Together...</div>
           <div>© 2026 Vendor Portal. All rights reserved.</div>
@@ -118,14 +158,5 @@ const OrderManagement = () => {
     </div>
   );
 };
-
-const StatCard = ({ title, value, sub, icon, bg }) => (
-  <div className={`${bg} p-4 rounded-2xl border border-slate-200 shadow-sm text-left`}>
-    <div className="p-1.5 bg-white rounded-lg shadow-sm w-fit mb-2">{icon}</div>
-    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{title}</p>
-    <h3 className="text-lg font-bold text-slate-900">{value}</h3>
-    <p className="text-[8px] text-slate-400 mt-1.5 font-bold tracking-tight">{sub}</p>
-  </div>
-);
 
 export default OrderManagement;

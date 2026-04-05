@@ -49,8 +49,23 @@ import {
   Clock, Calendar, CheckCircle, ChevronDown,
   Search, SlidersHorizontal, Globe, MapPin, Package,
   Pencil, Trash2, AlertTriangle, Loader2, Archive, FileText,
+  CreditCard, Box, ListChecks,
 } from 'lucide-react';
 
+// ─── Stat Card Component (exactly matching VendorDashboard) ───────────────────
+const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
+  <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
+    <div className="flex items-start justify-between">
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{title}</p>
+        <p className="text-2xl font-bold text-gray-900">{number}</p>
+      </div>
+      <div className={`${iconBgColor} p-2.5 rounded-xl`}>
+        <Icon size={20} className={iconColor} />
+      </div>
+    </div>
+  </div>
+);
 
 // MEDIA_BASE
 // Derived automatically from the axios instance baseURL.
@@ -83,92 +98,11 @@ const STATUS_STYLE = {
   archived:  "bg-gray-100 text-gray-500 border border-gray-200",
 };
 
-
 // SERVICE CARD
-// const ServiceCard = ({ s, onEdit, onDelete, currencySymbol }) => (
-//   <div className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all group">
-//     <div className="relative h-44 overflow-hidden bg-slate-50">
-
-//       {/* Image — only rendered if s.img is truthy */}
-//       {s.img && (
-//         <img
-//           src={s.img}
-//           alt={s.title}
-//           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-//           onError={e => {
-//             // If image fails to load (network error, wrong URL), hide it
-//             // and show the fallback div
-//             e.currentTarget.style.display = 'none';
-//             const fallback = e.currentTarget.parentElement.querySelector('.img-fallback');
-//             if (fallback) fallback.style.display = 'flex';
-//           }}
-//         />
-//       )}
-
-//       {/* Fallback — shown when no image or image load fails */}
-//       <div
-//         className="img-fallback w-full h-full flex flex-col items-center justify-center gap-1"
-//         style={{ display: s.img ? 'none' : 'flex' }}
-//       >
-//         <Package size={28} className="text-slate-300"/>
-//         <span className="text-[10px] text-slate-300">No image</span>
-//       </div>
-
-//       {/* Remote / In-person badge */}
-//       <span className="absolute top-3 left-3 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
-//         {s.mode === "remote" || s.mode === "online"
-//           ? <><Globe size={9}/> Remote</>
-//           : <><MapPin size={9}/> In-person</>}
-//       </span>
-
-//       {/* Edit + Delete — hover reveal */}
-//       <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-//         <button onClick={() => onEdit(s)}
-//           className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-[#125852] transition-colors"
-//           title="Edit">
-//           <Pencil size={12}/>
-//         </button>
-//         <button onClick={() => onDelete(s)}
-//           className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow text-slate-600 hover:text-red-500 transition-colors"
-//           title="Delete">
-//           <Trash2 size={12}/>
-//         </button>
-//       </div>
-//     </div>
-
-//     <div className="p-4">
-//       <div className="flex items-center justify-between mb-1.5">
-//         <span className="text-[10px] font-bold text-slate-400 tracking-widest truncate max-w-[120px]">{s.category}</span>
-//         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0 ${STATUS_STYLE[s.status] || STATUS_STYLE.draft}`}>
-//           {s.status}
-//         </span>
-//       </div>
-//       <h3 className="font-black text-[15px] text-slate-900 leading-tight mb-1 line-clamp-1">{s.title || '—'}</h3>
-//       <p className="text-[12px] text-slate-500 line-clamp-2 mb-3">{s.desc || 'No description provided.'}</p>
-//       <div className="flex items-center justify-between text-[12px] text-slate-400 mb-3">
-//         <span className="flex items-center gap-1"><Clock size={12}/> {s.duration || 'N/A'}</span>
-//         <span className="flex items-center gap-1 font-semibold"><Calendar size={12}/> {s.avail || 'Available'}</span>
-//       </div>
-//       <div className="flex items-center justify-between pt-3 border-t border-slate-50">
-//         <div>
-//           <span className="text-[18px] font-black text-slate-900">
-//             {currencySymbol} {parseFloat(s.price || 0).toLocaleString()}
-//           </span>
-//           <span className="text-[11px] text-slate-400">/{s.unit || 'session'}</span>
-//         </div>
-//         <button onClick={() => onEdit(s)}
-//           className="text-[12px] font-bold text-teal-700 hover:text-amber-500 transition-colors">
-//           Edit 
-//         </button>
-//       </div>
-//     </div>
-//   </div>
-// );
 const ServiceCard = ({ s, onEdit, onDelete, currencySymbol }) => (
   <div className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all group">
-  {/* image */}
+    {/* image */}
     <div className="relative h-100 overflow-hidden bg-slate-50">
-
       {s.img && (
         <img
           src={s.img}
@@ -243,9 +177,7 @@ const ServiceCard = ({ s, onEdit, onDelete, currencySymbol }) => (
   </div>
 );
 
-
 // DELETE CONFIRM MODAL
-
 const DeleteModal = ({ service, onConfirm, onCancel, isDeleting }) => (
   <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
     <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
@@ -270,28 +202,16 @@ const DeleteModal = ({ service, onConfirm, onCancel, isDeleting }) => (
   </div>
 );
 
-
-// TEAL FOOTER
-
+// TEAL FOOTER (exactly matching VendorDashboard)
 const TealFooter = () => (
-  <footer className="bg-[#1D4D4C] text-white py-4 px-5 sm:px-10 flex flex-col sm:flex-row justify-between items-center gap-2 text-[11px] shrink-0 mx-3 mb-3 rounded-2xl">
-    <div className="hidden sm:block">Buy Smart. Sell Fast. Grow Together...</div>
+  <footer className="bg-[#125852] text-white py-2.5 px-5 flex justify-between items-center text-[8px] rounded-xl mx-5 mb-3">
+    <div>Buy Smart. Sell Fast. Grow Together...</div>
     <div>© 2026 Vendor Portal. All rights reserved.</div>
-    <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
-      <span className="relative inline-block cursor-pointer hover:underline">eki<span className="absolute text-[5px] -bottom-0 -right-2">TM</span></span>
-      <span className="cursor-pointer hover:underline">Support</span>
-      <span className="cursor-pointer hover:underline">Privacy Policy</span>
-      <span className="cursor-pointer hover:underline">Terms of Service</span>
-      <span className="cursor-pointer hover:underline">Ijoema ltd</span>
-    </div>
   </footer>
 );
 
-
 // MAIN COMPONENT
-
 const ServiceManagement = () => {
-
   const [sidebarOpen,    setSidebarOpen]    = useState(false);
   const [viewMode,       setViewMode]       = useState("grid");
   const [search,         setSearch]         = useState("");
@@ -309,54 +229,28 @@ const ServiceManagement = () => {
   const [vendorCountry,  setVendorCountry]  = useState('');
 
   // ── Fetch vendor country for currency ──────────────────────────────────────
-  // The API response for listings does NOT include the vendor's country.
-  // We must fetch the vendor profile separately.
-  //
-  // We check /accounts/register-vendor/ because that's where the country
-  // is stored during onboarding (via completeVendorOnboarding in api.js).
-  // The /accounts/vendor/profile/ endpoint may or may not include it.
   useEffect(() => {
     const loadCurrency = async () => {
       try {
-        // Primary: check vendor profile endpoint
         const res = await api.get('/accounts/vendor/profile/');
         const d = res.data?.data ?? res.data;
-
-        // Log full response so you can find the exact field name
         console.log('[Currency DEBUG] /vendor/profile/ response:', d);
-
-        const country =
-          d?.country           ||  // most common field name
-          d?.business_country  ||  // alternative from onboarding model
-          d?.vendor_country    ||
-          d?.location          ||  // some backends use location as country
-          '';
-
+        const country = d?.country || d?.business_country || d?.vendor_country || d?.location || '';
         if (country) {
           setVendorCountry(country);
           setCurrencySymbol(getCurrencySymbol(country));
           return;
         }
-
-        // Fallback: the register-vendor endpoint (full onboarding data)
         const res2 = await api.get('/accounts/register-vendor/');
         const d2 = res2.data?.data ?? res2.data;
-
         console.log('[Currency DEBUG] /register-vendor/ response:', d2);
-
-        const country2 =
-          d2?.country          ||
-          d2?.business_country ||
-          '';
-
+        const country2 = d2?.country || d2?.business_country || '';
         if (country2) {
           setVendorCountry(country2);
           setCurrencySymbol(getCurrencySymbol(country2));
         }
-        // If still not found, UGX is kept as default (better than $ for this platform)
       } catch (err) {
         console.warn('[Currency] fetch failed:', err.message);
-        // Keep UGX as sensible default for this platform
       }
     };
     loadCurrency();
@@ -368,12 +262,9 @@ const ServiceManagement = () => {
       setLoading(true);
       try {
         const response = await getServices();
-        // Backend wraps response as: { success: true, data: [...], message: "" }
-        // So we read response.data, not the full axios response
         const raw = Array.isArray(response)
           ? response
           : (response.data || response.results || response.listings || []);
-
         setServices(raw.map(item => ({
           id:       item.id,
           category: (item.business_category || '').toUpperCase(),
@@ -388,8 +279,6 @@ const ServiceManagement = () => {
           status:   item.status       || 'draft',
           mode:     item.detail?.delivery_mode
                     || (item.detail?.available_24h ? 'remote' : 'in-person'),
-          // resolveImage turns "/media/listings/img.jpg"
-          // into "http://127.0.0.1:8000/media/listings/img.jpg"
           img: resolveImage(
             item.images?.find(i => i.is_primary)?.image
             || item.images?.[0]?.image
@@ -409,13 +298,7 @@ const ServiceManagement = () => {
   // ── Modal helpers ───────────────────────────────────────────────────────────
   const openCreate = () => { setEditingService(null); setIsModalOpen(true); };
   const openEdit   = (s) => { setEditingService(s._raw); setIsModalOpen(true); };
-
   const handleFormClose = (didSave) => {
-    // This function ONLY closes the modal and optionally refreshes.
-    // It does NOT navigate anywhere. If you are being redirected to /products
-    // after saving, the issue is in your App.jsx router — check that
-    // /services and /products don't share the same component or layout wrapper
-    // that navigates on state change.
     setIsModalOpen(false);
     setEditingService(null);
     if (didSave === true) setRefreshKey(k => k + 1);
@@ -438,28 +321,13 @@ const ServiceManagement = () => {
     }
   };
 
-  // ── Counts for stat tabs ────────────────────────────────────────────────────
+  // ── Counts for stat cards ────────────────────────────────────────────────────
   const counts = useMemo(() => ({
     all:       services.length,
     published: services.filter(s => s.status === 'published' || s.status === 'active').length,
     draft:     services.filter(s => s.status === 'draft').length,
     archived:  services.filter(s => s.status === 'archived').length,
   }), [services]);
-
-  // ── 4 stat tabs (paused removed) ───────────────────────────────────────────
-  const statTabs = [
-    { key:'all',       label:'All Services', icon:<Briefcase size={16}/>,  color:'teal',  hint:'Every service you have created' },
-    { key:'published', label:'Published',    icon:<CheckCircle size={16}/>, color:'green', hint:'Live and visible to buyers' },
-    { key:'draft',     label:'Draft',        icon:<FileText size={16}/>,   color:'amber', hint:'Saved but not yet published' },
-    { key:'archived',  label:'Archived',     icon:<Archive size={16}/>,    color:'slate', hint:'Hidden from buyers, kept for records' },
-  ];
-
-  const colorMap = {
-    teal:  { bg:'bg-teal-50',  icon:'text-teal-600',  val:'text-teal-700',  active:'border-b-teal-500'  },
-    green: { bg:'bg-green-50', icon:'text-green-600', val:'text-green-700', active:'border-b-green-500' },
-    amber: { bg:'bg-amber-50', icon:'text-amber-600', val:'text-amber-700', active:'border-b-amber-500' },
-    slate: { bg:'bg-slate-100',icon:'text-slate-500', val:'text-slate-600', active:'border-b-slate-500' },
-  };
 
   // ── Filter + sort ───────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -488,8 +356,7 @@ const ServiceManagement = () => {
   }, [filtered, sortBy]);
 
   return (
-    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
-
+    <div className="flex min-h-screen bg-[#ecece7] font-sans text-slate-800 p-3 gap-3">
       {/* Desktop sidebar */}
       <div className="hidden md:block shrink-0">
         <VendorSidebar activePage="services"/>
@@ -509,13 +376,12 @@ const ServiceManagement = () => {
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar4 onMenuClick={() => setSidebarOpen(true)}/>
 
-        <main className="flex-1 p-4 sm:p-5 max-w-[1400px] mx-auto w-full pb-16">
-
+        <main className="flex-1 p-5 max-w-[1400px] mx-auto w-full pb-16">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex justify-between items-center mb-5">
             <div>
-              <h2 className="text-xl font-bold text-[#1A1A1A]">Service Management</h2>
-              <p className="text-slate-400 text-[11px] mt-0.5">
+              <h1 className="text-xl font-bold text-[#1A1A1A] tracking-tight">Service Management</h1>
+              <p className="text-slate-400 text-[11px]">
                 Manage your professional offerings and service availability.
                 {vendorCountry && (
                   <span className="ml-2 bg-slate-100 px-1.5 py-0.5 rounded-full text-slate-500 text-[9px]">
@@ -525,39 +391,41 @@ const ServiceManagement = () => {
               </p>
             </div>
             <button onClick={openCreate}
-              className="bg-[#F5B841] hover:bg-[#E0A83B] text-white px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all active:scale-95 font-bold text-sm shrink-0 w-full sm:w-auto justify-center">
-              <Plus size={18}/> Create New Service
+              className="bg-[#F5B841] text-white px-5 py-2.5 rounded-lg text-[12px] font-bold flex items-center gap-2 hover:bg-[#E0A83B] transition-all active:scale-95 shadow-sm">
+              <Plus size={14}/> Add New Service
             </button>
           </div>
 
-          {/* 4 interactive stat tabs */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-            {statTabs.map(tab => {
-              const c = colorMap[tab.color];
-              const isActive = statusFilter === tab.key;
-              return (
-                <button
-                  key={tab.key}
-                  onClick={() => setStatusFilter(isActive ? 'all' : tab.key)}
-                  title={tab.hint}
-                  className={`bg-white rounded-2xl border px-4 py-3.5 flex items-center gap-3 shadow-sm
-                    transition-all text-left w-full cursor-pointer
-                    ${isActive
-                      ? `border-b-2 ${c.active} border-t-slate-200 border-l-slate-200 border-r-slate-200 shadow-md`
-                      : 'border-slate-200 hover:border-slate-300 hover:shadow'}`}
-                >
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${c.bg} ${c.icon}`}>
-                    {tab.icon}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide leading-none mb-0.5 truncate">{tab.label}</p>
-                    <p className={`text-[20px] font-black leading-none ${isActive ? c.val : 'text-slate-800'}`}>
-                      {loading ? '—' : counts[tab.key]}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
+          {/* ─── Stat cards (exactly matching VendorDashboard style) ─── */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+            <StatCard
+              title="Total Services"
+              number={counts.all}
+              icon={Briefcase}
+              iconBgColor="bg-emerald-50"
+              iconColor="text-emerald-600"
+            />
+            <StatCard
+              title="Published"
+              number={counts.published}
+              icon={CheckCircle}
+              iconBgColor="bg-blue-50"
+              iconColor="text-blue-600"
+            />
+            <StatCard
+              title="Draft"
+              number={counts.draft}
+              icon={FileText}
+              iconBgColor="bg-orange-50"
+              iconColor="text-orange-600"
+            />
+            <StatCard
+              title="Archived"
+              number={counts.archived}
+              icon={Archive}
+              iconBgColor="bg-indigo-50"
+              iconColor="text-indigo-600"
+            />
           </div>
 
           {/* Active filter badge */}
@@ -631,17 +499,17 @@ const ServiceManagement = () => {
               ))}
             </div>
           ) : sorted.length === 0 ? (
-            <div className="bg-white border border-slate-200 rounded-2xl p-16 sm:p-20 flex flex-col items-center justify-center text-center">
-              <div className="w-16 h-16 bg-[#E0F2F1] rounded-full flex items-center justify-center mb-4 text-teal-600">
+            <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-20 text-center">
+              <div className="w-16 h-16 bg-[#E0F2F1] rounded-full flex items-center justify-center mx-auto mb-4 text-teal-600">
                 <Briefcase size={32}/>
               </div>
-              <h3 className="text-lg font-bold text-slate-900">
+              <h3 className="text-lg font-bold text-slate-800">
                 {statusFilter !== 'all' ? `No ${statusFilter} services` : 'No Services Found'}
               </h3>
               <p className="text-slate-500 max-w-xs mx-auto mt-2 text-sm">
                 {search ? 'Try a different search term.'
                   : statusFilter !== 'all' ? `You have no ${statusFilter} services yet.`
-                  : 'Click "Create New Service" to add your first listing.'}
+                  : 'Click "Add New Service" to create your first listing.'}
               </p>
               {statusFilter !== 'all' && (
                 <button onClick={() => setStatusFilter('all')}
@@ -677,7 +545,6 @@ const ServiceManagement = () => {
               </div>
             </div>
           )}
-
         </main>
 
         <TealFooter/>
@@ -704,7 +571,6 @@ const ServiceManagement = () => {
           isDeleting={isDeleting}
         />
       )}
-
     </div>
   );
 };
