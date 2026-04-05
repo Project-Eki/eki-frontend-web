@@ -19,7 +19,7 @@ const PUBLIC_ROUTES = [
 
 // ─── TOKEN REFRESH STATE ──────────────────────────────────────────────────────
 let isRefreshing = false;
-let failedQueue = [];
+let failedQueue  = [];
 
 const processQueue = (error, token = null) => {
   failedQueue.forEach((prom) => {
@@ -48,10 +48,9 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const status = error.response?.status;
+    const status          = error.response?.status;
     const originalRequest = error.config;
 
-    // ── Detailed 400 logging ──────────────────────────────────────────────────
     if (status === 400) {
       console.error('━━ 400 Bad Request ━━━━━━━━━━━━━━━━━━━');
       console.error('URL    :', error.config?.url);
@@ -67,7 +66,6 @@ api.interceptors.response.use(
       console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
 
-    // ── Auto token refresh on 401 ─────────────────────────────────────────────
     if (status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
@@ -82,7 +80,7 @@ api.interceptors.response.use(
       }
 
       originalRequest._retry = true;
-      isRefreshing = true;
+      isRefreshing           = true;
 
       const refreshToken = localStorage.getItem('refresh_token');
 
@@ -90,9 +88,7 @@ api.interceptors.response.use(
         isRefreshing = false;
         processQueue(error, null);
         localStorage.clear();
-        if (!window.location.pathname.includes('sign-in')) {
-          window.location.href = '/sign-in';
-        }
+        if (!window.location.pathname.includes('sign-in')) window.location.href = '/sign-in';
         return Promise.reject(error);
       }
 
@@ -105,16 +101,14 @@ api.interceptors.response.use(
         localStorage.setItem('access_token', newAccess);
         api.defaults.headers.common.Authorization = `Bearer ${newAccess}`;
         processQueue(null, newAccess);
-        isRefreshing = false;
-        originalRequest.headers.Authorization = `Bearer ${newAccess}`;
+        isRefreshing                               = false;
+        originalRequest.headers.Authorization      = `Bearer ${newAccess}`;
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
         isRefreshing = false;
         localStorage.clear();
-        if (!window.location.pathname.includes('sign-in')) {
-          window.location.href = '/sign-in';
-        }
+        if (!window.location.pathname.includes('sign-in')) window.location.href = '/sign-in';
         return Promise.reject(refreshError);
       }
     }
@@ -125,24 +119,23 @@ api.interceptors.response.use(
 
 // ─── TOKEN HELPERS ────────────────────────────────────────────────────────────
 const saveTokens = ({ access, refresh }) => {
-  if (access) localStorage.setItem('access_token', access);
+  if (access)  localStorage.setItem('access_token',  access);
   if (refresh) localStorage.setItem('refresh_token', refresh);
 };
 
 // ─── AUTHENTICATION ───────────────────────────────────────────────────────────
 export const SigninUser = async (credentials) => {
   const response = await api.post('/accounts/login/', {
-    email: credentials.email?.trim().toLowerCase(),
+    email:    credentials.email?.trim().toLowerCase(),
     password: credentials.password,
   });
   const data = response.data?.data ?? response.data;
   saveTokens({ access: data?.access, refresh: data?.refresh });
 
-  // ── Cache profile fields at login so pages can fall back to them ──────────
-  if (data?.first_name) localStorage.setItem('vendor_first_name', data.first_name);
-  if (data?.last_name) localStorage.setItem('vendor_last_name', data.last_name);
-  if (data?.email) localStorage.setItem('vendor_email', data.email);
-  if (data?.role) localStorage.setItem('vendor_role', data.role);
+  if (data?.first_name)   localStorage.setItem('vendor_first_name',   data.first_name);
+  if (data?.last_name)    localStorage.setItem('vendor_last_name',    data.last_name);
+  if (data?.email)        localStorage.setItem('vendor_email',        data.email);
+  if (data?.role)         localStorage.setItem('vendor_role',         data.role);
   if (data?.phone_number) localStorage.setItem('vendor_phone_number', data.phone_number);
 
   return response.data;
@@ -167,72 +160,44 @@ export const updateBuyerProfile = (data) =>
   api.patch('/accounts/buyer/profile/', data).then((r) => r.data?.data ?? r.data);
 
 // ─── VENDOR PROFILE ───────────────────────────────────────────────────────────
-let _profileCache = null;
+let _profileCache    = null;
 let _profileFetching = null;
 
-export const clearProfileCache = () => {
-  _profileCache = null;
-};
+export const clearProfileCache = () => { _profileCache = null; };
 
 export const getVendorProfile = async () => {
-  if (_profileCache) {
-    console.log('[getVendorProfile] Using cached profile');
-    return _profileCache;
-  }
-  if (_profileFetching) {
-    console.log('[getVendorProfile] Waiting for existing request');
-    return _profileFetching;
-  }
+  if (_profileCache)    return _profileCache;
+  if (_profileFetching) return _profileFetching;
 
   _profileFetching = (async () => {
     try {
-      console.log('[getVendorProfile] Fetching from API...');
-      const r = await api.get('/accounts/vendor/profile/');
+      const r    = await api.get('/accounts/vendor/profile/');
       const data = r.data?.data ?? r.data;
 
-      console.log('[getVendorProfile] API Response:', data);
-
-      // Cache fresh values in localStorage
-      if (data?.first_name) localStorage.setItem('vendor_first_name', data.first_name);
-      if (data?.last_name) localStorage.setItem('vendor_last_name', data.last_name);
-      if (data?.email) localStorage.setItem('vendor_email', data.email);
-      if (data?.profile_picture) localStorage.setItem('vendor_profile_picture', data.profile_picture);
-      if (data?.phone_number) localStorage.setItem('vendor_phone_number', data.phone_number);
-      // ── Cache country so dashboard can read it even on fallback ────────────
-      if (data?.business_country) localStorage.setItem('vendor_country', data.business_country);
-      else if (data?.country) localStorage.setItem('vendor_country', data.country);
+      if (data?.first_name)       localStorage.setItem('vendor_first_name',      data.first_name);
+      if (data?.last_name)        localStorage.setItem('vendor_last_name',       data.last_name);
+      if (data?.email)            localStorage.setItem('vendor_email',            data.email);
+      if (data?.profile_picture)  localStorage.setItem('vendor_profile_picture', data.profile_picture);
+      if (data?.phone_number)     localStorage.setItem('vendor_phone_number',    data.phone_number);
+      if (data?.business_country) localStorage.setItem('vendor_country',         data.business_country);
+      else if (data?.country)     localStorage.setItem('vendor_country',         data.country);
 
       _profileCache = data;
       return data;
     } catch (err) {
       const status = err.response?.status;
-      const responseData = err.response?.data;
-
-      console.error('[getVendorProfile] Error details:', {
-        status,
-        data: responseData,
-        message: err.message,
-      });
-
-      // 500 / 404 = endpoint not ready — serve localStorage cache silently
       if (status === 500 || status === 404) {
-        console.warn('[getVendorProfile] Backend returned', status, '— using localStorage fallback');
-
         const fallback = {
-          first_name: localStorage.getItem('vendor_first_name') || '',
-          last_name: localStorage.getItem('vendor_last_name') || '',
-          email: localStorage.getItem('vendor_email') || '',
-          profile_picture: localStorage.getItem('vendor_profile_picture') || null,
-          phone_number: localStorage.getItem('vendor_phone_number') || '',
-          // Restore cached country so currency still works on fallback
-          business_country: localStorage.getItem('vendor_country') || 'Uganda',
+          first_name:       localStorage.getItem('vendor_first_name')      || '',
+          last_name:        localStorage.getItem('vendor_last_name')       || '',
+          email:            localStorage.getItem('vendor_email')            || '',
+          profile_picture:  localStorage.getItem('vendor_profile_picture') || null,
+          phone_number:     localStorage.getItem('vendor_phone_number')    || '',
+          business_country: localStorage.getItem('vendor_country')         || 'Uganda',
         };
-
-        console.log('[getVendorProfile] Fallback data:', fallback);
         _profileCache = fallback;
         return fallback;
       }
-
       throw err;
     } finally {
       _profileFetching = null;
@@ -249,26 +214,15 @@ export const updateVendorProfile = async (changedFields) => {
     const value = changedFields[key];
     if (value === null || value === undefined || value === '') return;
 
-    // Map business_phone to phone_number for backend
     if (key === 'business_phone') {
       let phone = String(value).replace(/\s/g, '');
       if (!phone.startsWith('+')) phone = `+${phone}`;
       formData.append('phone_number', phone);
-    }
-    // Handle profile picture correctly
-    else if (key === 'profile_picture' && value instanceof File) {
+    } else if (key === 'profile_picture' && value instanceof File) {
       formData.append('profile_picture', value);
-    }
-    // Handle other fields
-    else {
+    } else {
       formData.append(key, value);
     }
-  });
-
-  console.log('[updateVendorProfile] Sending:', {
-    fields: Array.from(formData.entries()).map(([k, v]) =>
-      `${k}: ${v instanceof File ? `File(${v.name})` : v}`
-    ),
   });
 
   try {
@@ -278,45 +232,39 @@ export const updateVendorProfile = async (changedFields) => {
 
     clearProfileCache();
 
-    const responseData = res.data?.data ?? res.data;
-    if (responseData) {
-      if (responseData.first_name) localStorage.setItem('vendor_first_name', responseData.first_name);
-      if (responseData.last_name) localStorage.setItem('vendor_last_name', responseData.last_name);
-      if (responseData.email) localStorage.setItem('vendor_email', responseData.email);
-      if (responseData.profile_picture) localStorage.setItem('vendor_profile_picture', responseData.profile_picture);
-      if (responseData.phone_number) localStorage.setItem('vendor_phone_number', responseData.phone_number);
-      // Keep cached country in sync after profile update
-      if (responseData.business_country) localStorage.setItem('vendor_country', responseData.business_country);
-      else if (responseData.country) localStorage.setItem('vendor_country', responseData.country);
+    const d = res.data?.data ?? res.data;
+    if (d) {
+      if (d.first_name)       localStorage.setItem('vendor_first_name',      d.first_name);
+      if (d.last_name)        localStorage.setItem('vendor_last_name',       d.last_name);
+      if (d.email)            localStorage.setItem('vendor_email',            d.email);
+      if (d.profile_picture)  localStorage.setItem('vendor_profile_picture', d.profile_picture);
+      if (d.phone_number)     localStorage.setItem('vendor_phone_number',    d.phone_number);
+      if (d.business_country) localStorage.setItem('vendor_country',         d.business_country);
+      else if (d.country)     localStorage.setItem('vendor_country',         d.country);
     }
 
     return res.data?.data ?? res.data;
   } catch (error) {
-    console.error('[updateVendorProfile] Error:', {
-      status: error.response?.status,
-      data: error.response?.data,
-      message: error.message,
-    });
+    console.error('[updateVendorProfile] Error:', error.response?.status, error.response?.data);
     throw error;
   }
 };
 
-// ─── VENDOR NOTIFICATIONS ─────────────────────────────────────────────────────
+// ─── VENDOR NOTIFICATIONS (accounts — kept for backward compat) ───────────────
 const NOTIFICATIONS_ENDPOINT_READY = false;
 
 export const getVendorNotifications = async ({ limit = 15 } = {}) => {
   if (!NOTIFICATIONS_ENDPOINT_READY) return { notifications: [] };
-
   try {
-    const r = await api.get(`/accounts/vendor/notifications/?limit=${limit}`);
+    const r       = await api.get(`/accounts/vendor/notifications/?limit=${limit}`);
     const payload = r.data?.data ?? r.data;
-    if (Array.isArray(payload)) return { notifications: payload };
+    if (Array.isArray(payload))                return { notifications: payload };
     if (Array.isArray(payload?.notifications)) return payload;
-    if (Array.isArray(payload?.results)) return { notifications: payload.results };
+    if (Array.isArray(payload?.results))       return { notifications: payload.results };
     return { notifications: [] };
   } catch (err) {
-    const status = err.response?.status;
-    if (status === 404 || status === 500) return { notifications: [] };
+    if (err.response?.status === 404 || err.response?.status === 500)
+      return { notifications: [] };
     throw err;
   }
 };
@@ -343,7 +291,118 @@ export const markAllVendorNotificationsRead = async () => {
   }
 };
 
-// VENDOR DASHBOARD
+// ─── ORDER NOTIFICATIONS (orders service — live) ──────────────────────────────
+export const getOrderNotifications = async ({ limit = 15 } = {}) => {
+  try {
+    const r       = await api.get(`/orders/vendor/notifications/?limit=${limit}`);
+    const payload = r.data?.data ?? r.data;
+    if (Array.isArray(payload))                return { notifications: payload };
+    if (Array.isArray(payload?.notifications)) return payload;
+    if (Array.isArray(payload?.results))       return { notifications: payload.results };
+    return { notifications: [] };
+  } catch (err) {
+    if (err.response?.status === 404 || err.response?.status === 500)
+      return { notifications: [] };
+    throw err;
+  }
+};
+
+export const getOrderNotificationsUnreadCount = async () => {
+  try {
+    const r       = await api.get('/orders/vendor/notifications/unread-count/');
+    const payload = r.data?.data ?? r.data;
+    return Number(payload?.count ?? payload?.unread_count ?? 0);
+  } catch (_) { return 0; }
+};
+
+export const markOrderNotificationRead = async (notifId) => {
+  try {
+    const r = await api.patch(`/orders/vendor/notifications/${notifId}/read/`);
+    return r.data?.data ?? r.data;
+  } catch (err) {
+    if (err.response?.status === 404 || err.response?.status === 500) return null;
+    throw err;
+  }
+};
+
+// ─── ORDER NORMALISER ─────────────────────────────────────────────────────────
+// Handles every field-name variation Django might return so components always
+// get a consistent shape: { id, customer, total, status, items, date }
+const normalizeOrder = (o) => ({
+  // spread raw first so nothing is lost
+  ...o,
+  // then overwrite with normalised guaranteed fields
+  id: o.id ?? o.order_id ?? o.pk,
+  customer:
+    o.customer       ??
+    o.customer_name  ??
+    o.buyer_name     ??
+    o.buyer?.name    ??
+    o.buyer?.full_name ??
+    o.user?.name     ??
+    o.user?.full_name  ??
+    o.user?.username   ??
+    '—',
+  total: Number(
+    o.total         ??
+    o.total_amount  ??
+    o.total_price   ??
+    o.amount        ??
+    o.grand_total   ??
+    0
+  ),
+  status: o.status ?? o.order_status ?? 'pending',
+  items:  o.items  ?? o.item_count   ?? o.quantity ?? null,
+  date:   o.date   ?? o.created_at   ?? o.order_date ?? '',
+});
+
+// ─── VENDOR ORDERS ────────────────────────────────────────────────────────────
+export const getVendorOrders = async ({ status = '', search = '' } = {}) => {
+  try {
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+    if (search) params.append('search', search);
+    const query = params.toString() ? `?${params.toString()}` : '';
+
+    const r       = await api.get(`/orders/vendor/order-list/${query}`);
+    const payload = r.data?.data ?? r.data;
+
+    console.log('[getVendorOrders] raw response:', payload);
+
+    let list = [];
+    if (Array.isArray(payload))               list = payload;
+    else if (Array.isArray(payload?.results)) list = payload.results;
+    else if (Array.isArray(payload?.orders))  list = payload.orders;
+    else if (Array.isArray(payload?.data))    list = payload.data;
+
+    return list.map(normalizeOrder);
+  } catch (err) {
+    console.error('[getVendorOrders] Error:', err.response?.status, err.response?.data);
+    return [];
+  }
+};
+
+export const updateVendorOrderStatus = async (orderId, status) => {
+  const r = await api.patch(`/orders/vendor/orders-status/${orderId}/`, { status });
+  return r.data?.data ?? r.data;
+};
+
+export const startServiceOrder = async (orderId) => {
+  const r = await api.post(`/orders/start-service/${orderId}/`);
+  return r.data?.data ?? r.data;
+};
+
+export const completeServiceOrder = async (orderId) => {
+  const r = await api.post(`/orders/complete-service/${orderId}/`);
+  return r.data?.data ?? r.data;
+};
+
+export const markOrderReadyForPickup = async (orderId) => {
+  const r = await api.post(`/orders/ready-for-pickup/${orderId}/`);
+  return r.data?.data ?? r.data;
+};
+
+// ─── VENDOR DASHBOARD ─────────────────────────────────────────────────────────
 export const getVendorDashboard = async () => {
   let raw = {};
 
@@ -352,41 +411,46 @@ export const getVendorDashboard = async () => {
     raw = dashRes.data?.data ?? dashRes.data ?? {};
   } catch (dashErr) {
     console.error(
-      '[getVendorDashboard] Dashboard endpoint failed:',
+      '[getVendorDashboard] command-center failed:',
       dashErr.response?.status,
       dashErr.response?.data ?? dashErr.message
     );
   }
 
-  let country = 'Uganda';
-  let storeName = '';
-  let vendorType = 'Products';
+  let country          = 'Uganda';
+  let storeName        = '';
+  let vendorType       = 'Products';
   let businessCategory = 'retail';
 
   try {
-    const p = await getVendorProfile();
-    country = p.country || 'Uganda';
-    storeName = p.business_name || '';
-    vendorType = p.business_type || 'Products';
+    const p      = await getVendorProfile();
+    country          = p.business_country || p.country || localStorage.getItem('vendor_country') || 'Uganda';
+    storeName        = p.business_name    || '';
+    vendorType       = p.business_type    || 'Products';
     businessCategory = p.business_category || 'retail';
-  } catch (_) {
+  } catch (_) {}
 
-  }
+    // ── Always fetch live orders — dashboard uses them for recentOrders & metric
+  let liveOrders = [];
+  try {
+    liveOrders = await getVendorOrders();
+  } catch (_) {}
 
-  // Use raw.metrics directly  
-  const metricsData = raw.metrics || {};
+  const metricsData         = raw.metrics         || {};
+  const salesHistoryData    = raw.salesHistory     || [];
+  const inventoryAlertsData = raw.inventoryAlerts  || [];
+  const reviewsData         = raw.reviews          || [];
 
-  //  Use raw.salesHistory directly
-  const salesHistoryData = raw.salesHistory || [];
+    // recentOrders: prefer command-center data, fall back to first 10 live orders
+  const rawRecentOrders  = raw.recentOrders || [];
+  const recentOrdersData = rawRecentOrders.length > 0
+    ? rawRecentOrders
+    : liveOrders.slice(0, 10);
 
-  // Use raw.recentOrders directly
-  const recentOrdersData = raw.recentOrders || [];
-
-  //  Use raw.inventoryAlerts directly
-  const inventoryAlertsData = raw.inventoryAlerts || [];
-
-  // Use raw.reviews directly
-  const reviewsData = raw.reviews || [];
+   // openOrders metric: prefer command-center, otherwise count from live orders
+  const openOrdersCount = Number(metricsData.openOrders ?? 0) || liveOrders.filter((o) =>
+    ['pending', 'confirmed', 'processing'].includes(String(o.status).toLowerCase())
+  ).length;
 
   return {
     storeName,
@@ -395,33 +459,29 @@ export const getVendorDashboard = async () => {
     businessCategory,
 
     metrics: {
-      grossSales: Number(metricsData.grossSales ?? 0),
-      openOrders: Number(metricsData.openOrders ?? 0),
+      grossSales:     Number(metricsData.grossSales     ?? 0),
+      openOrders:     openOrdersCount,
       pendingPayouts: Number(metricsData.pendingPayouts ?? 0),
       activeListings: Number(metricsData.activeListings ?? 0),
     },
 
     salesHistory: salesHistoryData.map((item) => ({
-      date: item.date,
+      date:  item.date,
       sales: Number(item.sales ?? 0),
     })),
 
-    recentOrders: recentOrdersData.map((o) => ({
-      id: o.id,
-      customer: o.customer,
-      total: Number(o.total ?? 0),
-      status: o.status,
-    })),
+   // normalizeOrder guarantees .id / .customer / .total / .status / .items
+    recentOrders: recentOrdersData.map(normalizeOrder),
 
     inventoryAlerts: inventoryAlertsData.map((a) => ({
-      title: a.title,
+      title:    a.title,
       quantity: a.current_stock ?? 0,
     })),
 
     reviews: reviewsData.map((r) => ({
       reviewer: r.reviewer,
-      rating: r.rating,
-      comment: r.comment,
+      rating:   r.rating,
+      comment:  r.comment,
     })),
   };
 };
@@ -442,14 +502,17 @@ const normalizeListing = (item) => ({
   is_published: item.is_published === true || item.status === 'published',
 });
 
+// Added listing_type filter to only get products
 export const getProducts = async () => {
-  const res = await api.get('/listings/');
+  const params = { listing_type: 'product' };
+  const res = await api.get('/listings/', { params });
   const payload = res.data?.data ?? res.data;
   if (Array.isArray(payload)) return payload.map(normalizeListing);
   if (Array.isArray(payload?.results)) return payload.results.map(normalizeListing);
   return [];
 };
 
+// Added listing_type: 'product' to create payload
 export const createProductListing = async (productData) => {
   const qualityMap = {
     High: 'high', Medium: 'medium', Low: 'low',
@@ -462,19 +525,19 @@ export const createProductListing = async (productData) => {
   if (Array.isArray(productData.variants) && productData.variants.length > 0) {
     productData.variants.forEach((v) => {
       if (!v.value?.trim()) return;
-      if (v.type === 'Size') variants.push({ color: '', size: v.value.trim(), stock: 0 });
-      if (v.type === 'Color') variants.push({ color: v.value.trim(), size: '', stock: 0 });
+      if (v.type === 'Size')  variants.push({ color: '',             size: v.value.trim(), stock: 0 });
+      if (v.type === 'Color') variants.push({ color: v.value.trim(), size: '',             stock: 0 });
     });
   }
 
-  const sizes = Array.isArray(productData.sizes) ? productData.sizes.filter(Boolean) : [];
+  const sizes  = Array.isArray(productData.sizes)  ? productData.sizes.filter(Boolean)  : [];
   const colors = Array.isArray(productData.colors) ? productData.colors.filter(Boolean) : [];
 
   if (variants.length === 0 && (sizes.length > 0 || colors.length > 0)) {
     if (sizes.length > 0 && colors.length > 0) {
       sizes.forEach((size) => colors.forEach((color) => variants.push({ color, size, stock: 0 })));
     } else if (sizes.length > 0) {
-      sizes.forEach((size) => variants.push({ color: '', size, stock: 0 }));
+      sizes.forEach((size)  => variants.push({ color: '', size, stock: 0 }));
     } else {
       colors.forEach((color) => variants.push({ color, size: '', stock: 0 }));
     }
@@ -483,18 +546,19 @@ export const createProductListing = async (productData) => {
   if (variants.length === 0) variants.push({ color: 'Default', size: '', stock: 0 });
 
   const payload = {
+    listing_type: 'product',  
     business_category: productData.business_category,
-    title: productData.title?.trim(),
-    description: productData.description?.trim() || '',
-    status: productData.is_published ? 'published' : 'draft',
-    availability: 'available',
-    price: String(parseFloat(productData.price)),
-    price_unit: 'item',
-    location: productData.location?.trim() || '',
+    title:             productData.title?.trim(),
+    description:       productData.description?.trim() || '',
+    status:            productData.is_published ? 'published' : 'draft',
+    availability:      'available',
+    price:             String(parseFloat(productData.price)),
+    price_unit:        'item',
+    location:          productData.location?.trim() || '',
     detail: {
-      sku: productData.sku?.trim() || '',
+      sku:        productData.sku?.trim() || '',
       base_price: String(parseFloat(productData.price)),
-      quality: qualityMap[productData.qty] ?? 'medium',
+      quality:    qualityMap[productData.qty] ?? 'medium',
       variants,
     },
   };
@@ -506,6 +570,7 @@ export const createProductListing = async (productData) => {
   return normalizeListing(res.data?.data ?? res.data);
 };
 
+// Added listing_type: 'product' to update payload
 export const updateProductListing = async (listingId, productData) => {
   const qualityMap = {
     High: 'high', Medium: 'medium', Low: 'low',
@@ -514,16 +579,17 @@ export const updateProductListing = async (listingId, productData) => {
   };
 
   const payload = {
-    title: productData.title?.trim(),
+    listing_type: 'product',  
+    title:       productData.title?.trim(),
     description: productData.description?.trim() || '',
-    status: productData.is_published ? 'published' : 'draft',
-    price: String(parseFloat(productData.price)),
-    price_unit: 'item',
-    location: productData.location?.trim() || '',
+    status:      productData.is_published ? 'published' : 'draft',
+    price:       String(parseFloat(productData.price)),
+    price_unit:  'item',
+    location:    productData.location?.trim() || '',
     detail: {
-      sku: productData.sku?.trim() || '',
+      sku:        productData.sku?.trim() || '',
       base_price: String(parseFloat(productData.price)),
-      quality: qualityMap[productData.qty] ?? 'medium',
+      quality:    qualityMap[productData.qty] ?? 'medium',
     },
   };
 

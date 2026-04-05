@@ -55,6 +55,21 @@ const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
   </div>
 );
 
+// ─── Safe helper: resolve order item count from any API shape ─────────────────
+const resolveItemCount = (items) => {
+  if (items === null || items === undefined) return '—';
+  if (typeof items === 'number') return items;
+  if (typeof items === 'string') return items;
+  if (Array.isArray(items)) return items.length;
+  // object with a count/length hint
+  if (typeof items === 'object') {
+    if (items.count !== undefined) return items.count;
+    if (items.length !== undefined) return items.length;
+    return Object.keys(items).length;
+  }
+  return '—';
+};
+
 const VendorDashboard = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -310,11 +325,24 @@ const VendorDashboard = () => {
                         {recentOrders.map((order, i) => (
                           <tr key={i} className="hover:bg-slate-50 transition-colors">
                             <td className="px-4 py-2.5 text-[#125852] font-bold">#{order.id}</td>
-                            <td className="px-4 py-2.5">{order.customer}</td>
-                            <td className="px-4 py-2.5">{order.items ?? '—'}</td>
+                            <td className="px-4 py-2.5">
+                              {/* customer may be a nested object e.g. { name, email } */}
+                              {typeof order.customer === 'object' && order.customer !== null
+                                ? (order.customer.name || order.customer.email || '—')
+                                : (order.customer ?? '—')}
+                            </td>
+                            <td className="px-4 py-2.5">
+                              {/* ✅ FIX: items can be an array of objects, a count number, or undefined */}
+                              {resolveItemCount(order.items)}
+                            </td>
                             <td className="px-4 py-2.5 font-bold">{currencySymbol} {Number(order.total || 0).toLocaleString()}</td>
                             <td className="px-4 py-2.5">
-                              <span className="px-2 py-0.5 bg-slate-100 rounded text-[8px] uppercase font-bold">{order.status}</span>
+                              <span className="px-2 py-0.5 bg-slate-100 rounded text-[8px] uppercase font-bold">
+                                {/* status may also be an object */}
+                                {typeof order.status === 'object' && order.status !== null
+                                  ? (order.status.label || order.status.name || '—')
+                                  : (order.status ?? '—')}
+                              </span>
                             </td>
                             <td className="px-4 py-2.5">
                               <Link

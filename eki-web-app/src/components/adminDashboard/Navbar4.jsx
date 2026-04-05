@@ -3,9 +3,8 @@ import { Search, Bell, Menu, CheckCheck, UserCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   getVendorProfile,
-  getVendorNotifications,
-  markVendorNotificationRead,
-  markAllVendorNotificationsRead,
+  getOrderNotifications,
+  markOrderNotificationRead,
 } from '../../services/authService';
 
 // ─── Vendor-specific notification type styles ─────────────────────────────────
@@ -51,7 +50,6 @@ const Navbar3 = ({ userName = '', onMenuClick, profileImage = null }) => {
   }, [userName]);
 
   // ─── Fetch vendor profile on mount (fallback if props are empty) ─────────────
-  // If the backend returns 500, we fail silently — avatar falls back to initials.
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -70,11 +68,10 @@ const Navbar3 = ({ userName = '', onMenuClick, profileImage = null }) => {
     fetchProfile();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Load vendor notifications ────────────────────────────────────────────────
-  // getVendorNotifications already swallows 404/500 and returns { notifications: [] }
+  // ─── Load order notifications from the orders service ────────────────────────
   const loadNotifications = async () => {
     try {
-      const data  = await getVendorNotifications({ limit: 15 });
+      const data  = await getOrderNotifications({ limit: 15 });
       const items = data?.notifications ?? [];
       setNotifications(items);
       setUnreadCount(items.filter(n => !n.is_read).length);
@@ -85,7 +82,7 @@ const Navbar3 = ({ userName = '', onMenuClick, profileImage = null }) => {
 
   useEffect(() => {
     loadNotifications();
-    const interval = setInterval(loadNotifications, 60_000);
+    const interval = setInterval(loadNotifications, 30_000);
     return () => clearInterval(interval);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -101,7 +98,7 @@ const Navbar3 = ({ userName = '', onMenuClick, profileImage = null }) => {
 
   const handleMarkRead = async (notifId) => {
     try {
-      await markVendorNotificationRead(notifId);
+      await markOrderNotificationRead(notifId);
       setNotifications(prev =>
         prev.map(n => n.id === notifId ? { ...n, is_read: true } : n)
       );
@@ -111,7 +108,9 @@ const Navbar3 = ({ userName = '', onMenuClick, profileImage = null }) => {
 
   const handleMarkAllRead = async () => {
     try {
-      await markAllVendorNotificationsRead();
+      // Mark each unread notification as read via the PATCH endpoint
+      const unread = notifications.filter(n => !n.is_read);
+      await Promise.all(unread.map(n => markOrderNotificationRead(n.id)));
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       setUnreadCount(0);
     } catch (_) {}
@@ -172,7 +171,7 @@ const Navbar3 = ({ userName = '', onMenuClick, profileImage = null }) => {
 
         <div className="flex items-center space-x-3 shrink-0">
 
-          {/* Bell — vendor notifications */}
+          {/* Bell — order notifications */}
           <div className="relative" ref={panelRef}>
             <button
               onClick={() => setShowNotifPanel(prev => !prev)}
