@@ -430,7 +430,7 @@ export const getVendorDashboard = async () => {
     businessCategory = p.business_category || 'retail';
   } catch (_) {}
 
-  // ── Always fetch live orders — dashboard uses them for recentOrders & metric
+    // ── Always fetch live orders — dashboard uses them for recentOrders & metric
   let liveOrders = [];
   try {
     liveOrders = await getVendorOrders();
@@ -441,13 +441,13 @@ export const getVendorDashboard = async () => {
   const inventoryAlertsData = raw.inventoryAlerts  || [];
   const reviewsData         = raw.reviews          || [];
 
-  // recentOrders: prefer command-center data, fall back to first 10 live orders
+    // recentOrders: prefer command-center data, fall back to first 10 live orders
   const rawRecentOrders  = raw.recentOrders || [];
   const recentOrdersData = rawRecentOrders.length > 0
     ? rawRecentOrders
     : liveOrders.slice(0, 10);
 
-  // openOrders metric: prefer command-center, otherwise count from live orders
+   // openOrders metric: prefer command-center, otherwise count from live orders
   const openOrdersCount = Number(metricsData.openOrders ?? 0) || liveOrders.filter((o) =>
     ['pending', 'confirmed', 'processing'].includes(String(o.status).toLowerCase())
   ).length;
@@ -470,7 +470,7 @@ export const getVendorDashboard = async () => {
       sales: Number(item.sales ?? 0),
     })),
 
-    // normalizeOrder guarantees .id / .customer / .total / .status / .items
+   // normalizeOrder guarantees .id / .customer / .total / .status / .items
     recentOrders: recentOrdersData.map(normalizeOrder),
 
     inventoryAlerts: inventoryAlertsData.map((a) => ({
@@ -502,14 +502,17 @@ const normalizeListing = (item) => ({
   is_published: item.is_published === true || item.status === 'published',
 });
 
+// Added listing_type filter to only get products
 export const getProducts = async () => {
-  const res     = await api.get('/listings/');
+  const params = { listing_type: 'product' };
+  const res = await api.get('/listings/', { params });
   const payload = res.data?.data ?? res.data;
-  if (Array.isArray(payload))          return payload.map(normalizeListing);
+  if (Array.isArray(payload)) return payload.map(normalizeListing);
   if (Array.isArray(payload?.results)) return payload.results.map(normalizeListing);
   return [];
 };
 
+// Added listing_type: 'product' to create payload
 export const createProductListing = async (productData) => {
   const qualityMap = {
     High: 'high', Medium: 'medium', Low: 'low',
@@ -543,6 +546,7 @@ export const createProductListing = async (productData) => {
   if (variants.length === 0) variants.push({ color: 'Default', size: '', stock: 0 });
 
   const payload = {
+    listing_type: 'product',  
     business_category: productData.business_category,
     title:             productData.title?.trim(),
     description:       productData.description?.trim() || '',
@@ -566,6 +570,7 @@ export const createProductListing = async (productData) => {
   return normalizeListing(res.data?.data ?? res.data);
 };
 
+// Added listing_type: 'product' to update payload
 export const updateProductListing = async (listingId, productData) => {
   const qualityMap = {
     High: 'high', Medium: 'medium', Low: 'low',
@@ -574,6 +579,7 @@ export const updateProductListing = async (listingId, productData) => {
   };
 
   const payload = {
+    listing_type: 'product',  
     title:       productData.title?.trim(),
     description: productData.description?.trim() || '',
     status:      productData.is_published ? 'published' : 'draft',
