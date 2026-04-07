@@ -332,7 +332,7 @@ const VendorDashboard = () => {
                                 : (order.customer ?? '—')}
                             </td>
                             <td className="px-4 py-2.5">
-                              {/* ✅ FIX: items can be an array of objects, a count number, or undefined */}
+                              {/*  FIX: items can be an array of objects, a count number, or undefined */}
                               {resolveItemCount(order.items)}
                             </td>
                             <td className="px-4 py-2.5 font-bold">{currencySymbol} {Number(order.total || 0).toLocaleString()}</td>
