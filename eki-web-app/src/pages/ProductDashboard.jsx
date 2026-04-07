@@ -1076,10 +1076,7 @@ const ProductDashboard = () => {
           <div>© 2026 Vendor Portal. All rights reserved.</div>
         </footer>
       </div>
-
-      {/* ══════════════════════════════
-          STEP 1 — Basic Info
-      ══════════════════════════════ */}
+      
       {isProductModalOpen && formStep === 1 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left">
@@ -1160,10 +1157,6 @@ const ProductDashboard = () => {
         </div>
       )}
 
-      {/* ══════════════════════════════
-          STEP 2 — Description
-          (its own isolated modal so DescriptionField is stable)
-      ══════════════════════════════ */}
       {isProductModalOpen && formStep === 2 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]">
@@ -1192,10 +1185,6 @@ const ProductDashboard = () => {
           </div>
         </div>
       )}
-
-      {/* ══════════════════════════════
-          STEP 3 — Variants
-      ══════════════════════════════ */}
       {isProductModalOpen && formStep === 3 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]">
@@ -1223,9 +1212,6 @@ const ProductDashboard = () => {
         </div>
       )}
 
-      {/* ══════════════════════════════
-          STEP 4 — Images & Publish
-      ══════════════════════════════ */}
       {isProductModalOpen && formStep === 4 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <form onSubmit={handlePublish} className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]">
@@ -1295,9 +1281,6 @@ const ProductDashboard = () => {
         </div>
       )}
 
-      {/* ══════════════════════════════
-          EDIT MODAL (unchanged logic)
-      ══════════════════════════════ */}
       {isEditModalOpen && selectedProduct && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <form onSubmit={handleUpdate} className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]">
@@ -1415,9 +1398,6 @@ const ProductDashboard = () => {
         </div>
       )}
 
-      {/* ══════════════════════════════
-          DELETE CONFIRM MODAL
-      ══════════════════════════════ */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
@@ -1436,7 +1416,6 @@ const ProductDashboard = () => {
         </div>
       )}
 
-      {/* Color preview modal */}
       {colorPreviewModal && (
         <ColorImagePreviewModal
           color={colorPreviewModal.color}
