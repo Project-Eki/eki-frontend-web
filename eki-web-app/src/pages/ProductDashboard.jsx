@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import VendorSidebar from '../components/VendorSidebar';
 import Navbar3 from '../components/adminDashboard/Navbar4';
+import Footer from '../components/Footer';
 import {
   Plus, Search, Filter, LayoutGrid, List,
   CheckCircle2, Package, ShoppingBag,
@@ -871,7 +872,7 @@ const ProductDashboard = () => {
   ) : null;
 
   return (
-    <div className="flex min-h-screen bg-[#ecece7] font-sans text-slate-800 p-3 gap-3">
+    <div className="flex min-h-screen bg-[#ecece7] text-slate-800 p-3 gap-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
       <VendorSidebar activePage="products" />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -1033,15 +1034,13 @@ const ProductDashboard = () => {
           )}
         </main>
 
-        <footer className="bg-[#125852] text-white py-2.5 px-5 flex justify-between items-center text-[8px] rounded-xl mx-5 mb-3">
-          <div>Buy Smart. Sell Fast. Grow Together...</div>
-          <div>© 2026 Vendor Portal. All rights reserved.</div>
-        </footer>
+        <Footer />
       </div>
-      
+
+      {/* ══ STEP 1 ══ */}
       {isProductModalOpen && formStep === 1 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left">
+          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left" style={{ fontFamily: "'Poppins', sans-serif" }}>
             <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
               <div>
                 <h2 className="text-lg font-bold">Create New Product</h2>
@@ -1105,17 +1104,11 @@ const ProductDashboard = () => {
                   </select>
                 </div>
               </div>
-              {/* ── Stock Quantity ── */}
               <div className="space-y-1">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Stock Quantity</label>
                 <input
-                  type="number"
-                  name="stock"
-                  value={formData.stock}
-                  onChange={handleInputChange}
-                  placeholder="e.g. 10"
-                  min="0"
-                  step="1"
+                  type="number" name="stock" value={formData.stock} onChange={handleInputChange}
+                  placeholder="e.g. 10" min="0" step="1"
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
                 />
                 <p className="text-[9px] text-slate-400">Total units available. Skip if you're using size/color variants — set stock per variant instead.</p>
@@ -1134,12 +1127,10 @@ const ProductDashboard = () => {
         </div>
       )}
 
-      {/* ══════════════════════════════
-          STEP 2 — Description
-      ══════════════════════════════ */}
+      {/* ══ STEP 2 ══ */}
       {isProductModalOpen && formStep === 2 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]">
+          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]" style={{ fontFamily: "'Poppins', sans-serif" }}>
             <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
               <div>
                 <h2 className="text-lg font-bold">Product Description</h2>
@@ -1164,9 +1155,11 @@ const ProductDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* ══ STEP 3 ══ */}
       {isProductModalOpen && formStep === 3 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]">
+          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]" style={{ fontFamily: "'Poppins', sans-serif" }}>
             <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
               <div>
                 <h2 className="text-lg font-bold">Sizes & Colors</h2>
@@ -1191,9 +1184,10 @@ const ProductDashboard = () => {
         </div>
       )}
 
+      {/* ══ STEP 4 ══ */}
       {isProductModalOpen && formStep === 4 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <form onSubmit={handlePublish} className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]">
+          <form onSubmit={handlePublish} className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]" style={{ fontFamily: "'Poppins', sans-serif" }}>
             <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
               <div>
                 <h2 className="text-lg font-bold">Images & Publish</h2>
@@ -1205,7 +1199,6 @@ const ProductDashboard = () => {
             <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
               <ErrorBanner msg={errors._server} />
               <SummaryPill formData={formData} currencySymbol={currencySymbol} currentStep={4} onEdit={setFormStep} />
-
               <ImageGrid
                 existingImages={[]}
                 pendingImages={formData.imageFiles}
@@ -1214,7 +1207,6 @@ const ProductDashboard = () => {
                 onAdd={() => fileInputRef.current?.click()}
               />
               <input ref={fileInputRef} type="file" className="hidden" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFilesChange} />
-
               {formData.colors.length > 0 && (
                 <ColorImageSection
                   colors={formData.colors}
@@ -1226,7 +1218,6 @@ const ProductDashboard = () => {
                   onPreview={(color, images) => setColorPreviewModal({ color, images })}
                 />
               )}
-
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                 <div>
                   <p className="text-[11px] font-bold text-slate-700">Publish immediately</p>
@@ -1246,8 +1237,7 @@ const ProductDashboard = () => {
                 <ArrowLeft size={13} /> Back
               </button>
               <button
-                type="submit"
-                disabled={isLoading}
+                type="submit" disabled={isLoading}
                 className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${isLoading ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#FABB00] text-white hover:bg-[#E0A830] cursor-pointer'}`}
               >
                 {isLoading ? 'Publishing…' : (isPublished ? 'Publish Product' : 'Save as Draft')}
@@ -1257,12 +1247,10 @@ const ProductDashboard = () => {
         </div>
       )}
 
-      {/* ══════════════════════════════
-          EDIT MODAL
-      ══════════════════════════════ */}
+      {/* ══ EDIT MODAL ══ */}
       {isEditModalOpen && selectedProduct && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <form onSubmit={handleUpdate} className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]">
+          <form onSubmit={handleUpdate} className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]" style={{ fontFamily: "'Poppins', sans-serif" }}>
             <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
               <div>
                 <h2 className="text-lg font-bold">Edit Product</h2>
@@ -1272,7 +1260,6 @@ const ProductDashboard = () => {
             </div>
             <div className="px-6 py-4 space-y-3 overflow-y-auto flex-1">
               <ErrorBanner msg={editErrors._server} />
-
               <div className="space-y-1">
                 <label className="text-[10px] font-bold uppercase text-slate-500">Title *</label>
                 <input type="text" value={selectedProduct.title} onChange={(e) => setSelectedProduct((p) => ({ ...p, title: e.target.value }))}
@@ -1280,7 +1267,6 @@ const ProductDashboard = () => {
                 />
                 {editErrors.title && <p className="text-red-500 text-[9px] font-bold">{editErrors.title}</p>}
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase text-slate-500">Price ({currencySymbol}) *</label>
@@ -1296,7 +1282,6 @@ const ProductDashboard = () => {
                   />
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase text-slate-500">Quality</label>
@@ -1315,21 +1300,16 @@ const ProductDashboard = () => {
                   />
                 </div>
               </div>
-
-              {/* ── Stock Quantity ── */}
               <div className="space-y-1">
                 <label className="text-[10px] font-bold uppercase text-slate-500">Stock Quantity</label>
                 <input
-                  type="number"
-                  value={selectedProduct.stock ?? 0}
+                  type="number" value={selectedProduct.stock ?? 0}
                   onChange={(e) => setSelectedProduct((p) => ({ ...p, stock: e.target.value }))}
-                  min="0"
-                  step="1"
+                  min="0" step="1"
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
                 />
                 <p className="text-[9px] text-slate-400">Total units available. Ignored if variants have their own stock.</p>
               </div>
-
               <DescriptionField
                 value={selectedProduct.description || ''}
                 onChange={(e) => {
@@ -1338,9 +1318,7 @@ const ProductDashboard = () => {
                 }}
                 error={editErrors.description}
               />
-
               <VariantSection sizes={selectedProduct.sizes || []} colors={selectedProduct.colors || []} onToggleChip={toggleEditChip} />
-
               <ImageGrid
                 existingImages={selectedProduct.images || []}
                 pendingImages={selectedProduct.newImageFiles || []}
@@ -1349,7 +1327,6 @@ const ProductDashboard = () => {
                 onAdd={() => editFileInputRef.current?.click()}
               />
               <input ref={editFileInputRef} type="file" className="hidden" accept="image/jpeg,image/png,image/webp" multiple onChange={handleEditFilesChange} />
-
               {(selectedProduct.colors || []).length > 0 && (
                 <ColorImageSection
                   colors={selectedProduct.colors || []}
@@ -1361,7 +1338,6 @@ const ProductDashboard = () => {
                   onPreview={(color, images) => setColorPreviewModal({ color, images })}
                 />
               )}
-
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                 <div>
                   <p className="text-[11px] font-bold text-slate-700">Published</p>
@@ -1393,7 +1369,7 @@ const ProductDashboard = () => {
       {/* DELETE CONFIRM */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center" style={{ fontFamily: "'Poppins', sans-serif" }}>
             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trash2 size={20} className="text-red-500" />
             </div>
