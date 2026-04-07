@@ -13,30 +13,74 @@ import {
 } from 'lucide-react';
 import LogoutModal from './LogoutModal'; // Import your modal component
 
-const VendorSidebar = ({ activePage }) => {
+const VendorSidebar = ({ activePage, isProductVendor, isServiceVendor }) => {
   const navigate = useNavigate();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  
+
   const menuItems = [
-    { to: "/vendordashboard", icon: <LayoutDashboard size={16} />, label: "Dashboard", key: "dashboard" },
-    { to: "/product-dashboard", icon: <ShoppingBag size={16} />, label: "Products", key: "products" },
-    { to: "/servicemanagement", icon: <Package size={16} />, label: "Services", key: "services" },
-    { to: "/order-management", icon: <Truck size={16} />, label: "Orders", key: "orders" },
-    { to: "/payment", icon: <CreditCard size={16} />, label: "Payments", key: "payments" },
-    { to: "/reviews", icon: <MessageSquare size={16} />, label: "Reviews", key: "reviews" },
-    { to: "/settings", icon: <Settings size={16} />, label: "Store Settings", key: "settings" },
+    {
+      to: "/vendordashboard",
+      icon: <LayoutDashboard size={16} />,
+      label: "Dashboard",
+      key: "dashboard",
+    },
   ];
+  // Only show Products tab for product vendors
+  if (isProductVendor) {
+    menuItems.push({
+      to: "/product-dashboard",
+      icon: <ShoppingBag size={16} />,
+      label: "Products",
+      key: "products",
+    });
+  }
+
+  // Only show Services tab for service vendors
+  if (isServiceVendor) {
+    menuItems.push({
+      to: "/servicemanagement",
+      icon: <Package size={16} />,
+      label: "Services",
+      key: "services",
+    });
+  }
+  menuItems.push(
+    {
+      to: "/order-management",
+      icon: <Truck size={16} />,
+      label: "Orders",
+      key: "orders",
+    },
+    {
+      to: "/payment",
+      icon: <CreditCard size={16} />,
+      label: "Payments",
+      key: "payments",
+    },
+    {
+      to: "/reviews",
+      icon: <MessageSquare size={16} />,
+      label: "Reviews",
+      key: "reviews",
+    },
+    {
+      to: "/settings",
+      icon: <Settings size={16} />,
+      label: "Store Settings",
+      key: "settings",
+    },
+  );
 
   const handleLogout = () => {
     // Add your logout logic here
-    console.log('Logout clicked');
-    
+    console.log("Logout clicked");
+
     // Clear any authentication tokens/storage
-    localStorage.removeItem('authToken');
+    localStorage.removeItem("authToken");
     sessionStorage.clear();
-    
+
     // Redirect to login page
-    navigate('/login');
+    navigate("/login");
   };
 
   const openLogoutModal = () => {
@@ -54,16 +98,22 @@ const VendorSidebar = ({ activePage }) => {
 
   return (
     <>
-      <aside className="w-56 flex flex-col sticky top-3 h-[calc(100vh-1.5rem)] shadow-sm rounded-2xl font-popins"
+      <aside
+        className="w-56 flex flex-col sticky top-3 h-[calc(100vh-1.5rem)] shadow-sm rounded-2xl font-popins"
         style={{
-          background: "linear-gradient(160deg, #125852 0%, #0e4440 40%, #0b3330 100%)",
+          background:
+            "linear-gradient(160deg, #125852 0%, #0e4440 40%, #0b3330 100%)",
         }}
       >
         {/* Logo */}
         <div className="p-4 pt-5 pb-4">
-          <img src={logo} alt="Eki" className="h-14 w-auto object-contain mx-auto" />
+          <img
+            src={logo}
+            alt="Eki"
+            className="h-14 w-auto object-contain mx-auto"
+          />
         </div>
-        
+
         <nav className="flex-1 px-3 py-3 space-y-0.5">
           {menuItems.map((item) => (
             <SidebarNavLink
@@ -75,7 +125,7 @@ const VendorSidebar = ({ activePage }) => {
             />
           ))}
         </nav>
-        
+
         <div className="p-3">
           <button
             onClick={openLogoutModal}
@@ -88,7 +138,7 @@ const VendorSidebar = ({ activePage }) => {
       </aside>
 
       {/* Logout Confirmation Modal */}
-      <LogoutModal 
+      <LogoutModal
         isOpen={showLogoutModal}
         onClose={closeLogoutModal}
         onConfirm={confirmLogout}
