@@ -1038,10 +1038,7 @@ const ProductDashboard = () => {
           <div>© 2026 Vendor Portal. All rights reserved.</div>
         </footer>
       </div>
-
-      {/* ══════════════════════════════
-          STEP 1 — Basic Info
-      ══════════════════════════════ */}
+      
       {isProductModalOpen && formStep === 1 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left">
@@ -1167,10 +1164,6 @@ const ProductDashboard = () => {
           </div>
         </div>
       )}
-
-      {/* ══════════════════════════════
-          STEP 3 — Variants
-      ══════════════════════════════ */}
       {isProductModalOpen && formStep === 3 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]">
@@ -1198,9 +1191,6 @@ const ProductDashboard = () => {
         </div>
       )}
 
-      {/* ══════════════════════════════
-          STEP 4 — Images & Publish
-      ══════════════════════════════ */}
       {isProductModalOpen && formStep === 4 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <form onSubmit={handlePublish} className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]">
@@ -1419,7 +1409,6 @@ const ProductDashboard = () => {
         </div>
       )}
 
-      {/* Color preview modal */}
       {colorPreviewModal && (
         <ColorImagePreviewModal
           color={colorPreviewModal.color}

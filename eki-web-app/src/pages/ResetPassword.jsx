@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 
@@ -10,22 +10,29 @@ import Footer from "../components/Footer";
 const ResetPasswordPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
-  const emailFromState = location.state?.email || '';
 
-  const [otp_code, setOtpCode] = useState(location.state?.otp_code || '');
+  const emailFromState = location.state?.email || '';
+  const [otp_code] = useState(location.state?.otp_code || '');
   const [new_password, setNewPassword] = useState('');
   const [confirm_password, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Password visibility states
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Dynamic button logic: turns yellow only if both fields are filled
   const isFormFilled = new_password.length > 0 && confirm_password.length > 0;
+
+  // Lock body scroll on mount, restore on unmount
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -42,187 +49,224 @@ const ResetPasswordPage = () => {
     setError('');
     setIsLoading(true);
 
+    const payload = {
+      email: emailFromState,
+      otp_code: String(otp_code),
+      new_password,
+      confirm_password,
+    };
+
+    console.log(' Sending to confirm-password-reset:', payload);
+
     try {
-      await passwordResetConfirm({
-        email: emailFromState,
-        otp_code: String(otp_code),
-        new_password,
-        confirm_password,
-      });
-      
+      await passwordResetConfirm(payload);
       setIsSuccess(true);
-      setTimeout(() => {
-        navigate('/sign-in');
-      }, 3000);
+      setTimeout(() => navigate('/login'), 3000);
     } catch (err) {
-      setError(err.message || 'Reset failed. Try again.');
+      const djangoErrors = err.response?.data?.errors ?? err.response?.data;
+      if (djangoErrors && typeof djangoErrors === 'object') {
+        const messages = Object.entries(djangoErrors)
+          .map(([field, msg]) => `${field}: ${Array.isArray(msg) ? msg.join(', ') : msg}`)
+          .join(' | ');
+        setError(messages);
+      } else {
+        setError(err.message || 'Reset failed. Try again.');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-screen bg-white font-sans overflow-hidden">
-      <Navbar />
+    <div className="flex flex-col h-screen overflow-hidden" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');`}</style>
 
-      <div className="flex-1 flex w-full overflow-hidden">
-        
-        {/* Left Side: Image Section with Decorative Shapes */}
-        <div className="hidden lg:block lg:w-1/2 relative overflow-hidden bg-white">
-          {/* Decorative Shapes */}
-          <div className="absolute -top-6 -left-6 w-32 h-32 border-4 border-[#235E5DFF] rounded-full opacity-20 z-10"></div>
-          <div className="absolute -bottom-10 -right-6 w-40 h-40 border-4 border-[#EFB034] rounded-lg opacity-20 transform rotate-12 z-10"></div>
-          <div className="absolute top-1/3 -left-8 w-24 h-24 border-4 border-[#235E5DFF] rounded-lg opacity-10 transform -rotate-12 z-10"></div>
-          <div className="absolute bottom-1/4 -right-8 w-28 h-28 border-4 border-[#EFB034] rounded-full opacity-20 z-10"></div>
-          
-          {/* Image Container */}
-          <div className="relative z-20 w-full h-full flex items-center justify-center p-8">
-            <div className="relative w-full h-full max-h-[70vh]">
-              <img
-                src={resetIllustration}
-                alt="Reset Illustration"
-                className="w-full h-full object-cover rounded-[40px] shadow-2xl border-4 border-white/20"
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#235E5D] to-[#EFB034] rounded-[40px] opacity-10 blur-3xl -z-10 scale-105"></div>
-            </div>
-          </div>
+      {/* Navbar — shrinks to its natural height */}
+      <div className="flex-shrink-0">
+        <Navbar />
+      </div>
+
+      {/* Body — fills all remaining space between Navbar and Footer */}
+      <div className="flex flex-1 overflow-hidden min-h-0">
+
+        {/* Left: illustration */}
+        <div className="hidden lg:block w-1/2 overflow-hidden flex-shrink-0">
+          <img
+            src={resetIllustration}
+            alt="Reset Password Illustration"
+            className="w-full h-full object-cover pointer-events-none"
+          />
         </div>
 
-        {/* Right Side: Reset Password Form */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center bg-white overflow-y-auto">
-          <div className="w-full max-w-md px-8 py-6">
-            
+        {/* Right: form — centered, no scroll */}
+        <div className="flex-1 flex flex-col justify-center items-center overflow-hidden px-8 md:px-16 bg-white">
+          <div className="w-full max-w-md">
+
             {isSuccess ? (
               <div className="text-center">
-                <div className="bg-emerald-50 text-emerald-700 p-8 rounded-2xl border border-emerald-100 mb-6">
-                  <h2 className="text-[28px] font-black mb-2">Success!</h2>
-                  <p className="text-[14px] text-gray-600">Password reset successfully. Redirecting you to sign in...</p>
+                <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-8 mb-6">
+                  <h2
+                    className="text-3xl md:text-4xl text-emerald-700 mb-2"
+                    style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 800 }}
+                  >
+                    Success!
+                  </h2>
+                  <p
+                    className="text-sm text-gray-600"
+                    style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 400 }}
+                  >
+                    Password reset successfully. Redirecting you to login...
+                  </p>
                 </div>
-                <Link 
-                  to="/sign-in" 
-                  className="text-[#EFB034] font-semibold hover:underline text-[14px]"
+                <Link
+                  to="/login"
+                  className="text-sm text-[#EFB034] hover:underline"
+                  style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 600 }}
                 >
                   Click here to go now
                 </Link>
               </div>
             ) : (
               <>
-                <div className="mb-6 text-left">
-                  <h2 className="text-[28px] font-black text-gray-900 leading-tight mb-2">
-                    Secure your account
+                {/* Heading */}
+                <div className="mb-7 text-left">
+                  <h2
+                    className="text-3xl md:text-4xl text-slate-900 tracking-tight"
+                    style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 800 }}
+                  >
+                    Reset Password
                   </h2>
-                  <p className="text-gray-500 text-[14px]">
-                    Create a strong new password below
+                  <p
+                    className="text-slate-400 mt-1 text-[11px] uppercase tracking-[0.1em]"
+                    style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 500 }}
+                  >
+                    Create a strong new password below.
                   </p>
                 </div>
 
-                <form className="w-full space-y-4" onSubmit={handleSubmit} noValidate>
-                  
-                  {/* New Password Input */}
-                  <div className="relative">
+                <form onSubmit={handleSubmit} className="w-full space-y-4" noValidate>
+
+                  {/* New Password */}
+                  <div className="relative flex items-center">
                     <input
-                      type={showNewPassword ? "text" : "password"}
+                      type={showNewPassword ? 'text' : 'password'}
                       value={new_password}
-                      onChange={(e) => { setNewPassword(e.target.value); if(error) setError(''); }}
+                      onChange={(e) => { setNewPassword(e.target.value); if (error) setError(''); }}
                       placeholder="New Password"
-                      className={`w-full rounded-full border h-12 px-5 pr-12 focus:outline-none transition-all text-sm text-slate-900 bg-white
-                        ${error && error.includes('8') 
-                          ? 'border-red-500 bg-red-50/10 focus:border-red-500' 
-                          : 'border-slate-200 focus:border-[#EFB034] focus:ring-1 focus:ring-[#EFB034]/20'
-                        }`}
+                      className={`w-full rounded-xl border h-14 px-5 pr-12 focus:outline-none transition-all text-sm text-slate-900 ${
+                        error && (error.includes('8') || error.includes('new_password'))
+                          ? 'border-red-500 bg-red-50'
+                          : 'border-slate-200 focus:border-[#EFB034]'
+                      }`}
+                      style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 400 }}
                     />
-                    <div className="absolute right-5 top-1/2 -translate-y-1/2">
-                      <button 
-                        type="button" 
-                        onClick={() => setShowNewPassword(!showNewPassword)} 
-                        className="text-slate-400 hover:text-[#EFB034] transition-colors"
-                      >
-                        {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-4 text-slate-400 hover:text-[#EFB034] transition-colors"
+                    >
+                      {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
 
-                  {/* Confirm Password Input */}
-                  <div className="relative">
+                  {/* Confirm Password */}
+                  <div className="relative flex items-center">
                     <input
-                      type={showConfirmPassword ? "text" : "password"}
+                      type={showConfirmPassword ? 'text' : 'password'}
                       value={confirm_password}
-                      onChange={(e) => { setConfirmPassword(e.target.value); if(error) setError(''); }}
+                      onChange={(e) => { setConfirmPassword(e.target.value); if (error) setError(''); }}
                       placeholder="Confirm Password"
-                      className={`w-full rounded-full border h-12 px-5 pr-12 focus:outline-none transition-all text-sm text-slate-900 bg-white
-                        ${error && error.includes('match') 
-                          ? 'border-red-500 bg-red-50/10 focus:border-red-500' 
-                          : 'border-slate-200 focus:border-[#EFB034] focus:ring-1 focus:ring-[#EFB034]/20'
-                        }`}
+                      className={`w-full rounded-xl border h-14 px-5 pr-12 focus:outline-none transition-all text-sm text-slate-900 ${
+                        error && (error.includes('match') || error.includes('confirm_password'))
+                          ? 'border-red-500 bg-red-50'
+                          : 'border-slate-200 focus:border-[#EFB034]'
+                      }`}
+                      style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 400 }}
                     />
-                    <div className="absolute right-5 top-1/2 -translate-y-1/2">
-                      <button 
-                        type="button" 
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
-                        className="text-slate-400 hover:text-[#EFB034] transition-colors"
-                      >
-                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-4 text-slate-400 hover:text-[#EFB034] transition-colors"
+                    >
+                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
 
-                  {/* Error Message */}
+                  {/* Error */}
                   {error && (
-                    <p className="text-red-500 text-[11px] font-bold text-center">{error}</p>
+                    <p
+                      className="text-[11px] text-red-500 italic -mt-2"
+                      style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 600 }}
+                    >
+                      {error}
+                    </p>
                   )}
 
-                  {/* Requirements Box */}
-                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                    <div className="text-[11px] font-bold text-[#234E4D] mb-2 uppercase tracking-wider">
+                  {/* Password Requirements */}
+                  <div className="bg-gray-50 border border-gray-100 rounded-xl px-5 py-4">
+                    <p
+                      className="text-[11px] text-[#234E4D] uppercase tracking-wider mb-2"
+                      style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700 }}
+                    >
                       Password Requirements
-                    </div>
-                    <ul className="space-y-1.5 text-[11px] text-gray-600 font-medium">
-                      <li className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${new_password.length >= 8 ? 'bg-emerald-500' : 'bg-gray-300'}`}></div> 
-                        At least 8 characters long
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${/[A-Z]/.test(new_password) ? 'bg-emerald-500' : 'bg-gray-300'}`}></div> 
-                        Contains an uppercase letter
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${/[0-9]/.test(new_password) ? 'bg-emerald-500' : 'bg-gray-300'}`}></div> 
-                        Contains a number
-                      </li>
+                    </p>
+                    <ul className="space-y-1.5">
+                      {[
+                        { label: 'At least 8 characters long', met: new_password.length >= 8 },
+                        { label: 'Contains an uppercase letter', met: /[A-Z]/.test(new_password) },
+                        { label: 'Contains a number', met: /[0-9]/.test(new_password) },
+                      ].map(({ label, met }) => (
+                        <li key={label} className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full flex-shrink-0 transition-colors duration-200 ${met ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                          <span
+                            className="text-[11px] text-gray-600"
+                            style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 500 }}
+                          >
+                            {label}
+                          </span>
+                        </li>
+                      ))}
                     </ul>
                   </div>
 
-                  {/* Reset Password Button */}
+                  {/* Submit Button */}
                   <button
                     type="submit"
                     disabled={isLoading || !isFormFilled}
-                    className={`w-full h-12 rounded-full font-bold transition-all duration-300
-                      ${isFormFilled && !isLoading
-                        ? 'bg-[#efb034] hover:bg-[#d99c1c] hover:-translate-y-1 hover:shadow-lg text-white cursor-pointer' 
-                        : 'bg-gray-300 cursor-not-allowed text-white/70'
-                      }`}
+                    className={`w-full h-14 text-base text-white rounded-full flex items-center justify-center transition-all duration-300 active:scale-[0.98] ${
+                      isFormFilled
+                        ? 'bg-[#EFB034] shadow-md shadow-yellow-200/50 hover:brightness-105'
+                        : 'bg-gray-300 cursor-not-allowed'
+                    } ${isLoading ? 'opacity-60 cursor-wait' : ''}`}
+                    style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700 }}
                   >
                     {isLoading ? 'Updating...' : 'Reset Password'}
                   </button>
 
-                  {/* Back to Login Link */}
-                  <div className="text-center pt-2">
-                    <button 
-                      type="button" 
-                      onClick={() => navigate('/sign-in')} 
-                      className="text-[13px] font-semibold text-[#234E4D] hover:underline"
+                  {/* Back to Login */}
+                  <div className="text-center pt-1">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/login')}
+                      className="text-[11px] uppercase tracking-widest text-[#234E4D] hover:underline"
+                      style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700 }}
                     >
                       Back to Login
                     </button>
                   </div>
+
                 </form>
               </>
             )}
+
           </div>
         </div>
       </div>
-      
-      <Footer />
+
+      {/* Footer — shrinks to its natural height */}
+      <div className="flex-shrink-0">
+        <Footer />
+      </div>
     </div>
   );
 };
