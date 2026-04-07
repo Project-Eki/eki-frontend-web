@@ -155,8 +155,8 @@ const VendorDashboard = () => {
     }
   };
 
-  const isProductVendor = vendorData.is_product_vendor;
-  const isServiceVendor = vendorData.is_service_vendor;
+  const isProductVendor = vendorData?.is_product_vendor ?? false;
+  const isServiceVendor = vendorData?.is_service_vendor ?? false;
   const vendorType = vendorData.vendor_type; // 'product' or 'service'
 
   // Two-step lookup: country name → ISO code → symbol (mirrors backend)
