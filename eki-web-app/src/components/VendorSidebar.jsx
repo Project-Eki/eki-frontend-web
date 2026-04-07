@@ -19,13 +19,32 @@ const VendorSidebar = ({ activePage }) => {
   
   const menuItems = [
     { to: "/vendordashboard", icon: <LayoutDashboard size={16} />, label: "Dashboard", key: "dashboard" },
-    { to: "/product-dashboard", icon: <ShoppingBag size={16} />, label: "Products", key: "products" },
-    { to: "/servicemanagement", icon: <Package size={16} />, label: "Services", key: "services" },
+  ];
+    // Only show Products tab for product vendors
+    if (isProductVendor) {
+      menuItems.push({ 
+        to: "/product-dashboard", 
+        icon: <ShoppingBag size={16} />, 
+        label: "Products", 
+        key: "products" 
+      });
+    }
+    
+    // Only show Services tab for service vendors
+    if (isServiceVendor) {
+      menuItems.push({ 
+        to: "/servicemanagement", 
+        icon: <Package size={16} />, 
+        label: "Services", 
+        key: "services" 
+      });
+    }
+    menuItems.push(
     { to: "/order-management", icon: <Truck size={16} />, label: "Orders", key: "orders" },
     { to: "/payment", icon: <CreditCard size={16} />, label: "Payments", key: "payments" },
     { to: "/reviews", icon: <MessageSquare size={16} />, label: "Reviews", key: "reviews" },
-    { to: "/settings", icon: <Settings size={16} />, label: "Store Settings", key: "settings" },
-  ];
+    { to: "/settings", icon: <Settings size={16} />, label: "Store Settings", key: "settings" }
+  )
 
   const handleLogout = () => {
     // Add your logout logic here
