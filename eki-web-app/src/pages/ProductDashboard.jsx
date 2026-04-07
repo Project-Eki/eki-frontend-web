@@ -6,7 +6,7 @@ import {
   Plus, Search, Filter, LayoutGrid, List,
   CheckCircle2, Package, ShoppingBag,
   X, Upload, Trash2, Pencil, Palette, Ruler, ImagePlus, ChevronDown, ChevronUp,
-  ArrowRight, ArrowLeft, Eye, ChevronLeft, ChevronRight,
+  ArrowRight, ArrowLeft, Eye, ChevronLeft, ChevronRight, CreditCard, Box, ListChecks,
 } from 'lucide-react';
 import logo from '../assets/eki-logo-white.png';
 
@@ -84,6 +84,7 @@ const countWords = (text) => {
 const blankForm = () => ({
   title: '', category: '', price: '', sku: '', qty: 'Medium',
   location: '', description: '',
+  stock: 0,
   imageFiles: [],
   sizes: [],
   colors: [],
@@ -103,18 +104,22 @@ const getQualityStyle = (qty) => {
   return               { bg: '#FFFBF0', text: '#A07800', border: '#F5C842' };
 };
 
-// ─── StatCard (unchanged) ─────────────────────────────────────────────────────
-const StatCard = ({ label, value, icon }) => (
-  <div className="bg-white rounded-xl border border-slate-100 p-4 flex items-center gap-3 shadow-sm">
-    <div className="w-8 h-8 bg-teal-50 rounded-lg flex items-center justify-center flex-shrink-0">{icon}</div>
-    <div>
-      <p className="text-[10px] font-bold uppercase text-slate-400">{label}</p>
-      <p className="text-xl font-black text-slate-800">{value}</p>
+// ─── Stat Card Component ──────────────────────────────────────────────────────
+const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
+  <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
+    <div className="flex items-start justify-between">
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{title}</p>
+        <p className="text-2xl font-bold text-gray-900">{number}</p>
+      </div>
+      <div className={`${iconBgColor} p-2.5 rounded-xl`}>
+        <Icon size={20} className={iconColor} />
+      </div>
     </div>
   </div>
 );
 
-// ─── ProductCard (unchanged) ──────────────────────────────────────────────────
+// ─── ProductCard ──────────────────────────────────────────────────────────────
 const ProductCard = ({ product, currencySymbol, onClick }) => {
   const qStyle = getQualityStyle(product.inventory_quality || product.qty);
   const mainImage = product.images?.[0]?.image || null;
@@ -155,7 +160,7 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
   );
 };
 
-// ─── Color Image Preview Modal (defined OUTSIDE main component — never recreated) ─
+// ─── Color Image Preview Modal ────────────────────────────────────────────────
 const ColorImagePreviewModal = ({ color, images, onClose }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   if (!images || images.length === 0) return null;
@@ -218,7 +223,7 @@ const ColorImagePreviewModal = ({ color, images, onClose }) => {
   );
 };
 
-// ─── StepProgressBar (defined OUTSIDE — stable, no re-creation) ───────────────
+// ─── StepProgressBar ─────────────────────────────────────────────────────────
 const StepProgressBar = ({ currentStep, totalSteps = 4, labels = ['Basic Info', 'Description', 'Variants', 'Images'] }) => (
   <div className="px-6 pt-3 pb-2 flex-shrink-0">
     <div className="flex items-center gap-1.5">
@@ -244,9 +249,7 @@ const StepProgressBar = ({ currentStep, totalSteps = 4, labels = ['Basic Info', 
   </div>
 );
 
-// ─── DescriptionField (defined OUTSIDE main component — THIS fixes the typing bug) ─
-// When defined inside, React recreates this component on every parent render,
-// destroying the input's DOM node and resetting focus/cursor on every keystroke.
+// ─── DescriptionField ─────────────────────────────────────────────────────────
 const DescriptionField = ({ value, onChange, error }) => {
   const words    = countWords(value);
   const tooShort = value && value.trim() && words < DESC_MIN_WORDS;
@@ -288,7 +291,7 @@ const DescriptionField = ({ value, onChange, error }) => {
   );
 };
 
-// ─── VariantSection (defined OUTSIDE main component) ─────────────────────────
+// ─── VariantSection ───────────────────────────────────────────────────────────
 const VariantSection = ({ sizes, colors, onToggleChip }) => {
   const [colorDropdownOpen, setColorDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -380,7 +383,7 @@ const VariantSection = ({ sizes, colors, onToggleChip }) => {
   );
 };
 
-// ─── ImageGrid (defined OUTSIDE) ──────────────────────────────────────────────
+// ─── ImageGrid ────────────────────────────────────────────────────────────────
 const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, onRemovePending, onAdd }) => {
   const total      = existingImages.length + pendingImages.length;
   const canAddMore = total < MAX_GENERAL_IMAGES;
@@ -421,7 +424,7 @@ const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, 
   );
 };
 
-// ─── ColorImageSection (defined OUTSIDE) ──────────────────────────────────────
+// ─── ColorImageSection ────────────────────────────────────────────────────────
 const ColorImageSection = ({
   colors, colorImageFiles,
   fileRefs, onAdd, onChange, onRemove, onPreview,
@@ -493,7 +496,7 @@ const ColorImageSection = ({
   );
 };
 
-// ─── SummaryPill — mini recap shown at top of steps 2–4 ──────────────────────
+// ─── SummaryPill ──────────────────────────────────────────────────────────────
 const SummaryPill = ({ formData, currencySymbol, currentStep, onEdit }) => (
   <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
     <div className="flex items-start justify-between">
@@ -502,6 +505,7 @@ const SummaryPill = ({ formData, currencySymbol, currentStep, onEdit }) => (
         <p className="text-[13px] font-bold text-slate-800 truncate">{formData.title}</p>
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           <span className="text-[11px] text-[#125852] font-bold">{currencySymbol} {Number(formData.price || 0).toLocaleString()}</span>
+          {formData.stock > 0 && <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full">Qty: {formData.stock}</span>}
           {formData.category && <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">{formData.category}</span>}
           {formData.sizes?.length > 0 && <span className="text-[9px] bg-[#125852]/10 text-[#125852] px-1.5 py-0.5 rounded-full">{formData.sizes.length} size{formData.sizes.length !== 1 ? 's' : ''}</span>}
           {formData.colors?.length > 0 && <span className="text-[9px] bg-[#125852]/10 text-[#125852] px-1.5 py-0.5 rounded-full">{formData.colors.length} color{formData.colors.length !== 1 ? 's' : ''}</span>}
@@ -512,37 +516,6 @@ const SummaryPill = ({ formData, currencySymbol, currentStep, onEdit }) => (
           <ArrowLeft size={12} /> Edit
         </button>
       )}
-    </div>
-  </div>
-);
-
-// ─── Modal shell ──────────────────────────────────────────────────────────────
-const ModalShell = ({ title, subtitle, step, onClose, children, footer }) => (
-  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-    <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]">
-      {/* Header */}
-      <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
-        <div>
-          <h2 className="text-lg font-bold">{title}</h2>
-          <p className="text-[11px] text-slate-500">{subtitle}</p>
-        </div>
-        <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors">
-          <X size={20} />
-        </button>
-      </div>
-
-      {/* Progress */}
-      <StepProgressBar currentStep={step} />
-
-      {/* Body */}
-      <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
-        {children}
-      </div>
-
-      {/* Footer */}
-      <div className="px-6 py-4 border-t bg-slate-50/30 flex justify-between items-center flex-shrink-0">
-        {footer}
-      </div>
     </div>
   </div>
 );
@@ -570,7 +543,6 @@ const ProductDashboard = () => {
   const [filterQuality, setFilterQuality]           = useState('');
   const filterRef                                   = useRef(null);
 
-  // 4-step form
   const [formStep, setFormStep]                     = useState(1);
   const [colorPreviewModal, setColorPreviewModal]   = useState(null);
 
@@ -698,7 +670,6 @@ const ProductDashboard = () => {
     colorImageFiles: { ...(prev.colorImageFiles || {}), [color]: (prev.colorImageFiles?.[color] || []).filter((_, i) => i !== index) },
   }));
 
-  // toggleChip for CREATE form
   const toggleChip = (field, value) => {
     setFormData((prev) => {
       const arr  = prev[field] || [];
@@ -711,7 +682,6 @@ const ProductDashboard = () => {
     });
   };
 
-  // toggleChip for EDIT form
   const toggleEditChip = (field, value) => {
     setSelectedProduct((prev) => {
       const arr  = prev[field] || [];
@@ -785,11 +755,17 @@ const ProductDashboard = () => {
     setIsLoading(true);
     try {
       const created = await createProductListing({
-        title: formData.title, description: formData.description,
-        location: formData.location, price: formData.price,
-        sku: formData.sku, qty: formData.qty,
-        sizes: formData.sizes, colors: formData.colors,
-        is_published: isPublished, business_category: businessCategory,
+        title: formData.title,
+        description: formData.description,
+        location: formData.location,
+        price: formData.price,
+        sku: formData.sku,
+        qty: formData.qty,
+        stock: Number(formData.stock) || 0,
+        sizes: formData.sizes,
+        colors: formData.colors,
+        is_published: isPublished,
+        business_category: businessCategory,
       });
       const allFiles = collectAllFiles(formData.imageFiles, formData.colorImageFiles);
       if (allFiles.length > 0 && created?.id) await uploadListingImages(created.id, allFiles);
@@ -815,6 +791,7 @@ const ProductDashboard = () => {
       ...product,
       is_published:    product.is_published === true || product.status === 'published',
       qty:             QTY_DISPLAY[product.inventory_quality] || product.qty || 'Medium',
+      stock:           product.detail?.stock ?? product.stock ?? 0,
       location:        product.vendor_location || product.location || '',
       images:          product.images || [],
       newImageFiles:   [],
@@ -832,11 +809,16 @@ const ProductDashboard = () => {
     setIsLoading(true);
     try {
       await updateProductListing(selectedProduct.id, {
-        title: selectedProduct.title, price: selectedProduct.price,
-        sku: selectedProduct.sku, qty: selectedProduct.qty,
-        location: selectedProduct.location, description: selectedProduct.description,
+        title: selectedProduct.title,
+        price: selectedProduct.price,
+        sku: selectedProduct.sku,
+        qty: selectedProduct.qty,
+        stock: Number(selectedProduct.stock) || 0,
+        location: selectedProduct.location,
+        description: selectedProduct.description,
         is_published: selectedProduct.is_published === true,
-        sizes: selectedProduct.sizes || [], colors: selectedProduct.colors || [],
+        sizes: selectedProduct.sizes || [],
+        colors: selectedProduct.colors || [],
       });
       const allFiles = collectAllFiles(selectedProduct.newImageFiles, selectedProduct.colorImageFiles);
       if (allFiles.length > 0) await uploadListingImages(selectedProduct.id, allFiles);
@@ -884,32 +866,12 @@ const ProductDashboard = () => {
 
   const closeCreateModal = () => { setIsProductModalOpen(false); setFormData(blankForm()); setErrors({}); setFormStep(1); };
 
-  // ─── Shared footer nav buttons
-  const navButtons = (onBack, onNext, nextLabel = 'Continue', nextIcon = <ArrowRight size={13} />, nextDisabled = false, isSubmit = false) => (
-    <>
-      <button type="button" onClick={onBack} className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5">
-        <ArrowLeft size={13} /> Back
-      </button>
-      <button
-        type={isSubmit ? 'submit' : 'button'}
-        onClick={isSubmit ? undefined : onNext}
-        disabled={nextDisabled || isLoading}
-        className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${
-          nextDisabled || isLoading ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#F5B841] text-white hover:bg-[#E0A83B] cursor-pointer'
-        }`}
-      >
-        {isLoading && isSubmit ? 'Saving…' : nextLabel} {!isLoading && nextIcon}
-      </button>
-    </>
-  );
-
-  // ─── Error banner
   const ErrorBanner = ({ msg }) => msg ? (
     <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-medium px-3 py-2 rounded-lg">{msg}</div>
   ) : null;
 
   return (
-    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
+    <div className="flex min-h-screen bg-[#ecece7] font-sans text-slate-800 p-3 gap-3">
       <VendorSidebar activePage="products" />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -922,7 +884,7 @@ const ProductDashboard = () => {
         )}
 
         <main className="p-5 max-w-[1400px] mx-auto w-full pb-16">
-          {/* ─── Header */}
+          {/* Header */}
           <div className="flex justify-between items-center mb-5">
             <div>
               <h1 className="text-xl font-bold text-[#1A1A1A] tracking-tight">Product Management</h1>
@@ -943,15 +905,15 @@ const ProductDashboard = () => {
             </button>
           </div>
 
-          {/* ─── Stat cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5">
-            <StatCard label="Total Products"  value={products.length}                                                                          icon={<Package size={12} className="text-teal-600" />} />
-            <StatCard label="Active Listings" value={products.filter((p) => p.is_published === true).length}                                   icon={<CheckCircle2 size={12} className="text-teal-600" />} />
-            <StatCard label="High Quality"    value={products.filter((p) => (p.inventory_quality || p.qty || '').toUpperCase() === 'HIGH').length} icon={<CheckCircle2 size={12} className="text-green-500" />} />
-            <StatCard label="Drafts"          value={products.filter((p) => p.is_published !== true).length}                                   icon={<Package size={12} className="text-slate-400" />} />
+          {/* Stat cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+            <StatCard title="Total Products" number={products.length} icon={Package} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
+            <StatCard title="Active Listings" number={products.filter((p) => p.is_published === true).length} icon={ListChecks} iconBgColor="bg-blue-50" iconColor="text-blue-600" />
+            <StatCard title="High Quality" number={products.filter((p) => (p.inventory_quality || p.qty || '').toUpperCase() === 'HIGH').length} icon={Box} iconBgColor="bg-orange-50" iconColor="text-orange-600" />
+            <StatCard title="Drafts" number={products.filter((p) => p.is_published !== true).length} icon={CreditCard} iconBgColor="bg-indigo-50" iconColor="text-indigo-600" />
           </div>
 
-          {/* ─── Search + Filter + View toggle */}
+          {/* Search + Filter + View toggle */}
           <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
             <div className={`relative w-80 flex items-center border rounded-lg shadow-sm transition-all bg-white ${searchFocused ? 'border-[#F5B841] ring-1 ring-[#F5B841]' : 'border-slate-200'}`}>
               <Search className={`absolute left-3 transition-colors ${searchFocused ? 'text-[#F5B841]' : 'text-slate-400'}`} size={16} />
@@ -1071,15 +1033,12 @@ const ProductDashboard = () => {
           )}
         </main>
 
-        <footer className="bg-[#125852] text-white py-2 px-8 flex justify-between items-center text-[9px] mt-auto">
+        <footer className="bg-[#125852] text-white py-2.5 px-5 flex justify-between items-center text-[8px] rounded-xl mx-5 mb-3">
           <div>Buy Smart. Sell Fast. Grow Together...</div>
           <div>© 2026 Vendor Portal. All rights reserved.</div>
         </footer>
       </div>
-
-      {/* ══════════════════════════════
-          STEP 1 — Basic Info
-      ══════════════════════════════ */}
+      
       {isProductModalOpen && formStep === 1 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left">
@@ -1146,6 +1105,21 @@ const ProductDashboard = () => {
                   </select>
                 </div>
               </div>
+              {/* ── Stock Quantity ── */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold uppercase text-slate-500">Stock Quantity</label>
+                <input
+                  type="number"
+                  name="stock"
+                  value={formData.stock}
+                  onChange={handleInputChange}
+                  placeholder="e.g. 10"
+                  min="0"
+                  step="1"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
+                />
+                <p className="text-[9px] text-slate-400">Total units available. Skip if you're using size/color variants — set stock per variant instead.</p>
+              </div>
             </div>
             <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
               <button type="button" onClick={closeCreateModal} className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50">Cancel</button>
@@ -1162,7 +1136,6 @@ const ProductDashboard = () => {
 
       {/* ══════════════════════════════
           STEP 2 — Description
-          (its own isolated modal so DescriptionField is stable)
       ══════════════════════════════ */}
       {isProductModalOpen && formStep === 2 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -1178,7 +1151,6 @@ const ProductDashboard = () => {
             <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
               <ErrorBanner msg={errors._server} />
               <SummaryPill formData={formData} currencySymbol={currencySymbol} currentStep={2} onEdit={setFormStep} />
-              {/* DescriptionField is a stable external component — typing works perfectly */}
               <DescriptionField value={formData.description} onChange={handleInputChange} error={errors.description} />
             </div>
             <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
@@ -1192,10 +1164,6 @@ const ProductDashboard = () => {
           </div>
         </div>
       )}
-
-      {/* ══════════════════════════════
-          STEP 3 — Variants
-      ══════════════════════════════ */}
       {isProductModalOpen && formStep === 3 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]">
@@ -1223,9 +1191,6 @@ const ProductDashboard = () => {
         </div>
       )}
 
-      {/* ══════════════════════════════
-          STEP 4 — Images & Publish
-      ══════════════════════════════ */}
       {isProductModalOpen && formStep === 4 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <form onSubmit={handlePublish} className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]">
@@ -1241,7 +1206,6 @@ const ProductDashboard = () => {
               <ErrorBanner msg={errors._server} />
               <SummaryPill formData={formData} currencySymbol={currencySymbol} currentStep={4} onEdit={setFormStep} />
 
-              {/* General images */}
               <ImageGrid
                 existingImages={[]}
                 pendingImages={formData.imageFiles}
@@ -1251,7 +1215,6 @@ const ProductDashboard = () => {
               />
               <input ref={fileInputRef} type="file" className="hidden" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFilesChange} />
 
-              {/* Color images */}
               {formData.colors.length > 0 && (
                 <ColorImageSection
                   colors={formData.colors}
@@ -1264,7 +1227,6 @@ const ProductDashboard = () => {
                 />
               )}
 
-              {/* Publish toggle */}
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                 <div>
                   <p className="text-[11px] font-bold text-slate-700">Publish immediately</p>
@@ -1286,9 +1248,9 @@ const ProductDashboard = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${isLoading ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#FABB00] text-white hover:bg-[#FABBO0] cursor-pointer'}`}
+                className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${isLoading ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#FABB00] text-white hover:bg-[#E0A830] cursor-pointer'}`}
               >
-                {isLoading ? 'Publishing…' : (isPublished ? ' Publish Product' : ' Save as Draft')}
+                {isLoading ? 'Publishing…' : (isPublished ? 'Publish Product' : 'Save as Draft')}
               </button>
             </div>
           </form>
@@ -1296,7 +1258,7 @@ const ProductDashboard = () => {
       )}
 
       {/* ══════════════════════════════
-          EDIT MODAL (unchanged logic)
+          EDIT MODAL
       ══════════════════════════════ */}
       {isEditModalOpen && selectedProduct && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -1354,7 +1316,20 @@ const ProductDashboard = () => {
                 </div>
               </div>
 
-              {/* Description in edit — also using the external DescriptionField */}
+              {/* ── Stock Quantity ── */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-slate-500">Stock Quantity</label>
+                <input
+                  type="number"
+                  value={selectedProduct.stock ?? 0}
+                  onChange={(e) => setSelectedProduct((p) => ({ ...p, stock: e.target.value }))}
+                  min="0"
+                  step="1"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
+                />
+                <p className="text-[9px] text-slate-400">Total units available. Ignored if variants have their own stock.</p>
+              </div>
+
               <DescriptionField
                 value={selectedProduct.description || ''}
                 onChange={(e) => {
@@ -1406,18 +1381,16 @@ const ProductDashboard = () => {
                 <Trash2 size={12} /> Delete
               </button>
               <button type="submit" disabled={isLoading}
-                className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${isLoading ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#FABB00] text-white hover:bg-[#FABBO0]'}`}
+                className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${isLoading ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#FABB00] text-white hover:bg-[#E0A830]'}`}
               >
-                {isLoading ? 'Saving…' : ' Save Changes'}
+                {isLoading ? 'Saving…' : 'Save Changes'}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* ══════════════════════════════
-          DELETE CONFIRM MODAL
-      ══════════════════════════════ */}
+      {/* DELETE CONFIRM */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
@@ -1436,7 +1409,6 @@ const ProductDashboard = () => {
         </div>
       )}
 
-      {/* Color preview modal */}
       {colorPreviewModal && (
         <ColorImagePreviewModal
           color={colorPreviewModal.color}

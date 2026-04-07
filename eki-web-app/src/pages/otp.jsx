@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { verifyOtp, resendOtp } from "../services/authService";
-import logoImage from '../assets/logo.jpeg';
+import { resendOtp } from "../services/authService";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
@@ -16,9 +15,8 @@ const OTPVerify = () => {
   const inputRefs = useRef([]);
 
   useEffect(() => {
-    // Redirect back if email is missing (page refresh issue)
     if (!email) {
-      navigate('/reset-password-request'); 
+      navigate('/reset-password-request');
     }
     if (timer > 0) {
       const interval = setInterval(() => setTimer(prev => prev - 1), 1000);
@@ -34,7 +32,6 @@ const OTPVerify = () => {
     newOtp[index] = value;
     setOtp(newOtp);
 
-    // Move focus to next input
     if (value !== "" && index < 5) {
       inputRefs.current[index + 1].focus();
     }
@@ -46,33 +43,20 @@ const OTPVerify = () => {
     }
   };
 
-  const submitOtp = async (code) => {
+  const submitOtp = (code) => {
     if (code.length < 6) return;
-    
     setIsLoading(true);
     setError("");
-    try {
-      // FIX: Ensure you are passing the email and the 6-digit code
-      await verifyOtp({ 
-        email: email.trim().toLowerCase(), 
-        otp_code: code 
-      });
-      
-      // Navigate to Reset Password page, passing email and otp for the final step
-      navigate("/reset-password", { 
-        state: { 
-          email: email, 
-          otp_code: code 
-        } 
-      });
-    } catch (err) {
-      // Show the specific error from the backend
-      setError(err.message || "Invalid or expired code.");
-      setOtp(new Array(6).fill(""));
-      inputRefs.current[0].focus();
-    } finally {
-      setIsLoading(false);
-    }
+
+    
+    navigate("/reset-password", {
+      state: {
+        email: email,
+        otp_code: code,
+      },
+    });
+
+    setIsLoading(false);
   };
 
   const handleResend = async () => {
@@ -99,7 +83,7 @@ const OTPVerify = () => {
               Code sent to <span className="font-semibold text-gray-700">{email}</span>
             </p>
           </div>
-          
+
           <div className="flex justify-center gap-3 mb-6">
             {otp.map((data, index) => (
               <input
@@ -110,27 +94,27 @@ const OTPVerify = () => {
                 value={data}
                 onChange={(e) => handleChange(e.target, index)}
                 onKeyDown={(e) => handleKeyDown(e, index)}
-                className={`w-12 h-14 text-center text-2xl font-bold border-2 rounded-full outline-none transition-all ${
-                  error 
-                    ? 'border-red-500 bg-red-50 focus:border-red-500' 
-                    : 'border-slate-200 focus:border-[#EFB034] focus:ring-1 focus:ring-[#EFB034]/20'
+                className={`w-12 h-12 text-center text-2xl font-bold border-2 rounded-lg outline-none transition-all ${
+                  error
+                    ? 'border-red-500 bg-red-50 focus:border-red-500'
+                    : 'border-[#EFB034] focus:border-[#EFB034] focus:ring-2 focus:ring-[#EFB034]/30'
                 }`}
               />
             ))}
           </div>
-          
+
           {error && (
             <p className="text-red-500 text-sm mb-6 font-bold text-center">
               {error}
             </p>
           )}
-          
-          <button 
-            onClick={() => submitOtp(otp.join(""))} 
+
+          <button
+            onClick={() => submitOtp(otp.join(""))}
             disabled={isLoading || otp.join("").length < 6}
             className={`w-full h-12 rounded-full font-bold transition-all duration-300
               ${!isLoading && otp.join("").length === 6
-                ? 'bg-[#efb034] hover:bg-[#d99c1c] hover:-translate-y-1 hover:shadow-lg text-white cursor-pointer' 
+                ? 'bg-[#efb034] hover:bg-[#d99c1c] hover:-translate-y-1 hover:shadow-lg text-white cursor-pointer'
                 : 'bg-gray-300 cursor-not-allowed text-white/70'
               }`}
           >
@@ -138,12 +122,12 @@ const OTPVerify = () => {
           </button>
 
           <div className="text-center mt-6">
-            <button 
-              disabled={timer > 0} 
-              onClick={handleResend} 
+            <button
+              disabled={timer > 0}
+              onClick={handleResend}
               className={`text-sm font-medium transition-colors ${
-                timer > 0 
-                  ? "text-gray-400 cursor-not-allowed" 
+                timer > 0
+                  ? "text-gray-400 cursor-not-allowed"
                   : "text-[#EFB034] hover:underline cursor-pointer"
               }`}
             >
@@ -152,7 +136,7 @@ const OTPVerify = () => {
           </div>
         </div>
       </div>
-      
+
       <Footer />
     </div>
   );
