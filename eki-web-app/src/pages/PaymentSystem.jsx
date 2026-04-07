@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import VendorSidebar from '../components/VendorSidebar';
-import Navbar3 from '../components/adminDashboard/Navbar3';
+import Navbar4 from '../components/adminDashboard/Navbar4';
 import { 
   Search, Download, History, DollarSign, Clock, CheckCircle,
   CreditCard, Box, ListChecks, Package
@@ -60,7 +60,7 @@ const PaymentSystemContent = () => {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <Navbar3 />
+        <Navbar4 />
 
         {/* Dashboard Body */}
         <main className="p-5 max-w-[1400px] mx-auto w-full pb-16">

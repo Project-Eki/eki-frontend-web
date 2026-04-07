@@ -1,5 +1,4 @@
-// It allows you to write expect(button).toBeInTheDocument(). Without it, Vitest will say "toBeInTheDocument is not a function."
-// src/setupTests.js
+// It allows  to write expect(button).toBeInTheDocument(). Without it, Vitest will say "toBeInTheDocument is not a function."
 import '@testing-library/jest-dom';
 import { cleanup } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
