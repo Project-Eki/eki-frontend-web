@@ -294,6 +294,9 @@ const VendorDashboard = () => {
   const [formErrors, setFormErrors] = useState({});
   const [successMsg, setSuccessMsg] = useState("");
 
+  // ─── FIX: declare selectedOrder state ────────────────────────────────────────
+  const [selectedOrder, setSelectedOrder] = useState(null);
+
   useEffect(() => {
     fetchDashboardData();
   }, []);
