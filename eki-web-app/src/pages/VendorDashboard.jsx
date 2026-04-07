@@ -266,20 +266,9 @@ const VendorDashboard = () => {
   const fileInputRef = useRef(null);
 
   const [vendorData, setVendorData] = useState({
-    storeName: "",
-    vendorType: "Products",
-    country: "Uganda",
-    businessCategory: "retail",
-    is_product_vendor: true,
-    is_service_vendor: false,
-    vendor_type: "product",
+    storeName: '', vendorType: 'Products', country: 'Uganda', businessCategory: 'retail',
   });
-  const [metrics, setMetrics] = useState({
-    grossSales: 0,
-    openOrders: 0,
-    pendingPayouts: 0,
-    activeListings: 0,
-  });
+  const [metrics, setMetrics] = useState({ grossSales: 0, openOrders: 0, pendingPayouts: 0, activeListings: 0 });
   const [salesHistory, setSalesHistory] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
   const [inventoryAlerts, setInventoryAlerts] = useState([]);
@@ -292,74 +281,47 @@ const VendorDashboard = () => {
   const [isPublished, setIsPublished] = useState(true);
   const [formData, setFormData] = useState(blankForm());
   const [formErrors, setFormErrors] = useState({});
-  const [successMsg, setSuccessMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState('');
 
-  // ─── FIX: declare selectedOrder state ────────────────────────────────────────
+  // Order detail modal state
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  useEffect(() => { fetchDashboardData(); }, []);
 
   const fetchDashboardData = async () => {
     setIsFetching(true);
     try {
       const response = await getVendorDashboard();
       if (response) {
-        const bc = response.businessCategory || "retail";
-        const isProductVendor = response.is_product_vendor ?? true;
-        const isServiceVendor = response.is_service_vendor ?? false;
-        const vendorType =
-          response.vendor_type ?? (isProductVendor ? "product" : "service");
+        const bc = response.businessCategory || 'retail';
         setVendorData({
-          storeName: response.storeName || "",
-          vendorType: response.vendorType || "Products",
-          country: response.country || "Uganda",
-          businessCategory: response.businessCategory || "retail",
-          is_product_vendor: isProductVendor,
-          is_service_vendor: isServiceVendor,
-          vendor_type: vendorType,
-          allowed_listing_types: response.allowed_listing_types || ["product"],
+          storeName:        response.storeName        || '',
+          vendorType:       response.vendorType       || 'Products',
+          country:          response.country          || 'Uganda',
+          businessCategory: bc,
         });
-        setMetrics(
-          response.metrics || {
-            grossSales: 0,
-            openOrders: 0,
-            pendingPayouts: 0,
-            activeListings: 0,
-          },
-        );
-        setSalesHistory(response.salesHistory || []);
-        setRecentOrders(response.recentOrders || []);
+        setMetrics(response.metrics || { grossSales: 0, openOrders: 0, pendingPayouts: 0, activeListings: 0 });
+        setSalesHistory(response.salesHistory   || []);
+        setRecentOrders(response.recentOrders   || []);
         setInventoryAlerts(response.inventoryAlerts || []);
-        setReviews(response.reviews || []);
+        setReviews(response.reviews             || []);
 
         try {
-          const bc = response.businessCategory || "retail";
           const cats = await getCategories(bc);
           setCategories(cats);
         } catch (_) {}
       }
     } catch (error) {
-      console.error("Dashboard fetch error:", error);
+      console.error('Dashboard fetch error:', error);
     } finally {
       setIsFetching(false);
     }
   };
 
-  const isProductVendor = vendorData?.is_product_vendor ?? false;
-  const isServiceVendor = vendorData?.is_service_vendor ?? false;
-  const vendorType = vendorData.vendor_type; // 'product' or 'service'
-
-  // Two-step lookup: country name → ISO code → symbol (mirrors backend)
   const currencySymbol = getCurrencySymbol(vendorData.country);
 
-  // const SERVICE_CATEGORIES = new Set([
-  //   "transport",
-  //   "tailoring",
-  //   "airlines",
-  //   "hotels",
-  // ]);
+  const SERVICE_CATEGORIES = new Set(['transport', 'tailoring', 'airlines', 'hotels']);
+  const isServiceVendor = SERVICE_CATEGORIES.has(vendorData.businessCategory);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -372,11 +334,7 @@ const VendorDashboard = () => {
     if (!file) return;
     const reader = new FileReader();
     reader.onloadend = () =>
-      setFormData((prev) => ({
-        ...prev,
-        imageFile: file,
-        image: reader.result,
-      }));
+      setFormData((prev) => ({ ...prev, imageFile: file, image: reader.result }));
     reader.readAsDataURL(file);
   };
 
@@ -384,33 +342,31 @@ const VendorDashboard = () => {
     setFormData(blankForm());
     setFormErrors({});
     setIsPublished(true);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const validate = (data) => {
     const errs = {};
-    if (!data.title?.trim()) errs.title = "Title is required";
+    if (!data.title?.trim())
+      errs.title = 'Title is required';
     if (!data.price || isNaN(Number(data.price)) || Number(data.price) <= 0)
-      errs.price = "Valid price is required";
+      errs.price = 'Valid price is required';
     return errs;
   };
 
   const handlePublish = async (e) => {
     e.preventDefault();
     const errs = validate(formData);
-    if (Object.keys(errs).length > 0) {
-      setFormErrors(errs);
-      return;
-    }
+    if (Object.keys(errs).length > 0) { setFormErrors(errs); return; }
 
     setIsLoading(true);
     try {
       const variants = [];
       if (formData.colorVariant?.trim()) {
-        variants.push({ type: "Color", value: formData.colorVariant.trim() });
+        variants.push({ type: 'Color', value: formData.colorVariant.trim() });
       }
       if (formData.sizeVariant?.trim()) {
-        variants.push({ type: "Size", value: formData.sizeVariant.trim() });
+        variants.push({ type: 'Size', value: formData.sizeVariant.trim() });
       }
 
       const payload = {
@@ -426,38 +382,25 @@ const VendorDashboard = () => {
         try {
           await uploadListingImage(created.id, formData.imageFile);
         } catch (imgErr) {
-          console.warn(
-            "Image upload failed — listing was still created:",
-            imgErr,
-          );
+          console.warn('Image upload failed — listing was still created:', imgErr);
         }
       }
 
-      setMetrics((prev) => ({
-        ...prev,
-        activeListings: prev.activeListings + 1,
-      }));
+      setMetrics((prev) => ({ ...prev, activeListings: prev.activeListings + 1 }));
 
       setIsModalOpen(false);
       resetForm();
-      setSuccessMsg(
-        `${isServiceVendor ? "Service" : "Product"} created successfully!`,
-      );
-      setTimeout(() => setSuccessMsg(""), 4000);
+      setSuccessMsg(`${isServiceVendor ? 'Service' : 'Product'} created successfully!`);
+      setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
-      console.error("Failed to create listing:", err);
-      const serverErrors =
-        err.response?.data?.errors ?? err.response?.data ?? {};
-      let msg =
-        "Failed to create listing. Please check your inputs and try again.";
+      console.error('Failed to create listing:', err);
+      const serverErrors = err.response?.data?.errors ?? err.response?.data ?? {};
+      let msg = 'Failed to create listing. Please check your inputs and try again.';
 
-      if (
-        typeof serverErrors === "object" &&
-        Object.keys(serverErrors).length > 0
-      ) {
+      if (typeof serverErrors === 'object' && Object.keys(serverErrors).length > 0) {
         msg = Object.entries(serverErrors)
-          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
-          .join(" | ");
+          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+          .join(' | ');
       }
       setFormErrors({ _server: msg });
     } finally {
@@ -466,13 +409,8 @@ const VendorDashboard = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#ecece7] font-popins text-slate-800 p-3 gap-3">
-      {/* VendorSidebar Component */}
-      <VendorSidebar
-        activePage="dashboard"
-        isProductVendor={isProductVendor}
-        isServiceVendor={isServiceVendor}
-      />
+    <div className="flex min-h-screen bg-[#ecece7] text-slate-800 p-3 gap-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      <VendorSidebar activePage="dashboard" />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar3 />
@@ -485,19 +423,14 @@ const VendorDashboard = () => {
 
         <main className="p-5 max-w-[1400px] mx-auto w-full pb-16">
           <header className="mb-5 text-left">
-            <h1 className="text-xl font-bold text-[#1A1A1A]">
-              Eki Vendor Dashboard
-            </h1>
+            <h1 className="text-xl font-bold text-[#1A1A1A]">Eki Vendor Dashboard</h1>
           </header>
 
           {/* METRIC CARDS */}
           {isFetching ? (
             <div className="grid grid-cols-4 gap-3 mb-6">
               {[...Array(4)].map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-white p-4 rounded-2xl border border-slate-200 animate-pulse h-24"
-                />
+                <div key={i} className="bg-white p-4 rounded-2xl border border-slate-200 animate-pulse h-24" />
               ))}
             </div>
           ) : (
@@ -535,39 +468,25 @@ const VendorDashboard = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             <div className="lg:col-span-2 space-y-5">
+
               {/* SALES GRAPH */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                 <div className="flex justify-between items-center mb-3">
-                  <h3 className="font-bold text-xs uppercase tracking-tighter">
-                    Sales Performance
-                  </h3>
+                  <h3 className="font-bold text-xs uppercase tracking-tighter">Sales Performance</h3>
                 </div>
                 <div className="h-[180px] w-full">
                   {salesHistory.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={salesHistory}>
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          vertical={false}
-                          stroke="#f1f5f9"
-                        />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                         <XAxis dataKey="date" hide />
                         <YAxis hide />
                         <Tooltip />
-                        <Area
-                          type="monotone"
-                          dataKey="sales"
-                          stroke="#125852"
-                          fill="#125852"
-                          fillOpacity={0.05}
-                          strokeWidth={2}
-                        />
+                        <Area type="monotone" dataKey="sales" stroke="#125852" fill="#125852" fillOpacity={0.05} strokeWidth={2} />
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="h-full flex items-center justify-center text-slate-300 text-xs">
-                      No sales data yet
-                    </div>
+                    <div className="h-full flex items-center justify-center text-slate-300 text-xs">No sales data yet</div>
                   )}
                 </div>
               </div>
@@ -575,15 +494,8 @@ const VendorDashboard = () => {
               {/* RECENT ORDERS */}
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-                  <h3 className="font-bold text-xs uppercase tracking-tighter">
-                    Recent Orders
-                  </h3>
-                  <Link
-                    to="/order-management"
-                    className="text-[#125852] text-[9px] font-bold"
-                  >
-                    VIEW ALL
-                  </Link>
+                  <h3 className="font-bold text-xs uppercase tracking-tighter">Recent Orders</h3>
+                  <Link to="/order-management" className="text-[#125852] text-[9px] font-bold">VIEW ALL</Link>
                 </div>
                 <div className="overflow-x-auto">
                   {recentOrders.length > 0 ? (
@@ -599,82 +511,61 @@ const VendorDashboard = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {recentOrders.map((order, i) => (
-                          <tr
-                            key={i}
-                            className="hover:bg-slate-50 transition-colors"
-                          >
-                            <td className="px-4 py-2.5 text-[#125852] font-bold">
-                              #{order.id}
-                            </td>
-                            <td className="px-4 py-2.5">
-                              {/* customer may be a nested object e.g. { name, email } */}
-                              {typeof order.customer === "object" &&
-                              order.customer !== null
-                                ? order.customer.name ||
-                                  order.customer.email ||
-                                  "—"
-                                : (order.customer ?? "—")}
-                            </td>
-                            <td className="px-4 py-2.5">
-                              {/* items can be an array of objects, a count number, or undefined */}
-                              {resolveItemCount(order.items)}
-                            </td>
-                            <td className="px-4 py-2.5 font-bold">
-                              {currencySymbol}{" "}
-                              {Number(order.total || 0).toLocaleString()}
-                            </td>
-                            <td className="px-4 py-2.5">
-                              <span className="px-2 py-0.5 bg-slate-100 rounded text-[8px] uppercase font-bold">
-                                {/* status may also be an object */}
-                                {typeof order.status === "object" &&
-                                order.status !== null
-                                  ? order.status.label ||
-                                    order.status.name ||
-                                    "—"
-                                  : (order.status ?? "—")}
-                              </span>
-                            </td>
-                            <td className="px-4 py-2.5">
-                              <Link
-                                to={`/order-management/${order.id}`}
-                                className="px-2.5 py-1 bg-[#125852] text-white rounded-lg text-[8px] font-bold uppercase hover:bg-[#0e4440] transition-colors"
-                              >
-                                View
-                              </Link>
-                            </td>
-                          </tr>
-                        ))}
+                        {recentOrders.map((order, i) => {
+                          const statusKey  = String(order.status ?? '').toLowerCase();
+                          const badgeClass = STATUS_STYLES[statusKey] ?? 'bg-slate-100 text-slate-600';
+                          return (
+                            <tr key={i} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-4 py-2.5 text-[#125852] font-bold">#{order.id}</td>
+                              <td className="px-4 py-2.5">
+                                {typeof order.customer === 'object' && order.customer !== null
+                                  ? (order.customer.name || order.customer.email || '—')
+                                  : (order.customer ?? '—')}
+                              </td>
+                              <td className="px-4 py-2.5">
+                                {resolveItemCount(order.items)}
+                              </td>
+                              <td className="px-4 py-2.5 font-bold">{currencySymbol} {Number(order.total || 0).toLocaleString()}</td>
+                              <td className="px-4 py-2.5">
+                                <span className={`px-2 py-0.5 rounded text-[8px] uppercase font-bold ${badgeClass}`}>
+                                  {typeof order.status === 'object' && order.status !== null
+                                    ? (order.status.label || order.status.name || '—')
+                                    : (order.status ?? '—')}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedOrder(order)}
+                                  className="px-2.5 py-1 bg-[#F5B841] text-white rounded-lg text-[8px] font-bold uppercase hover:bg-[#E0A83B] transition-colors"
+                                >
+                                  View
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   ) : (
-                    <div className="p-6 text-center text-slate-300 text-xs">
-                      No recent orders
-                    </div>
+                    <div className="p-6 text-center text-slate-300 text-xs">No recent orders</div>
                   )}
                 </div>
               </div>
             </div>
 
             <div className="space-y-5">
+
               {/* QUICK ACTIONS */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <h3 className="font-bold text-xs mb-3 uppercase tracking-tighter">
-                  Quick Actions
-                </h3>
+                <h3 className="font-bold text-xs mb-3 uppercase tracking-tighter">Quick Actions</h3>
                 <button
                   onClick={() => setIsModalOpen(true)}
                   className="w-full flex items-center justify-between p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
                 >
                   <div className="flex items-center gap-2 text-left">
-                    <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
-                      <Plus size={14} />
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-bold">
-                        Add New {isServiceVendor ? "Service" : "Product"}
-                      </p>
-                    </div>
+                    <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg"><Plus size={14} /></div>
+                    <div><p className="text-[11px] font-bold">Add New {isServiceVendor ? 'Service' : 'Product'}</p></div>
                   </div>
                   <ChevronRight size={12} className="text-slate-300" />
                 </button>
@@ -684,22 +575,13 @@ const VendorDashboard = () => {
               <div className="bg-[#125852] p-4 rounded-xl text-white shadow-lg relative overflow-hidden">
                 <div className="relative z-10">
                   <div className="flex justify-between items-start mb-3">
-                    <div className="p-1.5 bg-white/10 rounded-lg">
-                      <CreditCard size={14} />
-                    </div>
+                    <div className="p-1.5 bg-white/10 rounded-lg"><CreditCard size={14} /></div>
                   </div>
-                  <p className="text-[9px] text-white/70 uppercase font-bold tracking-widest mb-1">
-                    Last Payout
-                  </p>
-                  <h3 className="text-xl font-bold mb-3">
-                    {currencySymbol}{" "}
-                    {(metrics.pendingPayouts || 0).toLocaleString()}
-                  </h3>
+                  <p className="text-[9px] text-white/70 uppercase font-bold tracking-widest mb-1">Last Payout</p>
+                  <h3 className="text-xl font-bold mb-3">{currencySymbol} {(metrics.pendingPayouts || 0).toLocaleString()}</h3>
                   <div className="flex justify-between items-center text-[9px]">
                     <span className="text-white/60">Recent Activity</span>
-                    <Link to="/payment" className="font-bold hover:underline">
-                      View History
-                    </Link>
+                    <Link to="/payment" className="font-bold hover:underline">View History</Link>
                   </div>
                 </div>
               </div>
@@ -708,29 +590,18 @@ const VendorDashboard = () => {
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-left">
                 <div className="flex items-center gap-1.5 mb-3 text-[#E53935]">
                   <AlertCircle size={12} />
-                  <h3 className="font-bold text-[10px] uppercase tracking-tighter">
-                    Inventory Alerts
-                  </h3>
+                  <h3 className="font-bold text-[10px] uppercase tracking-tighter">Inventory Alerts</h3>
                 </div>
                 <div className="space-y-3">
-                  {inventoryAlerts.length > 0 ? (
-                    inventoryAlerts.map((alert, i) => (
-                      <div
-                        key={i}
-                        className="flex justify-between items-center text-[10px] border-b border-slate-100 pb-2 last:border-0"
-                      >
-                        <span className="font-bold text-slate-700">
-                          {alert.title}
-                        </span>
-                        <span className="text-red-600 font-bold bg-red-50 px-1.5 py-0.5 rounded text-[9px]">
-                          {alert.quantity ?? 0} left
-                        </span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-slate-300 text-[10px]">
-                      No low-stock alerts
-                    </p>
+                  {inventoryAlerts.length > 0 ? inventoryAlerts.map((alert, i) => (
+                    <div key={i} className="flex justify-between items-center text-[10px] border-b border-slate-100 pb-2 last:border-0">
+                      <span className="font-bold text-slate-700">{alert.title}</span>
+                      <span className="text-red-600 font-bold bg-red-50 px-1.5 py-0.5 rounded text-[9px]">
+                        {alert.quantity ?? 0} left
+                      </span>
+                    </div>
+                  )) : (
+                    <p className="text-slate-300 text-[10px]">No low-stock alerts</p>
                   )}
                 </div>
               </div>
@@ -738,48 +609,26 @@ const VendorDashboard = () => {
               {/* RECENT REVIEWS */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-left">
                 <div className="flex justify-between items-center mb-3">
-                  <h3 className="font-bold text-[10px] uppercase tracking-tighter">
-                    Recent Reviews
-                  </h3>
-                  <Link
-                    to="/reviews"
-                    className="text-[#125852] text-[9px] font-bold hover:underline uppercase tracking-tighter"
-                  >
-                    VIEW ALL
-                  </Link>
+                  <h3 className="font-bold text-[10px] uppercase tracking-tighter">Recent Reviews</h3>
+                  <Link to="/reviews" className="text-[#125852] text-[9px] font-bold hover:underline uppercase tracking-tighter">VIEW ALL</Link>
                 </div>
                 <div className="space-y-3">
-                  {reviews.length > 0 ? (
-                    reviews.map((r, i) => (
-                      <Link
-                        to="/reviews"
-                        key={i}
-                        className="block text-[10px] space-y-1 hover:bg-slate-50 rounded-lg p-1 transition-colors"
-                      >
-                        <div className="flex text-yellow-400 gap-0.5">
-                          {[...Array(5)].map((_, idx) => (
-                            <Star
-                              key={idx}
-                              size={7}
-                              fill={idx < r.rating ? "currentColor" : "none"}
-                            />
-                          ))}
-                        </div>
-                        <p className="text-slate-500 italic text-[9px]">
-                          "{r.comment}"
-                        </p>
-                        {r.reviewer && (
-                          <p className="text-slate-400 text-[8px]">
-                            — {r.reviewer}
-                          </p>
-                        )}
-                      </Link>
-                    ))
-                  ) : (
+                  {reviews.length > 0 ? reviews.map((r, i) => (
+                    <Link to="/reviews" key={i} className="block text-[10px] space-y-1 hover:bg-slate-50 rounded-lg p-1 transition-colors">
+                      <div className="flex text-yellow-400 gap-0.5">
+                        {[...Array(5)].map((_, idx) => (
+                          <Star key={idx} size={7} fill={idx < r.rating ? 'currentColor' : 'none'} />
+                        ))}
+                      </div>
+                      <p className="text-slate-500 italic text-[9px]">"{r.comment}"</p>
+                      {r.reviewer && <p className="text-slate-400 text-[8px]">— {r.reviewer}</p>}
+                    </Link>
+                  )) : (
                     <p className="text-slate-300 text-[10px]">No reviews yet</p>
                   )}
                 </div>
               </div>
+
             </div>
           </div>
         </main>
@@ -798,29 +647,19 @@ const VendorDashboard = () => {
             {/* Header */}
             <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-start">
               <div>
-                <h2 className="text-base font-bold">
-                  Create New {isServiceVendor ? "Service" : "Product"}
-                </h2>
+                <h2 className="text-base font-bold">Create New {isServiceVendor ? 'Service' : 'Product'}</h2>
                 <p className="text-[10px] text-slate-500">
-                  Category:{" "}
-                  <span className="font-bold text-[#125852] capitalize">
-                    {vendorData.businessCategory}
-                  </span>
+                  Category: <span className="font-bold text-[#125852] capitalize">{vendorData.businessCategory}</span>
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsModalOpen(false);
-                  resetForm();
-                }}
-              >
+              <button type="button" onClick={() => { setIsModalOpen(false); resetForm(); }}>
                 <X size={18} />
               </button>
             </div>
 
             {/* Body */}
             <div className="p-5 overflow-y-auto space-y-4">
+
               {formErrors._server && (
                 <div className="bg-red-50 border border-red-200 text-red-700 text-[10px] font-medium px-3 py-2 rounded-lg">
                   {formErrors._server}
@@ -829,49 +668,30 @@ const VendorDashboard = () => {
 
               {/* Title */}
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-slate-500">
-                  Title *
-                </label>
+                <label className="text-[10px] font-bold uppercase text-slate-500">Title *</label>
                 <input
-                  type="text"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  placeholder={`e.g. ${isServiceVendor ? "Website Design Package" : "Premium Wireless Headphones"}`}
-                  className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.title ? "border-red-500" : "border-slate-200"}`}
+                  type="text" name="title" value={formData.title} onChange={handleInputChange}
+                  placeholder={`e.g. ${isServiceVendor ? 'Website Design Package' : 'Premium Wireless Headphones'}`}
+                  className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.title ? 'border-red-500' : 'border-slate-200'}`}
                 />
-                {formErrors.title && (
-                  <p className="text-red-500 text-[9px] font-bold">
-                    {formErrors.title}
-                  </p>
-                )}
+                {formErrors.title && <p className="text-red-500 text-[9px] font-bold">{formErrors.title}</p>}
               </div>
 
               {/* Description */}
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-slate-500">
-                  Description
-                </label>
+                <label className="text-[10px] font-bold uppercase text-slate-500">Description</label>
                 <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows="2"
-                  placeholder="Describe your item..."
+                  name="description" value={formData.description} onChange={handleInputChange}
+                  rows="2" placeholder="Describe your item..."
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none resize-none"
                 />
               </div>
 
               {/* Location */}
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-slate-500">
-                  Location
-                </label>
+                <label className="text-[10px] font-bold uppercase text-slate-500">Location</label>
                 <input
-                  type="text"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleInputChange}
+                  type="text" name="location" value={formData.location} onChange={handleInputChange}
                   placeholder="e.g. Kampala, Uganda"
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
                 />
@@ -880,42 +700,25 @@ const VendorDashboard = () => {
               {/* Category + Price */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-slate-500">
-                    Category
-                  </label>
+                  <label className="text-[10px] font-bold uppercase text-slate-500">Category</label>
                   <select
-                    name="category_id"
-                    value={formData.category_id}
-                    onChange={handleInputChange}
+                    name="category_id" value={formData.category_id} onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
                   >
                     <option value="">— Select —</option>
                     {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
                     ))}
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-slate-500">
-                    Price ({currencySymbol}) *
-                  </label>
+                  <label className="text-[10px] font-bold uppercase text-slate-500">Price ({currencySymbol}) *</label>
                   <input
-                    type="number"
-                    name="price"
-                    value={formData.price}
-                    onChange={handleInputChange}
-                    placeholder="0.00"
-                    min="0"
-                    step="any"
-                    className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.price ? "border-red-500" : "border-slate-200"}`}
+                    type="number" name="price" value={formData.price} onChange={handleInputChange}
+                    placeholder="0.00" min="0" step="any"
+                    className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.price ? 'border-red-500' : 'border-slate-200'}`}
                   />
-                  {formErrors.price && (
-                    <p className="text-red-500 text-[9px] font-bold">
-                      {formErrors.price}
-                    </p>
-                  )}
+                  {formErrors.price && <p className="text-red-500 text-[9px] font-bold">{formErrors.price}</p>}
                 </div>
               </div>
 
@@ -923,26 +726,17 @@ const VendorDashboard = () => {
               {!isServiceVendor && (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase text-slate-500">
-                      SKU
-                    </label>
+                    <label className="text-[10px] font-bold uppercase text-slate-500">SKU</label>
                     <input
-                      type="text"
-                      name="sku"
-                      value={formData.sku}
-                      onChange={handleInputChange}
+                      type="text" name="sku" value={formData.sku} onChange={handleInputChange}
                       placeholder="PRD-XXXX"
                       className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase text-slate-500">
-                      Quality
-                    </label>
+                    <label className="text-[10px] font-bold uppercase text-slate-500">Quality</label>
                     <select
-                      name="qty"
-                      value={formData.qty}
-                      onChange={handleInputChange}
+                      name="qty" value={formData.qty} onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
                     >
                       <option value="High">High</option>
@@ -957,17 +751,11 @@ const VendorDashboard = () => {
               {!isServiceVendor && (
                 <div className="space-y-2">
                   <h4 className="text-[10px] font-bold uppercase text-slate-700">
-                    Variant{" "}
-                    <span className="text-slate-400 font-normal">
-                      (optional)
-                    </span>
+                    Variant <span className="text-slate-400 font-normal">(optional)</span>
                   </h4>
                   <div className="grid grid-cols-2 gap-3">
-                    {/* Color — free-text input */}
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase text-slate-500">
-                        Color
-                      </label>
+                      <label className="text-[10px] font-bold uppercase text-slate-500">Color</label>
                       <input
                         type="text"
                         name="colorVariant"
@@ -976,25 +764,17 @@ const VendorDashboard = () => {
                         placeholder="e.g. Red, Navy Blue, Olive"
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] placeholder:text-slate-300"
                       />
-                      <p className="text-[8px] text-slate-400">
-                        Type any color or comma-separate multiple
-                      </p>
+                      <p className="text-[8px] text-slate-400">Type any color or comma-separate multiple</p>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase text-slate-500">
-                        Size
-                      </label>
+                      <label className="text-[10px] font-bold uppercase text-slate-500">Size</label>
                       <select
-                        name="sizeVariant"
-                        value={formData.sizeVariant}
-                        onChange={handleInputChange}
+                        name="sizeVariant" value={formData.sizeVariant} onChange={handleInputChange}
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
                       >
                         <option value="">— None —</option>
                         {SIZE_OPTIONS.map((s) => (
-                          <option key={s} value={s}>
-                            {s === "one_size" ? "One Size" : s}
-                          </option>
+                          <option key={s} value={s}>{s === 'one_size' ? 'One Size' : s}</option>
                         ))}
                       </select>
                     </div>
@@ -1005,26 +785,17 @@ const VendorDashboard = () => {
               {/* Image upload */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold uppercase text-slate-500">
-                  {isServiceVendor ? "Service Image" : "Product Image"}
+                  {isServiceVendor ? 'Service Image' : 'Product Image'}
                 </label>
                 <div className="flex gap-2 items-center">
                   {formData.image && (
                     <div className="w-16 h-16 rounded-lg border border-slate-200 overflow-hidden relative group">
-                      <img
-                        src={formData.image}
-                        alt="preview"
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={formData.image} alt="preview" className="w-full h-full object-cover" />
                       <button
                         type="button"
                         onClick={() => {
-                          setFormData((p) => ({
-                            ...p,
-                            image: null,
-                            imageFile: null,
-                          }));
-                          if (fileInputRef.current)
-                            fileInputRef.current.value = "";
+                          setFormData((p) => ({ ...p, image: null, imageFile: null }));
+                          if (fileInputRef.current) fileInputRef.current.value = '';
                         }}
                         className="absolute top-0.5 right-0.5 bg-white/80 p-0.5 rounded-full text-red-500 opacity-0 group-hover:opacity-100"
                       >
@@ -1037,40 +808,27 @@ const VendorDashboard = () => {
                     className="w-16 h-16 border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center bg-white cursor-pointer hover:bg-slate-50 hover:border-[#125852] transition-colors"
                   >
                     <Upload size={16} className="text-slate-400" />
-                    <span className="text-[8px] font-bold text-slate-400 mt-0.5">
-                      UPLOAD
-                    </span>
+                    <span className="text-[8px] font-bold text-slate-400 mt-0.5">UPLOAD</span>
                   </div>
                   <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept="image/jpeg,image/png,image/webp"
+                    type="file" ref={fileInputRef} onChange={handleFileChange}
+                    className="hidden" accept="image/jpeg,image/png,image/webp"
                   />
                 </div>
-                <p className="text-[8px] text-slate-400">
-                  JPEG, PNG or WebP · max 5 MB
-                </p>
+                <p className="text-[8px] text-slate-400">JPEG, PNG or WebP · max 5 MB</p>
               </div>
 
               {/* Publish toggle */}
               <div className="flex items-center justify-between pt-1">
                 <div>
-                  <p className="text-[11px] font-bold text-slate-800 uppercase">
-                    Publish immediately
-                  </p>
-                  <p className="text-[9px] text-slate-400">
-                    Off = saved as draft.
-                  </p>
+                  <p className="text-[11px] font-bold text-slate-800 uppercase">Publish immediately</p>
+                  <p className="text-[9px] text-slate-400">Off = saved as draft.</p>
                 </div>
                 <div
                   onClick={() => setIsPublished(!isPublished)}
-                  className={`w-10 h-5 flex items-center rounded-full p-0.5 cursor-pointer transition-all ${isPublished ? "bg-green-500" : "bg-slate-200"}`}
+                  className={`w-10 h-5 flex items-center rounded-full p-0.5 cursor-pointer transition-all ${isPublished ? 'bg-green-500' : 'bg-slate-200'}`}
                 >
-                  <div
-                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${isPublished ? "translate-x-5" : "translate-x-0"}`}
-                  />
+                  <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${isPublished ? 'translate-x-5' : 'translate-x-0'}`} />
                 </div>
               </div>
             </div>
@@ -1079,22 +837,16 @@ const VendorDashboard = () => {
             <div className="px-5 py-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/20">
               <button
                 type="button"
-                onClick={() => {
-                  setIsModalOpen(false);
-                  resetForm();
-                }}
+                onClick={() => { setIsModalOpen(false); resetForm(); }}
                 className="px-6 py-2 text-[10px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50"
               >
                 Cancel
               </button>
               <button
-                type="submit"
-                disabled={isLoading}
+                type="submit" disabled={isLoading}
                 className="px-6 py-2 bg-[#F5B841] text-white rounded-lg text-[10px] font-bold uppercase shadow-sm disabled:opacity-60 hover:bg-[#E0A83B] active:scale-95 transition-all"
               >
-                {isLoading
-                  ? "Publishing..."
-                  : `Publish ${isServiceVendor ? "Service" : "Product"}`}
+                {isLoading ? 'Publishing...' : `Publish ${isServiceVendor ? 'Service' : 'Product'}`}
               </button>
             </div>
           </form>
