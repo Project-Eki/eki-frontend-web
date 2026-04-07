@@ -3,22 +3,26 @@ import { Link } from 'react-router-dom';
 import VendorSidebar from '../components/VendorSidebar';
 import Navbar3 from '../components/adminDashboard/Navbar3';
 import { 
-  Search, Download, History, DollarSign, Clock, CheckCircle
+  Search, Download, History, DollarSign, Clock, CheckCircle,
+  CreditCard, Box, ListChecks, Package
 } from 'lucide-react';
 
-// --- Sub-Components ---
-
-const PaymentCard = ({ title, value, badge, icon, bg = "bg-white" }) => (
-  <div className={`${bg} p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden text-left`}>
-    <div className="p-1.5 bg-white rounded-lg shadow-sm w-fit mb-2">
-      {icon}
+// ─── Stat Card Component (exactly matching VendorDashboard) ───────────────────
+const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
+  <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
+    <div className="flex items-start justify-between">
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{title}</p>
+        <p className="text-2xl font-bold text-gray-900">{number}</p>
+      </div>
+      <div className={`${iconBgColor} p-2.5 rounded-xl`}>
+        <Icon size={20} className={iconColor} />
+      </div>
     </div>
-    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{title}</p>
-    <h3 className="text-lg font-bold text-slate-900">{value}</h3>
-    <span className="text-[8px] text-slate-400 mt-1.5 font-bold tracking-tight inline-block">{badge}</span>
   </div>
 );
 
+// --- Error Boundary ---
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -50,7 +54,7 @@ const PaymentSystemContent = () => {
   const transactions = []; 
 
   return (
-    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
+    <div className="flex min-h-screen bg-[#ecece7] font-sans text-slate-800 p-3 gap-3">
       {/* VendorSidebar Component */}
       <VendorSidebar activePage="payments" />
 
@@ -75,11 +79,29 @@ const PaymentSystemContent = () => {
             </div>
           </div>
 
-          {/* Cards */}
+          {/* Stats Grid - Updated to match VendorDashboard style */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-            <PaymentCard title="Current Balance" value="$0.00" badge="+0% this month" icon={<DollarSign size={14} className="text-teal-600"/>} bg="bg-[#E0F2F1]" />
-            <PaymentCard title="Pending Earnings" value="$0.00" badge="0 orders in escrow" icon={<Clock size={14} className="text-orange-500"/>} bg="bg-[#FFF8E1]" />
-            <PaymentCard title="Last Payout" value="$0.00" badge="Oct 15, 2023" icon={<CheckCircle size={14} className="text-teal-600"/>} bg="bg-[#E0F2F1]" />
+            <StatCard
+              title="Current Balance"
+              number="$0.00"
+              icon={DollarSign}
+              iconBgColor="bg-emerald-50"
+              iconColor="text-emerald-600"
+            />
+            <StatCard
+              title="Pending Earnings"
+              number="$0.00"
+              icon={Clock}
+              iconBgColor="bg-blue-50"
+              iconColor="text-blue-600"
+            />
+            <StatCard
+              title="Last Payout"
+              number="$0.00"
+              icon={CheckCircle}
+              iconBgColor="bg-orange-50"
+              iconColor="text-orange-600"
+            />
           </div>
 
           {/* Table Controls */}
@@ -122,7 +144,7 @@ const PaymentSystemContent = () => {
           </div>
         </main>
 
-        {/* Footer */}
+        {/* Footer - exactly matching VendorDashboard */}
         <footer className="bg-[#125852] text-white py-2.5 px-5 flex justify-between items-center text-[8px] rounded-xl mx-5 mb-3">
           <div>Buy Smart. Sell Fast. Grow Together...</div>
           <div>© 2026 Vendor Portal. All rights reserved.</div>
