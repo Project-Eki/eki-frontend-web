@@ -88,7 +88,7 @@ api.interceptors.response.use(
         isRefreshing = false;
         processQueue(error, null);
         localStorage.clear();
-        if (!window.location.pathname.includes('sign-in')) window.location.href = '/sign-in';
+        if (!window.location.pathname.includes('Login')) window.location.href = '/Login';
         return Promise.reject(error);
       }
 
@@ -108,7 +108,7 @@ api.interceptors.response.use(
         processQueue(refreshError, null);
         isRefreshing = false;
         localStorage.clear();
-        if (!window.location.pathname.includes('sign-in')) window.location.href = '/sign-in';
+        if (!window.location.pathname.includes('Login')) window.location.href = '/Login';
         return Promise.reject(refreshError);
       }
     }
@@ -143,7 +143,7 @@ export const SigninUser = async (credentials) => {
 
 export const SignoutUser = () => {
   localStorage.clear();
-  window.location.href = '/sign-in';
+  window.location.href = '/Login';
 };
 
 export const verifyOtp = (data) =>
