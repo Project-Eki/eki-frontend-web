@@ -39,7 +39,7 @@ const normStatus = (s) => {
   return String(s).charAt(0).toUpperCase() + String(s).slice(1);
 };
 
-//Stat card 
+// Stat card with custom colors per card type
 const StatCard = ({ label, value, type }) => {
   const icons = {
     vendors: Store,
@@ -47,10 +47,27 @@ const StatCard = ({ label, value, type }) => {
     earners: TrendingUp,
   };
   const Icon = icons[type] || TrendingUp;
+  
+  // Set colors based on card type
+  const getCardColors = () => {
+    switch(type) {
+      case 'vendors':
+        return { bg: 'bg-[#235E5D]', text: 'text-white' };  // Total Vendors
+      case 'pending':
+        return { bg: 'bg-[#EFB034]', text: 'text-white' };  // Pending Verification
+      case 'earners':
+        return { bg: 'bg-[#EFB034]', text: 'text-white' };  // Vendors Approved
+      default:
+        return { bg: 'bg-[#235E5D]', text: 'text-white' };
+    }
+  };
+  
+  const colors = getCardColors();
+  
   return (
     <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-3">
-      <div className={`p-2 rounded-xl ${ICON_BG} shrink-0`}>
-        <Icon className={ICON_COL} size={18} />
+      <div className={`p-2 rounded-xl ${colors.bg} shrink-0`}>
+        <Icon className={colors.text} size={18} />
       </div>
       <div>
         <p className="text-gray-500 text-[10px] font-medium uppercase tracking-wider">{label}</p>
@@ -755,7 +772,7 @@ const [reinstateLoading, setReinstateLoading] = useState(false);
 };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-[#F3F4F6] font-sans">
+    <div className="h-screen flex flex-col overflow-hidden bg-[#ecece7] font-sans">
       <div className="flex flex-1 min-h-0">
         <Sidebar
           mobileOpen={sidebarOpen}
