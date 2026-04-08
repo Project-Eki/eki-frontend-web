@@ -421,10 +421,6 @@ export const getVendorDashboard = async () => {
   let storeName        = '';
   let vendorType       = 'Products';
   let businessCategory = 'retail';
-  let isProductVendor  = true;
-  let isServiceVendor  = false;
-  let vendor_type      = 'product';
-  let allowedListingTypes = ['product'];
 
   try {
     const p      = await getVendorProfile();
@@ -432,13 +428,7 @@ export const getVendorDashboard = async () => {
     storeName        = p.business_name    || '';
     vendorType       = p.business_type    || 'Products';
     businessCategory = p.business_category || 'retail';
-     // vendor type from profile data
-    isProductVendor = p.is_product_vendor ?? (businessCategory !== 'beauty' && businessCategory !== 'transport' && businessCategory !== 'tailoring' && businessCategory !== 'airlines' && businessCategory !== 'hotels');
-    isServiceVendor = p.is_service_vendor ?? (businessCategory === 'beauty' || businessCategory === 'transport' || businessCategory === 'tailoring' || businessCategory === 'airlines' || businessCategory === 'hotels');
-    vendor_type = p.vendor_type ?? (isProductVendor ? 'product' : 'service');
-    allowedListingTypes = p.allowed_listing_types ?? (isProductVendor ? ['product'] : ['service']);
   } catch (_) {}
-  
 
     // ── Always fetch live orders — dashboard uses them for recentOrders & metric
   let liveOrders = [];
@@ -467,10 +457,6 @@ export const getVendorDashboard = async () => {
     vendorType,
     country,
     businessCategory,
-    is_product_vendor: isProductVendor,
-    is_service_vendor: isServiceVendor,
-    vendor_type: vendor_type,
-    allowed_listing_types: allowedListingTypes,
 
     metrics: {
       grossSales:     Number(metricsData.grossSales     ?? 0),

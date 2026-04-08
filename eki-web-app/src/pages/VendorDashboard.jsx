@@ -1,51 +1,60 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import VendorSidebar from '../components/VendorSidebar';
-import Navbar3 from '../components/adminDashboard/Navbar4';
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import VendorSidebar from "../components/VendorSidebar";
+import Navbar3 from "../components/adminDashboard/Navbar4";
 import {
   getVendorDashboard,
   getCategories,
   createProductListing,
   uploadListingImage,
-  SignoutUser,
-} from '../services/authService';
+} from "../services/authService";
 
 import {
-  Package, ChevronRight, Plus,
-  ListChecks, AlertCircle, Star, X, Upload, Box,
-  CreditCard, Trash2,
-} from 'lucide-react';
+  Package,
+  ChevronRight,
+  Plus,
+  ListChecks,
+  AlertCircle,
+  Star,
+  X,
+  Upload,
+  Box,
+  CreditCard,
+  Trash2,
+} from "lucide-react";
 import {
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  AreaChart, Area,
-} from 'recharts';
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+} from "recharts";
 
-// ─── Currency helpers (mirrors utils.py exactly) ──────────────────────────────
-import { getCurrencySymbol } from '../utils/currency';
-
-// ─── These match backend ProductSize choices exactly ─────────────────────────
-const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'one_size'];
+const SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "one_size"];
 
 const blankForm = () => ({
-  title: '',
-  category_id: '',
-  price: '',
-  sku: '',
-  qty: 'Medium',
-  location: '',
-  description: '',
+  title: "",
+  category_id: "",
+  price: "",
+  sku: "",
+  qty: "Medium",
+  location: "",
+  description: "",
   image: null,
   imageFile: null,
-  colorVariant: '',
-  sizeVariant: '',
+  colorVariant: "",
+  sizeVariant: "",
 });
 
-// ─── Stat Card Component (exactly matching AdminDashboard) ───────────────────
 const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
   <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
     <div className="flex items-start justify-between">
       <div className="space-y-2">
-        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{title}</p>
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+          {title}
+        </p>
         <p className="text-2xl font-bold text-gray-900">{number}</p>
       </div>
       <div className={`${iconBgColor} p-2.5 rounded-xl`}>
@@ -55,35 +64,21 @@ const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
   </div>
 );
 
-// ─── Safe helper: resolve order item count from any API shape ─────────────────
-const resolveItemCount = (items) => {
-  if (items === null || items === undefined) return '—';
-  if (typeof items === 'number') return items;
-  if (typeof items === 'string') return items;
-  if (Array.isArray(items)) return items.length;
-  // object with a count/length hint
-  if (typeof items === 'object') {
-    if (items.count !== undefined) return items.count;
-    if (items.length !== undefined) return items.length;
-    return Object.keys(items).length;
-  }
-  return '—';
-};
-
 const VendorDashboard = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
-  // ── Data states ───────────────────────────────────────────────────────────
   const [vendorData, setVendorData] = useState({
     storeName: "",
     vendorType: "Products",
     country: "Uganda",
     businessCategory: "retail",
+    vendor_type: "product",
     is_product_vendor: true,
     is_service_vendor: false,
-    vendor_type: "product",
+    currencySymbol: "UGX",
   });
+
   const [metrics, setMetrics] = useState({
     grossSales: 0,
     openOrders: 0,
@@ -97,8 +92,6 @@ const VendorDashboard = () => {
   const [categories, setCategories] = useState([]);
   const [isFetching, setIsFetching] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-
-  // ── Modal / form states ───────────────────────────────────────────────────
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPublished, setIsPublished] = useState(true);
   const [formData, setFormData] = useState(blankForm());
@@ -113,22 +106,27 @@ const VendorDashboard = () => {
     setIsFetching(true);
     try {
       const response = await getVendorDashboard();
+      console.log("[VendorDashboard] Response:", response);
+
       if (response) {
         const bc = response.businessCategory || "retail";
         const isProductVendor = response.is_product_vendor ?? true;
         const isServiceVendor = response.is_service_vendor ?? false;
         const vendorType =
           response.vendor_type ?? (isProductVendor ? "product" : "service");
+
         setVendorData({
           storeName: response.storeName || "",
-          vendorType: response.vendorType || "Products",
+          vendorType:
+            response.vendorType || (isProductVendor ? "Products" : "Services"),
           country: response.country || "Uganda",
-          businessCategory: response.businessCategory || "retail",
+          businessCategory: bc,
+          vendor_type: vendorType,
           is_product_vendor: isProductVendor,
           is_service_vendor: isServiceVendor,
-          vendor_type: vendorType,
-          allowed_listing_types: response.allowed_listing_types || ["product"],
+          currencySymbol: response.currencySymbol || "UGX",
         });
+
         setMetrics(
           response.metrics || {
             grossSales: 0,
@@ -143,7 +141,6 @@ const VendorDashboard = () => {
         setReviews(response.reviews || []);
 
         try {
-          const bc = response.businessCategory || "retail";
           const cats = await getCategories(bc);
           setCategories(cats);
         } catch (_) {}
@@ -155,19 +152,9 @@ const VendorDashboard = () => {
     }
   };
 
-  const isProductVendor = vendorData?.is_product_vendor ?? false;
-  const isServiceVendor = vendorData?.is_service_vendor ?? false;
-  const vendorType = vendorData.vendor_type; // 'product' or 'service'
-
-  // Two-step lookup: country name → ISO code → symbol (mirrors backend)
-  const currencySymbol = getCurrencySymbol(vendorData.country);
-
-  // const SERVICE_CATEGORIES = new Set([
-  //   "transport",
-  //   "tailoring",
-  //   "airlines",
-  //   "hotels",
-  // ]);
+  const isServiceVendor = vendorData.is_service_vendor;
+  const vendorType = vendorData.vendor_type;
+  const currencySymbol = vendorData.currencySymbol;
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -198,8 +185,9 @@ const VendorDashboard = () => {
   const validate = (data) => {
     const errs = {};
     if (!data.title?.trim()) errs.title = "Title is required";
-    if (!data.price || isNaN(Number(data.price)) || Number(data.price) <= 0)
+    if (!data.price || isNaN(Number(data.price)) || Number(data.price) <= 0) {
       errs.price = "Valid price is required";
+    }
     return errs;
   };
 
@@ -234,10 +222,7 @@ const VendorDashboard = () => {
         try {
           await uploadListingImage(created.id, formData.imageFile);
         } catch (imgErr) {
-          console.warn(
-            "Image upload failed — listing was still created:",
-            imgErr,
-          );
+          console.warn("Image upload failed:", imgErr);
         }
       }
 
@@ -245,7 +230,6 @@ const VendorDashboard = () => {
         ...prev,
         activeListings: prev.activeListings + 1,
       }));
-
       setIsModalOpen(false);
       resetForm();
       setSuccessMsg(
@@ -258,7 +242,6 @@ const VendorDashboard = () => {
         err.response?.data?.errors ?? err.response?.data ?? {};
       let msg =
         "Failed to create listing. Please check your inputs and try again.";
-
       if (
         typeof serverErrors === "object" &&
         Object.keys(serverErrors).length > 0
@@ -274,18 +257,12 @@ const VendorDashboard = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#ecece7] font-popins text-slate-800 p-3 gap-3">
-      {/* VendorSidebar Component */}
-      <VendorSidebar
-        activePage="dashboard"
-        isProductVendor={isProductVendor}
-        isServiceVendor={isServiceVendor}
-      />
+    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
+      <VendorSidebar activePage="dashboard" vendorType={vendorType} />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar3 />
 
-        {/* Success toast */}
         {successMsg && (
           <div className="fixed top-6 right-6 z-[200] bg-emerald-600 text-white px-4 py-2 rounded-xl shadow-lg text-xs font-bold flex items-center gap-2 animate-pulse">
             <span>✓</span> {successMsg}
@@ -299,7 +276,6 @@ const VendorDashboard = () => {
             </h1>
           </header>
 
-          {/* METRIC CARDS */}
           {isFetching ? (
             <div className="grid grid-cols-4 gap-3 mb-6">
               {[...Array(4)].map((_, i) => (
@@ -344,13 +320,10 @@ const VendorDashboard = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             <div className="lg:col-span-2 space-y-5">
-              {/* SALES GRAPH */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="font-bold text-xs uppercase tracking-tighter">
-                    Sales Performance
-                  </h3>
-                </div>
+                <h3 className="font-bold text-xs uppercase tracking-tighter mb-3">
+                  Sales Performance
+                </h3>
                 <div className="h-[180px] w-full">
                   {salesHistory.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
@@ -381,7 +354,6 @@ const VendorDashboard = () => {
                 </div>
               </div>
 
-              {/* RECENT ORDERS */}
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="p-4 border-b border-slate-100 flex justify-between items-center">
                   <h3 className="font-bold text-xs uppercase tracking-tighter">
@@ -401,7 +373,6 @@ const VendorDashboard = () => {
                         <tr>
                           <th className="px-4 py-3">Order ID</th>
                           <th className="px-4 py-3">Customer</th>
-                          <th className="px-4 py-3">Items</th>
                           <th className="px-4 py-3">Total</th>
                           <th className="px-4 py-3">Status</th>
                           <th className="px-4 py-3">Action</th>
@@ -416,38 +387,20 @@ const VendorDashboard = () => {
                             <td className="px-4 py-2.5 text-[#125852] font-bold">
                               #{order.id}
                             </td>
-                            <td className="px-4 py-2.5">
-                              {/* customer may be a nested object e.g. { name, email } */}
-                              {typeof order.customer === "object" &&
-                              order.customer !== null
-                                ? order.customer.name ||
-                                  order.customer.email ||
-                                  "—"
-                                : (order.customer ?? "—")}
-                            </td>
-                            <td className="px-4 py-2.5">
-                              {/* items can be an array of objects, a count number, or undefined */}
-                              {resolveItemCount(order.items)}
-                            </td>
+                            <td className="px-4 py-2.5">{order.customer}</td>
                             <td className="px-4 py-2.5 font-bold">
                               {currencySymbol}{" "}
                               {Number(order.total || 0).toLocaleString()}
                             </td>
                             <td className="px-4 py-2.5">
                               <span className="px-2 py-0.5 bg-slate-100 rounded text-[8px] uppercase font-bold">
-                                {/* status may also be an object */}
-                                {typeof order.status === "object" &&
-                                order.status !== null
-                                  ? order.status.label ||
-                                    order.status.name ||
-                                    "—"
-                                  : (order.status ?? "—")}
+                                {order.status}
                               </span>
                             </td>
                             <td className="px-4 py-2.5">
                               <Link
                                 to={`/order-management/${order.id}`}
-                                className="px-2.5 py-1 bg-[#125852] text-white rounded-lg text-[8px] font-bold uppercase hover:bg-[#0e4440] transition-colors"
+                                className="px-2.5 py-1 bg-[#125852] text-white rounded-lg text-[8px] font-bold uppercase hover:bg-[#0e4440]"
                               >
                                 View
                               </Link>
@@ -466,7 +419,6 @@ const VendorDashboard = () => {
             </div>
 
             <div className="space-y-5">
-              {/* QUICK ACTIONS */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                 <h3 className="font-bold text-xs mb-3 uppercase tracking-tighter">
                   Quick Actions
@@ -489,33 +441,29 @@ const VendorDashboard = () => {
                 </button>
               </div>
 
-              {/* LAST PAYOUT */}
-              <div className="bg-[#125852] p-4 rounded-xl text-white shadow-lg relative overflow-hidden">
-                <div className="relative z-10">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="p-1.5 bg-white/10 rounded-lg">
-                      <CreditCard size={14} />
-                    </div>
+              <div className="bg-[#125852] p-4 rounded-xl text-white shadow-lg">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="p-1.5 bg-white/10 rounded-lg">
+                    <CreditCard size={14} />
                   </div>
-                  <p className="text-[9px] text-white/70 uppercase font-bold tracking-widest mb-1">
-                    Last Payout
-                  </p>
-                  <h3 className="text-xl font-bold mb-3">
-                    {currencySymbol}{" "}
-                    {(metrics.pendingPayouts || 0).toLocaleString()}
-                  </h3>
-                  <div className="flex justify-between items-center text-[9px]">
-                    <span className="text-white/60">Recent Activity</span>
-                    <Link to="/payment" className="font-bold hover:underline">
-                      View History
-                    </Link>
-                  </div>
+                </div>
+                <p className="text-[9px] text-white/70 uppercase font-bold tracking-widest mb-1">
+                  Last Payout
+                </p>
+                <h3 className="text-xl font-bold mb-3">
+                  {currencySymbol}{" "}
+                  {(metrics.pendingPayouts || 0).toLocaleString()}
+                </h3>
+                <div className="flex justify-between items-center text-[9px]">
+                  <span className="text-white/60">Recent Activity</span>
+                  <Link to="/payment" className="font-bold hover:underline">
+                    View History
+                  </Link>
                 </div>
               </div>
 
-              {/* INVENTORY ALERTS */}
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-left">
-                <div className="flex items-center gap-1.5 mb-3 text-[#E53935]">
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <div className="flex items-center gap-1.5 mb-3 text-[#F5B841]">
                   <AlertCircle size={12} />
                   <h3 className="font-bold text-[10px] uppercase tracking-tighter">
                     Inventory Alerts
@@ -531,7 +479,7 @@ const VendorDashboard = () => {
                         <span className="font-bold text-slate-700">
                           {alert.title}
                         </span>
-                        <span className="text-red-600 font-bold bg-red-50 px-1.5 py-0.5 rounded text-[9px]">
+                        <span className="text-[#F5B841] font-bold bg-yellow-50 px-1.5 py-0.5 rounded text-[9px]">
                           {alert.quantity ?? 0} left
                         </span>
                       </div>
@@ -544,15 +492,14 @@ const VendorDashboard = () => {
                 </div>
               </div>
 
-              {/* RECENT REVIEWS */}
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-left">
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="font-bold text-[10px] uppercase tracking-tighter">
                     Recent Reviews
                   </h3>
                   <Link
                     to="/reviews"
-                    className="text-[#125852] text-[9px] font-bold hover:underline uppercase tracking-tighter"
+                    className="text-[#125852] text-[9px] font-bold"
                   >
                     VIEW ALL
                   </Link>
@@ -560,11 +507,7 @@ const VendorDashboard = () => {
                 <div className="space-y-3">
                   {reviews.length > 0 ? (
                     reviews.map((r, i) => (
-                      <Link
-                        to="/reviews"
-                        key={i}
-                        className="block text-[10px] space-y-1 hover:bg-slate-50 rounded-lg p-1 transition-colors"
-                      >
+                      <div key={i} className="text-[10px] space-y-1">
                         <div className="flex text-yellow-400 gap-0.5">
                           {[...Array(5)].map((_, idx) => (
                             <Star
@@ -582,7 +525,7 @@ const VendorDashboard = () => {
                             — {r.reviewer}
                           </p>
                         )}
-                      </Link>
+                      </div>
                     ))
                   ) : (
                     <p className="text-slate-300 text-[10px]">No reviews yet</p>
@@ -593,21 +536,18 @@ const VendorDashboard = () => {
           </div>
         </main>
 
-        {/* FOOTER */}
         <footer className="bg-[#125852] text-white py-2.5 px-5 flex justify-between items-center text-[8px] rounded-xl mx-5 mb-3">
           <div>Buy Smart. Sell Fast. Grow Together...</div>
           <div>© 2026 Vendor Portal. All rights reserved.</div>
         </footer>
       </div>
 
-      {/* ── CREATE LISTING MODAL ───────────────────────────────────────────────── */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <form
             onSubmit={handlePublish}
-            className="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh] text-left"
+            className="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]"
           >
-            {/* Header */}
             <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-start">
               <div>
                 <h2 className="text-base font-bold">
@@ -631,7 +571,6 @@ const VendorDashboard = () => {
               </button>
             </div>
 
-            {/* Body */}
             <div className="p-5 overflow-y-auto space-y-4">
               {formErrors._server && (
                 <div className="bg-red-50 border border-red-200 text-red-700 text-[10px] font-medium px-3 py-2 rounded-lg">
@@ -639,8 +578,7 @@ const VendorDashboard = () => {
                 </div>
               )}
 
-              {/* Title */}
-              <div className="space-y-1">
+              <div>
                 <label className="text-[10px] font-bold uppercase text-slate-500">
                   Title *
                 </label>
@@ -659,8 +597,7 @@ const VendorDashboard = () => {
                 )}
               </div>
 
-              {/* Description */}
-              <div className="space-y-1">
+              <div>
                 <label className="text-[10px] font-bold uppercase text-slate-500">
                   Description
                 </label>
@@ -674,8 +611,7 @@ const VendorDashboard = () => {
                 />
               </div>
 
-              {/* Location */}
-              <div className="space-y-1">
+              <div>
                 <label className="text-[10px] font-bold uppercase text-slate-500">
                   Location
                 </label>
@@ -689,9 +625,8 @@ const VendorDashboard = () => {
                 />
               </div>
 
-              {/* Category + Price */}
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
+                <div>
                   <label className="text-[10px] font-bold uppercase text-slate-500">
                     Category
                   </label>
@@ -709,7 +644,7 @@ const VendorDashboard = () => {
                     ))}
                   </select>
                 </div>
-                <div className="space-y-1">
+                <div>
                   <label className="text-[10px] font-bold uppercase text-slate-500">
                     Price ({currencySymbol}) *
                   </label>
@@ -731,92 +666,83 @@ const VendorDashboard = () => {
                 </div>
               </div>
 
-              {/* SKU + Quality (products only) */}
               {!isServiceVendor && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase text-slate-500">
-                      SKU
-                    </label>
-                    <input
-                      type="text"
-                      name="sku"
-                      value={formData.sku}
-                      onChange={handleInputChange}
-                      placeholder="PRD-XXXX"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase text-slate-500">
-                      Quality
-                    </label>
-                    <select
-                      name="qty"
-                      value={formData.qty}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
-                    >
-                      <option value="High">High</option>
-                      <option value="Medium">Medium</option>
-                      <option value="Low">Low</option>
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {/* Variants — Color (free text) + Size (products only) */}
-              {!isServiceVendor && (
-                <div className="space-y-2">
-                  <h4 className="text-[10px] font-bold uppercase text-slate-700">
-                    Variant{" "}
-                    <span className="text-slate-400 font-normal">
-                      (optional)
-                    </span>
-                  </h4>
+                <>
                   <div className="grid grid-cols-2 gap-3">
-                    {/* Color — free-text input */}
-                    <div className="space-y-1">
+                    <div>
                       <label className="text-[10px] font-bold uppercase text-slate-500">
-                        Color
+                        SKU
                       </label>
                       <input
                         type="text"
-                        name="colorVariant"
-                        value={formData.colorVariant}
+                        name="sku"
+                        value={formData.sku}
                         onChange={handleInputChange}
-                        placeholder="e.g. Red, Navy Blue, Olive"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] placeholder:text-slate-300"
+                        placeholder="PRD-XXXX"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
                       />
-                      <p className="text-[8px] text-slate-400">
-                        Type any color or comma-separate multiple
-                      </p>
                     </div>
-
-                    {/* Size */}
-                    <div className="space-y-1">
+                    <div>
                       <label className="text-[10px] font-bold uppercase text-slate-500">
-                        Size
+                        Quality
                       </label>
                       <select
-                        name="sizeVariant"
-                        value={formData.sizeVariant}
+                        name="qty"
+                        value={formData.qty}
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
                       >
-                        <option value="">— None —</option>
-                        {SIZE_OPTIONS.map((s) => (
-                          <option key={s} value={s}>
-                            {s === "one_size" ? "One Size" : s}
-                          </option>
-                        ))}
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
                       </select>
                     </div>
                   </div>
-                </div>
+
+                  <div className="space-y-2">
+                    <h4 className="text-[10px] font-bold uppercase text-slate-700">
+                      Variant{" "}
+                      <span className="text-slate-400 font-normal">
+                        (optional)
+                      </span>
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] font-bold uppercase text-slate-500">
+                          Color
+                        </label>
+                        <input
+                          type="text"
+                          name="colorVariant"
+                          value={formData.colorVariant}
+                          onChange={handleInputChange}
+                          placeholder="e.g. Red, Navy Blue"
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold uppercase text-slate-500">
+                          Size
+                        </label>
+                        <select
+                          name="sizeVariant"
+                          value={formData.sizeVariant}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
+                        >
+                          <option value="">— None —</option>
+                          {SIZE_OPTIONS.map((s) => (
+                            <option key={s} value={s}>
+                              {s === "one_size" ? "One Size" : s}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </>
               )}
 
-              {/* Image upload */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold uppercase text-slate-500">
                   {isServiceVendor ? "Service Image" : "Product Image"}
@@ -868,7 +794,6 @@ const VendorDashboard = () => {
                 </p>
               </div>
 
-              {/* Publish toggle */}
               <div className="flex items-center justify-between pt-1">
                 <div>
                   <p className="text-[11px] font-bold text-slate-800 uppercase">
@@ -889,7 +814,6 @@ const VendorDashboard = () => {
               </div>
             </div>
 
-            {/* Modal Footer */}
             <div className="px-5 py-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/20">
               <button
                 type="button"
