@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  X, ArrowRight, ArrowLeft, Eye, CheckCircle2, Palette, Ruler, 
+  X, ArrowRight, ArrowLeft, Eye, CheckCircle2, Palette, Ruler,
   ImagePlus, Trash2, ShoppingBag, ChevronDown, ChevronUp, Camera,
 } from 'lucide-react';
 
@@ -64,8 +64,8 @@ const CameraCapture = ({ onCapture, onClose }) => {
   useEffect(() => {
     const startCamera = async () => {
       try {
-        const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment' } 
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
         });
         setStream(mediaStream);
         if (videoRef.current) {
@@ -90,11 +90,11 @@ const CameraCapture = ({ onCapture, onClose }) => {
       const video = videoRef.current;
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
-      
+
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
+
       canvas.toBlob((blob) => {
         const file = new File([blob], `camera-capture-${Date.now()}.jpg`, { type: 'image/jpeg' });
         onCapture(file);
@@ -112,7 +112,7 @@ const CameraCapture = ({ onCapture, onClose }) => {
         >
           <X size={20} />
         </button>
-        
+
         {error ? (
           <div className="bg-red-500 text-white p-4 rounded-lg text-center">
             <p>{error}</p>
@@ -130,7 +130,7 @@ const CameraCapture = ({ onCapture, onClose }) => {
               style={{ transform: 'scaleX(-1)' }}
             />
             <canvas ref={canvasRef} className="hidden" />
-            
+
             <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-4">
               <button
                 onClick={onClose}
@@ -342,15 +342,15 @@ const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, 
         ))}
         {canAddMore && (
           <div className="relative">
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => setShowCameraOptions(!showCameraOptions)}
               className="w-16 h-16 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center bg-white cursor-pointer hover:bg-slate-50 hover:border-[#125852] transition-colors flex-shrink-0"
             >
               <ImagePlus size={16} className="text-slate-400" />
               <span className="text-[9px] font-bold text-slate-400 mt-1">ADD</span>
             </button>
-            
+
             {showCameraOptions && (
               <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg p-1 min-w-[120px]">
                 <button
@@ -391,7 +391,7 @@ const ColorImageSection = ({
   const [showCameraForColor, setShowCameraForColor] = useState(null);
 
   if (!colors || colors.length === 0) return null;
-  
+
   return (
     <div className="space-y-3 border border-slate-100 rounded-xl p-3 bg-slate-50/50">
       <div className="flex items-center gap-2">
@@ -438,15 +438,15 @@ const ColorImageSection = ({
               ))}
               {canAdd && (
                 <div className="relative">
-                  <button 
-                    type="button" 
-                    onClick={() => setShowCameraForColor(showCameraForColor === color ? null : color)} 
+                  <button
+                    type="button"
+                    onClick={() => setShowCameraForColor(showCameraForColor === color ? null : color)}
                     className="w-14 h-14 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center bg-white cursor-pointer hover:bg-slate-50 hover:border-[#125852] transition-colors flex-shrink-0"
                   >
                     <ImagePlus size={13} className="text-slate-400" />
                     <span className="text-[8px] font-bold text-slate-400 mt-0.5">ADD</span>
                   </button>
-                  
+
                   {showCameraForColor === color && (
                     <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg p-1 min-w-[110px]">
                       <button
@@ -604,12 +604,18 @@ const ProductListing = ({
   // Initialize form with initialData if provided (for editing)
   useEffect(() => {
     if (initialData) {
+      const safeQty =
+        initialData.qty ||
+        initialData.inventory_quality ||
+        qualityOptions[1] ||
+        'Medium';
+
       setFormData({
         title: initialData.title || "",
         category: initialData.category || "",
-        price: initialData.price || "",
+        price: initialData.price ? String(initialData.price) : "",
         sku: initialData.sku || "",
-        qty: initialData.qty || qualityOptions[1] || "Medium",
+        qty: safeQty,
         location: initialData.location || "",
         description: initialData.description || "",
         stock: initialData.stock || 0,
@@ -648,9 +654,9 @@ const ProductListing = ({
     const remaining = MAX_GENERAL_IMAGES - formData.imageFiles.length;
     files.slice(0, remaining).forEach((file) => {
       const reader = new FileReader();
-      reader.onloadend = () => setFormData((prev) => ({ 
-        ...prev, 
-        imageFiles: [...prev.imageFiles, { preview: reader.result, file }] 
+      reader.onloadend = () => setFormData((prev) => ({
+        ...prev,
+        imageFiles: [...prev.imageFiles, { preview: reader.result, file }]
       }));
       reader.readAsDataURL(file);
     });
@@ -663,24 +669,24 @@ const ProductListing = ({
       if (cameraTargetColor) {
         setFormData((prev) => ({
           ...prev,
-          colorImageFiles: { 
-            ...prev.colorImageFiles, 
-            [cameraTargetColor]: [...(prev.colorImageFiles[cameraTargetColor] || []), { preview: reader.result, file }] 
+          colorImageFiles: {
+            ...prev.colorImageFiles,
+            [cameraTargetColor]: [...(prev.colorImageFiles[cameraTargetColor] || []), { preview: reader.result, file }]
           },
         }));
       } else {
-        setFormData((prev) => ({ 
-          ...prev, 
-          imageFiles: [...prev.imageFiles, { preview: reader.result, file }] 
+        setFormData((prev) => ({
+          ...prev,
+          imageFiles: [...prev.imageFiles, { preview: reader.result, file }]
         }));
       }
     };
     reader.readAsDataURL(file);
   };
 
-  const removeCreateImage = (index) => setFormData((prev) => ({ 
-    ...prev, 
-    imageFiles: prev.imageFiles.filter((_, i) => i !== index) 
+  const removeCreateImage = (index) => setFormData((prev) => ({
+    ...prev,
+    imageFiles: prev.imageFiles.filter((_, i) => i !== index)
   }));
 
   const handleColorFilesChange = (color, e) => {
@@ -770,7 +776,7 @@ const ProductListing = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     const validationErrors = validateStep1();
     const descErrors = validateStep2();
     if (Object.keys(validationErrors).length > 0 || Object.keys(descErrors).length > 0) {
@@ -778,7 +784,7 @@ const ProductListing = ({
       setFormStep(1);
       return;
     }
-    
+
     const payload = {
       title: formData.title,
       description: formData.description,
@@ -791,8 +797,9 @@ const ProductListing = ({
       colors: formData.colors,
       is_published: isPublished,
       business_category: businessCategory,
+      category: formData.category,
     };
-    
+
     const allFiles = collectAllFiles();
     await onSubmit(payload, allFiles);
   };
@@ -822,7 +829,7 @@ const ProductListing = ({
           <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh] overflow-y-auto" style={{ fontFamily: "'Poppins', sans-serif" }}>
             <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
               <div>
-                <h2 className="text-lg font-bold">Create New {isServiceVendor ? "Service" : "Product"}</h2>
+                <h2 className="text-lg font-bold">{initialData ? 'Edit' : 'Create New'} {isServiceVendor ? "Service" : "Product"}</h2>
                 <p className="text-[11px] text-slate-500">
                   Step 1 of 4 · <span className="font-bold text-[#125852] capitalize">{businessCategory}</span>
                 </p>
@@ -1055,9 +1062,12 @@ const ProductListing = ({
               <ErrorBanner msg={formErrors._server} />
               <SummaryPill formData={formData} currencySymbol={currencySymbol} currentStep={4} onEdit={setFormStep} />
               <ImageGrid
-                existingImages={[]}
+                existingImages={initialData?.images || []}
                 pendingImages={formData.imageFiles}
-                onRemoveExisting={() => {}}
+                onRemoveExisting={(imageId) => {
+                  // Handle removing existing images if needed
+                  console.log('Remove existing image:', imageId);
+                }}
                 onRemovePending={removeCreateImage}
                 onAdd={() => fileInputRef.current?.click()}
                 onCameraCapture={() => {

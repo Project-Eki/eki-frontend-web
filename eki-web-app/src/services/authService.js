@@ -486,10 +486,41 @@ export const getCategories = (businessCategory = null) => {
 };
 
 // ─── LISTING NORMALISER ───────────────────────────────────────────────────────
-const normalizeListing = (item) => ({
-  ...item,
-  is_published: item.is_published === true || item.status === 'published',
-});
+// FIX: properly extract quality from detail.quality and normalise capitalisation
+// so the edit form always gets 'High' / 'Medium' / 'Low' (not lowercase / undefined)
+const normalizeListing = (item) => {
+  const qualityReverseMap = {
+    high:   'High',
+    medium: 'Medium',
+    low:    'Low',
+    High:   'High',
+    Medium: 'Medium',
+    Low:    'Low',
+    HIGH:   'High',
+    MEDIUM: 'Medium',
+    LOW:    'Low',
+  };
+
+  // quality lives inside detail.quality on the API response
+  const rawQuality =
+    item.detail?.quality ||
+    item.inventory_quality ||
+    item.qty ||
+    'medium';
+
+  const normalizedQuality = qualityReverseMap[rawQuality] ?? 'Medium';
+
+  return {
+    ...item,
+    is_published:      item.is_published === true || item.status === 'published',
+    // expose quality under both field names so the dashboard & edit form both work
+    inventory_quality: normalizedQuality,
+    qty:               normalizedQuality,
+    // also pull sku and stock up from detail so the edit form pre-fills correctly
+    sku:               item.detail?.sku   ?? item.sku   ?? '',
+    stock:             item.detail?.stock ?? item.stock ?? 0,
+  };
+};
 
 // ─── GET PRODUCTS ─────────────────────────────────────────────────────────────
 export const getProducts = async () => {
@@ -502,8 +533,6 @@ export const getProducts = async () => {
 };
 
 // ─── CREATE PRODUCT LISTING ───────────────────────────────────────────────────
-// FIX: stock is passed in detail.stock. Empty variants [] when no real
-// size/color variants so Django falls back to detail.stock for total_stock.
 export const createProductListing = async (productData) => {
   const qualityMap = {
     High: 'high', Medium: 'medium', Low: 'low',

@@ -53,7 +53,7 @@ const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
 const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => {
   const qStyle = getQualityStyle(product.inventory_quality || product.qty);
   const mainImage = product.images?.[0]?.image || null;
-  const variantCount = product.variants?.length || 1;
+  const variantCount = product.variants?.length || 0;
   const hasMultipleVariants = variantCount > 1;
   const [showVariants, setShowVariants] = useState(false);
 
@@ -77,7 +77,7 @@ const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => 
             </span>
           )}
         </div>
-        {/* Action Icons Overlay — always visible, black */}
+        {/* Action Icons Overlay */}
         <div className="absolute top-2 left-2 flex gap-1">
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(product); }}
@@ -228,26 +228,21 @@ const ProductDashboard = () => {
     }
   };
 
-  // Group variants under parent product
+  // ── Group variants under parent product ─────────────────────────────────────
   const processProductVariants = (productsList) => {
     const productMap = new Map();
 
-    productsList.forEach(product => {
-      const parentId = product.parent_product_id || product.id;
-
-      if (!productMap.has(parentId)) {
-        productMap.set(parentId, {
-          ...product,
-          variants: [],
-          id: parentId,
-        });
-      }
-
-      if (product.parent_product_id) {
-        const parent = productMap.get(parentId);
-        if (parent) {
-          parent.variants.push(product);
+    productsList.forEach((product) => {
+      if (!product.parent_product_id) {
+        if (!productMap.has(product.id)) {
+          productMap.set(product.id, { ...product, variants: product.variants || [] });
         }
+      } else {
+        const parentId = product.parent_product_id;
+        if (!productMap.has(parentId)) {
+          productMap.set(parentId, { id: parentId, variants: [] });
+        }
+        productMap.get(parentId).variants.push(product);
       }
     });
 
@@ -303,9 +298,11 @@ const ProductDashboard = () => {
         category: payload.category || '',
         business_category: businessCategory,
       });
+      
       if (imageFiles.length > 0) {
         await uploadListingImages(productId, imageFiles);
       }
+      
       await loadProducts();
       setIsEditModalOpen(false);
       setSelectedProduct(null);
@@ -316,18 +313,20 @@ const ProductDashboard = () => {
       const msg = detail && typeof detail === 'object'
         ? Object.entries(detail).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' | ')
         : 'Failed to update product.';
+      showSuccess(msg);
       throw new Error(msg);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ── Edit handlers ───────────────────────────────────────────────────────────
+  // ── Edit handler ────────────────────────────────────────────────────────────
   const handleEditProduct = (product) => {
-    // Normalize quality field — API may return 'high'/'medium'/'low' (lowercase)
-    const rawQty = product.inventory_quality || product.qty || '';
     const normalizedQty =
-      rawQty.charAt(0).toUpperCase() + rawQty.slice(1).toLowerCase() || qualityOptions[1] || 'Medium';
+      product.inventory_quality ||
+      product.qty ||
+      qualityOptions[1] ||
+      'Medium';
 
     setSelectedProduct({
       id: product.id,
@@ -353,6 +352,7 @@ const ProductDashboard = () => {
     setIsDeleteModalOpen(true);
   };
 
+  // ── Confirm Delete ──────────────────────────────────────────────────────────
   const confirmDelete = async () => {
     if (!selectedProduct?.id) {
       setIsDeleteModalOpen(false);
@@ -364,7 +364,6 @@ const ProductDashboard = () => {
     try {
       await deleteProductListing(selectedProduct.id);
       await loadProducts();
-      setIsEditModalOpen(false);
       setSelectedProduct(null);
       showSuccess('Product deleted successfully.');
     } catch (err) {
@@ -395,7 +394,7 @@ const ProductDashboard = () => {
   const ProductListItem = ({ product, currencySymbol, onEdit, onDelete }) => {
     const qStyle = getQualityStyle(product.inventory_quality || product.qty);
     const mainImage = product.images?.[0]?.image || null;
-    const variantCount = product.variants?.length || 1;
+    const variantCount = product.variants?.length || 0;
     const [showVariants, setShowVariants] = useState(false);
 
     return (
@@ -475,7 +474,6 @@ const ProductDashboard = () => {
             )}
           </div>
 
-          {/* List view edit/delete — black icons, always visible */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => onEdit(product)}
@@ -721,7 +719,7 @@ const ProductDashboard = () => {
         submitLabel="Publish Product"
       />
 
-      {/* Edit Product Modal — only mount when we have a selected product */}
+      {/* Edit Product Modal */}
       {selectedProduct && (
         <ProductListing
           key={`edit-${selectedProduct.id}`}

@@ -51,16 +51,12 @@ const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
 );
 
 // ─── Helper: format order ID professionally ───────────────────────────────────
-// Pads numeric IDs to 6 digits (e.g. 42 → #000042).
-// Truncates UUID/hash IDs to last 8 chars with a leading #.
 const formatOrderId = (raw) => {
   if (!raw && raw !== 0) return '—';
   const str = String(raw).trim();
-  // Pure numeric
   if (/^\d+$/.test(str)) {
     return `#${str.padStart(6, '0')}`;
   }
-  // UUID or long hash — show last 8 chars uppercased
   if (str.length > 12) {
     return `#${str.slice(-8).toUpperCase()}`;
   }
@@ -72,13 +68,13 @@ const VendorDashboard = () => {
 
   const [vendorData, setVendorData] = useState({
     storeName: "",
-    vendorType: "Products",
-    country: "Uganda",
-    businessCategory: "retail",
-    vendor_type: "product",
+    vendorType: "",
+    country: "",
+    businessCategory: "",
+    vendor_type: "",
     is_product_vendor: true,
     is_service_vendor: false,
-    currencySymbol: getCurrencySymbol("Uganda"),
+    currencySymbol: "",
   });
   const [metrics, setMetrics] = useState({
     grossSales: 0,
@@ -95,7 +91,7 @@ const VendorDashboard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
-  const [currencySymbol, setCurrencySymbol] = useState("UGX");
+  const [currencySymbol, setCurrencySymbol] = useState("");
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   useEffect(() => {
@@ -108,19 +104,22 @@ const VendorDashboard = () => {
       const response = await getVendorDashboard();
 
       if (response) {
-        const bc = response.businessCategory || "retail";
+        const bc = response.businessCategory || "";
         const isProductVendor = response.is_product_vendor ?? true;
         const isServiceVendor = response.is_service_vendor ?? false;
-        const vendorType =
-          response.vendor_type ?? (isProductVendor ? "product" : "service");
+        const vendorType = response.vendor_type ?? (isProductVendor ? "product" : "service");
 
-        const country = response.country || "Uganda";
-        const resolvedCurrencySymbol = getCurrencySymbol(country);
+        // ─── FIXED: Get country strictly from response or localStorage (no hardcoded fallback) ───
+        const country = response.country || localStorage.getItem('vendor_country') || "";
+        
+        // ─── FIXED: Derive currency symbol dynamically using the utility ───
+        const resolvedCurrencySymbol = country ? getCurrencySymbol(country) : "";
+        
+        console.log('[VendorDashboard] Country:', country, '→ Currency:', resolvedCurrencySymbol);
 
         setVendorData({
           storeName: response.storeName || "",
-          vendorType:
-            response.vendorType || (isProductVendor ? "Products" : "Services"),
+          vendorType: response.vendorType || (isProductVendor ? "Products" : "Services"),
           country,
           businessCategory: bc,
           vendor_type: vendorType,
@@ -128,7 +127,7 @@ const VendorDashboard = () => {
           is_service_vendor: isServiceVendor,
           currencySymbol: resolvedCurrencySymbol,
         });
-        setCurrencySymbol(response.currencySymbol || "UGX");
+        setCurrencySymbol(resolvedCurrencySymbol);
 
         setMetrics(
           response.metrics || {
@@ -140,7 +139,6 @@ const VendorDashboard = () => {
         );
         setSalesHistory(response.salesHistory || []);
 
-        // FIX: cap recent orders to 7
         const allOrders = response.recentOrders || [];
         setRecentOrders(allOrders.slice(0, 7));
 
@@ -190,6 +188,8 @@ const VendorDashboard = () => {
     }
   };
 
+  const displayCurrency = currencySymbol || vendorData.currencySymbol || "";
+
   return (
     <div className="flex min-h-screen bg-[#ecece7] font-sans text-slate-800 p-3 gap-3">
       <VendorSidebar
@@ -227,7 +227,7 @@ const VendorDashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
               <StatCard
                 title="Gross Sales"
-                number={`${currencySymbol} ${(metrics.grossSales || 0).toLocaleString()}`}
+                number={`${displayCurrency} ${(metrics.grossSales || 0).toLocaleString()}`}
                 icon={CreditCard}
                 iconBgColor="bg-emerald-50"
                 iconColor="text-emerald-600"
@@ -241,7 +241,7 @@ const VendorDashboard = () => {
               />
               <StatCard
                 title="Pending Payouts"
-                number={`${currencySymbol} ${(metrics.pendingPayouts || 0).toLocaleString()}`}
+                number={`${displayCurrency} ${(metrics.pendingPayouts || 0).toLocaleString()}`}
                 icon={Box}
                 iconBgColor="bg-orange-50"
                 iconColor="text-orange-600"
@@ -292,14 +292,12 @@ const VendorDashboard = () => {
                 </div>
               </div>
 
-              {/* ── Recent Orders Table ──────────────────────────────────── */}
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="p-4 border-b border-slate-100 flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-xs uppercase tracking-tighter">
                       Recent Orders
                     </h3>
-                    {/* FIX: show count badge so vendor knows it's capped at 7 */}
                     {recentOrders.length > 0 && (
                       <span className="bg-slate-100 text-slate-500 text-[9px] font-black px-2 py-0.5 rounded-full">
                         {recentOrders.length}
@@ -331,7 +329,6 @@ const VendorDashboard = () => {
                             key={order.id ?? i}
                             className="hover:bg-slate-50 transition-colors"
                           >
-                            {/* FIX: professional order ID formatting */}
                             <td className="px-4 py-2.5">
                               <span className="inline-flex items-center gap-1">
                                 <span className="font-black text-[#125852] tracking-wider font-mono text-[10px]">
@@ -341,11 +338,10 @@ const VendorDashboard = () => {
                             </td>
                             <td className="px-4 py-2.5 text-slate-700 font-medium">{order.customer}</td>
                             <td className="px-4 py-2.5 font-bold text-slate-800">
-                              {currencySymbol}{" "}
+                              {displayCurrency}{" "}
                               {Number(order.total || 0).toLocaleString()}
                             </td>
                             <td className="px-4 py-2.5">
-                              {/* FIX: colour-coded status badges */}
                               <span className={`px-2 py-0.5 rounded-full text-[8px] uppercase font-black tracking-wide ${
                                 (() => {
                                   const s = String(order.status || '').toLowerCase();
@@ -414,7 +410,7 @@ const VendorDashboard = () => {
                   Last Payout
                 </p>
                 <h3 className="text-xl font-bold mb-3">
-                  {currencySymbol}{" "}
+                  {displayCurrency}{" "}
                   {(metrics.pendingPayouts || 0).toLocaleString()}
                 </h3>
                 <div className="flex justify-between items-center text-[9px]">
@@ -506,11 +502,9 @@ const VendorDashboard = () => {
       {selectedOrder && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden" style={{ fontFamily: "'Poppins', sans-serif" }}>
-            {/* Header */}
             <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center">
               <div>
                 <h2 className="text-base font-bold text-slate-800">Order Summary</h2>
-                {/* FIX: use the formatter in the modal too */}
                 <p className="text-[10px] text-slate-500 mt-0.5 font-mono font-medium">
                   {formatOrderId(selectedOrder.id)} · {selectedOrder.date || "Just now"}
                 </p>
@@ -523,9 +517,7 @@ const VendorDashboard = () => {
               </button>
             </div>
 
-            {/* Content */}
             <div className="p-5 space-y-4">
-              {/* Customer Info */}
               <div className="bg-slate-50 rounded-xl p-4">
                 <h3 className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-3">
                   Customer Details
@@ -556,7 +548,6 @@ const VendorDashboard = () => {
                 </div>
               </div>
 
-              {/* Order Items */}
               <div className="bg-slate-50 rounded-xl p-4">
                 <h3 className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-3">
                   Order Items
@@ -570,11 +561,11 @@ const VendorDashboard = () => {
                             {item.name}
                           </p>
                           <p className="text-[9px] text-slate-400">
-                            Qty: {item.quantity} × {currencySymbol} {Number(item.price || 0).toLocaleString()}
+                            Qty: {item.quantity} × {displayCurrency} {Number(item.price || 0).toLocaleString()}
                           </p>
                         </div>
                         <span className="text-[11px] font-bold text-slate-800">
-                          {currencySymbol} {Number(item.total || 0).toLocaleString()}
+                          {displayCurrency} {Number(item.total || 0).toLocaleString()}
                         </span>
                       </div>
                     ))}
@@ -588,14 +579,13 @@ const VendorDashboard = () => {
                         </p>
                       </div>
                       <span className="text-[11px] font-bold text-slate-800">
-                        {currencySymbol} {Number(selectedOrder.total || 0).toLocaleString()}
+                        {displayCurrency} {Number(selectedOrder.total || 0).toLocaleString()}
                       </span>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Order Summary */}
               <div className="bg-slate-50 rounded-xl p-4">
                 <h3 className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-3">
                   Payment Summary
@@ -604,14 +594,14 @@ const VendorDashboard = () => {
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] text-slate-500">Subtotal</span>
                     <span className="text-[11px] text-slate-700">
-                      {currencySymbol} {Number(selectedOrder.subtotal || selectedOrder.total || 0).toLocaleString()}
+                      {displayCurrency} {Number(selectedOrder.subtotal || selectedOrder.total || 0).toLocaleString()}
                     </span>
                   </div>
                   {selectedOrder.shipping > 0 && (
                     <div className="flex justify-between items-center">
                       <span className="text-[11px] text-slate-500">Shipping</span>
                       <span className="text-[11px] text-slate-700">
-                        {currencySymbol} {Number(selectedOrder.shipping || 0).toLocaleString()}
+                        {displayCurrency} {Number(selectedOrder.shipping || 0).toLocaleString()}
                       </span>
                     </div>
                   )}
@@ -619,20 +609,19 @@ const VendorDashboard = () => {
                     <div className="flex justify-between items-center">
                       <span className="text-[11px] text-slate-500">Tax</span>
                       <span className="text-[11px] text-slate-700">
-                        {currencySymbol} {Number(selectedOrder.tax || 0).toLocaleString()}
+                        {displayCurrency} {Number(selectedOrder.tax || 0).toLocaleString()}
                       </span>
                     </div>
                   )}
                   <div className="flex justify-between items-center pt-2 border-t border-slate-200">
                     <span className="text-[12px] font-bold text-slate-800">Total</span>
                     <span className="text-[14px] font-bold text-[#F5B841]">
-                      {currencySymbol} {Number(selectedOrder.total || 0).toLocaleString()}
+                      {displayCurrency} {Number(selectedOrder.total || 0).toLocaleString()}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Status */}
               <div className="flex items-center justify-between bg-amber-50 rounded-xl p-4">
                 <span className="text-[11px] font-bold text-slate-600">Order Status</span>
                 <span className="px-3 py-1 bg-[#F5B841] text-white rounded-full text-[10px] font-bold uppercase">
@@ -641,7 +630,6 @@ const VendorDashboard = () => {
               </div>
             </div>
 
-            {/* Footer */}
             <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-2">
               <button
                 onClick={() => setSelectedOrder(null)}
@@ -660,7 +648,6 @@ const VendorDashboard = () => {
         </div>
       )}
 
-      {/* Use the reusable ProductListing component */}
       <ProductListing
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -668,7 +655,7 @@ const VendorDashboard = () => {
         isLoading={isLoading}
         isServiceVendor={isServiceVendor}
         businessCategory={businessCategory}
-        currencySymbol={currencySymbol}
+        currencySymbol={displayCurrency}
         submitLabel={isServiceVendor ? "Publish Service" : "Publish Product"}
       />
     </div>
