@@ -22,6 +22,7 @@ import {
   Star,
   CreditCard,
   Box,
+  X,
 } from "lucide-react";
 import {
   XAxis,
@@ -78,6 +79,7 @@ const VendorDashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const [currencySymbol, setCurrencySymbol] = useState("UGX");
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -170,7 +172,7 @@ const VendorDashboard = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
+    <div className="flex min-h-screen bg-[#ecece7] font-sans text-slate-800 p-3 gap-3">
       <VendorSidebar
         activePage="dashboard"
         vendorType={vendorType}
@@ -256,8 +258,8 @@ const VendorDashboard = () => {
                         <Area
                           type="monotone"
                           dataKey="sales"
-                          stroke="#125852"
-                          fill="#125852"
+                          stroke="#F5B841"
+                          fill="#F5B841"
                           fillOpacity={0.05}
                           strokeWidth={2}
                         />
@@ -315,12 +317,12 @@ const VendorDashboard = () => {
                               </span>
                             </td>
                             <td className="px-4 py-2.5">
-                              <Link
-                                to={`/order-management/${order.id}`}
-                                className="px-2.5 py-1 bg-[#125852] text-white rounded-lg text-[8px] font-bold uppercase hover:bg-[#0e4440]"
+                              <button
+                                onClick={() => setSelectedOrder(order)}
+                                className="px-2.5 py-1 bg-[#F5B841] text-white rounded-lg text-[8px] font-bold uppercase hover:bg-[#E0A83B] transition-colors"
                               >
                                 View
-                              </Link>
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -345,7 +347,7 @@ const VendorDashboard = () => {
                   className="w-full flex items-center justify-between p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
                 >
                   <div className="flex items-center gap-2 text-left">
-                    <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
+                    <div className="p-1.5 bg-amber-50 text-amber-600 rounded-lg">
                       <Plus size={14} />
                     </div>
                     <div>
@@ -455,6 +457,163 @@ const VendorDashboard = () => {
 
         <Footer />
       </div>
+
+      {/* Order Summary Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center">
+              <div>
+                <h2 className="text-base font-bold text-slate-800">Order Summary</h2>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  Order #{selectedOrder.id} · {selectedOrder.date || "Just now"}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <X size={16} className="text-slate-500" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-5 space-y-4">
+              {/* Customer Info */}
+              <div className="bg-slate-50 rounded-xl p-4">
+                <h3 className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-3">
+                  Customer Details
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-slate-500">Name</span>
+                    <span className="text-[12px] font-bold text-slate-800">
+                      {selectedOrder.customer}
+                    </span>
+                  </div>
+                  {selectedOrder.email && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-[11px] text-slate-500">Email</span>
+                      <span className="text-[11px] text-slate-600">
+                        {selectedOrder.email}
+                      </span>
+                    </div>
+                  )}
+                  {selectedOrder.phone && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-[11px] text-slate-500">Phone</span>
+                      <span className="text-[11px] text-slate-600">
+                        {selectedOrder.phone}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Order Items */}
+              <div className="bg-slate-50 rounded-xl p-4">
+                <h3 className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-3">
+                  Order Items
+                </h3>
+                {selectedOrder.items && selectedOrder.items.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedOrder.items.map((item, idx) => (
+                      <div key={idx} className="flex justify-between items-center py-1.5 border-b border-slate-200 last:border-0">
+                        <div className="flex-1">
+                          <p className="text-[11px] font-bold text-slate-700">
+                            {item.name}
+                          </p>
+                          <p className="text-[9px] text-slate-400">
+                            Qty: {item.quantity} × {currencySymbol} {Number(item.price || 0).toLocaleString()}
+                          </p>
+                        </div>
+                        <span className="text-[11px] font-bold text-slate-800">
+                          {currencySymbol} {Number(item.total || 0).toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center py-1.5">
+                      <div className="flex-1">
+                        <p className="text-[11px] font-bold text-slate-700">
+                          Order #{selectedOrder.id}
+                        </p>
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-800">
+                        {currencySymbol} {Number(selectedOrder.total || 0).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Order Summary */}
+              <div className="bg-slate-50 rounded-xl p-4">
+                <h3 className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-3">
+                  Payment Summary
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-slate-500">Subtotal</span>
+                    <span className="text-[11px] text-slate-700">
+                      {currencySymbol} {Number(selectedOrder.subtotal || selectedOrder.total || 0).toLocaleString()}
+                    </span>
+                  </div>
+                  {selectedOrder.shipping > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-[11px] text-slate-500">Shipping</span>
+                      <span className="text-[11px] text-slate-700">
+                        {currencySymbol} {Number(selectedOrder.shipping || 0).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  {selectedOrder.tax > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-[11px] text-slate-500">Tax</span>
+                      <span className="text-[11px] text-slate-700">
+                        {currencySymbol} {Number(selectedOrder.tax || 0).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-2 border-t border-slate-200">
+                    <span className="text-[12px] font-bold text-slate-800">Total</span>
+                    <span className="text-[14px] font-bold text-[#F5B841]">
+                      {currencySymbol} {Number(selectedOrder.total || 0).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status */}
+              <div className="flex items-center justify-between bg-amber-50 rounded-xl p-4">
+                <span className="text-[11px] font-bold text-slate-600">Order Status</span>
+                <span className="px-3 py-1 bg-[#F5B841] text-white rounded-full text-[10px] font-bold uppercase">
+                  {selectedOrder.status || "Processing"}
+                </span>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-2">
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="px-4 py-2 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 transition-colors"
+              >
+                Close
+              </button>
+              <Link
+                to={`/order-management/${selectedOrder.id}`}
+                className="px-4 py-2 text-[11px] font-bold bg-[#F5B841] text-white rounded-lg hover:bg-[#E0A83B] transition-colors"
+              >
+                Manage Order
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Use the reusable ProductListing component */}
       <ProductListing
