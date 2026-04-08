@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import VendorSidebar from "../components/VendorSidebar";
 import Navbar3 from "../components/adminDashboard/Navbar4";
-import Footer from "../components/Vendormanagement/VendorFooter"; 
+import Footer from "../components/Vendormanagement/VendorFooter";
+import ProductListing from "../components/ProductListing"; // Import the reusable component
 import {
   getVendorDashboard,
   getCategories,
   createProductListing,
-  uploadListingImage,
+  uploadListingImages,
 } from "../services/authService";
 
 import {
@@ -17,11 +18,8 @@ import {
   ListChecks,
   AlertCircle,
   Star,
-  X,
-  Upload,
-  Box,
   CreditCard,
-  Trash2,
+  Box,
 } from "lucide-react";
 import {
   XAxis,
@@ -32,22 +30,6 @@ import {
   AreaChart,
   Area,
 } from "recharts";
-
-const SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "one_size"];
-
-const blankForm = () => ({
-  title: "",
-  category_id: "",
-  price: "",
-  sku: "",
-  qty: "Medium",
-  location: "",
-  description: "",
-  image: null,
-  imageFile: null,
-  colorVariant: "",
-  sizeVariant: "",
-});
 
 const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
   <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
@@ -67,7 +49,6 @@ const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
 
 const VendorDashboard = () => {
   const navigate = useNavigate();
-  const fileInputRef = useRef(null);
 
   const [vendorData, setVendorData] = useState({
     storeName: "",
@@ -93,11 +74,8 @@ const VendorDashboard = () => {
   const [isFetching, setIsFetching] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isPublished, setIsPublished] = useState(true);
-  const [formData, setFormData] = useState(blankForm());
-  const [formErrors, setFormErrors] = useState({});
   const [successMsg, setSuccessMsg] = useState("");
-  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [currencySymbol, setCurrencySymbol] = useState("UGX");
 
   useEffect(() => {
     fetchDashboardData();
@@ -126,6 +104,7 @@ const VendorDashboard = () => {
           is_service_vendor: isServiceVendor,
           currencySymbol: response.currencySymbol || "UGX",
         });
+        setCurrencySymbol(response.currencySymbol || "UGX");
 
         setMetrics(
           response.metrics || {
@@ -133,7 +112,7 @@ const VendorDashboard = () => {
             openOrders: 0,
             pendingPayouts: 0,
             activeListings: 0,
-          },
+          }
         );
         setSalesHistory(response.salesHistory || []);
         setRecentOrders(response.recentOrders || []);
@@ -151,79 +130,17 @@ const VendorDashboard = () => {
       setIsFetching(false);
     }
   };
+
   const isServiceVendor = vendorData.is_service_vendor;
   const vendorType = vendorData.vendor_type;
-  const currencySymbol = vendorData.currencySymbol;
   const businessCategory = vendorData.businessCategory;
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (formErrors[name]) setFormErrors((prev) => ({ ...prev, [name]: null }));
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () =>
-      setFormData((prev) => ({
-        ...prev,
-        imageFile: file,
-        image: reader.result,
-      }));
-    reader.readAsDataURL(file);
-  };
-
-  const resetForm = () => {
-    setFormData(blankForm());
-    setFormErrors({});
-    setIsPublished(true);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  const validate = (data) => {
-    const errs = {};
-    if (!data.title?.trim()) errs.title = "Title is required";
-    if (!data.price || isNaN(Number(data.price)) || Number(data.price) <= 0) {
-      errs.price = "Valid price is required";
-    }
-    return errs;
-  };
-
-  const handlePublish = async (e) => {
-    e.preventDefault();
-    const errs = validate(formData);
-    if (Object.keys(errs).length > 0) {
-      setFormErrors(errs);
-      return;
-    }
-
+  const handleSubmitListing = async (payload, imageFiles) => {
     setIsLoading(true);
     try {
-      const variants = [];
-      if (formData.colorVariant?.trim()) {
-        variants.push({ type: "Color", value: formData.colorVariant.trim() });
-      }
-      if (formData.sizeVariant?.trim()) {
-        variants.push({ type: "Size", value: formData.sizeVariant.trim() });
-      }
-
-      const payload = {
-        ...formData,
-        business_category: vendorData.businessCategory,
-        is_published: isPublished,
-        variants,
-      };
-
       const created = await createProductListing(payload);
-
-      if (formData.imageFile && created?.id) {
-        try {
-          await uploadListingImage(created.id, formData.imageFile);
-        } catch (imgErr) {
-          console.warn("Image upload failed:", imgErr);
-        }
+      if (imageFiles.length > 0 && created?.id) {
+        await uploadListingImages(created.id, imageFiles);
       }
 
       setMetrics((prev) => ({
@@ -231,26 +148,16 @@ const VendorDashboard = () => {
         activeListings: prev.activeListings + 1,
       }));
       setIsModalOpen(false);
-      resetForm();
       setSuccessMsg(
-        `${isServiceVendor ? "Service" : "Product"} created successfully!`,
+        `${isServiceVendor ? "Service" : "Product"} created successfully!`
       );
       setTimeout(() => setSuccessMsg(""), 4000);
+      
+      // Refresh dashboard data to update metrics
+      await fetchDashboardData();
     } catch (err) {
       console.error("Failed to create listing:", err);
-      const serverErrors =
-        err.response?.data?.errors ?? err.response?.data ?? {};
-      let msg =
-        "Failed to create listing. Please check your inputs and try again.";
-      if (
-        typeof serverErrors === "object" &&
-        Object.keys(serverErrors).length > 0
-      ) {
-        msg = Object.entries(serverErrors)
-          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
-          .join(" | ");
-      }
-      setFormErrors({ _server: msg });
+      throw err; // Let the ProductListing component handle the error
     } finally {
       setIsLoading(false);
     }
@@ -543,292 +450,17 @@ const VendorDashboard = () => {
         <Footer />
       </div>
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <form
-            onSubmit={handlePublish}
-            className="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]"
-          >
-            <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-start">
-              <div>
-                <h2 className="text-base font-bold">
-                  Create New {isServiceVendor ? "Service" : "Product"}
-                </h2>
-                <p className="text-[10px] text-slate-500">
-                  Category:{" "}
-                  <span className="font-bold text-[#125852] capitalize">
-                    {vendorData.businessCategory}
-                  </span>
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsModalOpen(false);
-                  resetForm();
-                }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-5 overflow-y-auto space-y-4">
-              {formErrors._server && (
-                <div className="bg-red-50 border border-red-200 text-red-700 text-[10px] font-medium px-3 py-2 rounded-lg">
-                  {formErrors._server}
-                </div>
-              )}
-              <div>
-                <label className="text-[10px] font-bold uppercase text-slate-500">
-                  Title *
-                </label>
-                <input
-                  type="text"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  placeholder={`e.g. ${isServiceVendor ? "Website Design Package" : "Premium Wireless Headphones"}`}
-                  className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.title ? "border-red-500" : "border-slate-200"}`}
-                />
-                {formErrors.title && (
-                  <p className="text-red-500 text-[9px] font-bold">
-                    {formErrors.title}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase text-slate-500">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows="2"
-                  placeholder="Describe your item..."
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none resize-none"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase text-slate-500">
-                  Location
-                </label>
-                <input
-                  type="text"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleInputChange}
-                  placeholder="e.g. Kampala, Uganda"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold uppercase text-slate-500">
-                    Category
-                  </label>
-                  <select
-                    name="category_id"
-                    value={formData.category_id}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
-                  >
-                    <option value="">— Select —</option>
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase text-slate-500">
-                    Price ({currencySymbol}) *
-                  </label>
-                  <input
-                    type="number"
-                    name="price"
-                    value={formData.price}
-                    onChange={handleInputChange}
-                    placeholder="0.00"
-                    min="0"
-                    step="any"
-                    className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.price ? "border-red-500" : "border-slate-200"}`}
-                  />
-                  {formErrors.price && (
-                    <p className="text-red-500 text-[9px] font-bold">
-                      {formErrors.price}
-                    </p>
-                  )}
-                </div>
-              </div>
-              {!isServiceVendor && (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[10px] font-bold uppercase text-slate-500">
-                        SKU
-                      </label>
-                      <input
-                        type="text"
-                        name="sku"
-                        value={formData.sku}
-                        onChange={handleInputChange}
-                        placeholder="PRD-XXXX"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold uppercase text-slate-500">
-                        Quality
-                      </label>
-                      <select
-                        name="qty"
-                        value={formData.qty}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
-                      >
-                        <option value="High">High</option>
-                        <option value="Medium">Medium</option>
-                        <option value="Low">Low</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <h4 className="text-[10px] font-bold uppercase text-slate-700">
-                      Variant{" "}
-                      <span className="text-slate-400 font-normal">
-                        (optional)
-                      </span>
-                    </h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-[10px] font-bold uppercase text-slate-500">
-                          Color
-                        </label>
-                        <input
-                          type="text"
-                          name="colorVariant"
-                          value={formData.colorVariant}
-                          onChange={handleInputChange}
-                          placeholder="e.g. Red, Navy Blue"
-                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold uppercase text-slate-500">
-                          Size
-                        </label>
-                        <select
-                          name="sizeVariant"
-                          value={formData.sizeVariant}
-                          onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
-                        >
-                          <option value="">— None —</option>
-                          {SIZE_OPTIONS.map((s) => (
-                            <option key={s} value={s}>
-                              {s === "one_size" ? "One Size" : s}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase text-slate-500">
-                  {isServiceVendor ? "Service Image" : "Product Image"}
-                </label>
-                <div className="flex gap-2 items-center">
-                  {formData.image && (
-                    <div className="w-16 h-16 rounded-lg border border-slate-200 overflow-hidden relative group">
-                      <img
-                        src={formData.image}
-                        alt="preview"
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFormData((p) => ({
-                            ...p,
-                            image: null,
-                            imageFile: null,
-                          }));
-                          if (fileInputRef.current)
-                            fileInputRef.current.value = "";
-                        }}
-                        className="absolute top-0.5 right-0.5 bg-white/80 p-0.5 rounded-full text-red-500 opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 size={10} />
-                      </button>
-                    </div>
-                  )}
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-16 h-16 border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center bg-white cursor-pointer hover:bg-slate-50 hover:border-[#125852] transition-colors"
-                  >
-                    <Upload size={16} className="text-slate-400" />
-                    <span className="text-[8px] font-bold text-slate-400 mt-0.5">
-                      UPLOAD
-                    </span>
-                  </div>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept="image/jpeg,image/png,image/webp"
-                  />
-                </div>
-                <p className="text-[8px] text-slate-400">
-                  JPEG, PNG or WebP · max 5 MB
-                </p>
-              </div>
-              <div className="flex items-center justify-between pt-1">
-                <div>
-                  <p className="text-[11px] font-bold text-slate-800 uppercase">
-                    Publish immediately
-                  </p>
-                  <p className="text-[9px] text-slate-400">
-                    Off = saved as draft.
-                  </p>
-                </div>
-                <div
-                  onClick={() => setIsPublished(!isPublished)}
-                  className={`w-10 h-5 flex items-center rounded-full p-0.5 cursor-pointer transition-all ${isPublished ? "bg-green-500" : "bg-slate-200"}`}
-                >
-                  <div
-                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${isPublished ? "translate-x-5" : "translate-x-0"}`}
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="px-5 py-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/20">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsModalOpen(false);
-                  resetForm();
-                }}
-                className="px-6 py-2 text-[10px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="px-6 py-2 bg-[#F5B841] text-white rounded-lg text-[10px] font-bold uppercase shadow-sm disabled:opacity-60 hover:bg-[#E0A83B] active:scale-95 transition-all"
-              >
-                {isLoading
-                  ? "Publishing..."
-                  : `Publish ${isServiceVendor ? "Service" : "Product"}`}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      {/* Use the reusable ProductListing component */}
+      <ProductListing
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleSubmitListing}
+        isLoading={isLoading}
+        isServiceVendor={isServiceVendor}
+        businessCategory={businessCategory}
+        currencySymbol={currencySymbol}
+        submitLabel={isServiceVendor ? "Publish Service" : "Publish Product"}
+      />
     </div>
   );
 };
