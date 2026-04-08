@@ -196,18 +196,20 @@ const ProductDashboard = () => {
   const handleUpdateProduct = async (productId, payload, imageFiles) => {
     setIsLoading(true);
     try {
-      await updateProductListing(productId, {
+      const updateData = {
         title: payload.title,
-        price: payload.price,
-        sku: payload.sku,
+        price: Number(payload.price),
+        sku: payload.sku || '',
         qty: payload.qty,
         stock: Number(payload.stock) || 0,
-        location: payload.location,
-        description: payload.description,
-        is_published: payload.is_published,
+        location: payload.location || '',
+        description: payload.description || '',
+        is_published: payload.is_published === true,
         sizes: payload.sizes || [],
         colors: payload.colors || [],
-      });
+      };
+      
+      await updateProductListing(productId, updateData);
       
       if (imageFiles.length > 0) {
         await uploadListingImages(productId, imageFiles);
@@ -230,11 +232,11 @@ const ProductDashboard = () => {
   };
 
   const handleProductClick = (product) => {
-    setSelectedProduct({
+    const transformedProduct = {
       id: product.id,
       title: product.title || '',
       category: product.category || '',
-      price: product.price || '',
+      price: product.price ? String(product.price) : '',
       sku: product.sku || '',
       qty: QTY_DISPLAY[product.inventory_quality] || product.qty || 'Medium',
       location: product.vendor_location || product.location || '',
@@ -244,7 +246,9 @@ const ProductDashboard = () => {
       colors: product.colors || [],
       is_published: product.is_published === true || product.status === 'published',
       images: product.images || [],
-    });
+    };
+    
+    setSelectedProduct(transformedProduct);
     setIsEditModalOpen(true);
   };
 
@@ -264,6 +268,7 @@ const ProductDashboard = () => {
       showSuccess('Product deleted.');
     } catch (err) {
       console.error('Failed to delete product', err);
+      showSuccess('Failed to delete product. Please try again.');
     } finally { 
       setIsLoading(false); 
     }
@@ -459,6 +464,7 @@ const ProductDashboard = () => {
 
       {/* Create Product Modal - Using Shared Component */}
       <ProductListing
+        key="create-product-modal"
         isOpen={isProductModalOpen}
         onClose={() => setIsProductModalOpen(false)}
         onSubmit={handleCreateProduct}
@@ -471,6 +477,7 @@ const ProductDashboard = () => {
 
       {/* Edit Product Modal - Using Shared Component with initialData */}
       <ProductListing
+        key={selectedProduct?.id || 'edit-product-modal'}
         isOpen={isEditModalOpen}
         onClose={() => {
           setIsEditModalOpen(false);
