@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import VendorSidebar from '../components/VendorSidebar';
 import Navbar3 from '../components/adminDashboard/Navbar4';
 import Footer from "../components/Vendormanagement/VendorFooter";
@@ -29,12 +28,12 @@ const CATEGORIES = [
 
 const getQualityStyle = (qty) => {
   const q = (qty || '').toLowerCase();
-  if (q === 'high')   return { bg: '#FFF8E7', text: '#B8860B', border: '#F5B841' };
-  if (q === 'low')    return { bg: '#FFF3E0', text: '#C07000', border: '#E09030' };
-  return               { bg: '#FFFBF0', text: '#A07800', border: '#F5C842' };
+  if (q === 'high') return { bg: '#FFF8E7', text: '#B8860B', border: '#F5B841' };
+  if (q === 'low')  return { bg: '#FFF3E0', text: '#C07000', border: '#E09030' };
+  return              { bg: '#FFFBF0', text: '#A07800', border: '#F5C842' };
 };
 
-// ─── Stat Card Component ──────────────────────────────────────────────────────
+// ─── Stat Card ────────────────────────────────────────────────────────────────
 const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
   <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
     <div className="flex items-start justify-between">
@@ -51,7 +50,7 @@ const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
 
 // ─── ProductCard ──────────────────────────────────────────────────────────────
 const ProductCard = ({ product, currencySymbol, onClick }) => {
-  const qStyle = getQualityStyle(product.inventory_quality || product.qty);
+  const qStyle    = getQualityStyle(product.inventory_quality || product.qty);
   const mainImage = product.images?.[0]?.image || null;
   return (
     <div
@@ -92,27 +91,28 @@ const ProductCard = ({ product, currencySymbol, onClick }) => {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const ProductDashboard = () => {
-  const [viewType, setViewType] = useState('grid');
-  const [products, setProducts] = useState([]);
+  const [viewType,           setViewType]           = useState('grid');
+  const [products,           setProducts]           = useState([]);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isFetching, setIsFetching] = useState(true);
-  const [currencySymbol, setCurrencySymbol] = useState('$');
-  const [vendorCountry, setVendorCountry] = useState('');
-  const [businessCategory, setBusinessCategory] = useState('retail');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchFocused, setSearchFocused] = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [filterCategory, setFilterCategory] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterQuality, setFilterQuality] = useState('');
+  const [isEditModalOpen,    setIsEditModalOpen]    = useState(false);
+  const [isDeleteModalOpen,  setIsDeleteModalOpen]  = useState(false);
+  const [selectedProduct,    setSelectedProduct]    = useState(null);
+  const [isLoading,          setIsLoading]          = useState(false);
+  const [isFetching,         setIsFetching]         = useState(true);
+  const [currencySymbol,     setCurrencySymbol]     = useState('$');
+  const [vendorCountry,      setVendorCountry]      = useState('');
+  const [businessCategory,   setBusinessCategory]   = useState('retail');
+  const [searchQuery,        setSearchQuery]        = useState('');
+  const [searchFocused,      setSearchFocused]      = useState(false);
+  const [successMsg,         setSuccessMsg]         = useState('');
+  const [isFilterOpen,       setIsFilterOpen]       = useState(false);
+  const [filterCategory,     setFilterCategory]     = useState('');
+  const [filterStatus,       setFilterStatus]       = useState('');
+  const [filterQuality,      setFilterQuality]      = useState('');
+  const [vendorType,         setVendorType]         = useState('product');
   const filterRef = useRef(null);
-  const [vendorType, setVendorType] = useState("product");
 
+  // ── Load vendor info ────────────────────────────────────────────────────────
   useEffect(() => {
     const loadVendorData = async () => {
       try {
@@ -121,26 +121,23 @@ const ProductDashboard = () => {
           setVendorCountry(data.country);
           setCurrencySymbol(getCurrencySymbol(data.country));
         }
-        if (data?.businessCategory) {
-          setBusinessCategory(data.businessCategory);
-        }
-        const serviceCategories = [
-          "beauty", "transport", "tailoring", "airlines", "hotels", "other",
-        ];
-        const bc = data?.businessCategory || "retail";
-        const vType = serviceCategories.includes(bc) ? "service" : "product";
+        if (data?.businessCategory) setBusinessCategory(data.businessCategory);
+
+        const serviceCategories = ['beauty', 'transport', 'tailoring', 'airlines', 'hotels', 'other'];
+        const bc    = data?.businessCategory || 'retail';
+        const vType = serviceCategories.includes(bc) ? 'service' : 'product';
         setVendorType(vType);
       } catch (err) {
-        console.error("Failed to load vendor info", err);
+        console.error('Failed to load vendor info', err);
       }
     };
     loadVendorData();
   }, []);
 
-  useEffect(() => {
-    loadProducts();
-  }, []);
+  // ── Load products ───────────────────────────────────────────────────────────
+  useEffect(() => { loadProducts(); }, []);
 
+  // ── Close filter on outside click ──────────────────────────────────────────
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (filterRef.current && !filterRef.current.contains(e.target)) setIsFilterOpen(false);
@@ -151,22 +148,22 @@ const ProductDashboard = () => {
 
   const loadProducts = async () => {
     setIsFetching(true);
-    try { 
+    try {
       const data = await getProducts();
       setProducts(data || []);
-    } catch (err) { 
-      console.error('Failed to load products', err); 
-    } finally { 
-      setIsFetching(false); 
+    } catch (err) {
+      console.error('Failed to load products', err);
+    } finally {
+      setIsFetching(false);
     }
   };
 
-  const showSuccess = (msg) => { 
-    setSuccessMsg(msg); 
-    setTimeout(() => setSuccessMsg(''), 4000); 
+  const showSuccess = (msg) => {
+    setSuccessMsg(msg);
+    setTimeout(() => setSuccessMsg(''), 4000);
   };
 
-  // Handle product creation
+  // ── Create ──────────────────────────────────────────────────────────────────
   const handleCreateProduct = async (payload, imageFiles) => {
     setIsLoading(true);
     try {
@@ -192,29 +189,25 @@ const ProductDashboard = () => {
     }
   };
 
-  // Handle product update
+  // ── Update ──────────────────────────────────────────────────────────────────
   const handleUpdateProduct = async (productId, payload, imageFiles) => {
     setIsLoading(true);
     try {
-      const updateData = {
-        title: payload.title,
-        price: Number(payload.price),
-        sku: payload.sku || '',
-        qty: payload.qty,
-        stock: Number(payload.stock) || 0,
-        location: payload.location || '',
-        description: payload.description || '',
+      await updateProductListing(productId, {
+        title:        payload.title,
+        price:        payload.price,
+        sku:          payload.sku || '',
+        qty:          payload.qty,
+        stock:        Number(payload.stock) || 0,
+        location:     payload.location || '',
+        description:  payload.description || '',
         is_published: payload.is_published === true,
-        sizes: payload.sizes || [],
-        colors: payload.colors || [],
-      };
-      
-      await updateProductListing(productId, updateData);
-      
+        sizes:        payload.sizes  || [],
+        colors:       payload.colors || [],
+      });
       if (imageFiles.length > 0) {
         await uploadListingImages(productId, imageFiles);
       }
-      
       await loadProducts();
       setIsEditModalOpen(false);
       setSelectedProduct(null);
@@ -231,32 +224,32 @@ const ProductDashboard = () => {
     }
   };
 
+  // ── Open edit modal ─────────────────────────────────────────────────────────
   const handleProductClick = (product) => {
-    const transformedProduct = {
-      id: product.id,
-      title: product.title || '',
-      category: product.category || '',
-      price: product.price ? String(product.price) : '',
-      sku: product.sku || '',
-      qty: QTY_DISPLAY[product.inventory_quality] || product.qty || 'Medium',
-      location: product.vendor_location || product.location || '',
-      description: product.description || '',
-      stock: product.detail?.stock ?? product.stock ?? 0,
-      sizes: product.sizes || [],
-      colors: product.colors || [],
+    setSelectedProduct({
+      id:           product.id,
+      title:        product.title        || '',
+      category:     product.category     || '',
+      price:        product.price        ? String(product.price) : '',
+      sku:          product.sku          || '',
+      qty:          QTY_DISPLAY[product.inventory_quality] || product.qty || 'Medium',
+      location:     product.vendor_location || product.location || '',
+      description:  product.description  || '',
+      stock:        product.detail?.stock ?? product.stock ?? 0,
+      sizes:        product.sizes        || [],
+      colors:       product.colors       || [],
       is_published: product.is_published === true || product.status === 'published',
-      images: product.images || [],
-    };
-    
-    setSelectedProduct(transformedProduct);
+      images:       product.images       || [],
+    });
     setIsEditModalOpen(true);
   };
 
-  const handleDelete = () => { 
-    if (!selectedProduct?.id) return; 
-    setIsDeleteModalOpen(true); 
+  // ── Delete ──────────────────────────────────────────────────────────────────
+  const handleDelete = () => {
+    if (!selectedProduct?.id) return;
+    setIsDeleteModalOpen(true);
   };
-  
+
   const confirmDelete = async () => {
     setIsDeleteModalOpen(false);
     setIsLoading(true);
@@ -268,28 +261,27 @@ const ProductDashboard = () => {
       showSuccess('Product deleted.');
     } catch (err) {
       console.error('Failed to delete product', err);
-      showSuccess('Failed to delete product. Please try again.');
-    } finally { 
-      setIsLoading(false); 
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // ── Filtering ───────────────────────────────────────────────────────────────
   const filteredProducts = products.filter((p) => {
-    const matchesSearch = p.title?.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch   = p.title?.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = !filterCategory || p.category === filterCategory;
-    const matchesStatus = !filterStatus || (filterStatus === 'published' && p.is_published === true) || (filterStatus === 'draft' && p.is_published !== true);
-    const rawQty = (p.inventory_quality || p.qty || '').toUpperCase();
-    const matchesQuality = !filterQuality || rawQty === filterQuality.toUpperCase();
+    const matchesStatus   = !filterStatus
+      || (filterStatus === 'published' && p.is_published === true)
+      || (filterStatus === 'draft'     && p.is_published !== true);
+    const rawQty          = (p.inventory_quality || p.qty || '').toUpperCase();
+    const matchesQuality  = !filterQuality || rawQty === filterQuality.toUpperCase();
     return matchesSearch && matchesCategory && matchesStatus && matchesQuality;
   });
 
   const activeFilterCount = [filterCategory, filterStatus, filterQuality].filter(Boolean).length;
-  const clearFilters = () => { 
-    setFilterCategory(''); 
-    setFilterStatus(''); 
-    setFilterQuality(''); 
-  };
+  const clearFilters = () => { setFilterCategory(''); setFilterStatus(''); setFilterQuality(''); };
 
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="flex min-h-screen bg-[#ecece7] text-slate-800 p-3 gap-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
       <VendorSidebar activePage="products" vendorType={vendorType} businessCategory={businessCategory} />
@@ -297,6 +289,7 @@ const ProductDashboard = () => {
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar3 />
 
+        {/* Success toast */}
         {successMsg && (
           <div className="fixed top-6 right-6 z-[200] bg-emerald-600 text-white px-4 py-2 rounded-xl shadow-lg text-xs font-bold flex items-center gap-2 animate-pulse">
             <CheckCircle2 size={12} /> {successMsg}
@@ -304,6 +297,7 @@ const ProductDashboard = () => {
         )}
 
         <main className="p-5 max-w-[1400px] mx-auto w-full pb-16">
+
           {/* Header */}
           <div className="flex justify-between items-center mb-5">
             <div>
@@ -327,10 +321,10 @@ const ProductDashboard = () => {
 
           {/* Stat cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
-            <StatCard title="Total Products" number={products.length} icon={Package} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
-            <StatCard title="Active Listings" number={products.filter((p) => p.is_published === true).length} icon={ListChecks} iconBgColor="bg-blue-50" iconColor="text-blue-600" />
-            <StatCard title="High Quality" number={products.filter((p) => (p.inventory_quality || p.qty || '').toUpperCase() === 'HIGH').length} icon={Box} iconBgColor="bg-orange-50" iconColor="text-orange-600" />
-            <StatCard title="Drafts" number={products.filter((p) => p.is_published !== true).length} icon={CreditCard} iconBgColor="bg-indigo-50" iconColor="text-indigo-600" />
+            <StatCard title="Total Products"  number={products.length}                                                                           icon={Package}    iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
+            <StatCard title="Active Listings" number={products.filter((p) => p.is_published === true).length}                                    icon={ListChecks} iconBgColor="bg-blue-50"    iconColor="text-blue-600"    />
+            <StatCard title="High Quality"    number={products.filter((p) => (p.inventory_quality || p.qty || '').toUpperCase() === 'HIGH').length} icon={Box}        iconBgColor="bg-orange-50" iconColor="text-orange-600" />
+            <StatCard title="Drafts"          number={products.filter((p) => p.is_published !== true).length}                                    icon={CreditCard} iconBgColor="bg-indigo-50" iconColor="text-indigo-600" />
           </div>
 
           {/* Search + Filter + View toggle */}
@@ -354,6 +348,7 @@ const ProductDashboard = () => {
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Filter dropdown */}
               <div className="relative" ref={filterRef}>
                 <button
                   onClick={() => setIsFilterOpen((v) => !v)}
@@ -364,12 +359,16 @@ const ProductDashboard = () => {
                     <span className="bg-white text-[#F5B841] text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{activeFilterCount}</span>
                   )}
                 </button>
+
                 {isFilterOpen && (
                   <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-slate-200 rounded-2xl shadow-2xl p-5 w-72">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-[12px] font-bold text-slate-800 uppercase tracking-wide">Filter Products</h3>
-                      {activeFilterCount > 0 && <button onClick={clearFilters} className="text-[10px] font-bold text-[#F5B841] hover:underline">Clear all</button>}
+                      {activeFilterCount > 0 && (
+                        <button onClick={clearFilters} className="text-[10px] font-bold text-[#F5B841] hover:underline">Clear all</button>
+                      )}
                     </div>
+
                     <div className="mb-4">
                       <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Status</label>
                       <div className="flex gap-2 flex-wrap">
@@ -381,6 +380,7 @@ const ProductDashboard = () => {
                         ))}
                       </div>
                     </div>
+
                     <div className="mb-4">
                       <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Quality</label>
                       <div className="flex gap-2 flex-wrap">
@@ -392,6 +392,7 @@ const ProductDashboard = () => {
                         ))}
                       </div>
                     </div>
+
                     <div>
                       <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Category</label>
                       <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
@@ -400,6 +401,7 @@ const ProductDashboard = () => {
                         {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
                       </select>
                     </div>
+
                     <div className="mt-4 pt-3 border-t border-slate-100 text-[10px] text-slate-400 text-center">
                       Showing {filteredProducts.length} of {products.length} products
                     </div>
@@ -408,6 +410,8 @@ const ProductDashboard = () => {
               </div>
 
               <div className="h-8 w-[1px] bg-slate-200 mx-1" />
+
+              {/* View toggle */}
               <div className="flex bg-white border border-slate-200 rounded-lg p-1">
                 <button onClick={() => setViewType('grid')} className={`p-1.5 rounded ${viewType === 'grid' ? 'bg-slate-100' : ''}`}><LayoutGrid size={16} /></button>
                 <button onClick={() => setViewType('list')} className={`p-1.5 rounded ${viewType === 'list' ? 'bg-slate-100' : ''}`}><List size={16} /></button>
@@ -419,13 +423,13 @@ const ProductDashboard = () => {
           {activeFilterCount > 0 && (
             <div className="flex items-center gap-2 mb-4 flex-wrap">
               <span className="text-[10px] text-slate-400 font-bold uppercase">Active:</span>
-              {filterStatus && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterStatus}<button onClick={() => setFilterStatus('')}><X size={9} /></button></span>}
-              {filterQuality && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterQuality}<button onClick={() => setFilterQuality('')}><X size={9} /></button></span>}
+              {filterStatus   && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterStatus}  <button onClick={() => setFilterStatus('')}><X size={9} /></button></span>}
+              {filterQuality  && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterQuality} <button onClick={() => setFilterQuality('')}><X size={9} /></button></span>}
               {filterCategory && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterCategory}<button onClick={() => setFilterCategory('')}><X size={9} /></button></span>}
             </div>
           )}
 
-          {/* Product grid */}
+          {/* Product grid / empty states */}
           {isFetching ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[...Array(8)].map((_, i) => (
@@ -442,8 +446,12 @@ const ProductDashboard = () => {
           ) : filteredProducts.length === 0 ? (
             <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-20 text-center">
               <ShoppingBag className="text-slate-200 mx-auto mb-4" size={48} />
-              <h3 className="text-lg font-bold text-slate-800">{activeFilterCount > 0 || searchQuery ? 'No matching products' : 'No products found'}</h3>
-              <p className="text-slate-500 text-sm mb-6">{activeFilterCount > 0 || searchQuery ? 'Try adjusting your search or filters.' : 'Start by adding your first product to the catalog.'}</p>
+              <h3 className="text-lg font-bold text-slate-800">
+                {activeFilterCount > 0 || searchQuery ? 'No matching products' : 'No products found'}
+              </h3>
+              <p className="text-slate-500 text-sm mb-6">
+                {activeFilterCount > 0 || searchQuery ? 'Try adjusting your search or filters.' : 'Start by adding your first product to the catalog.'}
+              </p>
               {!activeFilterCount && !searchQuery && (
                 <button onClick={() => setIsProductModalOpen(true)} className="bg-[#F5B841] text-white px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 mx-auto hover:bg-[#E0A83B]">
                   <Plus size={16} /> Add Your First Product
@@ -462,7 +470,9 @@ const ProductDashboard = () => {
         <Footer />
       </div>
 
-      {/* Create Product Modal - Using Shared Component */}
+      {/* ── Modals ─────────────────────────────────────────────────────────── */}
+
+      {/* Create Product Modal */}
       <ProductListing
         key="create-product-modal"
         isOpen={isProductModalOpen}
@@ -475,9 +485,9 @@ const ProductDashboard = () => {
         submitLabel="Publish Product"
       />
 
-      {/* Edit Product Modal - Using Shared Component with initialData */}
+      {/* Edit Product Modal */}
       <ProductListing
-        key={selectedProduct?.id || 'edit-product-modal'}
+        key={selectedProduct?.id ? `edit-${selectedProduct.id}` : 'edit-product-modal'}
         isOpen={isEditModalOpen}
         onClose={() => {
           setIsEditModalOpen(false);
@@ -496,7 +506,7 @@ const ProductDashboard = () => {
         submitLabel="Save Changes"
       />
 
-      {/* DELETE CONFIRM */}
+      {/* Delete Confirm Modal */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center" style={{ fontFamily: "'Poppins', sans-serif" }}>
@@ -504,10 +514,16 @@ const ProductDashboard = () => {
               <Trash2 size={20} className="text-red-500" />
             </div>
             <h3 className="text-base font-bold text-slate-800 mb-1">Delete Product?</h3>
-            <p className="text-[11px] text-slate-500 mb-5">"<span className="font-bold text-slate-700">{selectedProduct?.title}</span>" will be permanently removed. This cannot be undone.</p>
+            <p className="text-[11px] text-slate-500 mb-5">
+              "<span className="font-bold text-slate-700">{selectedProduct?.title}</span>" will be permanently removed. This cannot be undone.
+            </p>
             <div className="flex gap-3">
-              <button type="button" onClick={() => setIsDeleteModalOpen(false)} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
-              <button type="button" onClick={confirmDelete} className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg text-[11px] font-bold hover:bg-red-600 transition-colors">Yes, Delete</button>
+              <button type="button" onClick={() => setIsDeleteModalOpen(false)} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-50">
+                Cancel
+              </button>
+              <button type="button" onClick={confirmDelete} className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg text-[11px] font-bold hover:bg-red-600 transition-colors">
+                Yes, Delete
+              </button>
             </div>
           </div>
         </div>

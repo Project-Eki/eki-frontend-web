@@ -326,12 +326,8 @@ export const markOrderNotificationRead = async (notifId) => {
 };
 
 // ─── ORDER NORMALISER ─────────────────────────────────────────────────────────
-// Handles every field-name variation Django might return so components always
-// get a consistent shape: { id, customer, total, status, items, date }
 const normalizeOrder = (o) => ({
-  // spread raw first so nothing is lost
   ...o,
-  // then overwrite with normalised guaranteed fields
   id: o.id ?? o.order_id ?? o.pk,
   customer:
     o.customer       ??
@@ -414,80 +410,67 @@ export const getVendorDashboard = async () => {
     console.error('[getVendorDashboard] command-center failed:', dashErr);
   }
 
-  let country = 'Uganda';
-  let storeName = '';
-  let vendorType = 'Products';
+  let country          = 'Uganda';
+  let storeName        = '';
+  let vendorType       = 'Products';
   let businessCategory = 'retail';
-  let currencySymbol = 'UGX';
-  
-  // Get vendor type fields from the API response
-  let isProductVendor = raw.is_product_vendor ?? true;
-  let isServiceVendor = raw.is_service_vendor ?? false;
-  let vendor_type = raw.vendor_type ?? (isProductVendor ? 'product' : 'service');
+  let currencySymbol   = 'UGX';
+
+  let isProductVendor    = raw.is_product_vendor ?? true;
+  let isServiceVendor    = raw.is_service_vendor ?? false;
+  let vendor_type        = raw.vendor_type ?? (isProductVendor ? 'product' : 'service');
   let allowedListingTypes = raw.allowed_listing_types ?? (isProductVendor ? ['product'] : ['service']);
 
   try {
     const p = await getVendorProfile();
-    country = p.business_country || p.country || localStorage.getItem('vendor_country') || 'Uganda';
-    storeName = p.business_name || '';
-    vendorType = p.business_type || (isProductVendor ? 'Products' : 'Services');
+    country          = p.business_country || p.country || localStorage.getItem('vendor_country') || 'Uganda';
+    storeName        = p.business_name || '';
+    vendorType       = p.business_type || (isProductVendor ? 'Products' : 'Services');
     businessCategory = p.business_category || raw.business_category || 'retail';
-    currencySymbol = raw.currencySymbol || p.currencySymbol || 'UGX';
+    currencySymbol   = raw.currencySymbol || p.currencySymbol || 'UGX';
   } catch (_) {}
 
-  // Always fetch live orders
   let liveOrders = [];
   try {
     liveOrders = await getVendorOrders();
   } catch (_) {}
 
-  const metricsData = raw.metrics || {};
-  const salesHistoryData = raw.salesHistory || [];
+  const metricsData        = raw.metrics        || {};
+  const salesHistoryData   = raw.salesHistory   || [];
   const inventoryAlertsData = raw.inventoryAlerts || [];
-  const reviewsData = raw.reviews || [];
-
-  const rawRecentOrders = raw.recentOrders || [];
-  const recentOrdersData = rawRecentOrders.length > 0 ? rawRecentOrders : liveOrders.slice(0, 10);
+  const reviewsData        = raw.reviews        || [];
+  const rawRecentOrders    = raw.recentOrders   || [];
+  const recentOrdersData   = rawRecentOrders.length > 0 ? rawRecentOrders : liveOrders.slice(0, 10);
 
   const openOrdersCount = Number(metricsData.openOrders ?? 0) || liveOrders.filter((o) =>
     ['pending', 'confirmed', 'processing'].includes(String(o.status).toLowerCase())
   ).length;
 
-  // ALL data including vendor type fields
   return {
     storeName,
     vendorType,
     country,
     businessCategory,
     currencySymbol,
-
-    vendor_type: vendor_type,
+    vendor_type,
     is_product_vendor: isProductVendor,
     is_service_vendor: isServiceVendor,
     allowed_listing_types: allowedListingTypes,
-    
-    // Profile info 
-    first_name: raw.first_name,
-    last_name: raw.last_name,
-    email: raw.email,
-    phone_number: raw.phone_number,
+    first_name:      raw.first_name,
+    last_name:       raw.last_name,
+    email:           raw.email,
+    phone_number:    raw.phone_number,
     profile_picture: raw.profile_picture,
-
     metrics: {
-      grossSales: Number(metricsData.grossSales ?? 0),
-      openOrders: openOrdersCount,
-      pendingPayouts: Number(metricsData.pendingPayouts ?? 0),
-      activeListings: Number(metricsData.activeListings ?? 0),
+      grossSales:      Number(metricsData.grossSales      ?? 0),
+      openOrders:      openOrdersCount,
+      pendingPayouts:  Number(metricsData.pendingPayouts  ?? 0),
+      activeListings:  Number(metricsData.activeListings  ?? 0),
     },
-
-    salesHistory: salesHistoryData.map((item) => ({
-      date: item.date,
-      sales: Number(item.sales ?? 0),
-    })),
-
-    recentOrders: recentOrdersData.map(normalizeOrder),
-    inventoryAlerts: inventoryAlertsData,
-    reviews: reviewsData,
+    salesHistory:     salesHistoryData.map((item) => ({ date: item.date, sales: Number(item.sales ?? 0) })),
+    recentOrders:     recentOrdersData.map(normalizeOrder),
+    inventoryAlerts:  inventoryAlertsData,
+    reviews:          reviewsData,
   };
 };
 
@@ -502,22 +485,25 @@ export const getCategories = (businessCategory = null) => {
     });
 };
 
+// ─── LISTING NORMALISER ───────────────────────────────────────────────────────
 const normalizeListing = (item) => ({
   ...item,
   is_published: item.is_published === true || item.status === 'published',
 });
 
-// Added listing_type filter to only get products
+// ─── GET PRODUCTS ─────────────────────────────────────────────────────────────
 export const getProducts = async () => {
   const params = { listing_type: 'product' };
-  const res = await api.get('/listings/', { params });
+  const res    = await api.get('/listings/', { params });
   const payload = res.data?.data ?? res.data;
-  if (Array.isArray(payload)) return payload.map(normalizeListing);
+  if (Array.isArray(payload))          return payload.map(normalizeListing);
   if (Array.isArray(payload?.results)) return payload.results.map(normalizeListing);
   return [];
 };
 
-// Added listing_type: 'product' to create payload
+// ─── CREATE PRODUCT LISTING ───────────────────────────────────────────────────
+// FIX: stock is passed in detail.stock. Empty variants [] when no real
+// size/color variants so Django falls back to detail.stock for total_stock.
 export const createProductListing = async (productData) => {
   const qualityMap = {
     High: 'high', Medium: 'medium', Low: 'low',
@@ -525,33 +511,38 @@ export const createProductListing = async (productData) => {
     HIGH: 'high', MEDIUM: 'medium', LOW: 'low',
   };
 
+  const stockQty = parseInt(productData.stock) || 0;
+  const hasRealVariants =
+    (Array.isArray(productData.sizes)  && productData.sizes.filter(Boolean).length  > 0) ||
+    (Array.isArray(productData.colors) && productData.colors.filter(Boolean).length > 0);
+
   let variants = [];
 
-  if (Array.isArray(productData.variants) && productData.variants.length > 0) {
-    productData.variants.forEach((v) => {
-      if (!v.value?.trim()) return;
-      if (v.type === 'Size')  variants.push({ color: '',             size: v.value.trim(), stock: 0 });
-      if (v.type === 'Color') variants.push({ color: v.value.trim(), size: '',             stock: 0 });
-    });
-  }
+  if (hasRealVariants) {
+    if (Array.isArray(productData.variants) && productData.variants.length > 0) {
+      productData.variants.forEach((v) => {
+        if (!v.value?.trim()) return;
+        if (v.type === 'Size')  variants.push({ color: '',             size: v.value.trim(), stock: parseInt(v.stock) || 0 });
+        if (v.type === 'Color') variants.push({ color: v.value.trim(), size: '',             stock: parseInt(v.stock) || 0 });
+      });
+    }
 
-  const sizes  = Array.isArray(productData.sizes)  ? productData.sizes.filter(Boolean)  : [];
-  const colors = Array.isArray(productData.colors) ? productData.colors.filter(Boolean) : [];
+    const sizes  = Array.isArray(productData.sizes)  ? productData.sizes.filter(Boolean)  : [];
+    const colors = Array.isArray(productData.colors) ? productData.colors.filter(Boolean) : [];
 
-  if (variants.length === 0 && (sizes.length > 0 || colors.length > 0)) {
-    if (sizes.length > 0 && colors.length > 0) {
-      sizes.forEach((size) => colors.forEach((color) => variants.push({ color, size, stock: 0 })));
-    } else if (sizes.length > 0) {
-      sizes.forEach((size)  => variants.push({ color: '', size, stock: 0 }));
-    } else {
-      colors.forEach((color) => variants.push({ color, size: '', stock: 0 }));
+    if (variants.length === 0) {
+      if (sizes.length > 0 && colors.length > 0) {
+        sizes.forEach((size) => colors.forEach((color) => variants.push({ color, size, stock: 0 })));
+      } else if (sizes.length > 0) {
+        sizes.forEach((size)  => variants.push({ color: '', size, stock: 0 }));
+      } else {
+        colors.forEach((color) => variants.push({ color, size: '', stock: 0 }));
+      }
     }
   }
 
-  if (variants.length === 0) variants.push({ color: 'Default', size: '', stock: 0 });
-
   const payload = {
-    listing_type: 'product',  
+    listing_type:      'product',
     business_category: productData.business_category,
     title:             productData.title?.trim(),
     description:       productData.description?.trim() || '',
@@ -564,6 +555,7 @@ export const createProductListing = async (productData) => {
       sku:        productData.sku?.trim() || '',
       base_price: String(parseFloat(productData.price)),
       quality:    qualityMap[productData.qty] ?? 'medium',
+      stock:      stockQty,
       variants,
     },
   };
@@ -575,7 +567,7 @@ export const createProductListing = async (productData) => {
   return normalizeListing(res.data?.data ?? res.data);
 };
 
-// Added listing_type: 'product' to update payload
+// ─── UPDATE PRODUCT LISTING ───────────────────────────────────────────────────
 export const updateProductListing = async (listingId, productData) => {
   const qualityMap = {
     High: 'high', Medium: 'medium', Low: 'low',
@@ -583,18 +575,50 @@ export const updateProductListing = async (listingId, productData) => {
     HIGH: 'high', MEDIUM: 'medium', LOW: 'low',
   };
 
+  const stockQty = parseInt(productData.stock) || 0;
+  const hasRealVariants =
+    (Array.isArray(productData.sizes)  && productData.sizes.filter(Boolean).length  > 0) ||
+    (Array.isArray(productData.colors) && productData.colors.filter(Boolean).length > 0);
+
+  let variants = [];
+
+  if (hasRealVariants) {
+    if (Array.isArray(productData.variants) && productData.variants.length > 0) {
+      productData.variants.forEach((v) => {
+        if (!v.value?.trim()) return;
+        if (v.type === 'Size')  variants.push({ color: '',             size: v.value.trim(), stock: parseInt(v.stock) || 0 });
+        if (v.type === 'Color') variants.push({ color: v.value.trim(), size: '',             stock: parseInt(v.stock) || 0 });
+      });
+    }
+
+    const sizes  = Array.isArray(productData.sizes)  ? productData.sizes.filter(Boolean)  : [];
+    const colors = Array.isArray(productData.colors) ? productData.colors.filter(Boolean) : [];
+
+    if (variants.length === 0) {
+      if (sizes.length > 0 && colors.length > 0) {
+        sizes.forEach((size) => colors.forEach((color) => variants.push({ color, size, stock: stockQty })));
+      } else if (sizes.length > 0) {
+        sizes.forEach((size)  => variants.push({ color: '', size, stock: stockQty }));
+      } else {
+        colors.forEach((color) => variants.push({ color, size: '', stock: stockQty }));
+      }
+    }
+  }
+
   const payload = {
-    listing_type: 'product',  
-    title:       productData.title?.trim(),
-    description: productData.description?.trim() || '',
-    status:      productData.is_published ? 'published' : 'draft',
-    price:       String(parseFloat(productData.price)),
-    price_unit:  'item',
-    location:    productData.location?.trim() || '',
+    listing_type: 'product',
+    title:        productData.title?.trim(),
+    description:  productData.description?.trim() || '',
+    status:       productData.is_published ? 'published' : 'draft',
+    price:        String(parseFloat(productData.price)),
+    price_unit:   'item',
+    location:     productData.location?.trim() || '',
     detail: {
       sku:        productData.sku?.trim() || '',
       base_price: String(parseFloat(productData.price)),
       quality:    qualityMap[productData.qty] ?? 'medium',
+      stock:      stockQty,
+      variants,
     },
   };
 
@@ -603,6 +627,22 @@ export const updateProductListing = async (listingId, productData) => {
   console.log('[listings] PATCH /listings/', listingId, '→', JSON.stringify(payload, null, 2));
   const res = await api.patch(`/listings/${listingId}/`, payload);
   return normalizeListing(res.data?.data ?? res.data);
+};
+
+// ─── VARIANT STOCK HELPERS ────────────────────────────────────────────────────
+export const updateVariantStock = async (listingId, variantId, stock) => {
+  const res = await api.patch(`/listings/${listingId}/variants/${variantId}/`, {
+    stock: parseInt(stock) || 0,
+  });
+  return res.data?.data ?? res.data;
+};
+
+export const updateProductStock = async (listingId, stock) => {
+  const listing = await api.get(`/listings/${listingId}/`);
+  const variants = listing.data?.data?.detail?.variants || [];
+  const defaultVariant = variants.find((v) => v.color === 'Default' && v.size === '');
+  if (defaultVariant) return updateVariantStock(listingId, defaultVariant.id, stock);
+  throw new Error('No default variant found to update stock');
 };
 
 export const deleteProductListing = (listingId) =>
