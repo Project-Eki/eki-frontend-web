@@ -26,14 +26,14 @@ const formatOrderId = (raw) => {
   return `#${str.toUpperCase()}`;
 };
 
-// ─── Status badge — coloured background, always BLACK text ───────────────────
+// ─── Status badge — no background, plain black text ──────────────────────────
 const STATUS_STYLES = {
-  pending:    'bg-yellow-100 text-black border border-yellow-200',
-  confirmed:  'bg-blue-100 text-black border border-blue-200',
-  processing: 'bg-indigo-100 text-black border border-indigo-200',
-  completed:  'bg-green-100 text-black border border-green-200',
-  cancelled:  'bg-red-100 text-black border border-red-200',
-  delivered:  'bg-emerald-100 text-black border border-emerald-200',
+  pending:    'text-black',
+  confirmed:  'text-black',
+  processing: 'text-black',
+  completed:  'text-black',
+  cancelled:  'text-black',
+  delivered:  'text-black',
 };
 
 const TAB_FILTERS = ['All', 'Pending', 'Confirmed', 'Processing', 'Completed', 'Cancelled', 'Delivered'];
@@ -73,7 +73,7 @@ const OrderDetailModal = ({ order, currencySymbol, onClose }) => {
   if (!order) return null;
 
   const statusKey  = String(order.status ?? '').toLowerCase();
-  const badgeClass = STATUS_STYLES[statusKey] ?? 'bg-slate-100 text-black border border-slate-200';
+  const badgeClass = STATUS_STYLES[statusKey] ?? 'text-black';
 
   const customerName =
     typeof order.customer === 'object' && order.customer !== null
@@ -540,7 +540,7 @@ const OrderManagement = () => {
                   filteredOrders.map((order, i) => {
                     const statusKey  = String(order.status ?? '').toLowerCase();
                     const badgeClass =
-                      STATUS_STYLES[statusKey] ?? 'bg-slate-100 text-black border border-slate-200';
+                      STATUS_STYLES[statusKey] ?? 'text-black';
 
                     const displayDate = order.date
                       ? (() => {
