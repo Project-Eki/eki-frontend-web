@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import VendorSidebar from "../components/VendorSidebar";
 import Navbar3 from "../components/adminDashboard/Navbar4";
-import Footer from "../components/Vendormanagement/VendorFooter"; 
+import Footer from "../components/Vendormanagement/VendorFooter";
 import {
   getVendorDashboard,
   getCategories,
@@ -10,7 +10,8 @@ import {
   uploadListingImage,
 } from "../services/authService";
 
-import "../utils/currency"
+import { getCurrencySymbol } from "../utils/currency";
+
 import {
   Package,
   ChevronRight,
@@ -78,7 +79,7 @@ const VendorDashboard = () => {
     vendor_type: "product",
     is_product_vendor: true,
     is_service_vendor: false,
-    currencySymbol: "UGX",
+    currencySymbol: getCurrencySymbol("Uganda"),
   });
   const [metrics, setMetrics] = useState({
     grossSales: 0,
@@ -116,16 +117,20 @@ const VendorDashboard = () => {
         const vendorType =
           response.vendor_type ?? (isProductVendor ? "product" : "service");
 
+        // ── FIXED: derive currency from the vendor's country using the utility ──
+        const country = response.country || "Uganda";
+        const resolvedCurrencySymbol = getCurrencySymbol(country);
+
         setVendorData({
           storeName: response.storeName || "",
           vendorType:
             response.vendorType || (isProductVendor ? "Products" : "Services"),
-          country: response.country || "Uganda",
+          country,
           businessCategory: bc,
           vendor_type: vendorType,
           is_product_vendor: isProductVendor,
           is_service_vendor: isServiceVendor,
-          currencySymbol: response.currencySymbol || "UGX",
+          currencySymbol: resolvedCurrencySymbol,
         });
 
         setMetrics(
@@ -152,6 +157,7 @@ const VendorDashboard = () => {
       setIsFetching(false);
     }
   };
+
   const isServiceVendor = vendorData.is_service_vendor;
   const vendorType = vendorData.vendor_type;
   const currencySymbol = vendorData.currencySymbol;

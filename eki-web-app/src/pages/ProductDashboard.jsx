@@ -21,7 +21,7 @@ import {
   getVendorDashboard,
   SignoutUser,
 } from '../services/authService';
-import "../utils/currency"
+import { getCurrencySymbol } from '../utils/currency';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'one_size'];
@@ -36,36 +36,6 @@ const COLOR_SWATCHES = {
   Pink: '#ec4899', Brown: '#92400e', Grey: '#6b7280', Navy: '#1e3a5f',
   Beige: '#d2b48c', Maroon: '#800000', Teal: '#14b8a6', Gold: '#d4af37',
   Silver: '#c0c0c0',
-};
-
-const getCurrencySymbol = (country) => {
-  const map = {
-    uganda: 'UGX', nigeria: '₦', kenya: 'KES', ghana: '₵',
-    'south africa': 'R', tanzania: 'TZS', rwanda: 'RWF',
-    ethiopia: 'ETB', zambia: 'ZMW', egypt: 'EGP', morocco: 'MAD',
-    senegal: 'CFA', cameroon: 'CFA', ivory: 'CFA', "côte d'ivoire": 'CFA',
-    angola: 'AOA', mozambique: 'MZN', zimbabwe: 'ZWL', botswana: 'BWP',
-    namibia: 'NAD', malawi: 'MWK', sudan: 'SDG', tunisia: 'TND',
-    libya: 'LYD', algeria: 'DZD', madagascar: 'MGA', somalia: 'SOS',
-    usa: '$', 'united states': '$', canada: 'CA$', mexico: 'MX$',
-    brazil: 'R$', argentina: '$', colombia: '$', chile: 'CLP',
-    peru: 'S/', venezuela: 'Bs', uruguay: '$U', ecuador: '$',
-    uk: '£', 'united kingdom': '£', germany: '€', france: '€',
-    italy: '€', spain: '€', portugal: '€', netherlands: '€',
-    belgium: '€', austria: '€', switzerland: 'CHF', sweden: 'kr',
-    norway: 'kr', denmark: 'kr', finland: '€', poland: 'zł',
-    czechia: 'Kč', hungary: 'Ft', romania: 'lei', bulgaria: 'лв',
-    russia: '₽', ukraine: '₴', turkey: '₺',
-    china: '¥', japan: '¥', india: '₹', 'south korea': '₩',
-    indonesia: 'Rp', malaysia: 'RM', thailand: '฿', singapore: 'S$',
-    philippines: '₱', vietnam: '₫', bangladesh: '৳', pakistan: '₨',
-    'sri lanka': '₨', nepal: '₨', myanmar: 'K', cambodia: '₭',
-    'saudi arabia': 'SR', uae: 'AED', 'united arab emirates': 'AED',
-    qatar: 'QR', kuwait: 'KD', bahrain: 'BD', jordan: 'JD',
-    israel: '₪', iran: '﷼', iraq: 'IQD',
-    australia: 'A$', 'new zealand': 'NZ$',
-  };
-  return map[country?.toLowerCase()] || '$';
 };
 
 const QTY_DISPLAY = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' };
@@ -571,14 +541,8 @@ const ProductDashboard = () => {
         if (data?.businessCategory) {
           setBusinessCategory(data.businessCategory);
         }
-        // Determine vendor type from business category
         const serviceCategories = [
-          "beauty",
-          "transport",
-          "tailoring",
-          "airlines",
-          "hotels",
-          "other",
+          "beauty", "transport", "tailoring", "airlines", "hotels", "other",
         ];
         const bc = data?.businessCategory || "retail";
         const vType = serviceCategories.includes(bc) ? "service" : "product";
@@ -922,8 +886,7 @@ const ProductDashboard = () => {
                 Product Management
               </h1>
               <p className="text-slate-400 text-[11px]">
-                Manage your inventory, pricing, and visibility across the
-                marketplace.
+                Manage your inventory, pricing, and visibility across the marketplace.
                 {vendorCountry && (
                   <span className="ml-2 bg-slate-100 px-1.5 py-0.5 rounded-full text-slate-500 text-[9px]">
                     {vendorCountry} · {currencySymbol}
@@ -932,10 +895,7 @@ const ProductDashboard = () => {
               </p>
             </div>
             <button
-              onClick={() => {
-                setFormStep(1);
-                setIsProductModalOpen(true);
-              }}
+              onClick={() => { setFormStep(1); setIsProductModalOpen(true); }}
               className="bg-[#F5B841] text-white px-5 py-2.5 rounded-lg text-[12px] font-bold flex items-center gap-2 hover:bg-[#E0A83B] transition-all active:scale-95 shadow-sm"
             >
               <Plus size={14} /> Add New Product
@@ -944,51 +904,16 @@ const ProductDashboard = () => {
 
           {/* Stat cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
-            <StatCard
-              title="Total Products"
-              number={products.length}
-              icon={Package}
-              iconBgColor="bg-emerald-50"
-              iconColor="text-emerald-600"
-            />
-            <StatCard
-              title="Active Listings"
-              number={products.filter((p) => p.is_published === true).length}
-              icon={ListChecks}
-              iconBgColor="bg-blue-50"
-              iconColor="text-blue-600"
-            />
-            <StatCard
-              title="High Quality"
-              number={
-                products.filter(
-                  (p) =>
-                    (p.inventory_quality || p.qty || "").toUpperCase() ===
-                    "HIGH",
-                ).length
-              }
-              icon={Box}
-              iconBgColor="bg-orange-50"
-              iconColor="text-orange-600"
-            />
-            <StatCard
-              title="Drafts"
-              number={products.filter((p) => p.is_published !== true).length}
-              icon={CreditCard}
-              iconBgColor="bg-indigo-50"
-              iconColor="text-indigo-600"
-            />
+            <StatCard title="Total Products" number={products.length} icon={Package} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
+            <StatCard title="Active Listings" number={products.filter((p) => p.is_published === true).length} icon={ListChecks} iconBgColor="bg-blue-50" iconColor="text-blue-600" />
+            <StatCard title="High Quality" number={products.filter((p) => (p.inventory_quality || p.qty || '').toUpperCase() === 'HIGH').length} icon={Box} iconBgColor="bg-orange-50" iconColor="text-orange-600" />
+            <StatCard title="Drafts" number={products.filter((p) => p.is_published !== true).length} icon={CreditCard} iconBgColor="bg-indigo-50" iconColor="text-indigo-600" />
           </div>
 
           {/* Search + Filter + View toggle */}
           <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-            <div
-              className={`relative w-80 flex items-center border rounded-lg shadow-sm transition-all bg-white ${searchFocused ? "border-[#F5B841] ring-1 ring-[#F5B841]" : "border-slate-200"}`}
-            >
-              <Search
-                className={`absolute left-3 transition-colors ${searchFocused ? "text-[#F5B841]" : "text-slate-400"}`}
-                size={16}
-              />
+            <div className={`relative w-80 flex items-center border rounded-lg shadow-sm transition-all bg-white ${searchFocused ? 'border-[#F5B841] ring-1 ring-[#F5B841]' : 'border-slate-200'}`}>
+              <Search className={`absolute left-3 transition-colors ${searchFocused ? 'text-[#F5B841]' : 'text-slate-400'}`} size={16} />
               <input
                 type="text"
                 placeholder="Search by title or SKU..."
@@ -999,11 +924,7 @@ const ProductDashboard = () => {
                 className="w-full pl-9 pr-4 py-2 bg-transparent text-sm focus:outline-none rounded-lg"
               />
               {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 text-slate-400 hover:text-slate-600"
-                >
+                <button type="button" onClick={() => setSearchQuery('')} className="absolute right-3 text-slate-400 hover:text-slate-600">
                   <X size={13} />
                 </button>
               )}
@@ -1013,86 +934,51 @@ const ProductDashboard = () => {
               <div className="relative" ref={filterRef}>
                 <button
                   onClick={() => setIsFilterOpen((v) => !v)}
-                  className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-xs font-bold transition-all ${activeFilterCount > 0 ? "bg-[#F5B841] text-white border-[#F5B841] shadow-sm" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-[#F5B841]"}`}
+                  className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-xs font-bold transition-all ${activeFilterCount > 0 ? 'bg-[#F5B841] text-white border-[#F5B841] shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-[#F5B841]'}`}
                 >
                   <Filter size={14} /> Filters
                   {activeFilterCount > 0 && (
-                    <span className="bg-white text-[#F5B841] text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">
-                      {activeFilterCount}
-                    </span>
+                    <span className="bg-white text-[#F5B841] text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{activeFilterCount}</span>
                   )}
                 </button>
                 {isFilterOpen && (
                   <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-slate-200 rounded-2xl shadow-2xl p-5 w-72">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-[12px] font-bold text-slate-800 uppercase tracking-wide">
-                        Filter Products
-                      </h3>
-                      {activeFilterCount > 0 && (
-                        <button
-                          onClick={clearFilters}
-                          className="text-[10px] font-bold text-[#F5B841] hover:underline"
-                        >
-                          Clear all
-                        </button>
-                      )}
+                      <h3 className="text-[12px] font-bold text-slate-800 uppercase tracking-wide">Filter Products</h3>
+                      {activeFilterCount > 0 && <button onClick={clearFilters} className="text-[10px] font-bold text-[#F5B841] hover:underline">Clear all</button>}
                     </div>
                     <div className="mb-4">
-                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">
-                        Status
-                      </label>
+                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Status</label>
                       <div className="flex gap-2 flex-wrap">
-                        {["", "published", "draft"].map((s) => (
-                          <button
-                            key={s}
-                            type="button"
-                            onClick={() => setFilterStatus(s)}
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${filterStatus === s ? "bg-[#125852] text-white border-[#125852]" : "bg-white text-slate-500 border-slate-200 hover:border-[#125852]"}`}
-                          >
-                            {s === ""
-                              ? "All"
-                              : s.charAt(0).toUpperCase() + s.slice(1)}
+                        {['', 'published', 'draft'].map((s) => (
+                          <button key={s} type="button" onClick={() => setFilterStatus(s)}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${filterStatus === s ? 'bg-[#125852] text-white border-[#125852]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#125852]'}`}>
+                            {s === '' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
                           </button>
                         ))}
                       </div>
                     </div>
                     <div className="mb-4">
-                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">
-                        Quality
-                      </label>
+                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Quality</label>
                       <div className="flex gap-2 flex-wrap">
-                        {["", "High", "Medium", "Low"].map((q) => (
-                          <button
-                            key={q}
-                            type="button"
-                            onClick={() => setFilterQuality(q)}
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${filterQuality === q ? "bg-[#125852] text-white border-[#125852]" : "bg-white text-slate-500 border-slate-200 hover:border-[#125852]"}`}
-                          >
-                            {q === "" ? "All" : q}
+                        {['', 'High', 'Medium', 'Low'].map((q) => (
+                          <button key={q} type="button" onClick={() => setFilterQuality(q)}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${filterQuality === q ? 'bg-[#125852] text-white border-[#125852]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#125852]'}`}>
+                            {q === '' ? 'All' : q}
                           </button>
                         ))}
                       </div>
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">
-                        Category
-                      </label>
-                      <select
-                        value={filterCategory}
-                        onChange={(e) => setFilterCategory(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[11px] bg-white outline-none focus:border-[#125852]"
-                      >
+                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Category</label>
+                      <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[11px] bg-white outline-none focus:border-[#125852]">
                         <option value="">All Categories</option>
-                        {CATEGORIES.map((cat) => (
-                          <option key={cat} value={cat}>
-                            {cat}
-                          </option>
-                        ))}
+                        {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
                       </select>
                     </div>
                     <div className="mt-4 pt-3 border-t border-slate-100 text-[10px] text-slate-400 text-center">
-                      Showing {filteredProducts.length} of {products.length}{" "}
-                      products
+                      Showing {filteredProducts.length} of {products.length} products
                     </div>
                   </div>
                 )}
@@ -1100,18 +986,8 @@ const ProductDashboard = () => {
 
               <div className="h-8 w-[1px] bg-slate-200 mx-1" />
               <div className="flex bg-white border border-slate-200 rounded-lg p-1">
-                <button
-                  onClick={() => setViewType("grid")}
-                  className={`p-1.5 rounded ${viewType === "grid" ? "bg-slate-100" : ""}`}
-                >
-                  <LayoutGrid size={16} />
-                </button>
-                <button
-                  onClick={() => setViewType("list")}
-                  className={`p-1.5 rounded ${viewType === "list" ? "bg-slate-100" : ""}`}
-                >
-                  <List size={16} />
-                </button>
+                <button onClick={() => setViewType('grid')} className={`p-1.5 rounded ${viewType === 'grid' ? 'bg-slate-100' : ''}`}><LayoutGrid size={16} /></button>
+                <button onClick={() => setViewType('list')} className={`p-1.5 rounded ${viewType === 'list' ? 'bg-slate-100' : ''}`}><List size={16} /></button>
               </div>
             </div>
           </div>
@@ -1119,33 +995,10 @@ const ProductDashboard = () => {
           {/* Active filter pills */}
           {activeFilterCount > 0 && (
             <div className="flex items-center gap-2 mb-4 flex-wrap">
-              <span className="text-[10px] text-slate-400 font-bold uppercase">
-                Active:
-              </span>
-              {filterStatus && (
-                <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">
-                  {filterStatus}
-                  <button onClick={() => setFilterStatus("")}>
-                    <X size={9} />
-                  </button>
-                </span>
-              )}
-              {filterQuality && (
-                <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">
-                  {filterQuality}
-                  <button onClick={() => setFilterQuality("")}>
-                    <X size={9} />
-                  </button>
-                </span>
-              )}
-              {filterCategory && (
-                <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">
-                  {filterCategory}
-                  <button onClick={() => setFilterCategory("")}>
-                    <X size={9} />
-                  </button>
-                </span>
-              )}
+              <span className="text-[10px] text-slate-400 font-bold uppercase">Active:</span>
+              {filterStatus && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterStatus}<button onClick={() => setFilterStatus('')}><X size={9} /></button></span>}
+              {filterQuality && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterQuality}<button onClick={() => setFilterQuality('')}><X size={9} /></button></span>}
+              {filterCategory && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterCategory}<button onClick={() => setFilterCategory('')}><X size={9} /></button></span>}
             </div>
           )}
 
@@ -1153,10 +1006,7 @@ const ProductDashboard = () => {
           {isFetching ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[...Array(8)].map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-white rounded-xl border border-slate-100 overflow-hidden animate-pulse"
-                >
+                <div key={i} className="bg-white rounded-xl border border-slate-100 overflow-hidden animate-pulse">
                   <div className="h-40 bg-slate-100" />
                   <div className="p-4 space-y-1.5">
                     <div className="h-2 bg-slate-100 rounded w-1/2" />
@@ -1169,43 +1019,18 @@ const ProductDashboard = () => {
           ) : filteredProducts.length === 0 ? (
             <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-20 text-center">
               <ShoppingBag className="text-slate-200 mx-auto mb-4" size={48} />
-              <h3 className="text-lg font-bold text-slate-800">
-                {activeFilterCount > 0 || searchQuery
-                  ? "No matching products"
-                  : "No products found"}
-              </h3>
-              <p className="text-slate-500 text-sm mb-6">
-                {activeFilterCount > 0 || searchQuery
-                  ? "Try adjusting your search or filters."
-                  : "Start by adding your first product to the catalog."}
-              </p>
+              <h3 className="text-lg font-bold text-slate-800">{activeFilterCount > 0 || searchQuery ? 'No matching products' : 'No products found'}</h3>
+              <p className="text-slate-500 text-sm mb-6">{activeFilterCount > 0 || searchQuery ? 'Try adjusting your search or filters.' : 'Start by adding your first product to the catalog.'}</p>
               {!activeFilterCount && !searchQuery && (
-                <button
-                  onClick={() => {
-                    setFormStep(1);
-                    setIsProductModalOpen(true);
-                  }}
-                  className="bg-[#F5B841] text-white px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 mx-auto hover:bg-[#E0A83B]"
-                >
+                <button onClick={() => { setFormStep(1); setIsProductModalOpen(true); }} className="bg-[#F5B841] text-white px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 mx-auto hover:bg-[#E0A83B]">
                   <Plus size={16} /> Add Your First Product
                 </button>
               )}
             </div>
           ) : (
-            <div
-              className={
-                viewType === "grid"
-                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
-                  : "space-y-3"
-              }
-            >
+            <div className={viewType === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4' : 'space-y-3'}>
               {filteredProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  currencySymbol={currencySymbol}
-                  onClick={() => handleProductClick(product)}
-                />
+                <ProductCard key={product.id} product={product} currencySymbol={currencySymbol} onClick={() => handleProductClick(product)} />
               ))}
             </div>
           )}
@@ -1217,128 +1042,52 @@ const ProductDashboard = () => {
       {/* ══ STEP 1 ══ */}
       {isProductModalOpen && formStep === 1 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div
-            className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left"
-            style={{ fontFamily: "'Poppins', sans-serif" }}
-          >
+          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left" style={{ fontFamily: "'Poppins', sans-serif" }}>
             <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
               <div>
                 <h2 className="text-lg font-bold">Create New Product</h2>
-                <p className="text-[11px] text-slate-500">
-                  Step 1 of 4 ·{" "}
-                  <span className="font-bold text-[#125852] capitalize">
-                    {businessCategory}
-                  </span>
-                </p>
+                <p className="text-[11px] text-slate-500">Step 1 of 4 · <span className="font-bold text-[#125852] capitalize">{businessCategory}</span></p>
               </div>
-              <button
-                type="button"
-                onClick={closeCreateModal}
-                className="text-slate-400 hover:text-slate-700"
-              >
-                <X size={20} />
-              </button>
+              <button type="button" onClick={closeCreateModal} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <StepProgressBar currentStep={1} />
             <div className="px-6 py-4 space-y-3 overflow-y-auto flex-1">
               <ErrorBanner msg={errors._server} />
               <div className="space-y-1">
-                <label className="text-[11px] font-bold uppercase text-slate-500">
-                  Title *
-                </label>
-                <input
-                  type="text"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  placeholder="e.g. Premium Wireless Headphones"
-                  autoComplete="off"
-                  className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${errors.title ? "border-red-500" : "border-slate-200"}`}
-                />
-                {errors.title && (
-                  <p className="text-red-500 text-[9px] font-bold">
-                    {errors.title}
-                  </p>
-                )}
+                <label className="text-[11px] font-bold uppercase text-slate-500">Title *</label>
+                <input type="text" name="title" value={formData.title} onChange={handleInputChange} placeholder="e.g. Premium Wireless Headphones" autoComplete="off"
+                  className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${errors.title ? 'border-red-500' : 'border-slate-200'}`} />
+                {errors.title && <p className="text-red-500 text-[9px] font-bold">{errors.title}</p>}
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] font-bold uppercase text-slate-500">
-                  Location
-                </label>
-                <input
-                  type="text"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleInputChange}
-                  placeholder="e.g. Kampala, Uganda"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
-                />
+                <label className="text-[11px] font-bold uppercase text-slate-500">Location</label>
+                <input type="text" name="location" value={formData.location} onChange={handleInputChange} placeholder="e.g. Kampala, Uganda"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold uppercase text-slate-500">
-                    Sub-category
-                  </label>
-                  <select
-                    name="category"
-                    value={formData.category}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
-                  >
+                  <label className="text-[11px] font-bold uppercase text-slate-500">Sub-category</label>
+                  <select name="category" value={formData.category} onChange={handleInputChange} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white">
                     <option value="">— Select —</option>
-                    {CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
+                    {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold uppercase text-slate-500">
-                    Price ({currencySymbol}) *
-                  </label>
-                  <input
-                    type="number"
-                    name="price"
-                    value={formData.price}
-                    onChange={handleInputChange}
-                    placeholder="0.00"
-                    min="0"
-                    step="any"
-                    autoComplete="off"
-                    className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${errors.price ? "border-red-500" : "border-slate-200"}`}
-                  />
-                  {errors.price && (
-                    <p className="text-red-500 text-[9px] font-bold">
-                      {errors.price}
-                    </p>
-                  )}
+                  <label className="text-[11px] font-bold uppercase text-slate-500">Price ({currencySymbol}) *</label>
+                  <input type="number" name="price" value={formData.price} onChange={handleInputChange} placeholder="0.00" min="0" step="any" autoComplete="off"
+                    className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${errors.price ? 'border-red-500' : 'border-slate-200'}`} />
+                  {errors.price && <p className="text-red-500 text-[9px] font-bold">{errors.price}</p>}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold uppercase text-slate-500">
-                    SKU
-                  </label>
-                  <input
-                    type="text"
-                    name="sku"
-                    value={formData.sku}
-                    onChange={handleInputChange}
-                    placeholder="ALP-TSH-M-BLK-L-2026-0001"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
-                  />
+                  <label className="text-[11px] font-bold uppercase text-slate-500">SKU</label>
+                  <input type="text" name="sku" value={formData.sku} onChange={handleInputChange} placeholder="ALP-TSH-M-BLK-L-2026-0001"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold uppercase text-slate-500">
-                    Quality
-                  </label>
-                  <select
-                    name="qty"
-                    value={formData.qty}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
-                  >
+                  <label className="text-[11px] font-bold uppercase text-slate-500">Quality</label>
+                  <select name="qty" value={formData.qty} onChange={handleInputChange} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white">
                     <option value="High">High</option>
                     <option value="Medium">Medium</option>
                     <option value="Low">Low</option>
@@ -1346,38 +1095,16 @@ const ProductDashboard = () => {
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] font-bold uppercase text-slate-500">
-                  Stock Quantity
-                </label>
-                <input
-                  type="number"
-                  name="stock"
-                  value={formData.stock}
-                  onChange={handleInputChange}
-                  placeholder="e.g. 10"
-                  min="0"
-                  step="1"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
-                />
-                <p className="text-[9px] text-slate-400">
-                  Total units available. Skip if you're using size/color
-                  variants — set stock per variant instead.
-                </p>
+                <label className="text-[11px] font-bold uppercase text-slate-500">Stock Quantity</label>
+                <input type="number" name="stock" value={formData.stock} onChange={handleInputChange} placeholder="e.g. 10" min="0" step="1"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]" />
+                <p className="text-[9px] text-slate-400">Total units available. Skip if you're using size/color variants — set stock per variant instead.</p>
               </div>
             </div>
             <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
-              <button
-                type="button"
-                onClick={closeCreateModal}
-                className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleStep1Continue}
-                className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${step1Valid ? "bg-[#F5B841] text-white hover:bg-[#E0A83B] cursor-pointer" : "bg-slate-300 text-slate-500 cursor-not-allowed"}`}
-              >
+              <button type="button" onClick={closeCreateModal} className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50">Cancel</button>
+              <button type="button" onClick={handleStep1Continue}
+                className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${step1Valid ? 'bg-[#F5B841] text-white hover:bg-[#E0A83B] cursor-pointer' : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`}>
                 Continue <ArrowRight size={13} />
               </button>
             </div>
@@ -1388,55 +1115,23 @@ const ProductDashboard = () => {
       {/* ══ STEP 2 ══ */}
       {isProductModalOpen && formStep === 2 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div
-            className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]"
-            style={{ fontFamily: "'Poppins', sans-serif" }}
-          >
+          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]" style={{ fontFamily: "'Poppins', sans-serif" }}>
             <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
               <div>
                 <h2 className="text-lg font-bold">Product Description</h2>
-                <p className="text-[11px] text-slate-500">
-                  Step 2 of 4 · Tell customers what makes this product great
-                </p>
+                <p className="text-[11px] text-slate-500">Step 2 of 4 · Tell customers what makes this product great</p>
               </div>
-              <button
-                type="button"
-                onClick={closeCreateModal}
-                className="text-slate-400 hover:text-slate-700"
-              >
-                <X size={20} />
-              </button>
+              <button type="button" onClick={closeCreateModal} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <StepProgressBar currentStep={2} />
             <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
               <ErrorBanner msg={errors._server} />
-              <SummaryPill
-                formData={formData}
-                currencySymbol={currencySymbol}
-                currentStep={2}
-                onEdit={setFormStep}
-              />
-              <DescriptionField
-                value={formData.description}
-                onChange={handleInputChange}
-                error={errors.description}
-              />
+              <SummaryPill formData={formData} currencySymbol={currencySymbol} currentStep={2} onEdit={setFormStep} />
+              <DescriptionField value={formData.description} onChange={handleInputChange} error={errors.description} />
             </div>
             <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setFormStep(1)}
-                className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5"
-              >
-                <ArrowLeft size={13} /> Back
-              </button>
-              <button
-                type="button"
-                onClick={handleStep2Continue}
-                className="px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 bg-[#F5B841] text-white hover:bg-[#E0A83B]"
-              >
-                Continue <ArrowRight size={13} />
-              </button>
+              <button type="button" onClick={() => setFormStep(1)} className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5"><ArrowLeft size={13} /> Back</button>
+              <button type="button" onClick={handleStep2Continue} className="px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 bg-[#F5B841] text-white hover:bg-[#E0A83B]">Continue <ArrowRight size={13} /></button>
             </div>
           </div>
         </div>
@@ -1445,54 +1140,22 @@ const ProductDashboard = () => {
       {/* ══ STEP 3 ══ */}
       {isProductModalOpen && formStep === 3 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div
-            className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]"
-            style={{ fontFamily: "'Poppins', sans-serif" }}
-          >
+          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]" style={{ fontFamily: "'Poppins', sans-serif" }}>
             <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
               <div>
                 <h2 className="text-lg font-bold">Sizes & Colors</h2>
-                <p className="text-[11px] text-slate-500">
-                  Step 3 of 4 · Add product variants (optional)
-                </p>
+                <p className="text-[11px] text-slate-500">Step 3 of 4 · Add product variants (optional)</p>
               </div>
-              <button
-                type="button"
-                onClick={closeCreateModal}
-                className="text-slate-400 hover:text-slate-700"
-              >
-                <X size={20} />
-              </button>
+              <button type="button" onClick={closeCreateModal} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <StepProgressBar currentStep={3} />
             <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
-              <SummaryPill
-                formData={formData}
-                currencySymbol={currencySymbol}
-                currentStep={3}
-                onEdit={setFormStep}
-              />
-              <VariantSection
-                sizes={formData.sizes}
-                colors={formData.colors}
-                onToggleChip={toggleChip}
-              />
+              <SummaryPill formData={formData} currencySymbol={currencySymbol} currentStep={3} onEdit={setFormStep} />
+              <VariantSection sizes={formData.sizes} colors={formData.colors} onToggleChip={toggleChip} />
             </div>
             <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setFormStep(2)}
-                className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5"
-              >
-                <ArrowLeft size={13} /> Back
-              </button>
-              <button
-                type="button"
-                onClick={handleStep3Continue}
-                className="px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 bg-[#F5B841] text-white hover:bg-[#E0A83B]"
-              >
-                Continue <ArrowRight size={13} />
-              </button>
+              <button type="button" onClick={() => setFormStep(2)} className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5"><ArrowLeft size={13} /> Back</button>
+              <button type="button" onClick={handleStep3Continue} className="px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 bg-[#F5B841] text-white hover:bg-[#E0A83B]">Continue <ArrowRight size={13} /></button>
             </div>
           </div>
         </div>
@@ -1501,101 +1164,40 @@ const ProductDashboard = () => {
       {/* ══ STEP 4 ══ */}
       {isProductModalOpen && formStep === 4 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <form
-            onSubmit={handlePublish}
-            className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]"
-            style={{ fontFamily: "'Poppins', sans-serif" }}
-          >
+          <form onSubmit={handlePublish} className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]" style={{ fontFamily: "'Poppins', sans-serif" }}>
             <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
               <div>
                 <h2 className="text-lg font-bold">Images & Publish</h2>
-                <p className="text-[11px] text-slate-500">
-                  Step 4 of 4 · Upload photos and go live
-                </p>
+                <p className="text-[11px] text-slate-500">Step 4 of 4 · Upload photos and go live</p>
               </div>
-              <button
-                type="button"
-                onClick={closeCreateModal}
-                className="text-slate-400 hover:text-slate-700"
-              >
-                <X size={20} />
-              </button>
+              <button type="button" onClick={closeCreateModal} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <StepProgressBar currentStep={4} />
             <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
               <ErrorBanner msg={errors._server} />
-              <SummaryPill
-                formData={formData}
-                currencySymbol={currencySymbol}
-                currentStep={4}
-                onEdit={setFormStep}
-              />
-              <ImageGrid
-                existingImages={[]}
-                pendingImages={formData.imageFiles}
-                onRemoveExisting={() => {}}
-                onRemovePending={removeCreateImage}
-                onAdd={() => fileInputRef.current?.click()}
-              />
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                onChange={handleFilesChange}
-              />
+              <SummaryPill formData={formData} currencySymbol={currencySymbol} currentStep={4} onEdit={setFormStep} />
+              <ImageGrid existingImages={[]} pendingImages={formData.imageFiles} onRemoveExisting={() => {}} onRemovePending={removeCreateImage} onAdd={() => fileInputRef.current?.click()} />
+              <input ref={fileInputRef} type="file" className="hidden" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFilesChange} />
               {formData.colors.length > 0 && (
-                <ColorImageSection
-                  colors={formData.colors}
-                  colorImageFiles={formData.colorImageFiles}
-                  fileRefs={colorFileInputRefs}
-                  onAdd={(color) => colorFileInputRefs.current[color]?.click()}
-                  onChange={handleColorFilesChange}
-                  onRemove={removeColorCreateImage}
-                  onPreview={(color, images) =>
-                    setColorPreviewModal({ color, images })
-                  }
-                />
+                <ColorImageSection colors={formData.colors} colorImageFiles={formData.colorImageFiles} fileRefs={colorFileInputRefs}
+                  onAdd={(color) => colorFileInputRefs.current[color]?.click()} onChange={handleColorFilesChange}
+                  onRemove={removeColorCreateImage} onPreview={(color, images) => setColorPreviewModal({ color, images })} />
               )}
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                 <div>
-                  <p className="text-[11px] font-bold text-slate-700">
-                    Publish immediately
-                  </p>
-                  <p className="text-[9px] text-slate-400">
-                    Toggle off to save as a draft
-                  </p>
+                  <p className="text-[11px] font-bold text-slate-700">Publish immediately</p>
+                  <p className="text-[9px] text-slate-400">Toggle off to save as a draft</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsPublished((v) => !v)}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${isPublished ? "bg-[#125852]" : "bg-slate-300"}`}
-                >
-                  <span
-                    className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${isPublished ? "left-5" : "left-0.5"}`}
-                  />
+                <button type="button" onClick={() => setIsPublished((v) => !v)} className={`relative w-11 h-6 rounded-full transition-colors ${isPublished ? 'bg-[#125852]' : 'bg-slate-300'}`}>
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${isPublished ? 'left-5' : 'left-0.5'}`} />
                 </button>
               </div>
             </div>
             <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setFormStep(3)}
-                className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5"
-              >
-                <ArrowLeft size={13} /> Back
-              </button>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${isLoading ? "bg-slate-300 text-slate-500 cursor-not-allowed" : "bg-[#FABB00] text-white hover:bg-[#E0A830] cursor-pointer"}`}
-              >
-                {isLoading
-                  ? "Publishing…"
-                  : isPublished
-                    ? "Publish Product"
-                    : "Save as Draft"}
+              <button type="button" onClick={() => setFormStep(3)} className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5"><ArrowLeft size={13} /> Back</button>
+              <button type="submit" disabled={isLoading}
+                className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${isLoading ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#FABB00] text-white hover:bg-[#E0A830] cursor-pointer'}`}>
+                {isLoading ? 'Publishing…' : isPublished ? 'Publish Product' : 'Save as Draft'}
               </button>
             </div>
           </form>
@@ -1605,226 +1207,84 @@ const ProductDashboard = () => {
       {/* ══ EDIT MODAL ══ */}
       {isEditModalOpen && selectedProduct && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <form
-            onSubmit={handleUpdate}
-            className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]"
-            style={{ fontFamily: "'Poppins', sans-serif" }}
-          >
+          <form onSubmit={handleUpdate} className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]" style={{ fontFamily: "'Poppins', sans-serif" }}>
             <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
               <div>
                 <h2 className="text-lg font-bold">Edit Product</h2>
-                <p className="text-[11px] text-slate-500 truncate max-w-xs">
-                  {selectedProduct.title}
-                </p>
+                <p className="text-[11px] text-slate-500 truncate max-w-xs">{selectedProduct.title}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsEditModalOpen(false);
-                  setSelectedProduct(null);
-                }}
-                className="text-slate-400 hover:text-slate-700"
-              >
-                <X size={20} />
-              </button>
+              <button type="button" onClick={() => { setIsEditModalOpen(false); setSelectedProduct(null); }} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <div className="px-6 py-4 space-y-3 overflow-y-auto flex-1">
               <ErrorBanner msg={editErrors._server} />
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-slate-500">
-                  Title *
-                </label>
-                <input
-                  type="text"
-                  value={selectedProduct.title}
-                  onChange={(e) =>
-                    setSelectedProduct((p) => ({ ...p, title: e.target.value }))
-                  }
-                  className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${editErrors.title ? "border-red-500" : "border-slate-200"}`}
-                />
-                {editErrors.title && (
-                  <p className="text-red-500 text-[9px] font-bold">
-                    {editErrors.title}
-                  </p>
-                )}
+                <label className="text-[10px] font-bold uppercase text-slate-500">Title *</label>
+                <input type="text" value={selectedProduct.title} onChange={(e) => setSelectedProduct((p) => ({ ...p, title: e.target.value }))}
+                  className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${editErrors.title ? 'border-red-500' : 'border-slate-200'}`} />
+                {editErrors.title && <p className="text-red-500 text-[9px] font-bold">{editErrors.title}</p>}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-slate-500">
-                    Price ({currencySymbol}) *
-                  </label>
-                  <input
-                    type="number"
-                    value={selectedProduct.price}
-                    onChange={(e) =>
-                      setSelectedProduct((p) => ({
-                        ...p,
-                        price: e.target.value,
-                      }))
-                    }
-                    min="0"
-                    step="any"
-                    className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${editErrors.price ? "border-red-500" : "border-slate-200"}`}
-                  />
-                  {editErrors.price && (
-                    <p className="text-red-500 text-[9px] font-bold">
-                      {editErrors.price}
-                    </p>
-                  )}
+                  <label className="text-[10px] font-bold uppercase text-slate-500">Price ({currencySymbol}) *</label>
+                  <input type="number" value={selectedProduct.price} onChange={(e) => setSelectedProduct((p) => ({ ...p, price: e.target.value }))} min="0" step="any"
+                    className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${editErrors.price ? 'border-red-500' : 'border-slate-200'}`} />
+                  {editErrors.price && <p className="text-red-500 text-[9px] font-bold">{editErrors.price}</p>}
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-slate-500">
-                    SKU
-                  </label>
-                  <input
-                    type="text"
-                    value={selectedProduct.sku || ""}
-                    onChange={(e) =>
-                      setSelectedProduct((p) => ({ ...p, sku: e.target.value }))
-                    }
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
-                  />
+                  <label className="text-[10px] font-bold uppercase text-slate-500">SKU</label>
+                  <input type="text" value={selectedProduct.sku || ''} onChange={(e) => setSelectedProduct((p) => ({ ...p, sku: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-slate-500">
-                    Quality
-                  </label>
-                  <select
-                    value={selectedProduct.qty || "Medium"}
-                    onChange={(e) =>
-                      setSelectedProduct((p) => ({ ...p, qty: e.target.value }))
-                    }
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
-                  >
+                  <label className="text-[10px] font-bold uppercase text-slate-500">Quality</label>
+                  <select value={selectedProduct.qty || 'Medium'} onChange={(e) => setSelectedProduct((p) => ({ ...p, qty: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white">
                     <option value="High">High</option>
                     <option value="Medium">Medium</option>
                     <option value="Low">Low</option>
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-slate-500">
-                    Location
-                  </label>
-                  <input
-                    type="text"
-                    value={selectedProduct.location || ""}
-                    onChange={(e) =>
-                      setSelectedProduct((p) => ({
-                        ...p,
-                        location: e.target.value,
-                      }))
-                    }
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
-                  />
+                  <label className="text-[10px] font-bold uppercase text-slate-500">Location</label>
+                  <input type="text" value={selectedProduct.location || ''} onChange={(e) => setSelectedProduct((p) => ({ ...p, location: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none" />
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-slate-500">
-                  Stock Quantity
-                </label>
-                <input
-                  type="number"
-                  value={selectedProduct.stock ?? 0}
-                  onChange={(e) =>
-                    setSelectedProduct((p) => ({ ...p, stock: e.target.value }))
-                  }
-                  min="0"
-                  step="1"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
-                />
-                <p className="text-[9px] text-slate-400">
-                  Total units available. Ignored if variants have their own
-                  stock.
-                </p>
+                <label className="text-[10px] font-bold uppercase text-slate-500">Stock Quantity</label>
+                <input type="number" value={selectedProduct.stock ?? 0} onChange={(e) => setSelectedProduct((p) => ({ ...p, stock: e.target.value }))} min="0" step="1"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]" />
+                <p className="text-[9px] text-slate-400">Total units available. Ignored if variants have their own stock.</p>
               </div>
-              <DescriptionField
-                value={selectedProduct.description || ""}
-                onChange={(e) => {
-                  setSelectedProduct((p) => ({
-                    ...p,
-                    description: e.target.value,
-                  }));
-                  if (editErrors.description)
-                    setEditErrors((prev) => ({ ...prev, description: null }));
-                }}
-                error={editErrors.description}
-              />
-              <VariantSection
-                sizes={selectedProduct.sizes || []}
-                colors={selectedProduct.colors || []}
-                onToggleChip={toggleEditChip}
-              />
-              <ImageGrid
-                existingImages={selectedProduct.images || []}
-                pendingImages={selectedProduct.newImageFiles || []}
-                onRemoveExisting={handleDeleteExistingImage}
-                onRemovePending={removeNewEditImage}
-                onAdd={() => editFileInputRef.current?.click()}
-              />
-              <input
-                ref={editFileInputRef}
-                type="file"
-                className="hidden"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                onChange={handleEditFilesChange}
-              />
+              <DescriptionField value={selectedProduct.description || ''} onChange={(e) => { setSelectedProduct((p) => ({ ...p, description: e.target.value })); if (editErrors.description) setEditErrors((prev) => ({ ...prev, description: null })); }} error={editErrors.description} />
+              <VariantSection sizes={selectedProduct.sizes || []} colors={selectedProduct.colors || []} onToggleChip={toggleEditChip} />
+              <ImageGrid existingImages={selectedProduct.images || []} pendingImages={selectedProduct.newImageFiles || []} onRemoveExisting={handleDeleteExistingImage} onRemovePending={removeNewEditImage} onAdd={() => editFileInputRef.current?.click()} />
+              <input ref={editFileInputRef} type="file" className="hidden" accept="image/jpeg,image/png,image/webp" multiple onChange={handleEditFilesChange} />
               {(selectedProduct.colors || []).length > 0 && (
-                <ColorImageSection
-                  colors={selectedProduct.colors || []}
-                  colorImageFiles={selectedProduct.colorImageFiles || {}}
-                  fileRefs={editColorFileInputRefs}
-                  onAdd={(color) =>
-                    editColorFileInputRefs.current[color]?.click()
-                  }
-                  onChange={handleEditColorFilesChange}
-                  onRemove={removeEditColorImage}
-                  onPreview={(color, images) =>
-                    setColorPreviewModal({ color, images })
-                  }
-                />
+                <ColorImageSection colors={selectedProduct.colors || []} colorImageFiles={selectedProduct.colorImageFiles || {}} fileRefs={editColorFileInputRefs}
+                  onAdd={(color) => editColorFileInputRefs.current[color]?.click()} onChange={handleEditColorFilesChange}
+                  onRemove={removeEditColorImage} onPreview={(color, images) => setColorPreviewModal({ color, images })} />
               )}
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                 <div>
-                  <p className="text-[11px] font-bold text-slate-700">
-                    Published
-                  </p>
-                  <p className="text-[9px] text-slate-400">
-                    Toggle to publish or save as draft
-                  </p>
+                  <p className="text-[11px] font-bold text-slate-700">Published</p>
+                  <p className="text-[9px] text-slate-400">Toggle to publish or save as draft</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setSelectedProduct((p) => ({
-                      ...p,
-                      is_published: !p.is_published,
-                    }))
-                  }
-                  className={`relative w-11 h-6 rounded-full transition-colors ${selectedProduct.is_published ? "bg-[#125852]" : "bg-slate-300"}`}
-                >
-                  <span
-                    className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${selectedProduct.is_published ? "left-5" : "left-0.5"}`}
-                  />
+                <button type="button" onClick={() => setSelectedProduct((p) => ({ ...p, is_published: !p.is_published }))}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${selectedProduct.is_published ? 'bg-[#125852]' : 'bg-slate-300'}`}>
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${selectedProduct.is_published ? 'left-5' : 'left-0.5'}`} />
                 </button>
               </div>
             </div>
             <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="px-4 py-2.5 text-[11px] font-bold border border-red-200 text-red-500 rounded-lg bg-white hover:bg-red-50 flex items-center gap-1.5"
-              >
+              <button type="button" onClick={handleDelete} className="px-4 py-2.5 text-[11px] font-bold border border-red-200 text-red-500 rounded-lg bg-white hover:bg-red-50 flex items-center gap-1.5">
                 <Trash2 size={12} /> Delete
               </button>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${isLoading ? "bg-slate-300 text-slate-500 cursor-not-allowed" : "bg-[#FABB00] text-white hover:bg-[#E0A830]"}`}
-              >
-                {isLoading ? "Saving…" : "Save Changes"}
+              <button type="submit" disabled={isLoading}
+                className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${isLoading ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#FABB00] text-white hover:bg-[#E0A830]'}`}>
+                {isLoading ? 'Saving…' : 'Save Changes'}
               </button>
             </div>
           </form>
@@ -1834,49 +1294,22 @@ const ProductDashboard = () => {
       {/* DELETE CONFIRM */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div
-            className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center"
-            style={{ fontFamily: "'Poppins', sans-serif" }}
-          >
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center" style={{ fontFamily: "'Poppins', sans-serif" }}>
             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trash2 size={20} className="text-red-500" />
             </div>
-            <h3 className="text-base font-bold text-slate-800 mb-1">
-              Delete Product?
-            </h3>
-            <p className="text-[11px] text-slate-500 mb-5">
-              "
-              <span className="font-bold text-slate-700">
-                {selectedProduct?.title}
-              </span>
-              " will be permanently removed. This cannot be undone.
-            </p>
+            <h3 className="text-base font-bold text-slate-800 mb-1">Delete Product?</h3>
+            <p className="text-[11px] text-slate-500 mb-5">"<span className="font-bold text-slate-700">{selectedProduct?.title}</span>" will be permanently removed. This cannot be undone.</p>
             <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setIsDeleteModalOpen(false)}
-                className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmDelete}
-                className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg text-[11px] font-bold hover:bg-red-600 transition-colors"
-              >
-                Yes, Delete
-              </button>
+              <button type="button" onClick={() => setIsDeleteModalOpen(false)} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
+              <button type="button" onClick={confirmDelete} className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg text-[11px] font-bold hover:bg-red-600 transition-colors">Yes, Delete</button>
             </div>
           </div>
         </div>
       )}
 
       {colorPreviewModal && (
-        <ColorImagePreviewModal
-          color={colorPreviewModal.color}
-          images={colorPreviewModal.images}
-          onClose={() => setColorPreviewModal(null)}
-        />
+        <ColorImagePreviewModal color={colorPreviewModal.color} images={colorPreviewModal.images} onClose={() => setColorPreviewModal(null)} />
       )}
     </div>
   );
