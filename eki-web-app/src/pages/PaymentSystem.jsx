@@ -1,12 +1,17 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import VendorSidebar from '../components/VendorSidebar';
 import Navbar4 from '../components/adminDashboard/Navbar4';
-import Footer from "../components/Vendormanagement/VendorFooter"; 
+import Footer from "../components/Vendormanagement/VendorFooter";
 import { 
   Search, Download, History, DollarSign, Clock, CheckCircle,
   CreditCard, Box, ListChecks, Package
 } from 'lucide-react';
+
+import { getVendorDashboard } from '../services/authService';
+
+// ── FIXED: import the currency utility ────────────────────────────────────────
+import { getCurrencySymbol } from '../utils/currency';
 
 // ─── Stat Card Component (exactly matching VendorDashboard) ───────────────────
 const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
@@ -52,7 +57,21 @@ class ErrorBoundary extends React.Component {
 }
 
 const PaymentSystemContent = () => {
-  const transactions = []; 
+  const transactions = [];
+
+  // ── FIXED: dynamic currency state instead of hardcoded '$' ──────────────────
+  const [currencySymbol, setCurrencySymbol] = useState('$');
+
+  // ── FIXED: fetch vendor country and resolve currency on mount ────────────────
+  useEffect(() => {
+    getVendorDashboard()
+      .then((data) => {
+        if (data?.country) {
+          setCurrencySymbol(getCurrencySymbol(data.country));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-[#ecece7] font-sans text-slate-800 p-3 gap-3">
@@ -80,25 +99,25 @@ const PaymentSystemContent = () => {
             </div>
           </div>
 
-          {/* Stats Grid - Updated to match VendorDashboard style */}
+          {/* Stats Grid — FIXED: use currencySymbol state instead of hardcoded '$' */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
             <StatCard
               title="Current Balance"
-              number="$0.00"
+              number={`${currencySymbol} 0.00`}
               icon={DollarSign}
               iconBgColor="bg-emerald-50"
               iconColor="text-emerald-600"
             />
             <StatCard
               title="Pending Earnings"
-              number="$0.00"
+              number={`${currencySymbol} 0.00`}
               icon={Clock}
               iconBgColor="bg-blue-50"
               iconColor="text-blue-600"
             />
             <StatCard
               title="Last Payout"
-              number="$0.00"
+              number={`${currencySymbol} 0.00`}
               icon={CheckCircle}
               iconBgColor="bg-orange-50"
               iconColor="text-orange-600"

@@ -11,6 +11,8 @@ import {
   uploadListingImages,
 } from "../services/authService";
 
+import { getCurrencySymbol } from "../utils/currency";
+
 import {
   Package,
   ChevronRight,
@@ -58,7 +60,7 @@ const VendorDashboard = () => {
     vendor_type: "product",
     is_product_vendor: true,
     is_service_vendor: false,
-    currencySymbol: "UGX",
+    currencySymbol: getCurrencySymbol("Uganda"),
   });
   const [metrics, setMetrics] = useState({
     grossSales: 0,
@@ -93,16 +95,20 @@ const VendorDashboard = () => {
         const vendorType =
           response.vendor_type ?? (isProductVendor ? "product" : "service");
 
+        // ── FIXED: derive currency from the vendor's country using the utility ──
+        const country = response.country || "Uganda";
+        const resolvedCurrencySymbol = getCurrencySymbol(country);
+
         setVendorData({
           storeName: response.storeName || "",
           vendorType:
             response.vendorType || (isProductVendor ? "Products" : "Services"),
-          country: response.country || "Uganda",
+          country,
           businessCategory: bc,
           vendor_type: vendorType,
           is_product_vendor: isProductVendor,
           is_service_vendor: isServiceVendor,
-          currencySymbol: response.currencySymbol || "UGX",
+          currencySymbol: resolvedCurrencySymbol,
         });
         setCurrencySymbol(response.currencySymbol || "UGX");
 

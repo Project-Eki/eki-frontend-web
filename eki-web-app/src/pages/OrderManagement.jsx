@@ -2,11 +2,16 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import VendorSidebar from '../components/VendorSidebar';
 import Navbar3 from '../components/adminDashboard/Navbar4';
-import Footer from "../components/Vendormanagement/VendorFooter"; 
+import Footer from "../components/Vendormanagement/VendorFooter";
 
 import {
   getVendorOrders,
+  getVendorDashboard,
 } from '../services/authService';
+
+// ── FIXED: import the currency utility ────────────────────────────────────────
+import { getCurrencySymbol } from '../utils/currency';
+
 import {
   Search, Filter, List, Download, Printer,
   CircleDollarSign, Clock, BarChart3, Package,
@@ -229,6 +234,9 @@ const OrderManagement = () => {
   const [activeTab,   setActiveTab]   = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // ── FIXED: dynamic currency state instead of hardcoded 'UGX' ────────────────
+  const [currencySymbol, setCurrencySymbol] = useState('UGX');
+
   // Order detail modal state
   const [selectedOrder, setSelectedOrder] = useState(null);
 
@@ -237,6 +245,17 @@ const OrderManagement = () => {
     ['pending', 'confirmed', 'processing'].includes(String(o.status).toLowerCase())
   ).length;
   const revenue = orders.reduce((sum, o) => sum + Number(o.total ?? 0), 0);
+
+  // ── FIXED: fetch vendor country and resolve currency on mount ────────────────
+  useEffect(() => {
+    getVendorDashboard()
+      .then((data) => {
+        if (data?.country) {
+          setCurrencySymbol(getCurrencySymbol(data.country));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchOrders = useCallback(async () => {
     setIsFetching(true);
@@ -270,8 +289,6 @@ const OrderManagement = () => {
 
     return matchesTab && matchesSearch;
   });
-
-  const currencySymbol = 'UGX';
 
   return (
     <div className="flex min-h-screen bg-[#ecece7] text-slate-800 p-3 gap-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
@@ -317,7 +334,7 @@ const OrderManagement = () => {
               number={isFetching ? '—' : `${currencySymbol} ${revenue.toLocaleString()}`}
               icon={CircleDollarSign}
               iconBgColor="bg-orange-50"
-              iconColor="text-orange-600"
+              iconColor="text-orangeald-600"
             />
             <StatCard
               title="Avg. Processing"

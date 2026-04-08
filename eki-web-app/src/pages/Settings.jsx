@@ -7,6 +7,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import VendorSidebar from '../components/VendorSidebar';
 import Navbar4 from '../components/adminDashboard/Navbar4';
+import Footer from "../components/Vendormanagement/VendorFooter";
 
 /* ── settings menu items — each has a path now ── */
 const menuItems = [
@@ -116,10 +117,7 @@ const SettingsPage = () => {
             </div>
           </main>
 
-          <footer className="bg-[#125852] text-white py-2.5 px-5 flex justify-between items-center text-[8px] rounded-xl mx-5 mb-3">
-            <div>Buy Smart. Sell Fast. Grow Together...</div>
-            <div>© 2026 Vendor Portal. All rights reserved.</div>
-          </footer>
+          <Footer />
         </div>
       </div>
     </div>

@@ -21,6 +21,7 @@ countries.registerLocale(enLocale);
 
 import VendorSidebar from "../components/VendorSidebar";
 import Navbar4 from "../components/adminDashboard/Navbar4";
+import Footer from "../components/Vendormanagement/VendorFooter";
 import { getVendorBusinessSettings, updateVendorBusinessSettings } from "../services/api";
 
 import {
@@ -71,14 +72,6 @@ const resolveDocUrl = (url) => {
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
   return `${DJANGO_BASE}${url.startsWith("/") ? "" : "/"}${url}`;
 };
-
-// ─── Footer ───────────────────────────────────────────────────────────────────
-const Footer = () => (
-  <footer className="bg-[#125852] text-white py-2.5 px-5 flex justify-between items-center text-[8px] rounded-xl mx-5 mb-3">
-    <div>Buy Smart. Sell Fast. Grow Together...</div>
-    <div>© 2026 Vendor Portal. All rights reserved.</div>
-  </footer>
-);
 
 // ─── Document status styles ───────────────────────────────────────────────────
 const DOC_STATUS_CFG = {

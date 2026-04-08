@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import VendorSidebar from '../components/VendorSidebar';
 import Navbar3 from '../components/adminDashboard/Navbar4';
 import Footer from "../components/Vendormanagement/VendorFooter";
-import ProductListing from '../components/ProductListing'; // Import the shared component
+import ProductListing from '../components/ProductListing';
 import {
   Plus, Search, Filter, LayoutGrid, List,
   CheckCircle2, Package, ShoppingBag,
@@ -19,36 +19,21 @@ import {
   deleteListingImage,
   getVendorDashboard,
 } from '../services/authService';
+import { getCurrencySymbol } from '../utils/currency';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const getCurrencySymbol = (country) => {
-  const map = {
-    uganda: 'UGX', nigeria: '₦', kenya: 'KES', ghana: '₵',
-    'south africa': 'R', tanzania: 'TZS', rwanda: 'RWF',
-    ethiopia: 'ETB', zambia: 'ZMW', egypt: 'EGP', morocco: 'MAD',
-    senegal: 'CFA', cameroon: 'CFA', ivory: 'CFA', "côte d'ivoire": 'CFA',
-    angola: 'AOA', mozambique: 'MZN', zimbabwe: 'ZWL', botswana: 'BWP',
-    namibia: 'NAD', malawi: 'MWK', sudan: 'SDG', tunisia: 'TND',
-    libya: 'LYD', algeria: 'DZD', madagascar: 'MGA', somalia: 'SOS',
-    usa: '$', 'united states': '$', canada: 'CA$', mexico: 'MX$',
-    brazil: 'R$', argentina: '$', colombia: '$', chile: 'CLP',
-    peru: 'S/', venezuela: 'Bs', uruguay: '$U', ecuador: '$',
-    uk: '£', 'united kingdom': '£', germany: '€', france: '€',
-    italy: '€', spain: '€', portugal: '€', netherlands: '€',
-    belgium: '€', austria: '€', switzerland: 'CHF', sweden: 'kr',
-    norway: 'kr', denmark: 'kr', finland: '€', poland: 'zł',
-    czechia: 'Kč', hungary: 'Ft', romania: 'lei', bulgaria: 'лв',
-    russia: '₽', ukraine: '₴', turkey: '₺',
-    china: '¥', japan: '¥', india: '₹', 'south korea': '₩',
-    indonesia: 'Rp', malaysia: 'RM', thailand: '฿', singapore: 'S$',
-    philippines: '₱', vietnam: '₫', bangladesh: '৳', pakistan: '₨',
-    'sri lanka': '₨', nepal: '₨', myanmar: 'K', cambodia: '₭',
-    'saudi arabia': 'SR', uae: 'AED', 'united arab emirates': 'AED',
-    qatar: 'QR', kuwait: 'KD', bahrain: 'BD', jordan: 'JD',
-    israel: '₪', iran: '﷼', iraq: 'IQD',
-    australia: 'A$', 'new zealand': 'NZ$',
-  };
-  return map[country?.toLowerCase()] || '$';
+const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'one_size'];
+const COLOR_OPTIONS = [
+  'Black', 'White', 'Red', 'Blue', 'Green', 'Yellow',
+  'Orange', 'Purple', 'Pink', 'Brown', 'Grey', 'Navy',
+  'Beige', 'Maroon', 'Teal', 'Gold', 'Silver',
+];
+const COLOR_SWATCHES = {
+  Black: '#1a1a1a', White: '#f5f5f5', Red: '#ef4444', Blue: '#3b82f6',
+  Green: '#22c55e', Yellow: '#eab308', Orange: '#f97316', Purple: '#a855f7',
+  Pink: '#ec4899', Brown: '#92400e', Grey: '#6b7280', Navy: '#1e3a5f',
+  Beige: '#d2b48c', Maroon: '#800000', Teal: '#14b8a6', Gold: '#d4af37',
+  Silver: '#c0c0c0',
 };
 
 const QTY_DISPLAY = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' };
@@ -344,7 +329,7 @@ const ProductDashboard = () => {
               </p>
             </div>
             <button
-              onClick={() => setIsProductModalOpen(true)}
+              onClick={() => { setFormStep(1); setIsProductModalOpen(true); }}
               className="bg-[#F5B841] text-white px-5 py-2.5 rounded-lg text-[12px] font-bold flex items-center gap-2 hover:bg-[#E0A83B] transition-all active:scale-95 shadow-sm"
             >
               <Plus size={14} /> Add New Product
@@ -355,14 +340,14 @@ const ProductDashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
             <StatCard title="Total Products" number={products.length} icon={Package} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
             <StatCard title="Active Listings" number={products.filter((p) => p.is_published === true).length} icon={ListChecks} iconBgColor="bg-blue-50" iconColor="text-blue-600" />
-            <StatCard title="High Quality" number={products.filter((p) => (p.inventory_quality || p.qty || "").toUpperCase() === "HIGH").length} icon={Box} iconBgColor="bg-orange-50" iconColor="text-orange-600" />
+            <StatCard title="High Quality" number={products.filter((p) => (p.inventory_quality || p.qty || '').toUpperCase() === 'HIGH').length} icon={Box} iconBgColor="bg-orange-50" iconColor="text-orange-600" />
             <StatCard title="Drafts" number={products.filter((p) => p.is_published !== true).length} icon={CreditCard} iconBgColor="bg-indigo-50" iconColor="text-indigo-600" />
           </div>
 
           {/* Search + Filter + View toggle */}
           <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-            <div className={`relative w-80 flex items-center border rounded-lg shadow-sm transition-all bg-white ${searchFocused ? "border-[#F5B841] ring-1 ring-[#F5B841]" : "border-slate-200"}`}>
-              <Search className={`absolute left-3 transition-colors ${searchFocused ? "text-[#F5B841]" : "text-slate-400"}`} size={16} />
+            <div className={`relative w-80 flex items-center border rounded-lg shadow-sm transition-all bg-white ${searchFocused ? 'border-[#F5B841] ring-1 ring-[#F5B841]' : 'border-slate-200'}`}>
+              <Search className={`absolute left-3 transition-colors ${searchFocused ? 'text-[#F5B841]' : 'text-slate-400'}`} size={16} />
               <input
                 type="text"
                 placeholder="Search by title or SKU..."
@@ -373,7 +358,7 @@ const ProductDashboard = () => {
                 className="w-full pl-9 pr-4 py-2 bg-transparent text-sm focus:outline-none rounded-lg"
               />
               {searchQuery && (
-                <button type="button" onClick={() => setSearchQuery("")} className="absolute right-3 text-slate-400 hover:text-slate-600">
+                <button type="button" onClick={() => setSearchQuery('')} className="absolute right-3 text-slate-400 hover:text-slate-600">
                   <X size={13} />
                 </button>
               )}
@@ -383,29 +368,26 @@ const ProductDashboard = () => {
               <div className="relative" ref={filterRef}>
                 <button
                   onClick={() => setIsFilterOpen((v) => !v)}
-                  className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-xs font-bold transition-all ${activeFilterCount > 0 ? "bg-[#F5B841] text-white border-[#F5B841] shadow-sm" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-[#F5B841]"}`}
+                  className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-xs font-bold transition-all ${activeFilterCount > 0 ? 'bg-[#F5B841] text-white border-[#F5B841] shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-[#F5B841]'}`}
                 >
                   <Filter size={14} /> Filters
                   {activeFilterCount > 0 && (
-                    <span className="bg-white text-[#F5B841] text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">
-                      {activeFilterCount}
-                    </span>
+                    <span className="bg-white text-[#F5B841] text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{activeFilterCount}</span>
                   )}
                 </button>
                 {isFilterOpen && (
                   <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-slate-200 rounded-2xl shadow-2xl p-5 w-72">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-[12px] font-bold text-slate-800 uppercase tracking-wide">Filter Products</h3>
-                      {activeFilterCount > 0 && (
-                        <button onClick={clearFilters} className="text-[10px] font-bold text-[#F5B841] hover:underline">Clear all</button>
-                      )}
+                      {activeFilterCount > 0 && <button onClick={clearFilters} className="text-[10px] font-bold text-[#F5B841] hover:underline">Clear all</button>}
                     </div>
                     <div className="mb-4">
                       <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Status</label>
                       <div className="flex gap-2 flex-wrap">
-                        {["", "published", "draft"].map((s) => (
-                          <button key={s} type="button" onClick={() => setFilterStatus(s)} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${filterStatus === s ? "bg-[#125852] text-white border-[#125852]" : "bg-white text-slate-500 border-slate-200 hover:border-[#125852]"}`}>
-                            {s === "" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+                        {['', 'published', 'draft'].map((s) => (
+                          <button key={s} type="button" onClick={() => setFilterStatus(s)}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${filterStatus === s ? 'bg-[#125852] text-white border-[#125852]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#125852]'}`}>
+                            {s === '' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
                           </button>
                         ))}
                       </div>
@@ -413,20 +395,20 @@ const ProductDashboard = () => {
                     <div className="mb-4">
                       <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Quality</label>
                       <div className="flex gap-2 flex-wrap">
-                        {["", "High", "Medium", "Low"].map((q) => (
-                          <button key={q} type="button" onClick={() => setFilterQuality(q)} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${filterQuality === q ? "bg-[#125852] text-white border-[#125852]" : "bg-white text-slate-500 border-slate-200 hover:border-[#125852]"}`}>
-                            {q === "" ? "All" : q}
+                        {['', 'High', 'Medium', 'Low'].map((q) => (
+                          <button key={q} type="button" onClick={() => setFilterQuality(q)}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${filterQuality === q ? 'bg-[#125852] text-white border-[#125852]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#125852]'}`}>
+                            {q === '' ? 'All' : q}
                           </button>
                         ))}
                       </div>
                     </div>
                     <div>
                       <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Category</label>
-                      <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[11px] bg-white outline-none focus:border-[#125852]">
+                      <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[11px] bg-white outline-none focus:border-[#125852]">
                         <option value="">All Categories</option>
-                        {CATEGORIES.map((cat) => (
-                          <option key={cat} value={cat}>{cat}</option>
-                        ))}
+                        {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
                       </select>
                     </div>
                     <div className="mt-4 pt-3 border-t border-slate-100 text-[10px] text-slate-400 text-center">
@@ -438,12 +420,8 @@ const ProductDashboard = () => {
 
               <div className="h-8 w-[1px] bg-slate-200 mx-1" />
               <div className="flex bg-white border border-slate-200 rounded-lg p-1">
-                <button onClick={() => setViewType("grid")} className={`p-1.5 rounded ${viewType === "grid" ? "bg-slate-100" : ""}`}>
-                  <LayoutGrid size={16} />
-                </button>
-                <button onClick={() => setViewType("list")} className={`p-1.5 rounded ${viewType === "list" ? "bg-slate-100" : ""}`}>
-                  <List size={16} />
-                </button>
+                <button onClick={() => setViewType('grid')} className={`p-1.5 rounded ${viewType === 'grid' ? 'bg-slate-100' : ''}`}><LayoutGrid size={16} /></button>
+                <button onClick={() => setViewType('list')} className={`p-1.5 rounded ${viewType === 'list' ? 'bg-slate-100' : ''}`}><List size={16} /></button>
               </div>
             </div>
           </div>
@@ -452,24 +430,9 @@ const ProductDashboard = () => {
           {activeFilterCount > 0 && (
             <div className="flex items-center gap-2 mb-4 flex-wrap">
               <span className="text-[10px] text-slate-400 font-bold uppercase">Active:</span>
-              {filterStatus && (
-                <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">
-                  {filterStatus}
-                  <button onClick={() => setFilterStatus("")}><X size={9} /></button>
-                </span>
-              )}
-              {filterQuality && (
-                <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">
-                  {filterQuality}
-                  <button onClick={() => setFilterQuality("")}><X size={9} /></button>
-                </span>
-              )}
-              {filterCategory && (
-                <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">
-                  {filterCategory}
-                  <button onClick={() => setFilterCategory("")}><X size={9} /></button>
-                </span>
-              )}
+              {filterStatus && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterStatus}<button onClick={() => setFilterStatus('')}><X size={9} /></button></span>}
+              {filterQuality && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterQuality}<button onClick={() => setFilterQuality('')}><X size={9} /></button></span>}
+              {filterCategory && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterCategory}<button onClick={() => setFilterCategory('')}><X size={9} /></button></span>}
             </div>
           )}
 
@@ -490,20 +453,16 @@ const ProductDashboard = () => {
           ) : filteredProducts.length === 0 ? (
             <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-20 text-center">
               <ShoppingBag className="text-slate-200 mx-auto mb-4" size={48} />
-              <h3 className="text-lg font-bold text-slate-800">
-                {activeFilterCount > 0 || searchQuery ? "No matching products" : "No products found"}
-              </h3>
-              <p className="text-slate-500 text-sm mb-6">
-                {activeFilterCount > 0 || searchQuery ? "Try adjusting your search or filters." : "Start by adding your first product to the catalog."}
-              </p>
+              <h3 className="text-lg font-bold text-slate-800">{activeFilterCount > 0 || searchQuery ? 'No matching products' : 'No products found'}</h3>
+              <p className="text-slate-500 text-sm mb-6">{activeFilterCount > 0 || searchQuery ? 'Try adjusting your search or filters.' : 'Start by adding your first product to the catalog.'}</p>
               {!activeFilterCount && !searchQuery && (
-                <button onClick={() => setIsProductModalOpen(true)} className="bg-[#F5B841] text-white px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 mx-auto hover:bg-[#E0A83B]">
+                <button onClick={() => { setFormStep(1); setIsProductModalOpen(true); }} className="bg-[#F5B841] text-white px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 mx-auto hover:bg-[#E0A83B]">
                   <Plus size={16} /> Add Your First Product
                 </button>
               )}
             </div>
           ) : (
-            <div className={viewType === "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" : "space-y-3"}>
+            <div className={viewType === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4' : 'space-y-3'}>
               {filteredProducts.map((product) => (
                 <ProductCard key={product.id} product={product} currencySymbol={currencySymbol} onClick={() => handleProductClick(product)} />
               ))}
@@ -552,19 +511,17 @@ const ProductDashboard = () => {
               <Trash2 size={20} className="text-red-500" />
             </div>
             <h3 className="text-base font-bold text-slate-800 mb-1">Delete Product?</h3>
-            <p className="text-[11px] text-slate-500 mb-5">
-              "<span className="font-bold text-slate-700">{selectedProduct?.title}</span>" will be permanently removed. This cannot be undone.
-            </p>
+            <p className="text-[11px] text-slate-500 mb-5">"<span className="font-bold text-slate-700">{selectedProduct?.title}</span>" will be permanently removed. This cannot be undone.</p>
             <div className="flex gap-3">
-              <button type="button" onClick={() => setIsDeleteModalOpen(false)} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-50">
-                Cancel
-              </button>
-              <button type="button" onClick={confirmDelete} className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg text-[11px] font-bold hover:bg-red-600 transition-colors">
-                Yes, Delete
-              </button>
+              <button type="button" onClick={() => setIsDeleteModalOpen(false)} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
+              <button type="button" onClick={confirmDelete} className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg text-[11px] font-bold hover:bg-red-600 transition-colors">Yes, Delete</button>
             </div>
           </div>
         </div>
+      )}
+
+      {colorPreviewModal && (
+        <ColorImagePreviewModal color={colorPreviewModal.color} images={colorPreviewModal.images} onClose={() => setColorPreviewModal(null)} />
       )}
     </div>
   );
