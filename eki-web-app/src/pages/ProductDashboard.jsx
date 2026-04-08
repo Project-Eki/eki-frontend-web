@@ -1,724 +1,535 @@
-import axios from 'axios';
+import React, { useState, useEffect, useRef } from 'react';
+import VendorSidebar from '../components/VendorSidebar';
+import Navbar3 from '../components/adminDashboard/Navbar4';
+import Footer from "../components/Vendormanagement/VendorFooter";
+import ProductListing from '../components/ProductListing';
+import {
+  Plus, Search, Filter, LayoutGrid, List,
+  CheckCircle2, Package, ShoppingBag,
+  X, Trash2, CreditCard, Box, ListChecks,
+} from 'lucide-react';
 
-const api = axios.create({
-  baseURL: 'http://134.122.22.45/api/v1',
-  headers: { 'Content-Type': 'application/json' },
-});
+import {
+  getProducts,
+  createProductListing,
+  updateProductListing,
+  deleteProductListing,
+  uploadListingImages,
+  getVendorDashboard,
+} from '../services/authService';
+import { getCurrencySymbol } from '../utils/currency';
 
-// ─── PUBLIC ROUTES (no token attached) ───────────────────────────────────────
-const PUBLIC_ROUTES = [
-  '/accounts/login/',
-  '/accounts/reset-password/',
-  '/accounts/verify-email/',
-  '/accounts/resend-code/',
-  '/accounts/confirm-password-reset/',
-  '/accounts/register-buyer/',
-  '/accounts/register-vendor/',
-  '/accounts/token-refresh/',
+// ─── Constants ────────────────────────────────────────────────────────────────
+const QTY_DISPLAY = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' };
+const CATEGORIES = [
+  'Electronics', 'Computers', 'Grocery', 'Home & Decor',
+  'Fashion', 'Retail', 'Beauty', 'Others',
 ];
 
-// ─── TOKEN REFRESH STATE ──────────────────────────────────────────────────────
-let isRefreshing = false;
-let failedQueue  = [];
-
-const processQueue = (error, token = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) prom.reject(error);
-    else prom.resolve(token);
-  });
-  failedQueue = [];
+const getQualityStyle = (qty) => {
+  const q = (qty || '').toLowerCase();
+  if (q === 'high') return { bg: '#FFF8E7', text: '#B8860B', border: '#F5B841' };
+  if (q === 'low')  return { bg: '#FFF3E0', text: '#C07000', border: '#E09030' };
+  return              { bg: '#FFFBF0', text: '#A07800', border: '#F5C842' };
 };
 
-// ─── REQUEST INTERCEPTOR ──────────────────────────────────────────────────────
-api.interceptors.request.use(
-  (config) => {
-    const isPublic = PUBLIC_ROUTES.some((route) => config.url?.includes(route));
-    if (!isPublic) {
-      const token = localStorage.getItem('access_token');
-      if (token && token !== 'null' && token !== 'undefined' && token.trim() !== '') {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
+// ─── Stat Card ────────────────────────────────────────────────────────────────
+const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
+  <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
+    <div className="flex items-start justify-between">
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{title}</p>
+        <p className="text-2xl font-bold text-gray-900">{number}</p>
+      </div>
+      <div className={`${iconBgColor} p-2.5 rounded-xl`}>
+        <Icon size={20} className={iconColor} />
+      </div>
+    </div>
+  </div>
 );
 
-// ─── RESPONSE INTERCEPTOR ────────────────────────────────────────────────────
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const status          = error.response?.status;
-    const originalRequest = error.config;
+// ─── ProductCard ──────────────────────────────────────────────────────────────
+const ProductCard = ({ product, currencySymbol, onClick }) => {
+  const qStyle    = getQualityStyle(product.inventory_quality || product.qty);
+  const mainImage = product.images?.[0]?.image || null;
+  return (
+    <div
+      onClick={onClick}
+      className="bg-white rounded-xl border border-slate-100 overflow-hidden cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all group"
+    >
+      <div className="relative h-40 bg-slate-50">
+        {mainImage ? (
+          <img src={mainImage} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <ShoppingBag size={32} className="text-slate-200" />
+          </div>
+        )}
+        <div className="absolute top-2 right-2">
+          <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${product.is_published === true ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+            {product.is_published === true ? 'LIVE' : 'DRAFT'}
+          </span>
+        </div>
+      </div>
+      <div className="p-3 space-y-1">
+        <p className="text-[9px] font-bold uppercase text-slate-400">{product.category || '—'}</p>
+        <p className="text-[13px] font-bold text-slate-800 truncate">{product.title}</p>
+        <div className="flex items-center justify-between pt-0.5">
+          <p className="text-[13px] font-black text-[#125852]">{currencySymbol} {Number(product.price || 0).toLocaleString()}</p>
+          <span
+            className="text-[8px] font-black px-2 py-0.5 rounded-full border"
+            style={{ background: qStyle.bg, color: qStyle.text, borderColor: qStyle.border }}
+          >
+            {(product.inventory_quality || product.qty || 'Medium').toUpperCase()}
+          </span>
+        </div>
+        {product.sku && <p className="text-[9px] text-slate-400 font-mono truncate">{product.sku}</p>}
+      </div>
+    </div>
+  );
+};
 
-    if (status === 400) {
-      console.error('━━ 400 Bad Request ━━━━━━━━━━━━━━━━━━━');
-      console.error('URL    :', error.config?.url);
-      try { console.error('Sent   :', JSON.parse(error.config?.data)); }
-      catch (_) { console.error('Sent   :', error.config?.data); }
-      console.error('Django :', error.response?.data);
-      const errs = error.response?.data?.errors ?? error.response?.data;
-      if (errs && typeof errs === 'object') {
-        Object.entries(errs).forEach(([f, m]) =>
-          console.error(`  ✗ ${f}:`, Array.isArray(m) ? m.join(', ') : m)
-        );
-      }
-      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    }
+// ─── Main Component ───────────────────────────────────────────────────────────
+const ProductDashboard = () => {
+  const [viewType,           setViewType]           = useState('grid');
+  const [products,           setProducts]           = useState([]);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isEditModalOpen,    setIsEditModalOpen]    = useState(false);
+  const [isDeleteModalOpen,  setIsDeleteModalOpen]  = useState(false);
+  const [selectedProduct,    setSelectedProduct]    = useState(null);
+  const [isLoading,          setIsLoading]          = useState(false);
+  const [isFetching,         setIsFetching]         = useState(true);
+  const [currencySymbol,     setCurrencySymbol]     = useState('$');
+  const [vendorCountry,      setVendorCountry]      = useState('');
+  const [businessCategory,   setBusinessCategory]   = useState('retail');
+  const [searchQuery,        setSearchQuery]        = useState('');
+  const [searchFocused,      setSearchFocused]      = useState(false);
+  const [successMsg,         setSuccessMsg]         = useState('');
+  const [isFilterOpen,       setIsFilterOpen]       = useState(false);
+  const [filterCategory,     setFilterCategory]     = useState('');
+  const [filterStatus,       setFilterStatus]       = useState('');
+  const [filterQuality,      setFilterQuality]      = useState('');
+  const [vendorType,         setVendorType]         = useState('product');
+  const filterRef = useRef(null);
 
-    if (status === 401 && !originalRequest._retry) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({
-            resolve: (token) => {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-              resolve(api(originalRequest));
-            },
-            reject: (err) => reject(err),
-          });
-        });
-      }
-
-      originalRequest._retry = true;
-      isRefreshing           = true;
-
-      const refreshToken = localStorage.getItem('refresh_token');
-
-      if (!refreshToken) {
-        isRefreshing = false;
-        processQueue(error, null);
-        localStorage.clear();
-        if (!window.location.pathname.includes('Login')) window.location.href = '/Login';
-        return Promise.reject(error);
-      }
-
+  // ── Load vendor info ────────────────────────────────────────────────────────
+  useEffect(() => {
+    const loadVendorData = async () => {
       try {
-        const res = await axios.post(
-          'http://134.122.22.45/api/v1/accounts/token-refresh/',
-          { refresh: refreshToken }
-        );
-        const newAccess = res.data?.access || res.data?.data?.access;
-        localStorage.setItem('access_token', newAccess);
-        api.defaults.headers.common.Authorization = `Bearer ${newAccess}`;
-        processQueue(null, newAccess);
-        isRefreshing                               = false;
-        originalRequest.headers.Authorization      = `Bearer ${newAccess}`;
-        return api(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        isRefreshing = false;
-        localStorage.clear();
-        if (!window.location.pathname.includes('Login')) window.location.href = '/Login';
-        return Promise.reject(refreshError);
+        const data = await getVendorDashboard();
+        if (data?.country) {
+          setVendorCountry(data.country);
+          setCurrencySymbol(getCurrencySymbol(data.country));
+        }
+        if (data?.businessCategory) setBusinessCategory(data.businessCategory);
+
+        const serviceCategories = ['beauty', 'transport', 'tailoring', 'airlines', 'hotels', 'other'];
+        const bc    = data?.businessCategory || 'retail';
+        const vType = serviceCategories.includes(bc) ? 'service' : 'product';
+        setVendorType(vType);
+      } catch (err) {
+        console.error('Failed to load vendor info', err);
       }
-    }
+    };
+    loadVendorData();
+  }, []);
 
-    return Promise.reject(error);
-  }
-);
+  // ── Load products ───────────────────────────────────────────────────────────
+  useEffect(() => { loadProducts(); }, []);
 
-// ─── TOKEN HELPERS ────────────────────────────────────────────────────────────
-const saveTokens = ({ access, refresh }) => {
-  if (access)  localStorage.setItem('access_token',  access);
-  if (refresh) localStorage.setItem('refresh_token', refresh);
-};
+  // ── Close filter on outside click ──────────────────────────────────────────
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (filterRef.current && !filterRef.current.contains(e.target)) setIsFilterOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-// ─── AUTHENTICATION ───────────────────────────────────────────────────────────
-export const SigninUser = async (credentials) => {
-  const response = await api.post('/accounts/login/', {
-    email:    credentials.email?.trim().toLowerCase(),
-    password: credentials.password,
-  });
-  const data = response.data?.data ?? response.data;
-  saveTokens({ access: data?.access, refresh: data?.refresh });
-
-  if (data?.first_name)   localStorage.setItem('vendor_first_name',   data.first_name);
-  if (data?.last_name)    localStorage.setItem('vendor_last_name',    data.last_name);
-  if (data?.email)        localStorage.setItem('vendor_email',        data.email);
-  if (data?.role)         localStorage.setItem('vendor_role',         data.role);
-  if (data?.phone_number) localStorage.setItem('vendor_phone_number', data.phone_number);
-
-  return response.data;
-};
-
-export const SignoutUser = () => {
-  localStorage.clear();
-  window.location.href = '/Login';
-};
-
-export const verifyOtp = (data) =>
-  api.post('/accounts/verify-email/', data).then((r) => r.data);
-
-export const resendOtp = (email) =>
-  api.post('/accounts/resend-code/', { email }).then((r) => r.data);
-
-// ─── BUYER PROFILE ────────────────────────────────────────────────────────────
-export const getBuyerProfile = () =>
-  api.get('/accounts/buyer/profile/').then((r) => r.data?.data ?? r.data);
-
-export const updateBuyerProfile = (data) =>
-  api.patch('/accounts/buyer/profile/', data).then((r) => r.data?.data ?? r.data);
-
-// ─── VENDOR PROFILE ───────────────────────────────────────────────────────────
-let _profileCache    = null;
-let _profileFetching = null;
-
-export const clearProfileCache = () => { _profileCache = null; };
-
-export const getVendorProfile = async () => {
-  if (_profileCache)    return _profileCache;
-  if (_profileFetching) return _profileFetching;
-
-  _profileFetching = (async () => {
+  const loadProducts = async () => {
+    setIsFetching(true);
     try {
-      const r    = await api.get('/accounts/vendor/profile/');
-      const data = r.data?.data ?? r.data;
-
-      if (data?.first_name)       localStorage.setItem('vendor_first_name',      data.first_name);
-      if (data?.last_name)        localStorage.setItem('vendor_last_name',       data.last_name);
-      if (data?.email)            localStorage.setItem('vendor_email',            data.email);
-      if (data?.profile_picture)  localStorage.setItem('vendor_profile_picture', data.profile_picture);
-      if (data?.phone_number)     localStorage.setItem('vendor_phone_number',    data.phone_number);
-      if (data?.business_country) localStorage.setItem('vendor_country',         data.business_country);
-      else if (data?.country)     localStorage.setItem('vendor_country',         data.country);
-
-      _profileCache = data;
-      return data;
+      const data = await getProducts();
+      setProducts(data || []);
     } catch (err) {
-      const status = err.response?.status;
-      if (status === 500 || status === 404) {
-        const fallback = {
-          first_name:       localStorage.getItem('vendor_first_name')      || '',
-          last_name:        localStorage.getItem('vendor_last_name')       || '',
-          email:            localStorage.getItem('vendor_email')            || '',
-          profile_picture:  localStorage.getItem('vendor_profile_picture') || null,
-          phone_number:     localStorage.getItem('vendor_phone_number')    || '',
-          business_country: localStorage.getItem('vendor_country')         || 'Uganda',
-        };
-        _profileCache = fallback;
-        return fallback;
-      }
-      throw err;
+      console.error('Failed to load products', err);
     } finally {
-      _profileFetching = null;
+      setIsFetching(false);
     }
-  })();
+  };
 
-  return _profileFetching;
-};
+  const showSuccess = (msg) => {
+    setSuccessMsg(msg);
+    setTimeout(() => setSuccessMsg(''), 4000);
+  };
 
-export const updateVendorProfile = async (changedFields) => {
-  const formData = new FormData();
-
-  Object.keys(changedFields).forEach((key) => {
-    const value = changedFields[key];
-    if (value === null || value === undefined || value === '') return;
-
-    if (key === 'business_phone') {
-      let phone = String(value).replace(/\s/g, '');
-      if (!phone.startsWith('+')) phone = `+${phone}`;
-      formData.append('phone_number', phone);
-    } else if (key === 'profile_picture' && value instanceof File) {
-      formData.append('profile_picture', value);
-    } else {
-      formData.append(key, value);
+  // ── Create ──────────────────────────────────────────────────────────────────
+  const handleCreateProduct = async (payload, imageFiles) => {
+    setIsLoading(true);
+    try {
+      const created = await createProductListing({
+        ...payload,
+        business_category: businessCategory,
+      });
+      if (imageFiles.length > 0 && created?.id) {
+        await uploadListingImages(created.id, imageFiles);
+      }
+      await loadProducts();
+      setIsProductModalOpen(false);
+      showSuccess('Product created successfully!');
+    } catch (err) {
+      console.error('Failed to create product', err);
+      const detail = err.response?.data?.errors ?? err.response?.data;
+      const msg = detail && typeof detail === 'object'
+        ? Object.entries(detail).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' | ')
+        : 'Failed to create product. Please try again.';
+      throw new Error(msg);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // ── Update ──────────────────────────────────────────────────────────────────
+  const handleUpdateProduct = async (productId, payload, imageFiles) => {
+    setIsLoading(true);
+    try {
+      await updateProductListing(productId, {
+        title:        payload.title,
+        price:        payload.price,
+        sku:          payload.sku || '',
+        qty:          payload.qty,
+        stock:        Number(payload.stock) || 0,
+        location:     payload.location || '',
+        description:  payload.description || '',
+        is_published: payload.is_published === true,
+        sizes:        payload.sizes  || [],
+        colors:       payload.colors || [],
+      });
+      if (imageFiles.length > 0) {
+        await uploadListingImages(productId, imageFiles);
+      }
+      await loadProducts();
+      setIsEditModalOpen(false);
+      setSelectedProduct(null);
+      showSuccess('Product updated successfully!');
+    } catch (err) {
+      console.error('Failed to update product', err);
+      const detail = err.response?.data?.errors ?? err.response?.data;
+      const msg = detail && typeof detail === 'object'
+        ? Object.entries(detail).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' | ')
+        : 'Failed to update product.';
+      throw new Error(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ── Open edit modal ─────────────────────────────────────────────────────────
+  const handleProductClick = (product) => {
+    setSelectedProduct({
+      id:           product.id,
+      title:        product.title        || '',
+      category:     product.category     || '',
+      price:        product.price        ? String(product.price) : '',
+      sku:          product.sku          || '',
+      qty:          QTY_DISPLAY[product.inventory_quality] || product.qty || 'Medium',
+      location:     product.vendor_location || product.location || '',
+      description:  product.description  || '',
+      stock:        product.detail?.stock ?? product.stock ?? 0,
+      sizes:        product.sizes        || [],
+      colors:       product.colors       || [],
+      is_published: product.is_published === true || product.status === 'published',
+      images:       product.images       || [],
+    });
+    setIsEditModalOpen(true);
+  };
+
+  // ── Delete ──────────────────────────────────────────────────────────────────
+  const handleDelete = () => {
+    if (!selectedProduct?.id) return;
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleteModalOpen(false);
+    setIsLoading(true);
+    try {
+      await deleteProductListing(selectedProduct.id);
+      await loadProducts();
+      setIsEditModalOpen(false);
+      setSelectedProduct(null);
+      showSuccess('Product deleted.');
+    } catch (err) {
+      console.error('Failed to delete product', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ── Filtering ───────────────────────────────────────────────────────────────
+  const filteredProducts = products.filter((p) => {
+    const matchesSearch   = p.title?.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = !filterCategory || p.category === filterCategory;
+    const matchesStatus   = !filterStatus
+      || (filterStatus === 'published' && p.is_published === true)
+      || (filterStatus === 'draft'     && p.is_published !== true);
+    const rawQty          = (p.inventory_quality || p.qty || '').toUpperCase();
+    const matchesQuality  = !filterQuality || rawQty === filterQuality.toUpperCase();
+    return matchesSearch && matchesCategory && matchesStatus && matchesQuality;
   });
 
-  try {
-    const res = await api.patch('/accounts/vendor/profile/', formData, {
-      headers: { 'Content-Type': undefined },
-    });
+  const activeFilterCount = [filterCategory, filterStatus, filterQuality].filter(Boolean).length;
+  const clearFilters = () => { setFilterCategory(''); setFilterStatus(''); setFilterQuality(''); };
 
-    clearProfileCache();
+  // ── Render ──────────────────────────────────────────────────────────────────
+  return (
+    <div className="flex min-h-screen bg-[#ecece7] text-slate-800 p-3 gap-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      <VendorSidebar activePage="products" vendorType={vendorType} businessCategory={businessCategory} />
 
-    const d = res.data?.data ?? res.data;
-    if (d) {
-      if (d.first_name)       localStorage.setItem('vendor_first_name',      d.first_name);
-      if (d.last_name)        localStorage.setItem('vendor_last_name',       d.last_name);
-      if (d.email)            localStorage.setItem('vendor_email',            d.email);
-      if (d.profile_picture)  localStorage.setItem('vendor_profile_picture', d.profile_picture);
-      if (d.phone_number)     localStorage.setItem('vendor_phone_number',    d.phone_number);
-      if (d.business_country) localStorage.setItem('vendor_country',         d.business_country);
-      else if (d.country)     localStorage.setItem('vendor_country',         d.country);
-    }
+      <div className="flex-1 flex flex-col min-w-0">
+        <Navbar3 />
 
-    return res.data?.data ?? res.data;
-  } catch (error) {
-    console.error('[updateVendorProfile] Error:', error.response?.status, error.response?.data);
-    throw error;
-  }
+        {/* Success toast */}
+        {successMsg && (
+          <div className="fixed top-6 right-6 z-[200] bg-emerald-600 text-white px-4 py-2 rounded-xl shadow-lg text-xs font-bold flex items-center gap-2 animate-pulse">
+            <CheckCircle2 size={12} /> {successMsg}
+          </div>
+        )}
+
+        <main className="p-5 max-w-[1400px] mx-auto w-full pb-16">
+
+          {/* Header */}
+          <div className="flex justify-between items-center mb-5">
+            <div>
+              <h1 className="text-xl font-bold text-[#1A1A1A] tracking-tight">Product Management</h1>
+              <p className="text-slate-400 text-[11px]">
+                Manage your inventory, pricing, and visibility across the marketplace.
+                {vendorCountry && (
+                  <span className="ml-2 bg-slate-100 px-1.5 py-0.5 rounded-full text-slate-500 text-[9px]">
+                    {vendorCountry} · {currencySymbol}
+                  </span>
+                )}
+              </p>
+            </div>
+            <button
+              onClick={() => setIsProductModalOpen(true)}
+              className="bg-[#F5B841] text-white px-5 py-2.5 rounded-lg text-[12px] font-bold flex items-center gap-2 hover:bg-[#E0A83B] transition-all active:scale-95 shadow-sm"
+            >
+              <Plus size={14} /> Add New Product
+            </button>
+          </div>
+
+          {/* Stat cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+            <StatCard title="Total Products"  number={products.length}                                                                           icon={Package}    iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
+            <StatCard title="Active Listings" number={products.filter((p) => p.is_published === true).length}                                    icon={ListChecks} iconBgColor="bg-blue-50"    iconColor="text-blue-600"    />
+            <StatCard title="High Quality"    number={products.filter((p) => (p.inventory_quality || p.qty || '').toUpperCase() === 'HIGH').length} icon={Box}        iconBgColor="bg-orange-50" iconColor="text-orange-600" />
+            <StatCard title="Drafts"          number={products.filter((p) => p.is_published !== true).length}                                    icon={CreditCard} iconBgColor="bg-indigo-50" iconColor="text-indigo-600" />
+          </div>
+
+          {/* Search + Filter + View toggle */}
+          <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
+            <div className={`relative w-80 flex items-center border rounded-lg shadow-sm transition-all bg-white ${searchFocused ? 'border-[#F5B841] ring-1 ring-[#F5B841]' : 'border-slate-200'}`}>
+              <Search className={`absolute left-3 transition-colors ${searchFocused ? 'text-[#F5B841]' : 'text-slate-400'}`} size={16} />
+              <input
+                type="text"
+                placeholder="Search by title or SKU..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+                className="w-full pl-9 pr-4 py-2 bg-transparent text-sm focus:outline-none rounded-lg"
+              />
+              {searchQuery && (
+                <button type="button" onClick={() => setSearchQuery('')} className="absolute right-3 text-slate-400 hover:text-slate-600">
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* Filter dropdown */}
+              <div className="relative" ref={filterRef}>
+                <button
+                  onClick={() => setIsFilterOpen((v) => !v)}
+                  className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-xs font-bold transition-all ${activeFilterCount > 0 ? 'bg-[#F5B841] text-white border-[#F5B841] shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-[#F5B841]'}`}
+                >
+                  <Filter size={14} /> Filters
+                  {activeFilterCount > 0 && (
+                    <span className="bg-white text-[#F5B841] text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{activeFilterCount}</span>
+                  )}
+                </button>
+
+                {isFilterOpen && (
+                  <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-slate-200 rounded-2xl shadow-2xl p-5 w-72">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-[12px] font-bold text-slate-800 uppercase tracking-wide">Filter Products</h3>
+                      {activeFilterCount > 0 && (
+                        <button onClick={clearFilters} className="text-[10px] font-bold text-[#F5B841] hover:underline">Clear all</button>
+                      )}
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Status</label>
+                      <div className="flex gap-2 flex-wrap">
+                        {['', 'published', 'draft'].map((s) => (
+                          <button key={s} type="button" onClick={() => setFilterStatus(s)}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${filterStatus === s ? 'bg-[#125852] text-white border-[#125852]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#125852]'}`}>
+                            {s === '' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Quality</label>
+                      <div className="flex gap-2 flex-wrap">
+                        {['', 'High', 'Medium', 'Low'].map((q) => (
+                          <button key={q} type="button" onClick={() => setFilterQuality(q)}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${filterQuality === q ? 'bg-[#125852] text-white border-[#125852]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#125852]'}`}>
+                            {q === '' ? 'All' : q}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Category</label>
+                      <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[11px] bg-white outline-none focus:border-[#125852]">
+                        <option value="">All Categories</option>
+                        {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-slate-100 text-[10px] text-slate-400 text-center">
+                      Showing {filteredProducts.length} of {products.length} products
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="h-8 w-[1px] bg-slate-200 mx-1" />
+
+              {/* View toggle */}
+              <div className="flex bg-white border border-slate-200 rounded-lg p-1">
+                <button onClick={() => setViewType('grid')} className={`p-1.5 rounded ${viewType === 'grid' ? 'bg-slate-100' : ''}`}><LayoutGrid size={16} /></button>
+                <button onClick={() => setViewType('list')} className={`p-1.5 rounded ${viewType === 'list' ? 'bg-slate-100' : ''}`}><List size={16} /></button>
+              </div>
+            </div>
+          </div>
+
+          {/* Active filter pills */}
+          {activeFilterCount > 0 && (
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+              <span className="text-[10px] text-slate-400 font-bold uppercase">Active:</span>
+              {filterStatus   && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterStatus}  <button onClick={() => setFilterStatus('')}><X size={9} /></button></span>}
+              {filterQuality  && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterQuality} <button onClick={() => setFilterQuality('')}><X size={9} /></button></span>}
+              {filterCategory && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterCategory}<button onClick={() => setFilterCategory('')}><X size={9} /></button></span>}
+            </div>
+          )}
+
+          {/* Product grid / empty states */}
+          {isFetching ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="bg-white rounded-xl border border-slate-100 overflow-hidden animate-pulse">
+                  <div className="h-40 bg-slate-100" />
+                  <div className="p-4 space-y-1.5">
+                    <div className="h-2 bg-slate-100 rounded w-1/2" />
+                    <div className="h-3 bg-slate-100 rounded w-3/4" />
+                    <div className="h-2 bg-slate-100 rounded w-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-20 text-center">
+              <ShoppingBag className="text-slate-200 mx-auto mb-4" size={48} />
+              <h3 className="text-lg font-bold text-slate-800">
+                {activeFilterCount > 0 || searchQuery ? 'No matching products' : 'No products found'}
+              </h3>
+              <p className="text-slate-500 text-sm mb-6">
+                {activeFilterCount > 0 || searchQuery ? 'Try adjusting your search or filters.' : 'Start by adding your first product to the catalog.'}
+              </p>
+              {!activeFilterCount && !searchQuery && (
+                <button onClick={() => setIsProductModalOpen(true)} className="bg-[#F5B841] text-white px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 mx-auto hover:bg-[#E0A83B]">
+                  <Plus size={16} /> Add Your First Product
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className={viewType === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4' : 'space-y-3'}>
+              {filteredProducts.map((product) => (
+                <ProductCard key={product.id} product={product} currencySymbol={currencySymbol} onClick={() => handleProductClick(product)} />
+              ))}
+            </div>
+          )}
+        </main>
+
+        <Footer />
+      </div>
+
+      {/* ── Modals ─────────────────────────────────────────────────────────── */}
+
+      {/* Create Product Modal */}
+      <ProductListing
+        key="create-product-modal"
+        isOpen={isProductModalOpen}
+        onClose={() => setIsProductModalOpen(false)}
+        onSubmit={handleCreateProduct}
+        isLoading={isLoading}
+        isServiceVendor={false}
+        businessCategory={businessCategory}
+        currencySymbol={currencySymbol}
+        submitLabel="Publish Product"
+      />
+
+      {/* Edit Product Modal */}
+      <ProductListing
+        key={selectedProduct?.id ? `edit-${selectedProduct.id}` : 'edit-product-modal'}
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedProduct(null);
+        }}
+        onSubmit={async (payload, imageFiles) => {
+          if (selectedProduct) {
+            await handleUpdateProduct(selectedProduct.id, payload, imageFiles);
+          }
+        }}
+        isLoading={isLoading}
+        isServiceVendor={false}
+        businessCategory={businessCategory}
+        currencySymbol={currencySymbol}
+        initialData={selectedProduct}
+        submitLabel="Save Changes"
+      />
+
+      {/* Delete Confirm Modal */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center" style={{ fontFamily: "'Poppins', sans-serif" }}>
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={20} className="text-red-500" />
+            </div>
+            <h3 className="text-base font-bold text-slate-800 mb-1">Delete Product?</h3>
+            <p className="text-[11px] text-slate-500 mb-5">
+              "<span className="font-bold text-slate-700">{selectedProduct?.title}</span>" will be permanently removed. This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setIsDeleteModalOpen(false)} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-50">
+                Cancel
+              </button>
+              <button type="button" onClick={confirmDelete} className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg text-[11px] font-bold hover:bg-red-600 transition-colors">
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
-// ─── VENDOR NOTIFICATIONS (accounts — kept for backward compat) ───────────────
-const NOTIFICATIONS_ENDPOINT_READY = false;
-
-export const getVendorNotifications = async ({ limit = 15 } = {}) => {
-  if (!NOTIFICATIONS_ENDPOINT_READY) return { notifications: [] };
-  try {
-    const r       = await api.get(`/accounts/vendor/notifications/?limit=${limit}`);
-    const payload = r.data?.data ?? r.data;
-    if (Array.isArray(payload))                return { notifications: payload };
-    if (Array.isArray(payload?.notifications)) return payload;
-    if (Array.isArray(payload?.results))       return { notifications: payload.results };
-    return { notifications: [] };
-  } catch (err) {
-    if (err.response?.status === 404 || err.response?.status === 500)
-      return { notifications: [] };
-    throw err;
-  }
-};
-
-export const markVendorNotificationRead = async (notifId) => {
-  if (!NOTIFICATIONS_ENDPOINT_READY) return null;
-  try {
-    const r = await api.patch(`/accounts/vendor/notifications/${notifId}/`, { is_read: true });
-    return r.data?.data ?? r.data;
-  } catch (err) {
-    if (err.response?.status === 404 || err.response?.status === 500) return null;
-    throw err;
-  }
-};
-
-export const markAllVendorNotificationsRead = async () => {
-  if (!NOTIFICATIONS_ENDPOINT_READY) return null;
-  try {
-    const r = await api.post('/accounts/vendor/notifications/mark-read/', { mark_all: true });
-    return r.data?.data ?? r.data;
-  } catch (err) {
-    if (err.response?.status === 404 || err.response?.status === 500) return null;
-    throw err;
-  }
-};
-
-// ─── ORDER NOTIFICATIONS (orders service — live) ──────────────────────────────
-export const getOrderNotifications = async ({ limit = 15 } = {}) => {
-  try {
-    const r       = await api.get(`/orders/vendor/notifications/?limit=${limit}`);
-    const payload = r.data?.data ?? r.data;
-    if (Array.isArray(payload))                return { notifications: payload };
-    if (Array.isArray(payload?.notifications)) return payload;
-    if (Array.isArray(payload?.results))       return { notifications: payload.results };
-    return { notifications: [] };
-  } catch (err) {
-    if (err.response?.status === 404 || err.response?.status === 500)
-      return { notifications: [] };
-    throw err;
-  }
-};
-
-export const getOrderNotificationsUnreadCount = async () => {
-  try {
-    const r       = await api.get('/orders/vendor/notifications/unread-count/');
-    const payload = r.data?.data ?? r.data;
-    return Number(payload?.count ?? payload?.unread_count ?? 0);
-  } catch (_) { return 0; }
-};
-
-export const markOrderNotificationRead = async (notifId) => {
-  try {
-    const r = await api.patch(`/orders/vendor/notifications/${notifId}/read/`);
-    return r.data?.data ?? r.data;
-  } catch (err) {
-    if (err.response?.status === 404 || err.response?.status === 500) return null;
-    throw err;
-  }
-};
-
-// ─── ORDER NORMALISER ─────────────────────────────────────────────────────────
-// Handles every field-name variation Django might return so components always
-// get a consistent shape: { id, customer, total, status, items, date }
-const normalizeOrder = (o) => ({
-  // spread raw first so nothing is lost
-  ...o,
-  // then overwrite with normalised guaranteed fields
-  id: o.id ?? o.order_id ?? o.pk,
-  customer:
-    o.customer       ??
-    o.customer_name  ??
-    o.buyer_name     ??
-    o.buyer?.name    ??
-    o.buyer?.full_name ??
-    o.user?.name     ??
-    o.user?.full_name  ??
-    o.user?.username   ??
-    '—',
-  total: Number(
-    o.total         ??
-    o.total_amount  ??
-    o.total_price   ??
-    o.amount        ??
-    o.grand_total   ??
-    0
-  ),
-  status: o.status ?? o.order_status ?? 'pending',
-  items:  o.items  ?? o.item_count   ?? o.quantity ?? null,
-  date:   o.date   ?? o.created_at   ?? o.order_date ?? '',
-});
-
-// ─── VENDOR ORDERS ────────────────────────────────────────────────────────────
-export const getVendorOrders = async ({ status = '', search = '' } = {}) => {
-  try {
-    const params = new URLSearchParams();
-    if (status) params.append('status', status);
-    if (search) params.append('search', search);
-    const query = params.toString() ? `?${params.toString()}` : '';
-
-    const r       = await api.get(`/orders/vendor/order-list/${query}`);
-    const payload = r.data?.data ?? r.data;
-
-    console.log('[getVendorOrders] raw response:', payload);
-
-    let list = [];
-    if (Array.isArray(payload))               list = payload;
-    else if (Array.isArray(payload?.results)) list = payload.results;
-    else if (Array.isArray(payload?.orders))  list = payload.orders;
-    else if (Array.isArray(payload?.data))    list = payload.data;
-
-    return list.map(normalizeOrder);
-  } catch (err) {
-    console.error('[getVendorOrders] Error:', err.response?.status, err.response?.data);
-    return [];
-  }
-};
-
-export const updateVendorOrderStatus = async (orderId, status) => {
-  const r = await api.patch(`/orders/vendor/orders-status/${orderId}/`, { status });
-  return r.data?.data ?? r.data;
-};
-
-export const startServiceOrder = async (orderId) => {
-  const r = await api.post(`/orders/start-service/${orderId}/`);
-  return r.data?.data ?? r.data;
-};
-
-export const completeServiceOrder = async (orderId) => {
-  const r = await api.post(`/orders/complete-service/${orderId}/`);
-  return r.data?.data ?? r.data;
-};
-
-export const markOrderReadyForPickup = async (orderId) => {
-  const r = await api.post(`/orders/ready-for-pickup/${orderId}/`);
-  return r.data?.data ?? r.data;
-};
-
-// ─── VENDOR DASHBOARD ─────────────────────────────────────────────────────────
-export const getVendorDashboard = async () => {
-  let raw = {};
-
-  try {
-    const dashRes = await api.get('/accounts/vendor/command-center/');
-    raw = dashRes.data?.data ?? dashRes.data ?? {};
-    console.log('[getVendorDashboard] Raw API response:', raw);
-  } catch (dashErr) {
-    console.error('[getVendorDashboard] command-center failed:', dashErr);
-  }
-
-  let country = 'Uganda';
-  let storeName = '';
-  let vendorType = 'Products';
-  let businessCategory = 'retail';
-  let currencySymbol = 'UGX';
-  
-  // Get vendor type fields from the API response
-  let isProductVendor = raw.is_product_vendor ?? true;
-  let isServiceVendor = raw.is_service_vendor ?? false;
-  let vendor_type = raw.vendor_type ?? (isProductVendor ? 'product' : 'service');
-  let allowedListingTypes = raw.allowed_listing_types ?? (isProductVendor ? ['product'] : ['service']);
-
-  try {
-    const p = await getVendorProfile();
-    country = p.business_country || p.country || localStorage.getItem('vendor_country') || 'Uganda';
-    storeName = p.business_name || '';
-    vendorType = p.business_type || (isProductVendor ? 'Products' : 'Services');
-    businessCategory = p.business_category || raw.business_category || 'retail';
-    currencySymbol = raw.currencySymbol || p.currencySymbol || 'UGX';
-  } catch (_) {}
-
-  // Always fetch live orders
-  let liveOrders = [];
-  try {
-    liveOrders = await getVendorOrders();
-  } catch (_) {}
-
-  const metricsData = raw.metrics || {};
-  const salesHistoryData = raw.salesHistory || [];
-  const inventoryAlertsData = raw.inventoryAlerts || [];
-  const reviewsData = raw.reviews || [];
-
-  const rawRecentOrders = raw.recentOrders || [];
-  const recentOrdersData = rawRecentOrders.length > 0 ? rawRecentOrders : liveOrders.slice(0, 10);
-
-  const openOrdersCount = Number(metricsData.openOrders ?? 0) || liveOrders.filter((o) =>
-    ['pending', 'confirmed', 'processing'].includes(String(o.status).toLowerCase())
-  ).length;
-
-  // ALL data including vendor type fields
-  return {
-    storeName,
-    vendorType,
-    country,
-    businessCategory,
-    currencySymbol,
-
-    vendor_type: vendor_type,
-    is_product_vendor: isProductVendor,
-    is_service_vendor: isServiceVendor,
-    allowed_listing_types: allowedListingTypes,
-    
-    // Profile info 
-    first_name: raw.first_name,
-    last_name: raw.last_name,
-    email: raw.email,
-    phone_number: raw.phone_number,
-    profile_picture: raw.profile_picture,
-
-    metrics: {
-      grossSales: Number(metricsData.grossSales ?? 0),
-      openOrders: openOrdersCount,
-      pendingPayouts: Number(metricsData.pendingPayouts ?? 0),
-      activeListings: Number(metricsData.activeListings ?? 0),
-    },
-
-    salesHistory: salesHistoryData.map((item) => ({
-      date: item.date,
-      sales: Number(item.sales ?? 0),
-    })),
-
-    recentOrders: recentOrdersData.map(normalizeOrder),
-    inventoryAlerts: inventoryAlertsData,
-    reviews: reviewsData,
-  };
-};
-
-// ─── CATEGORIES ───────────────────────────────────────────────────────────────
-export const getCategories = (businessCategory = null) => {
-  const params = businessCategory ? `?business_category=${businessCategory}` : '';
-  return api
-    .get(`/listings/categories/${params}`)
-    .then((r) => {
-      const payload = r.data?.data ?? r.data;
-      return Array.isArray(payload) ? payload : [];
-    });
-};
-
-const normalizeListing = (item) => ({
-  ...item,
-  is_published: item.is_published === true || item.status === 'published',
-});
-
-// Added listing_type filter to only get products
-export const getProducts = async () => {
-  const params = { listing_type: 'product' };
-  const res = await api.get('/listings/', { params });
-  const payload = res.data?.data ?? res.data;
-  if (Array.isArray(payload)) return payload.map(normalizeListing);
-  if (Array.isArray(payload?.results)) return payload.results.map(normalizeListing);
-  return [];
-};
-
-// ─── CREATE PRODUCT LISTING ───────────────────────────────────────────────────
-// FIX: stock is now passed at the top-level `detail.stock` field so Django's
-// ProductDetail.total_stock property returns it correctly when no real
-// size/color variants exist. Also, when there are no real variants we send
-// an empty variants array instead of a fake "Default" variant — that prevents
-// variants.exists() returning True and summing 0-stock ghost variants.
-export const createProductListing = async (productData) => {
-  const qualityMap = {
-    High: 'high', Medium: 'medium', Low: 'low',
-    high: 'high', medium: 'medium', low: 'low',
-    HIGH: 'high', MEDIUM: 'medium', LOW: 'low',
-  };
-
-  const stockQty = parseInt(productData.stock) || 0;
-  const hasRealVariants =
-    (Array.isArray(productData.sizes)  && productData.sizes.filter(Boolean).length  > 0) ||
-    (Array.isArray(productData.colors) && productData.colors.filter(Boolean).length > 0);
-
-  let variants = [];
-
-  // Only build variants when the vendor actually selected sizes or colors
-  if (hasRealVariants) {
-    // From the variants array passed in (type + value pairs)
-    if (Array.isArray(productData.variants) && productData.variants.length > 0) {
-      productData.variants.forEach((v) => {
-        if (!v.value?.trim()) return;
-        if (v.type === 'Size')  variants.push({ color: '',             size: v.value.trim(), stock: parseInt(v.stock) || 0 });
-        if (v.type === 'Color') variants.push({ color: v.value.trim(), size: '',             stock: parseInt(v.stock) || 0 });
-      });
-    }
-
-    // Fall back to flat sizes/colors arrays
-    const sizes  = Array.isArray(productData.sizes)  ? productData.sizes.filter(Boolean)  : [];
-    const colors = Array.isArray(productData.colors) ? productData.colors.filter(Boolean) : [];
-
-    if (variants.length === 0) {
-      if (sizes.length > 0 && colors.length > 0) {
-        sizes.forEach((size) => colors.forEach((color) => variants.push({ color, size, stock: 0 })));
-      } else if (sizes.length > 0) {
-        sizes.forEach((size)  => variants.push({ color: '', size, stock: 0 }));
-      } else {
-        colors.forEach((color) => variants.push({ color, size: '', stock: 0 }));
-      }
-    }
-  }
-  // When hasRealVariants is false, variants stays [] and Django falls back to
-  // detail.stock (the top-level field) for total_stock.
-
-  const payload = {
-    listing_type:      'product',
-    business_category: productData.business_category,
-    title:             productData.title?.trim(),
-    description:       productData.description?.trim() || '',
-    status:            productData.is_published ? 'published' : 'draft',
-    availability:      'available',
-    price:             String(parseFloat(productData.price)),
-    price_unit:        'item',
-    location:          productData.location?.trim() || '',
-    detail: {
-      sku:        productData.sku?.trim() || '',
-      base_price: String(parseFloat(productData.price)),
-      quality:    qualityMap[productData.qty] ?? 'medium',
-      stock:      stockQty,   // ← FIX: always send top-level stock
-      variants,               // ← empty [] when no real variants
-    },
-  };
-
-  if (productData.category_id) payload.category_id = productData.category_id;
-
-  console.log('[listings] POST /listings/ →', JSON.stringify(payload, null, 2));
-  const res = await api.post('/listings/', payload);
-  return normalizeListing(res.data?.data ?? res.data);
-};
-
-// ─── UPDATE PRODUCT LISTING ───────────────────────────────────────────────────
-// Same fix as createProductListing — stock goes into detail.stock, and we only
-// send real variants when the vendor actually selected sizes or colors.
-export const updateProductListing = async (listingId, productData) => {
-  const qualityMap = {
-    High: 'high', Medium: 'medium', Low: 'low',
-    high: 'high', medium: 'medium', low: 'low',
-    HIGH: 'high', MEDIUM: 'medium', LOW: 'low',
-  };
-
-  const stockQty = parseInt(productData.stock) || 0;
-  const hasRealVariants =
-    (Array.isArray(productData.sizes)  && productData.sizes.filter(Boolean).length  > 0) ||
-    (Array.isArray(productData.colors) && productData.colors.filter(Boolean).length > 0);
-
-  let variants = [];
-
-  if (hasRealVariants) {
-    // From the variants array passed in (type + value pairs)
-    if (Array.isArray(productData.variants) && productData.variants.length > 0) {
-      productData.variants.forEach((v) => {
-        if (!v.value?.trim()) return;
-        if (v.type === 'Size')  variants.push({ color: '',             size: v.value.trim(), stock: parseInt(v.stock) || 0 });
-        if (v.type === 'Color') variants.push({ color: v.value.trim(), size: '',             stock: parseInt(v.stock) || 0 });
-      });
-    }
-
-    const sizes  = Array.isArray(productData.sizes)  ? productData.sizes.filter(Boolean)  : [];
-    const colors = Array.isArray(productData.colors) ? productData.colors.filter(Boolean) : [];
-
-    if (variants.length === 0) {
-      if (sizes.length > 0 && colors.length > 0) {
-        sizes.forEach((size) => colors.forEach((color) => variants.push({ color, size, stock: parseInt(productData.stock) || 0 })));
-      } else if (sizes.length > 0) {
-        sizes.forEach((size)  => variants.push({ color: '', size, stock: parseInt(productData.stock) || 0 }));
-      } else {
-        colors.forEach((color) => variants.push({ color, size: '', stock: parseInt(productData.stock) || 0 }));
-      }
-    }
-  }
-
-  const payload = {
-    listing_type: 'product',
-    title:        productData.title?.trim(),
-    description:  productData.description?.trim() || '',
-    status:       productData.is_published ? 'published' : 'draft',
-    price:        String(parseFloat(productData.price)),
-    price_unit:   'item',
-    location:     productData.location?.trim() || '',
-    detail: {
-      sku:        productData.sku?.trim() || '',
-      base_price: String(parseFloat(productData.price)),
-      quality:    qualityMap[productData.qty] ?? 'medium',
-      stock:      stockQty,   // ← FIX: always send top-level stock
-      variants,               // ← empty [] when no real variants
-    },
-  };
-
-  if (productData.category_id) payload.category_id = productData.category_id;
-
-  console.log('[listings] PATCH /listings/', listingId, '→', JSON.stringify(payload, null, 2));
-  const res = await api.patch(`/listings/${listingId}/`, payload);
-  return normalizeListing(res.data?.data ?? res.data);
-};
-
-// ─── VARIANT STOCK HELPERS ────────────────────────────────────────────────────
-export const updateVariantStock = async (listingId, variantId, stock) => {
-  const res = await api.patch(`/listings/${listingId}/variants/${variantId}/`, {
-    stock: parseInt(stock) || 0
-  });
-  return res.data?.data ?? res.data;
-};
-
-export const updateProductStock = async (listingId, stock) => {
-  // First get the listing to find the default variant
-  const listing = await api.get(`/listings/${listingId}/`);
-  const variants = listing.data?.data?.detail?.variants || [];
-  const defaultVariant = variants.find(v => v.color === 'Default' && v.size === '');
-  
-  if (defaultVariant) {
-    return updateVariantStock(listingId, defaultVariant.id, stock);
-  }
-  throw new Error('No default variant found to update stock');
-};
-
-export const deleteProductListing = (listingId) =>
-  api.delete(`/listings/${listingId}/`).then((r) => r.data);
-
-export const updateListingStatus = (listingId, newStatus) =>
-  api.patch(`/listings/${listingId}/status/`, { status: newStatus })
-    .then((r) => r.data?.data ?? r.data);
-
-export const uploadListingImage = (listingId, imageFile) => {
-  const form = new FormData();
-  form.append('image', imageFile);
-  return api
-    .post(`/listings/${listingId}/images/`, form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-    .then((r) => r.data?.data ?? r.data);
-};
-
-export const uploadListingImages = async (listingId, imageFiles) => {
-  const results = [];
-  for (const file of imageFiles) {
-    results.push(await uploadListingImage(listingId, file));
-  }
-  return results;
-};
-
-export const deleteListingImage = (listingId, imageId) =>
-  api.delete(`/listings/${listingId}/images/${imageId}/`).then((r) => r.data);
-
-export const updateProductVariant = (listingId, variantId, data) =>
-  api.patch(`/listings/${listingId}/variants/${variantId}/`, data)
-    .then((r) => r.data?.data ?? r.data);
-
-export const deleteProductVariant = (listingId, variantId) =>
-  api.delete(`/listings/${listingId}/variants/${variantId}/`).then((r) => r.data);
-
-// ─── PASSWORDS ────────────────────────────────────────────────────────────────
-export const passwordResetRequest = (email) =>
-  api.post('/accounts/reset-password/', { email });
-
-export const passwordResetConfirm = (data) =>
-  api.post('/accounts/confirm-password-reset/', data);
-
-export const changePassword = (data) =>
-  api.post('/accounts/change-password/', data);
-
-export default api;
+export default ProductDashboard;

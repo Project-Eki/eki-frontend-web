@@ -641,8 +641,8 @@ const TransportStep2 = ({ d, set, errors }) => (
       <InputIcon
         icon={MapPin}
         placeholder="e.g. Kampala, Entebbe Airport"
-        value={d.routes || ""}
-        onChange={(e) => set("routes", e.target.value)}
+        value={d.origin || ""}
+        onChange={(e) => set("origin", e.target.value)}
         error={errors.origin}
       />
     </Field>
@@ -1195,7 +1195,7 @@ const ServiceForm = ({ onClose, editingListing }) => {
       driver: det.driver_name || prev.driver || "",
       seats: det.seats_available || "",
       available24h: det.available_24h || false,
-      routes: det.origin || "",
+      origin: det.origin || "",
       category: det.sub_category || (bc === "tailoring" ? "tailoring" : ""),
       fabricMaterial: det.fabric_material || "",
       duration:

@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import VendorSidebar from "../components/VendorSidebar";
 import Navbar3 from "../components/adminDashboard/Navbar4";
 import Footer from "../components/Vendormanagement/VendorFooter";
-import ProductListing from "../components/ProductListing"; // Import the reusable component
+import ProductListing from "../components/ProductListing";
 import {
   getVendorDashboard,
   getCategories,

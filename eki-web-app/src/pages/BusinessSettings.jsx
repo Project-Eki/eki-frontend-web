@@ -72,23 +72,6 @@ const resolveDocUrl = (url) => {
   return `${DJANGO_BASE}${url.startsWith("/") ? "" : "/"}${url}`;
 };
 
-//  Footer
-const Footer = () => (
-  <footer className="bg-[#1D4D4C] text-white py-4 px-5 sm:px-10 flex flex-col sm:flex-row justify-between items-center gap-2 text-[11px] shrink-0 rounded-xl mx-3 mb-3">
-    <div className="hidden sm:block">Buy Smart. Sell Fast. Grow Together...</div>
-    <div>© 2026 Vendor Portal. All rights reserved.</div>
-    <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
-      <span className="relative inline-block cursor-pointer hover:underline">
-        eki<span className="absolute text-[5px] -bottom-0 -right-2">TM</span>
-      </span>
-      <span className="cursor-pointer hover:underline">Support</span>
-      <span className="cursor-pointer hover:underline">Privacy Policy</span>
-      <span className="cursor-pointer hover:underline">Terms of Service</span>
-      <span className="cursor-pointer hover:underline">Ijoema ltd</span>
-    </div>
-  </footer>
-);
-
 // ─── Document status styles ───────────────────────────────────────────────────
 const DOC_STATUS_CFG = {
   Verified: {
@@ -764,7 +747,7 @@ const BusinessSettings = () => {
 
 export default BusinessSettings;
 
-// Reusable sub-components 
+// Reusable sub-components
 
 const FieldLabel = ({ text }) => (
   <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide mb-1.5 ml-0.5">{text}</p>

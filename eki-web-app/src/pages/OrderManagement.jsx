@@ -305,10 +305,10 @@ const OrderManagement = () => {
             </div>
             <div className="flex gap-1.5">
               <button className="bg-white border border-slate-200 text-slate-600 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-slate-50 transition text-[10px] font-bold shadow-sm">
-                <Download size={12} /> Export Data
+                {/* <Download size={12} /> Export Data */}
               </button>
               <button className="bg-[#F5B841] text-white px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-[#E0A83B] transition text-[10px] font-bold shadow-sm">
-                <Printer size={12} /> Print Manifests
+                {/* <Printer size={12} /> Print Manifests */}
               </button>
             </div>
           </div>
