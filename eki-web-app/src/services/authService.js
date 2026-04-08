@@ -409,80 +409,85 @@ export const getVendorDashboard = async () => {
   try {
     const dashRes = await api.get('/accounts/vendor/command-center/');
     raw = dashRes.data?.data ?? dashRes.data ?? {};
+    console.log('[getVendorDashboard] Raw API response:', raw);
   } catch (dashErr) {
-    console.error(
-      '[getVendorDashboard] command-center failed:',
-      dashErr.response?.status,
-      dashErr.response?.data ?? dashErr.message
-    );
+    console.error('[getVendorDashboard] command-center failed:', dashErr);
   }
 
-  let country          = 'Uganda';
-  let storeName        = '';
-  let vendorType       = 'Products';
+  let country = 'Uganda';
+  let storeName = '';
+  let vendorType = 'Products';
   let businessCategory = 'retail';
+  let currencySymbol = 'UGX';
+  
+  // Get vendor type fields from the API response
+  let isProductVendor = raw.is_product_vendor ?? true;
+  let isServiceVendor = raw.is_service_vendor ?? false;
+  let vendor_type = raw.vendor_type ?? (isProductVendor ? 'product' : 'service');
+  let allowedListingTypes = raw.allowed_listing_types ?? (isProductVendor ? ['product'] : ['service']);
 
   try {
-    const p      = await getVendorProfile();
-    country          = p.business_country || p.country || localStorage.getItem('vendor_country') || 'Uganda';
-    storeName        = p.business_name    || '';
-    vendorType       = p.business_type    || 'Products';
-    businessCategory = p.business_category || 'retail';
+    const p = await getVendorProfile();
+    country = p.business_country || p.country || localStorage.getItem('vendor_country') || 'Uganda';
+    storeName = p.business_name || '';
+    vendorType = p.business_type || (isProductVendor ? 'Products' : 'Services');
+    businessCategory = p.business_category || raw.business_category || 'retail';
+    currencySymbol = raw.currencySymbol || p.currencySymbol || 'UGX';
   } catch (_) {}
 
-    // ── Always fetch live orders — dashboard uses them for recentOrders & metric
+  // Always fetch live orders
   let liveOrders = [];
   try {
     liveOrders = await getVendorOrders();
   } catch (_) {}
 
-  const metricsData         = raw.metrics         || {};
-  const salesHistoryData    = raw.salesHistory     || [];
-  const inventoryAlertsData = raw.inventoryAlerts  || [];
-  const reviewsData         = raw.reviews          || [];
+  const metricsData = raw.metrics || {};
+  const salesHistoryData = raw.salesHistory || [];
+  const inventoryAlertsData = raw.inventoryAlerts || [];
+  const reviewsData = raw.reviews || [];
 
-    // recentOrders: prefer command-center data, fall back to first 10 live orders
-  const rawRecentOrders  = raw.recentOrders || [];
-  const recentOrdersData = rawRecentOrders.length > 0
-    ? rawRecentOrders
-    : liveOrders.slice(0, 10);
+  const rawRecentOrders = raw.recentOrders || [];
+  const recentOrdersData = rawRecentOrders.length > 0 ? rawRecentOrders : liveOrders.slice(0, 10);
 
-   // openOrders metric: prefer command-center, otherwise count from live orders
   const openOrdersCount = Number(metricsData.openOrders ?? 0) || liveOrders.filter((o) =>
     ['pending', 'confirmed', 'processing'].includes(String(o.status).toLowerCase())
   ).length;
 
+  // ALL data including vendor type fields
   return {
     storeName,
     vendorType,
     country,
     businessCategory,
+    currencySymbol,
+
+    vendor_type: vendor_type,
+    is_product_vendor: isProductVendor,
+    is_service_vendor: isServiceVendor,
+    allowed_listing_types: allowedListingTypes,
+    
+    // Profile info 
+    first_name: raw.first_name,
+    last_name: raw.last_name,
+    email: raw.email,
+    phone_number: raw.phone_number,
+    profile_picture: raw.profile_picture,
 
     metrics: {
-      grossSales:     Number(metricsData.grossSales     ?? 0),
-      openOrders:     openOrdersCount,
+      grossSales: Number(metricsData.grossSales ?? 0),
+      openOrders: openOrdersCount,
       pendingPayouts: Number(metricsData.pendingPayouts ?? 0),
       activeListings: Number(metricsData.activeListings ?? 0),
     },
 
     salesHistory: salesHistoryData.map((item) => ({
-      date:  item.date,
+      date: item.date,
       sales: Number(item.sales ?? 0),
     })),
 
-   // normalizeOrder guarantees .id / .customer / .total / .status / .items
     recentOrders: recentOrdersData.map(normalizeOrder),
-
-    inventoryAlerts: inventoryAlertsData.map((a) => ({
-      title:    a.title,
-      quantity: a.current_stock ?? 0,
-    })),
-
-    reviews: reviewsData.map((r) => ({
-      reviewer: r.reviewer,
-      rating:   r.rating,
-      comment:  r.comment,
-    })),
+    inventoryAlerts: inventoryAlertsData,
+    reviews: reviewsData,
   };
 };
 

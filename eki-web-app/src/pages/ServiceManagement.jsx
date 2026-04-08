@@ -278,10 +278,12 @@ const ServiceManagement = () => {
   const [deleteError, setDeleteError] = useState("");
   const [currencySymbol, setCurrencySymbol] = useState("UGX");
   const [vendorCountry, setVendorCountry] = useState("");
+  const [vendorType, setVendorType] = useState("product");
+  const [businessCategory, setBusinessCategory] = useState("retail");
 
   // ── Fetch vendor country for currency ──────────────────────────────────────
   useEffect(() => {
-    const loadCurrency = async () => {
+    const loadVendorData = async () => {
       try {
         const res = await api.get("/accounts/vendor/profile/");
         const d = res.data?.data ?? res.data;
@@ -295,21 +297,37 @@ const ServiceManagement = () => {
         if (country) {
           setVendorCountry(country);
           setCurrencySymbol(getCurrencySymbol(country));
-          return;
         }
-        const res2 = await api.get("/accounts/register-vendor/");
-        const d2 = res2.data?.data ?? res2.data;
-        console.log("[Currency DEBUG] /register-vendor/ response:", d2);
-        const country2 = d2?.country || d2?.business_country || "";
-        if (country2) {
-          setVendorCountry(country2);
-          setCurrencySymbol(getCurrencySymbol(country2));
+
+        // Set vendor type and business category from the profile
+        setVendorType(
+          d?.vendor_type || (d?.is_service_vendor ? "service" : "product"),
+        );
+        setBusinessCategory(
+          d?.business_category || d?.businessCategory || "retail",
+        );
+
+        // If the profile doesn't have vendor_type, determine from business_category
+        if (!d?.vendor_type && d?.business_category) {
+          const serviceCategories = [
+            "beauty",
+            "transport",
+            "tailoring",
+            "airlines",
+            "hotels",
+            "other",
+          ];
+          const isService = serviceCategories.includes(d.business_category);
+          setVendorType(isService ? "service" : "product");
         }
       } catch (err) {
-        console.warn("[Currency] fetch failed:", err.message);
+        console.warn("[Vendor Data] fetch failed:", err.message);
+        // Fallback values
+        setVendorType("product");
+        setBusinessCategory("retail");
       }
     };
-    loadCurrency();
+    loadVendorData();
   }, []);
 
   // Fetch services
@@ -467,7 +485,11 @@ const ServiceManagement = () => {
     <div className="flex min-h-screen bg-[#ecece7] font-sans text-slate-800 p-3 gap-3">
       {/* Desktop sidebar */}
       <div className="hidden md:block shrink-0">
-        <VendorSidebar activePage="services" />
+        <VendorSidebar
+          activePage="services"
+          vendorType={vendorType}
+          businessCategory={businessCategory}
+        />
       </div>
 
       {/* Mobile sidebar overlay */}
@@ -478,7 +500,11 @@ const ServiceManagement = () => {
             onClick={() => setSidebarOpen(false)}
           />
           <div className="absolute left-0 top-0 h-full w-56 p-3">
-            <VendorSidebar activePage="services" />
+            <VendorSidebar
+              activePage="services"
+              vendorType={vendorType}
+              businessCategory={businessCategory}
+            />
           </div>
         </div>
       )}
@@ -738,6 +764,6 @@ const ServiceManagement = () => {
       )}
     </div>
   );
-};
+};;
 
 export default ServiceManagement;
