@@ -1,925 +1,518 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import VendorSidebar from '../components/VendorSidebar';
+import Navbar3 from '../components/adminDashboard/Navbar4';
+import Footer from "../components/Vendormanagement/VendorFooter";
+import ProductListing from '../components/ProductListing';
 import {
-  X, ArrowRight, ArrowLeft, Eye, CheckCircle2, Palette, Ruler, ImagePlus, Trash2, ShoppingBag, ChevronDown, ChevronUp
+  Plus, Search, Filter, LayoutGrid, List,
+  CheckCircle2, Package, ShoppingBag,
+  X, Trash2, CreditCard, Box, ListChecks,
 } from 'lucide-react';
 
-// Constants
-const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'one_size'];
-const COLOR_OPTIONS = [
-  'Black', 'White', 'Red', 'Blue', 'Green', 'Yellow',
-  'Orange', 'Purple', 'Pink', 'Brown', 'Grey', 'Navy',
-  'Beige', 'Maroon', 'Teal', 'Gold', 'Silver',
-];
-const COLOR_SWATCHES = {
-  Black: '#1a1a1a', White: '#f5f5f5', Red: '#ef4444', Blue: '#3b82f6',
-  Green: '#22c55e', Yellow: '#eab308', Orange: '#f97316', Purple: '#a855f7',
-  Pink: '#ec4899', Brown: '#92400e', Grey: '#6b7280', Navy: '#1e3a5f',
-  Beige: '#d2b48c', Maroon: '#800000', Teal: '#14b8a6', Gold: '#d4af37',
-  Silver: '#c0c0c0',
-};
+import {
+  getProducts,
+  createProductListing,
+  updateProductListing,
+  deleteProductListing,
+  uploadListingImages,
+  getVendorDashboard,
+} from '../services/authService';
+import { getCurrencySymbol } from '../utils/currency';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+const QTY_DISPLAY = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' };
 const CATEGORIES = [
   'Electronics', 'Computers', 'Grocery', 'Home & Decor',
   'Fashion', 'Retail', 'Beauty', 'Others',
 ];
-const MAX_IMAGES_PER_COLOR = 3;
-const MAX_GENERAL_IMAGES = 6;
-const DESC_MIN_WORDS = 5;
-const DESC_MAX_WORDS = 21;
 
-const countWords = (text) => {
-  if (!text || !text.trim()) return 0;
-  return text.trim().split(/\s+/).filter(Boolean).length;
+const getQualityStyle = (qty) => {
+  const q = (qty || '').toLowerCase();
+  if (q === 'high')   return { bg: '#FFF8E7', text: '#B8860B', border: '#F5B841' };
+  if (q === 'low')    return { bg: '#FFF3E0', text: '#C07000', border: '#E09030' };
+  return               { bg: '#FFFBF0', text: '#A07800', border: '#F5C842' };
 };
 
-export const blankForm = () => ({
-  title: "",
-  category: "",
-  price: "",
-  sku: "",
-  qty: "Medium",
-  location: "",
-  description: "",
-  stock: 0,
-  imageFiles: [],
-  sizes: [],
-  colors: [],
-  colorImageFiles: {},
-});
-
-export const isStep1Valid = (data) =>
-  data.title?.trim().length > 0 &&
-  data.price &&
-  !isNaN(Number(data.price)) &&
-  Number(data.price) > 0;
-
-// ─── StepProgressBar ─────────────────────────────────────────────────────────
-const StepProgressBar = ({ currentStep, labels = ['Basic Info', 'Description', 'Variants', 'Images'] }) => (
-  <div className="px-6 pt-3 pb-2 flex-shrink-0">
-    <div className="flex items-center gap-1.5">
-      {labels.map((label, idx) => {
-        const step = idx + 1;
-        const done = step < currentStep;
-        const active = step === currentStep;
-        return (
-          <React.Fragment key={step}>
-            <div className={`flex items-center gap-1.5 text-[10px] font-bold ${active ? 'text-[#125852]' : done ? 'text-slate-400' : 'text-slate-300'}`}>
-              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black flex-shrink-0 ${done ? 'bg-[#F5B841] text-white' : active ? 'bg-[#125852] text-white' : 'bg-slate-200 text-slate-400'}`}>
-                {done ? '✓' : step}
-              </span>
-              <span className="hidden sm:inline">{label}</span>
-            </div>
-            {idx < labels.length - 1 && (
-              <div className={`flex-1 h-0.5 rounded-full ${done ? 'bg-[#F5B841]' : 'bg-slate-200'}`} />
-            )}
-          </React.Fragment>
-        );
-      })}
+// ─── Stat Card Component ──────────────────────────────────────────────────────
+const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
+  <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
+    <div className="flex items-start justify-between">
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{title}</p>
+        <p className="text-2xl font-bold text-gray-900">{number}</p>
+      </div>
+      <div className={`${iconBgColor} p-2.5 rounded-xl`}>
+        <Icon size={20} className={iconColor} />
+      </div>
     </div>
   </div>
 );
 
-// ─── DescriptionField ─────────────────────────────────────────────────────────
-const DescriptionField = ({ value, onChange, error }) => {
-  const words = countWords(value);
-  const tooShort = value && value.trim() && words < DESC_MIN_WORDS;
-  const tooLong = DESC_MAX_WORDS && words > DESC_MAX_WORDS;
-  const valid = value && value.trim() && words >= DESC_MIN_WORDS && (!DESC_MAX_WORDS || words <= DESC_MAX_WORDS);
-  const barWidth = Math.min(100, DESC_MAX_WORDS ? Math.round((words / DESC_MAX_WORDS) * 100) : 0);
-  const barColor = tooLong ? '#ef4444' : valid ? '#22c55e' : tooShort ? '#f97316' : '#e2e8f0';
-
+// ─── ProductCard ──────────────────────────────────────────────────────────────
+const ProductCard = ({ product, currencySymbol, onClick }) => {
+  const qStyle = getQualityStyle(product.inventory_quality || product.qty);
+  const mainImage = product.images?.[0]?.image || null;
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <label className="text-[11px] font-bold uppercase text-slate-500">
-          Description <span className="text-slate-400 normal-case font-normal">({DESC_MIN_WORDS}–{DESC_MAX_WORDS} words)</span>
-        </label>
-        <span className={`text-[9px] font-bold ${tooLong ? 'text-red-500' : valid ? 'text-green-500' : 'text-slate-400'}`}>
-          {words} / {DESC_MAX_WORDS}
-        </span>
+    <div
+      onClick={onClick}
+      className="bg-white rounded-xl border border-slate-100 overflow-hidden cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all group"
+    >
+      <div className="relative h-40 bg-slate-50">
+        {mainImage ? (
+          <img src={mainImage} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <ShoppingBag size={32} className="text-slate-200" />
+          </div>
+        )}
+        <div className="absolute top-2 right-2">
+          <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${product.is_published === true ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+            {product.is_published === true ? 'LIVE' : 'DRAFT'}
+          </span>
+        </div>
       </div>
-      <textarea
-        value={value}
-        onChange={onChange}
-        rows={5}
-        placeholder={`Describe your product in ${DESC_MIN_WORDS}–${DESC_MAX_WORDS} words…`}
-        className={`w-full px-3 py-2.5 border rounded-lg text-sm outline-none resize-none focus:ring-1 transition-colors ${
-          error ? 'border-red-400 focus:ring-red-300' : valid ? 'border-green-400 focus:ring-green-300' : 'border-slate-200 focus:ring-[#F5B841]'
-        }`}
-      />
-      <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
-        <div className="h-full rounded-full transition-all duration-200" style={{ width: `${barWidth}%`, backgroundColor: barColor }} />
-      </div>
-      <div className="min-h-[14px]">
-        {error && <p className="text-red-500 text-[9px] font-bold">{error}</p>}
-        {!error && valid && <p className="text-green-500 text-[9px] font-bold">✓ Good description</p>}
-        {!error && tooShort && words > 0 && <p className="text-orange-500 text-[9px]">{DESC_MIN_WORDS - words} more word{DESC_MIN_WORDS - words !== 1 ? 's' : ''} needed</p>}
-        {!error && tooLong && <p className="text-red-500 text-[9px] font-bold">{words - DESC_MAX_WORDS} word{words - DESC_MAX_WORDS !== 1 ? 's' : ''} over the limit</p>}
+      <div className="p-3 space-y-1">
+        <p className="text-[9px] font-bold uppercase text-slate-400">{product.category || '—'}</p>
+        <p className="text-[13px] font-bold text-slate-800 truncate">{product.title}</p>
+        <div className="flex items-center justify-between pt-0.5">
+          <p className="text-[13px] font-black text-[#125852]">{currencySymbol} {Number(product.price || 0).toLocaleString()}</p>
+          <span
+            className="text-[8px] font-black px-2 py-0.5 rounded-full border"
+            style={{ background: qStyle.bg, color: qStyle.text, borderColor: qStyle.border }}
+          >
+            {(product.inventory_quality || product.qty || 'Medium').toUpperCase()}
+          </span>
+        </div>
+        {product.sku && <p className="text-[9px] text-slate-400 font-mono truncate">{product.sku}</p>}
       </div>
     </div>
   );
 };
 
-// ─── VariantSection ───────────────────────────────────────────────────────────
-const VariantSection = ({ sizes, colors, onToggleChip }) => {
-  const [colorDropdownOpen, setColorDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
+// ─── Main Component ───────────────────────────────────────────────────────────
+const ProductDashboard = () => {
+  const [viewType, setViewType] = useState('grid');
+  const [products, setProducts] = useState([]);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
+  const [currencySymbol, setCurrencySymbol] = useState('$');
+  const [vendorCountry, setVendorCountry] = useState('');
+  const [businessCategory, setBusinessCategory] = useState('retail');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterQuality, setFilterQuality] = useState('');
+  const filterRef = useRef(null);
+  const [vendorType, setVendorType] = useState("product");
+
+  useEffect(() => {
+    const loadVendorData = async () => {
+      try {
+        const data = await getVendorDashboard();
+        if (data?.country) {
+          setVendorCountry(data.country);
+          setCurrencySymbol(getCurrencySymbol(data.country));
+        }
+        if (data?.businessCategory) {
+          setBusinessCategory(data.businessCategory);
+        }
+        const serviceCategories = [
+          "beauty", "transport", "tailoring", "airlines", "hotels", "other",
+        ];
+        const bc = data?.businessCategory || "retail";
+        const vType = serviceCategories.includes(bc) ? "service" : "product";
+        setVendorType(vType);
+      } catch (err) {
+        console.error("Failed to load vendor info", err);
+      }
+    };
+    loadVendorData();
+  }, []);
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setColorDropdownOpen(false);
+      if (filterRef.current && !filterRef.current.contains(e.target)) setIsFilterOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const loadProducts = async () => {
+    setIsFetching(true);
+    try {
+      const data = await getProducts();
+      setProducts(data || []);
+    } catch (err) {
+      console.error('Failed to load products', err);
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  const showSuccess = (msg) => {
+    setSuccessMsg(msg);
+    setTimeout(() => setSuccessMsg(''), 4000);
+  };
+
+  // Handle product creation
+  const handleCreateProduct = async (payload, imageFiles) => {
+    setIsLoading(true);
+    try {
+      const created = await createProductListing({
+        ...payload,
+        business_category: businessCategory,
+      });
+      if (imageFiles.length > 0 && created?.id) {
+        await uploadListingImages(created.id, imageFiles);
+      }
+      await loadProducts();
+      setIsProductModalOpen(false);
+      showSuccess('Product created successfully!');
+    } catch (err) {
+      console.error('Failed to create product', err);
+      const detail = err.response?.data?.errors ?? err.response?.data;
+      const msg = detail && typeof detail === 'object'
+        ? Object.entries(detail).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' | ')
+        : 'Failed to create product. Please try again.';
+      throw new Error(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle product update
+  const handleUpdateProduct = async (productId, payload, imageFiles) => {
+    setIsLoading(true);
+    try {
+      await updateProductListing(productId, {
+        title: payload.title,
+        price: payload.price,
+        sku: payload.sku,
+        qty: payload.qty,
+        stock: Number(payload.stock) || 0,
+        location: payload.location,
+        description: payload.description,
+        is_published: payload.is_published,
+        sizes: payload.sizes || [],
+        colors: payload.colors || [],
+      });
+
+      if (imageFiles.length > 0) {
+        await uploadListingImages(productId, imageFiles);
+      }
+
+      await loadProducts();
+      setIsEditModalOpen(false);
+      setSelectedProduct(null);
+      showSuccess('Product updated successfully!');
+    } catch (err) {
+      console.error('Failed to update product', err);
+      const detail = err.response?.data?.errors ?? err.response?.data;
+      const msg = detail && typeof detail === 'object'
+        ? Object.entries(detail).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' | ')
+        : 'Failed to update product.';
+      throw new Error(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleProductClick = (product) => {
+    setSelectedProduct({
+      id: product.id,
+      title: product.title || '',
+      category: product.category || '',
+      price: product.price || '',
+      sku: product.sku || '',
+      qty: QTY_DISPLAY[product.inventory_quality] || product.qty || 'Medium',
+      location: product.vendor_location || product.location || '',
+      description: product.description || '',
+      stock: product.detail?.stock ?? product.stock ?? 0,
+      sizes: product.sizes || [],
+      colors: product.colors || [],
+      is_published: product.is_published === true || product.status === 'published',
+      images: product.images || [],
+    });
+    setIsEditModalOpen(true);
+  };
+
+  // ── DELETE ────────────────────────────────────────────────────────────────
+  // Called by the Delete button inside ProductListing (passed as onDelete prop)
+  const handleDeleteRequest = () => {
+    if (!selectedProduct?.id) return;
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleteModalOpen(false);
+    setIsLoading(true);
+    try {
+      await deleteProductListing(selectedProduct.id);
+      await loadProducts();
+      setIsEditModalOpen(false);
+      setSelectedProduct(null);
+      showSuccess('Product deleted.');
+    } catch (err) {
+      console.error('Failed to delete product', err);
+      // Surface the error so the vendor knows something went wrong
+      showSuccess(''); // clear any stale message
+      alert('Failed to delete product. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredProducts = products.filter((p) => {
+    const matchesSearch = p.title?.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = !filterCategory || p.category === filterCategory;
+    const matchesStatus = !filterStatus || (filterStatus === 'published' && p.is_published === true) || (filterStatus === 'draft' && p.is_published !== true);
+    const rawQty = (p.inventory_quality || p.qty || '').toUpperCase();
+    const matchesQuality = !filterQuality || rawQty === filterQuality.toUpperCase();
+    return matchesSearch && matchesCategory && matchesStatus && matchesQuality;
+  });
+
+  const activeFilterCount = [filterCategory, filterStatus, filterQuality].filter(Boolean).length;
+  const clearFilters = () => {
+    setFilterCategory('');
+    setFilterStatus('');
+    setFilterQuality('');
+  };
+
   return (
-    <div className="space-y-4 border border-slate-100 rounded-xl p-4 bg-slate-50/50">
-      <h4 className="text-[11px] font-bold uppercase text-slate-600 tracking-wider">Product Variants</h4>
+    <div className="flex min-h-screen bg-[#ecece7] text-slate-800 p-3 gap-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      <VendorSidebar activePage="products" vendorType={vendorType} businessCategory={businessCategory} />
 
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Ruler size={13} className="text-slate-400" />
-          <label className="text-[11px] font-bold uppercase text-slate-500">Available Sizes</label>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {SIZE_OPTIONS.map((size) => (
-            <button
-              key={size} type="button"
-              onClick={() => onToggleChip('sizes', size)}
-              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
-                sizes.includes(size)
-                  ? 'bg-[#125852] text-white border-[#125852]'
-                  : 'bg-white text-slate-500 border-slate-200 hover:border-[#125852] hover:text-[#125852]'
-              }`}
-            >
-              {size === 'one_size' ? 'One Size' : size}
-            </button>
-          ))}
-        </div>
-        {sizes.length > 0 && <p className="text-[10px] text-[#125852] font-medium">Selected: {sizes.join(', ')}</p>}
-      </div>
+      <div className="flex-1 flex flex-col min-w-0">
+        <Navbar3 />
 
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Palette size={13} className="text-slate-400" />
-          <label className="text-[11px] font-bold uppercase text-slate-500">Available Colors</label>
-        </div>
-        <div className="relative" ref={dropdownRef}>
-          <button
-            type="button"
-            onClick={() => setColorDropdownOpen((v) => !v)}
-            className="w-full flex items-center justify-between px-3 py-2 border border-slate-200 rounded-lg bg-white text-sm text-slate-600 hover:border-[#125852] transition-colors"
-          >
-            <div className="flex items-center gap-2 flex-wrap min-h-[18px]">
-              {colors.length === 0 ? (
-                <span className="text-slate-400 text-[12px]">Select colors…</span>
-              ) : (
-                colors.map((c) => (
-                  <span key={c} className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2 py-0.5 rounded-full text-[10px] font-bold">
-                    <span className="w-2.5 h-2.5 rounded-full border border-white/40 flex-shrink-0" style={{ backgroundColor: COLOR_SWATCHES[c] || '#ccc' }} />
-                    {c}
-                  </span>
-                ))
-              )}
-            </div>
-            {colorDropdownOpen ? <ChevronUp size={16} className="text-slate-400 flex-shrink-0" /> : <ChevronDown size={16} className="text-slate-400 flex-shrink-0" />}
-          </button>
-          {colorDropdownOpen && (
-            <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl overflow-y-auto max-h-48 p-2">
-              {COLOR_OPTIONS.map((color) => {
-                const selected = colors.includes(color);
-                return (
-                  <button
-                    key={color} type="button"
-                    onClick={() => onToggleChip('colors', color)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${selected ? 'bg-[#125852] text-white' : 'text-slate-600 hover:bg-slate-50'}`}
-                  >
-                    <span className="w-4 h-4 rounded-full border-2 border-white shadow flex-shrink-0" style={{ backgroundColor: COLOR_SWATCHES[color] || '#ccc' }} />
-                    {color}
-                    {selected && <CheckCircle2 size={12} className="ml-auto" />}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-        {colors.length > 0 && <p className="text-[10px] text-[#125852] font-medium">Selected: {colors.join(', ')}</p>}
-      </div>
-    </div>
-  );
-};
-
-// ─── ImageGrid ────────────────────────────────────────────────────────────────
-const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, onRemovePending, onAdd }) => {
-  const total = existingImages.length + pendingImages.length;
-  const canAddMore = total < MAX_GENERAL_IMAGES;
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <label className="text-[10px] font-bold uppercase text-slate-500">General Product Images</label>
-        <span className="text-[9px] text-slate-400">{total}/{MAX_GENERAL_IMAGES}</span>
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        {existingImages.map((img, i) => (
-          <div key={img.id ?? i} className="w-16 h-16 rounded-lg border border-slate-200 overflow-hidden relative group flex-shrink-0">
-            <img src={img.image} alt={`Product ${i + 1}`} className="w-full h-full object-cover" />
-            {i === 0 && <span className="absolute bottom-0 left-0 right-0 bg-[#125852]/80 text-white text-[7px] font-black text-center py-0.5">MAIN</span>}
-            <button type="button" onClick={() => onRemoveExisting(img.id, i)} className="absolute top-0.5 right-0.5 bg-white/90 p-0.5 rounded-full text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
-              <Trash2 size={9} />
-            </button>
+        {successMsg && (
+          <div className="fixed top-6 right-6 z-[200] bg-emerald-600 text-white px-4 py-2 rounded-xl shadow-lg text-xs font-bold flex items-center gap-2 animate-pulse">
+            <CheckCircle2 size={12} /> {successMsg}
           </div>
-        ))}
-        {pendingImages.map((img, i) => (
-          <div key={i} className="w-16 h-16 rounded-lg border border-dashed border-[#125852]/50 overflow-hidden relative group flex-shrink-0">
-            <img src={img.preview} alt={`New ${i + 1}`} className="w-full h-full object-cover opacity-80" />
-            <span className="absolute bottom-0 left-0 right-0 bg-amber-500/80 text-white text-[7px] font-black text-center py-0.5">PENDING</span>
-            <button type="button" onClick={() => onRemovePending(i)} className="absolute top-0.5 right-0.5 bg-white/90 p-0.5 rounded-full text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
-              <Trash2 size={9} />
-            </button>
-          </div>
-        ))}
-        {canAddMore && (
-          <button type="button" onClick={onAdd} className="w-16 h-16 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center bg-white cursor-pointer hover:bg-slate-50 hover:border-[#125852] transition-colors flex-shrink-0">
-            <ImagePlus size={16} className="text-slate-400" />
-            <span className="text-[9px] font-bold text-slate-400 mt-1">ADD</span>
-          </button>
         )}
-      </div>
-      <p className="text-[10px] text-slate-400">JPEG, PNG or WebP · max 5 MB · up to {MAX_GENERAL_IMAGES} images · first is main photo</p>
-    </div>
-  );
-};
 
-// ─── ColorImageSection ────────────────────────────────────────────────────────
-const ColorImageSection = ({
-  colors, colorImageFiles,
-  fileRefs, onAdd, onChange, onRemove, onPreview,
-}) => {
-  if (!colors || colors.length === 0) return null;
-  return (
-    <div className="space-y-3 border border-slate-100 rounded-xl p-3 bg-slate-50/50">
-      <div className="flex items-center gap-2">
-        <Palette size={13} className="text-[#125852]" />
-        <h4 className="text-[11px] font-bold uppercase text-slate-600 tracking-wider">Images Per Color Variant</h4>
-        <span className="text-[9px] text-slate-400 ml-auto">Up to {MAX_IMAGES_PER_COLOR} per colour</span>
-      </div>
-      {colors.map((color) => {
-        const images = colorImageFiles?.[color] || [];
-        const canAdd = images.length < MAX_IMAGES_PER_COLOR;
-        const hasImages = images.length > 0;
-        return (
-          <div key={color} className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="w-3.5 h-3.5 rounded-full border border-slate-300 flex-shrink-0 shadow-sm" style={{ backgroundColor: COLOR_SWATCHES[color] || '#ccc' }} />
-              <span className="text-[10px] font-bold text-slate-700">{color}</span>
-              <span className="text-[8px] text-slate-400">({images.length}/{MAX_IMAGES_PER_COLOR})</span>
-              {hasImages && (
-                <button
-                  type="button"
-                  onClick={() => onPreview(color, images)}
-                  className="ml-auto flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border transition-all hover:shadow-sm"
-                  style={{
-                    backgroundColor: (COLOR_SWATCHES[color] || '#125852') + '18',
-                    color: COLOR_SWATCHES[color] === '#f5f5f5' ? '#374151' : (COLOR_SWATCHES[color] || '#125852'),
-                    borderColor: (COLOR_SWATCHES[color] || '#125852') + '40',
-                  }}
-                >
-                  <Eye size={9} /> View {images.length} photo{images.length !== 1 ? 's' : ''}
+        <main className="p-5 max-w-[1400px] mx-auto w-full pb-16">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-5">
+            <div>
+              <h1 className="text-xl font-bold text-[#1A1A1A] tracking-tight">Product Management</h1>
+              <p className="text-slate-400 text-[11px]">
+                Manage your inventory, pricing, and visibility across the marketplace.
+                {vendorCountry && (
+                  <span className="ml-2 bg-slate-100 px-1.5 py-0.5 rounded-full text-slate-500 text-[9px]">
+                    {vendorCountry} · {currencySymbol}
+                  </span>
+                )}
+              </p>
+            </div>
+            <button
+              onClick={() => setIsProductModalOpen(true)}
+              className="bg-[#F5B841] text-white px-5 py-2.5 rounded-lg text-[12px] font-bold flex items-center gap-2 hover:bg-[#E0A83B] transition-all active:scale-95 shadow-sm"
+            >
+              <Plus size={14} /> Add New Product
+            </button>
+          </div>
+
+          {/* Stat cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+            <StatCard title="Total Products" number={products.length} icon={Package} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
+            <StatCard title="Active Listings" number={products.filter((p) => p.is_published === true).length} icon={ListChecks} iconBgColor="bg-blue-50" iconColor="text-blue-600" />
+            <StatCard title="High Quality" number={products.filter((p) => (p.inventory_quality || p.qty || '').toUpperCase() === 'HIGH').length} icon={Box} iconBgColor="bg-orange-50" iconColor="text-orange-600" />
+            <StatCard title="Drafts" number={products.filter((p) => p.is_published !== true).length} icon={CreditCard} iconBgColor="bg-indigo-50" iconColor="text-indigo-600" />
+          </div>
+
+          {/* Search + Filter + View toggle */}
+          <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
+            <div className={`relative w-80 flex items-center border rounded-lg shadow-sm transition-all bg-white ${searchFocused ? 'border-[#F5B841] ring-1 ring-[#F5B841]' : 'border-slate-200'}`}>
+              <Search className={`absolute left-3 transition-colors ${searchFocused ? 'text-[#F5B841]' : 'text-slate-400'}`} size={16} />
+              <input
+                type="text"
+                placeholder="Search by title or SKU..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+                className="w-full pl-9 pr-4 py-2 bg-transparent text-sm focus:outline-none rounded-lg"
+              />
+              {searchQuery && (
+                <button type="button" onClick={() => setSearchQuery('')} className="absolute right-3 text-slate-400 hover:text-slate-600">
+                  <X size={13} />
                 </button>
               )}
             </div>
-            <div className="flex flex-wrap gap-2 pl-5">
-              {images.map((img, i) => (
-                <div key={i} className="w-14 h-14 rounded-lg border border-dashed border-[#125852]/50 overflow-hidden relative group flex-shrink-0">
-                  <img src={img.preview} alt={`${color} ${i + 1}`} className="w-full h-full object-cover opacity-90" />
-                  <span className="absolute bottom-0 left-0 right-0 text-center text-[6px] font-black py-0.5 truncate px-1" style={{ backgroundColor: (COLOR_SWATCHES[color] || '#125852') + 'cc', color: '#fff' }}>
-                    {color.toUpperCase()}
-                  </span>
-                  <button type="button" onClick={() => onRemove(color, i)} className="absolute top-0.5 right-0.5 bg-white/90 p-0.5 rounded-full text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
-                    <Trash2 size={7} />
-                  </button>
+
+            <div className="flex items-center gap-3">
+              <div className="relative" ref={filterRef}>
+                <button
+                  onClick={() => setIsFilterOpen((v) => !v)}
+                  className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-xs font-bold transition-all ${activeFilterCount > 0 ? 'bg-[#F5B841] text-white border-[#F5B841] shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-[#F5B841]'}`}
+                >
+                  <Filter size={14} /> Filters
+                  {activeFilterCount > 0 && (
+                    <span className="bg-white text-[#F5B841] text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{activeFilterCount}</span>
+                  )}
+                </button>
+                {isFilterOpen && (
+                  <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-slate-200 rounded-2xl shadow-2xl p-5 w-72">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-[12px] font-bold text-slate-800 uppercase tracking-wide">Filter Products</h3>
+                      {activeFilterCount > 0 && <button onClick={clearFilters} className="text-[10px] font-bold text-[#F5B841] hover:underline">Clear all</button>}
+                    </div>
+                    <div className="mb-4">
+                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Status</label>
+                      <div className="flex gap-2 flex-wrap">
+                        {['', 'published', 'draft'].map((s) => (
+                          <button key={s} type="button" onClick={() => setFilterStatus(s)}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${filterStatus === s ? 'bg-[#125852] text-white border-[#125852]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#125852]'}`}>
+                            {s === '' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="mb-4">
+                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Quality</label>
+                      <div className="flex gap-2 flex-wrap">
+                        {['', 'High', 'Medium', 'Low'].map((q) => (
+                          <button key={q} type="button" onClick={() => setFilterQuality(q)}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${filterQuality === q ? 'bg-[#125852] text-white border-[#125852]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#125852]'}`}>
+                            {q === '' ? 'All' : q}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Category</label>
+                      <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[11px] bg-white outline-none focus:border-[#125852]">
+                        <option value="">All Categories</option>
+                        {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+                      </select>
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-slate-100 text-[10px] text-slate-400 text-center">
+                      Showing {filteredProducts.length} of {products.length} products
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="h-8 w-[1px] bg-slate-200 mx-1" />
+              <div className="flex bg-white border border-slate-200 rounded-lg p-1">
+                <button onClick={() => setViewType('grid')} className={`p-1.5 rounded ${viewType === 'grid' ? 'bg-slate-100' : ''}`}><LayoutGrid size={16} /></button>
+                <button onClick={() => setViewType('list')} className={`p-1.5 rounded ${viewType === 'list' ? 'bg-slate-100' : ''}`}><List size={16} /></button>
+              </div>
+            </div>
+          </div>
+
+          {/* Active filter pills */}
+          {activeFilterCount > 0 && (
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+              <span className="text-[10px] text-slate-400 font-bold uppercase">Active:</span>
+              {filterStatus && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterStatus}<button onClick={() => setFilterStatus('')}><X size={9} /></button></span>}
+              {filterQuality && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterQuality}<button onClick={() => setFilterQuality('')}><X size={9} /></button></span>}
+              {filterCategory && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterCategory}<button onClick={() => setFilterCategory('')}><X size={9} /></button></span>}
+            </div>
+          )}
+
+          {/* Product grid */}
+          {isFetching ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="bg-white rounded-xl border border-slate-100 overflow-hidden animate-pulse">
+                  <div className="h-40 bg-slate-100" />
+                  <div className="p-4 space-y-1.5">
+                    <div className="h-2 bg-slate-100 rounded w-1/2" />
+                    <div className="h-3 bg-slate-100 rounded w-3/4" />
+                    <div className="h-2 bg-slate-100 rounded w-full" />
+                  </div>
                 </div>
               ))}
-              {canAdd && (
-                <button type="button" onClick={() => onAdd(color)} className="w-14 h-14 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center bg-white cursor-pointer hover:bg-slate-50 hover:border-[#125852] transition-colors flex-shrink-0">
-                  <ImagePlus size={13} className="text-slate-400" />
-                  <span className="text-[8px] font-bold text-slate-400 mt-0.5">ADD</span>
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-20 text-center">
+              <ShoppingBag className="text-slate-200 mx-auto mb-4" size={48} />
+              <h3 className="text-lg font-bold text-slate-800">{activeFilterCount > 0 || searchQuery ? 'No matching products' : 'No products found'}</h3>
+              <p className="text-slate-500 text-sm mb-6">{activeFilterCount > 0 || searchQuery ? 'Try adjusting your search or filters.' : 'Start by adding your first product to the catalog.'}</p>
+              {!activeFilterCount && !searchQuery && (
+                <button onClick={() => setIsProductModalOpen(true)} className="bg-[#F5B841] text-white px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 mx-auto hover:bg-[#E0A83B]">
+                  <Plus size={16} /> Add Your First Product
                 </button>
               )}
-              <input
-                type="file"
-                ref={(el) => { fileRefs.current[color] = el; }}
-                onChange={(e) => onChange(color, e)}
-                className="hidden"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-              />
             </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
-// ─── Color Image Preview Modal ────────────────────────────────────────────────
-const ColorImagePreviewModal = ({ color, images, onClose }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  if (!images || images.length === 0) return null;
-  const goNext = () => setCurrentIndex((i) => (i + 1) % images.length);
-  const goPrev = () => setCurrentIndex((i) => (i - 1 + images.length) % images.length);
-  const currentSrc = images[currentIndex]?.preview || images[currentIndex]?.image || null;
-
-  return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <span className="w-4 h-4 rounded-full border-2 border-white shadow" style={{ backgroundColor: COLOR_SWATCHES[color] || '#ccc' }} />
-            <span className="text-[12px] font-bold text-slate-800">{color}</span>
-            <span className="text-[10px] text-slate-400">({images.length} photo{images.length !== 1 ? 's' : ''})</span>
-          </div>
-          <button type="button" onClick={onClose} className="p-1 rounded-full hover:bg-slate-100 transition-colors">
-            <X size={14} className="text-slate-500" />
-          </button>
-        </div>
-        <div className="relative bg-[#F8F8F8]" style={{ aspectRatio: '1 / 1.1' }}>
-          {currentSrc ? (
-            <img src={currentSrc} alt={`${color} ${currentIndex + 1}`} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center"><ShoppingBag size={40} className="text-slate-200" /></div>
+            <div className={viewType === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4' : 'space-y-3'}>
+              {filteredProducts.map((product) => (
+                <ProductCard key={product.id} product={product} currencySymbol={currencySymbol} onClick={() => handleProductClick(product)} />
+              ))}
+            </div>
           )}
-          {images.length > 1 && (
-            <>
-              <button type="button" onClick={goPrev} className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-md rounded-full w-8 h-8 flex items-center justify-center transition-all">
-                <ChevronLeft size={16} className="text-slate-700" />
-              </button>
-              <button type="button" onClick={goNext} className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-md rounded-full w-8 h-8 flex items-center justify-center transition-all">
-                <ChevronRight size={16} className="text-slate-700" />
-              </button>
-            </>
-          )}
-          <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-black text-white shadow" style={{ backgroundColor: COLOR_SWATCHES[color] || '#125852' }}>
-            {color.toUpperCase()}
-          </div>
-          <div className="absolute bottom-3 right-3 bg-black/60 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
-            {currentIndex + 1} / {images.length}
+        </main>
+
+        <Footer />
+      </div>
+
+      {/* Create Product Modal */}
+      <ProductListing
+        isOpen={isProductModalOpen}
+        onClose={() => setIsProductModalOpen(false)}
+        onSubmit={handleCreateProduct}
+        isLoading={isLoading}
+        isServiceVendor={false}
+        businessCategory={businessCategory}
+        currencySymbol={currencySymbol}
+        submitLabel="Publish Product"
+      />
+
+      {/* Edit Product Modal */}
+      <ProductListing
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedProduct(null);
+        }}
+        onSubmit={async (payload, imageFiles) => {
+          if (selectedProduct) {
+            await handleUpdateProduct(selectedProduct.id, payload, imageFiles);
+          }
+        }}
+        onDelete={handleDeleteRequest}
+        isLoading={isLoading}
+        isServiceVendor={false}
+        businessCategory={businessCategory}
+        currencySymbol={currencySymbol}
+        initialData={selectedProduct}
+        submitLabel="Save Changes"
+      />
+
+      {/* DELETE CONFIRM */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center" style={{ fontFamily: "'Poppins', sans-serif" }}>
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={20} className="text-red-500" />
+            </div>
+            <h3 className="text-base font-bold text-slate-800 mb-1">Delete Product?</h3>
+            <p className="text-[11px] text-slate-500 mb-5">"<span className="font-bold text-slate-700">{selectedProduct?.title}</span>" will be permanently removed. This cannot be undone.</p>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setIsDeleteModalOpen(false)} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
+              <button type="button" onClick={confirmDelete} className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg text-[11px] font-bold hover:bg-red-600 transition-colors">Yes, Delete</button>
+            </div>
           </div>
         </div>
-        {images.length > 1 && (
-          <div className="flex gap-2 px-4 py-3 border-t border-slate-100 bg-slate-50/50 overflow-x-auto">
-            {images.map((img, i) => {
-              const src = img.preview || img.image || null;
-              return (
-                <button key={i} type="button" onClick={() => setCurrentIndex(i)}
-                  className={`flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${i === currentIndex ? 'border-[#125852] shadow-md' : 'border-transparent opacity-60 hover:opacity-90'}`}
-                >
-                  {src ? <img src={src} alt={`Thumb ${i + 1}`} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-200 flex items-center justify-center"><ShoppingBag size={14} className="text-slate-400" /></div>}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 };
 
-// ─── SummaryPill ──────────────────────────────────────────────────────────────
-const SummaryPill = ({ formData, currencySymbol, currentStep, onEdit }) => (
-  <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-    <div className="flex items-start justify-between">
-      <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-bold uppercase text-slate-400 mb-0.5">Summary</p>
-        <p className="text-[13px] font-bold text-slate-800 truncate">{formData.title || "New Product"}</p>
-        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-          <span className="text-[11px] text-[#125852] font-bold">{currencySymbol} {Number(formData.price || 0).toLocaleString()}</span>
-          {formData.stock > 0 && <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full">Qty: {formData.stock}</span>}
-          {formData.category && <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">{formData.category}</span>}
-          {formData.sizes?.length > 0 && <span className="text-[9px] bg-[#125852]/10 text-[#125852] px-1.5 py-0.5 rounded-full">{formData.sizes.length} size{formData.sizes.length !== 1 ? 's' : ''}</span>}
-          {formData.colors?.length > 0 && <span className="text-[9px] bg-[#125852]/10 text-[#125852] px-1.5 py-0.5 rounded-full">{formData.colors.length} color{formData.colors.length !== 1 ? 's' : ''}</span>}
-        </div>
-      </div>
-      {currentStep > 1 && (
-        <button type="button" onClick={() => onEdit(1)} className="text-[10px] font-bold text-slate-400 hover:text-[#125852] flex items-center gap-1 ml-2 mt-1 flex-shrink-0">
-          <ArrowLeft size={12} /> Edit
-        </button>
-      )}
-    </div>
-  </div>
-);
-
-// ─── Main Listing Form Component ─────────────────────────────────────────────
-const ProductListing = ({
-  isOpen,
-  onClose,
-  onSubmit,
-  isLoading,
-  isServiceVendor = false,
-  businessCategory = "retail",
-  currencySymbol = "UGX",
-  initialData = null,
-  submitLabel = "Publish Product",
-}) => {
-  const [formStep, setFormStep] = useState(1);
-  const [formData, setFormData] = useState(blankForm());
-  const [formErrors, setFormErrors] = useState({});
-  const [isPublished, setIsPublished] = useState(true);
-  const [colorPreviewModal, setColorPreviewModal] = useState(null);
-  const fileInputRef = useRef(null);
-  const colorFileInputRefs = useRef({});
-
-  const step1Valid = isStep1Valid(formData);
-
-  // Initialize form with initialData if provided (for editing)
-  useEffect(() => {
-    if (initialData) {
-      setFormData({
-        title: initialData.title || "",
-        category: initialData.category || "",
-        price: initialData.price || "",
-        sku: initialData.sku || "",
-        qty: initialData.qty || "Medium",
-        location: initialData.location || "",
-        description: initialData.description || "",
-        stock: initialData.stock || 0,
-        imageFiles: [],
-        sizes: initialData.sizes || [],
-        colors: initialData.colors || [],
-        colorImageFiles: {},
-      });
-      setIsPublished(initialData.is_published === true);
-    } else {
-      setFormData(blankForm());
-      setIsPublished(true);
-    }
-    setFormStep(1);
-    setFormErrors({});
-  }, [initialData, isOpen]);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (formErrors[name]) setFormErrors((prev) => ({ ...prev, [name]: null }));
-  };
-
-  const handleDescriptionChange = (e) => {
-    const { value } = e.target;
-    setFormData((prev) => ({ ...prev, description: value }));
-    if (formErrors.description) setFormErrors((prev) => ({ ...prev, description: null }));
-  };
-
-  const handleFilesChange = (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    const remaining = MAX_GENERAL_IMAGES - formData.imageFiles.length;
-    files.slice(0, remaining).forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () => setFormData((prev) => ({ 
-        ...prev, 
-        imageFiles: [...prev.imageFiles, { preview: reader.result, file }] 
-      }));
-      reader.readAsDataURL(file);
-    });
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const removeCreateImage = (index) => setFormData((prev) => ({ 
-    ...prev, 
-    imageFiles: prev.imageFiles.filter((_, i) => i !== index) 
-  }));
-
-  const handleColorFilesChange = (color, e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    const remaining = MAX_IMAGES_PER_COLOR - (formData.colorImageFiles[color] || []).length;
-    files.slice(0, remaining).forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () => setFormData((prev) => ({
-        ...prev,
-        colorImageFiles: { ...prev.colorImageFiles, [color]: [...(prev.colorImageFiles[color] || []), { preview: reader.result, file }] },
-      }));
-      reader.readAsDataURL(file);
-    });
-    if (colorFileInputRefs.current[color]) colorFileInputRefs.current[color].value = '';
-  };
-
-  const removeColorCreateImage = (color, index) => setFormData((prev) => ({
-    ...prev,
-    colorImageFiles: { ...prev.colorImageFiles, [color]: (prev.colorImageFiles[color] || []).filter((_, i) => i !== index) },
-  }));
-
-  const toggleChip = (field, value) => {
-    setFormData((prev) => {
-      const arr = prev[field] || [];
-      const next = arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
-      if (field === 'colors' && arr.includes(value)) {
-        const { [value]: _removed, ...rest } = prev.colorImageFiles || {};
-        return { ...prev, [field]: next, colorImageFiles: rest };
-      }
-      return { ...prev, [field]: next };
-    });
-  };
-
-  const validateStep1 = () => {
-    const errs = {};
-    if (!formData.title?.trim()) errs.title = "Title is required";
-    if (!formData.price || isNaN(Number(formData.price)) || Number(formData.price) <= 0) {
-      errs.price = "Valid price is required";
-    }
-    return errs;
-  };
-
-  const validateStep2 = () => {
-    const errs = {};
-    const wordCount = countWords(formData.description);
-    if (formData.description && formData.description.trim()) {
-      if (wordCount < DESC_MIN_WORDS) {
-        errs.description = `Too short (${wordCount} word${wordCount !== 1 ? 's' : ''}). Min ${DESC_MIN_WORDS} words.`;
-      } else if (DESC_MAX_WORDS && wordCount > DESC_MAX_WORDS) {
-        errs.description = `Too long (${wordCount} words). Max ${DESC_MAX_WORDS} words.`;
-      }
-    }
-    return errs;
-  };
-
-  const handleStep1Continue = () => {
-    const errs = validateStep1();
-    if (Object.keys(errs).length > 0) {
-      setFormErrors(errs);
-      return;
-    }
-    setFormErrors({});
-    setFormStep(2);
-  };
-
-  const handleStep2Continue = () => {
-    const errs = validateStep2();
-    if (Object.keys(errs).length > 0) {
-      setFormErrors(errs);
-      return;
-    }
-    setFormErrors({});
-    setFormStep(3);
-  };
-
-  const handleStep3Continue = () => {
-    setFormErrors({});
-    setFormStep(4);
-  };
-
-  const collectAllFiles = () => {
-    const general = (formData.imageFiles || []).map((f) => f.file);
-    const colored = Object.values(formData.colorImageFiles || {}).flat().map((f) => f.file);
-    return [...general, ...colored];
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // Final validation before submit
-    const validationErrors = validateStep1();
-    const descErrors = validateStep2();
-    if (Object.keys(validationErrors).length > 0 || Object.keys(descErrors).length > 0) {
-      setFormErrors({ ...validationErrors, ...descErrors });
-      setFormStep(1);
-      return;
-    }
-    
-    const payload = {
-      title: formData.title,
-      description: formData.description,
-      location: formData.location,
-      price: formData.price,
-      sku: formData.sku,
-      qty: formData.qty,
-      stock: Number(formData.stock) || 0,
-      sizes: formData.sizes,
-      colors: formData.colors,
-      is_published: isPublished,
-      business_category: businessCategory,
-    };
-    
-    const allFiles = collectAllFiles();
-    await onSubmit(payload, allFiles);
-  };
-
-  const ErrorBanner = ({ msg }) => msg ? (
-    <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-medium px-3 py-2 rounded-lg">{msg}</div>
-  ) : null;
-
-  if (!isOpen) return null;
-
-  return (
-    <>
-      {/* Step 1: Basic Info */}
-      {formStep === 1 && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left" style={{ fontFamily: "'Poppins', sans-serif" }}>
-            <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
-              <div>
-                <h2 className="text-lg font-bold">Create New {isServiceVendor ? "Service" : "Product"}</h2>
-                <p className="text-[11px] text-slate-500">
-                  Step 1 of 4 · <span className="font-bold text-[#125852] capitalize">{businessCategory}</span>
-                </p>
-              </div>
-              <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700">
-                <X size={20} />
-              </button>
-            </div>
-            <StepProgressBar currentStep={1} />
-            <div className="px-6 py-4 space-y-3 overflow-y-auto flex-1">
-              <ErrorBanner msg={formErrors._server} />
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold uppercase text-slate-500">Title *</label>
-                <input
-                  type="text"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  placeholder={`e.g. ${isServiceVendor ? "Website Design Package" : "Premium Wireless Headphones"}`}
-                  autoComplete="off"
-                  className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.title ? "border-red-500" : "border-slate-200"}`}
-                />
-                {formErrors.title && <p className="text-red-500 text-[9px] font-bold">{formErrors.title}</p>}
-              </div>
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold uppercase text-slate-500">Location</label>
-                <input
-                  type="text"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleInputChange}
-                  placeholder="e.g. Kampala, Uganda"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold uppercase text-slate-500">Sub-category</label>
-                  <select
-                    name="category"
-                    value={formData.category}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
-                  >
-                    <option value="">— Select —</option>
-                    {CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold uppercase text-slate-500">Price ({currencySymbol}) *</label>
-                  <input
-                    type="number"
-                    name="price"
-                    value={formData.price}
-                    onChange={handleInputChange}
-                    placeholder="0.00"
-                    min="0"
-                    step="any"
-                    autoComplete="off"
-                    className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.price ? "border-red-500" : "border-slate-200"}`}
-                  />
-                  {formErrors.price && <p className="text-red-500 text-[9px] font-bold">{formErrors.price}</p>}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold uppercase text-slate-500">SKU</label>
-                  <input
-                    type="text"
-                    name="sku"
-                    value={formData.sku}
-                    onChange={handleInputChange}
-                    placeholder="ALP-TSH-M-BLK-L-2026-0001"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold uppercase text-slate-500">Quality</label>
-                  <select
-                    name="qty"
-                    value={formData.qty}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
-                  >
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                  </select>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold uppercase text-slate-500">Stock Quantity</label>
-                <input
-                  type="number"
-                  name="stock"
-                  value={formData.stock}
-                  onChange={handleInputChange}
-                  placeholder="e.g. 10"
-                  min="0"
-                  step="1"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
-                />
-                <p className="text-[9px] text-slate-400">
-                  Total units available. Skip if you're using size/color variants — set stock per variant instead.
-                </p>
-              </div>
-            </div>
-            <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleStep1Continue}
-                className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${step1Valid ? "bg-[#F5B841] text-white hover:bg-[#E0A83B] cursor-pointer" : "bg-slate-300 text-slate-500 cursor-not-allowed"}`}
-              >
-                Continue <ArrowRight size={13} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Step 2: Description */}
-      {formStep === 2 && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]" style={{ fontFamily: "'Poppins', sans-serif" }}>
-            <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
-              <div>
-                <h2 className="text-lg font-bold">Product Description</h2>
-                <p className="text-[11px] text-slate-500">Step 2 of 4 · Tell customers what makes this product great</p>
-              </div>
-              <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700">
-                <X size={20} />
-              </button>
-            </div>
-            <StepProgressBar currentStep={2} />
-            <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
-              <ErrorBanner msg={formErrors._server} />
-              <SummaryPill formData={formData} currencySymbol={currencySymbol} currentStep={2} onEdit={setFormStep} />
-              <DescriptionField
-                value={formData.description}
-                onChange={handleDescriptionChange}
-                error={formErrors.description}
-              />
-            </div>
-            <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setFormStep(1)}
-                className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5"
-              >
-                <ArrowLeft size={13} /> Back
-              </button>
-              <button
-                type="button"
-                onClick={handleStep2Continue}
-                className="px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 bg-[#F5B841] text-white hover:bg-[#E0A83B]"
-              >
-                Continue <ArrowRight size={13} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Step 3: Variants */}
-      {formStep === 3 && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]" style={{ fontFamily: "'Poppins', sans-serif" }}>
-            <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
-              <div>
-                <h2 className="text-lg font-bold">Sizes & Colors</h2>
-                <p className="text-[11px] text-slate-500">Step 3 of 4 · Add product variants (optional)</p>
-              </div>
-              <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700">
-                <X size={20} />
-              </button>
-            </div>
-            <StepProgressBar currentStep={3} />
-            <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
-              <SummaryPill formData={formData} currencySymbol={currencySymbol} currentStep={3} onEdit={setFormStep} />
-              <VariantSection
-                sizes={formData.sizes}
-                colors={formData.colors}
-                onToggleChip={toggleChip}
-              />
-            </div>
-            <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setFormStep(2)}
-                className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5"
-              >
-                <ArrowLeft size={13} /> Back
-              </button>
-              <button
-                type="button"
-                onClick={handleStep3Continue}
-                className="px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 bg-[#F5B841] text-white hover:bg-[#E0A83B]"
-              >
-                Continue <ArrowRight size={13} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Step 4: Images & Publish */}
-      {formStep === 4 && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <form onSubmit={handleSubmit} className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]" style={{ fontFamily: "'Poppins', sans-serif" }}>
-            <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
-              <div>
-                <h2 className="text-lg font-bold">Images & Publish</h2>
-                <p className="text-[11px] text-slate-500">Step 4 of 4 · Upload photos and go live</p>
-              </div>
-              <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700">
-                <X size={20} />
-              </button>
-            </div>
-            <StepProgressBar currentStep={4} />
-            <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
-              <ErrorBanner msg={formErrors._server} />
-              <SummaryPill formData={formData} currencySymbol={currencySymbol} currentStep={4} onEdit={setFormStep} />
-              <ImageGrid
-                existingImages={[]}
-                pendingImages={formData.imageFiles}
-                onRemoveExisting={() => {}}
-                onRemovePending={removeCreateImage}
-                onAdd={() => fileInputRef.current?.click()}
-              />
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                onChange={handleFilesChange}
-              />
-              {formData.colors.length > 0 && (
-                <ColorImageSection
-                  colors={formData.colors}
-                  colorImageFiles={formData.colorImageFiles}
-                  fileRefs={colorFileInputRefs}
-                  onAdd={(color) => colorFileInputRefs.current[color]?.click()}
-                  onChange={handleColorFilesChange}
-                  onRemove={removeColorCreateImage}
-                  onPreview={(color, images) => setColorPreviewModal({ color, images })}
-                />
-              )}
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <div>
-                  <p className="text-[11px] font-bold text-slate-700">Publish immediately</p>
-                  <p className="text-[9px] text-slate-400">Toggle off to save as a draft</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsPublished((v) => !v)}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${isPublished ? "bg-[#125852]" : "bg-slate-300"}`}
-                >
-                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${isPublished ? "left-5" : "left-0.5"}`} />
-                </button>
-              </div>
-            </div>
-            <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setFormStep(3)}
-                className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5"
-              >
-                <ArrowLeft size={13} /> Back
-              </button>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${isLoading ? "bg-slate-300 text-slate-500 cursor-not-allowed" : "bg-[#FABB00] text-white hover:bg-[#E0A830] cursor-pointer"}`}
-              >
-                {isLoading ? "Publishing…" : submitLabel}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Color Preview Modal */}
-      {colorPreviewModal && (
-        <ColorImagePreviewModal
-          color={colorPreviewModal.color}
-          images={colorPreviewModal.images}
-          onClose={() => setColorPreviewModal(null)}
-        />
-      )}
-    </>
-  );
-};
-
-export default ProductListing;
+export default ProductDashboard;
