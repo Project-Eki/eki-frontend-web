@@ -130,7 +130,7 @@ const Login = () => {
                 Welcome back!
               </h2>
               <p className="text-gray-500 text-[14px]">
-                Ready to sell?
+                {/* Ready to sell? */}
               </p>
             </div>
 

@@ -618,10 +618,7 @@ function AccountSettingsPage() {
             </div>
           </main>
 
-          <footer className="bg-[#125852] text-white py-2.5 px-5 flex justify-between items-center text-[8px] rounded-xl mx-5 mb-3">
-            <div>Buy Smart. Sell Fast. Grow Together...</div>
-            <div>© 2026 Vendor Portal. All rights reserved.</div>
-          </footer>
+          <Footer />
         </div>
       </div>
     </>
