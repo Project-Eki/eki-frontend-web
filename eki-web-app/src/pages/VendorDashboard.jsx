@@ -102,6 +102,7 @@ const VendorDashboard = () => {
     setIsFetching(true);
     try {
       const response = await getVendorDashboard();
+      console.log('[VendorDashboard] Full response:', response);
 
       if (response) {
         const bc = response.businessCategory || "";
@@ -109,13 +110,18 @@ const VendorDashboard = () => {
         const isServiceVendor = response.is_service_vendor ?? false;
         const vendorType = response.vendor_type ?? (isProductVendor ? "product" : "service");
 
-        // ─── FIXED: Get country strictly from response or localStorage (no hardcoded fallback) ───
-        const country = response.country || localStorage.getItem('vendor_country') || "";
+        // ─── FIXED: Check all possible country sources ───
+        const country = response.country || 
+                        response.business_country || 
+                        localStorage.getItem('vendor_country') || 
+                        "";
+        
+        console.log('[VendorDashboard] Resolved country:', country);
         
         // ─── FIXED: Derive currency symbol dynamically using the utility ───
         const resolvedCurrencySymbol = country ? getCurrencySymbol(country) : "";
         
-        console.log('[VendorDashboard] Country:', country, '→ Currency:', resolvedCurrencySymbol);
+        console.log('[VendorDashboard] Currency symbol:', resolvedCurrencySymbol);
 
         setVendorData({
           storeName: response.storeName || "",

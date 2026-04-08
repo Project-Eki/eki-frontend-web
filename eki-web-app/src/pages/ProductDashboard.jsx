@@ -131,7 +131,7 @@ const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => 
         {showVariants && hasMultipleVariants && (
           <div className="mt-2 space-y-1.5 max-h-40 overflow-y-auto">
             {product.variants?.map((variant, idx) => (
-              <div key={idx} className="bg-slate-50 rounded-lg p-2 text-[9px]">
+              <div key={variant.id || idx} className="bg-slate-50 rounded-lg p-2 text-[9px]">
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-slate-700">
                     {variant.size && `Size: ${variant.size}`} {variant.color && `• ${variant.color}`}
@@ -219,7 +219,9 @@ const ProductDashboard = () => {
     setIsFetching(true);
     try {
       const data = await getProducts();
+      console.log('[loadProducts] Raw products:', data);
       const processedProducts = processProductVariants(data || []);
+      console.log('[loadProducts] Processed products:', processedProducts);
       setProducts(processedProducts);
     } catch (err) {
       console.error('Failed to load products', err);
@@ -228,21 +230,47 @@ const ProductDashboard = () => {
     }
   };
 
-  // ── Group variants under parent product ─────────────────────────────────────
+  // ── Group variants under parent product (FIXED - preserves original IDs) ───
   const processProductVariants = (productsList) => {
     const productMap = new Map();
 
     productsList.forEach((product) => {
+      const productId = product.id;
+      
       if (!product.parent_product_id) {
-        if (!productMap.has(product.id)) {
-          productMap.set(product.id, { ...product, variants: product.variants || [] });
+        // This is a parent product or standalone product
+        if (!productMap.has(productId)) {
+          productMap.set(productId, { 
+            ...product, 
+            variants: product.variants || [],
+            id: productId
+          });
         }
       } else {
+        // This is a variant - attach to parent
         const parentId = product.parent_product_id;
         if (!productMap.has(parentId)) {
-          productMap.set(parentId, { id: parentId, variants: [] });
+          // Parent not loaded yet - create placeholder with correct parent ID
+          productMap.set(parentId, { 
+            id: parentId, 
+            variants: [],
+            title: product.title || 'Product Variant',
+            is_published: product.is_published
+          });
         }
-        productMap.get(parentId).variants.push(product);
+        // Add this variant to parent's variants array
+        const parent = productMap.get(parentId);
+        if (parent) {
+          parent.variants.push(product);
+          // Inherit properties from variant if parent doesn't have them
+          if (!parent.price && product.price) parent.price = product.price;
+          if (!parent.title || parent.title === 'Product Variant') {
+            parent.title = product.title || 'Product';
+          }
+          if (!parent.images && product.images) parent.images = product.images;
+          if (!parent.category && product.category) parent.category = product.category;
+          if (!parent.sku && product.sku) parent.sku = product.sku;
+        }
       }
     });
 
@@ -284,6 +312,8 @@ const ProductDashboard = () => {
   const handleUpdateProduct = async (productId, payload, imageFiles) => {
     setIsLoading(true);
     try {
+      console.log('[handleUpdateProduct] Updating product:', productId, payload);
+      
       await updateProductListing(productId, {
         title: payload.title,
         description: payload.description || '',
@@ -322,6 +352,9 @@ const ProductDashboard = () => {
 
   // ── Edit handler ────────────────────────────────────────────────────────────
   const handleEditProduct = (product) => {
+    console.log('[handleEditProduct] Editing product:', product);
+    console.log('[handleEditProduct] Product ID:', product.id);
+    
     const normalizedQty =
       product.inventory_quality ||
       product.qty ||
@@ -348,6 +381,8 @@ const ProductDashboard = () => {
   };
 
   const handleDeleteProduct = (product) => {
+    console.log('[handleDeleteProduct] Product to delete:', product);
+    console.log('[handleDeleteProduct] Product ID:', product.id);
     setSelectedProduct(product);
     setIsDeleteModalOpen(true);
   };
@@ -355,10 +390,13 @@ const ProductDashboard = () => {
   // ── Confirm Delete ──────────────────────────────────────────────────────────
   const confirmDelete = async () => {
     if (!selectedProduct?.id) {
+      console.error('[confirmDelete] No product ID found');
       setIsDeleteModalOpen(false);
       return;
     }
 
+    console.log('[confirmDelete] Deleting product ID:', selectedProduct.id);
+    
     setIsDeleteModalOpen(false);
     setIsLoading(true);
     try {
@@ -368,7 +406,8 @@ const ProductDashboard = () => {
       showSuccess('Product deleted successfully.');
     } catch (err) {
       console.error('Failed to delete product', err);
-      showSuccess('Failed to delete product. Please try again.');
+      const errorMsg = err.response?.data?.detail || err.response?.data?.message || 'Failed to delete product. Please try again.';
+      showSuccess(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -455,7 +494,7 @@ const ProductDashboard = () => {
             {showVariants && variantCount > 1 && (
               <div className="mt-3 space-y-2 max-h-60 overflow-y-auto">
                 {product.variants?.map((variant, idx) => (
-                  <div key={idx} className="bg-slate-50 rounded-lg p-3 text-[10px]">
+                  <div key={variant.id || idx} className="bg-slate-50 rounded-lg p-3 text-[10px]">
                     <div className="flex justify-between items-center">
                       <span className="font-bold text-slate-700">
                         {variant.size && `Size: ${variant.size}`} {variant.color && `• ${variant.color}`}
