@@ -21,6 +21,7 @@ import {
   getVendorDashboard,
   SignoutUser,
 } from '../services/authService';
+import "../utils/currency"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'one_size'];

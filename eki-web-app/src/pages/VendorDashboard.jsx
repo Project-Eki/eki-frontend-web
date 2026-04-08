@@ -10,6 +10,7 @@ import {
   uploadListingImage,
 } from "../services/authService";
 
+import "../utils/currency"
 import {
   Package,
   ChevronRight,
