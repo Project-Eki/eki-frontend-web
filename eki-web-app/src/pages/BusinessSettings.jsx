@@ -21,7 +21,6 @@ countries.registerLocale(enLocale);
 
 import VendorSidebar from "../components/VendorSidebar";
 import Navbar4 from "../components/adminDashboard/Navbar4";
-import Footer from "../components/Vendormanagement/VendorFooter";
 import { getVendorBusinessSettings, updateVendorBusinessSettings } from "../services/api";
 
 import {
@@ -35,7 +34,7 @@ import {
   HiOutlineGlobeAlt,
 } from "react-icons/hi";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// Constants
 const GOLD = "#EFB034";
 const TEAL = "#125852";
 
