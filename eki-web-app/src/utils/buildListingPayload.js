@@ -153,7 +153,7 @@ export const buildListingPayload = (serviceType, title, formData) => {
       service_mode:         SERVICE_MODE_PASS[formData.serviceMode] || 'ride_hailing',
       driver_name:          formData.driver       || '',
       origin:               formData.origin       || formData.routes || '',
-      destination:          formData.destinations || formData.routes || '',
+      destination:          formData.destination || formData.routes || '',
       departure_datetime:   isoOffset(1),
       price_per_seat:       formData.price || '0',
       seats_available:      parseInt(formData.seats) || 1,
