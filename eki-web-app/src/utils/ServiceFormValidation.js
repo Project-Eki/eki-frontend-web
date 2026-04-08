@@ -65,6 +65,18 @@ export const validateStep = (step, serviceType, title, d) => {
       if (!d.serviceMode) {
         errors.serviceMode = "Service mode is required.";
       }
+      //Origin validation for transport
+      if (!d.origin || d.origin.trim() === "") {
+        errors.origin = "Pickup location / Origin is required.";
+      }
+      //Destination validation for transport
+      if (!d.destination || d.destination.trim() === "") {
+        errors.destination = "Dropoff location / Destination is required.";
+      }
+      //Number plate validation for transport
+      if (!d.plate || d.plate.trim() === "") {
+        errors.plate = "Vehicle number plate is required.";
+      }
       if (!d.phone) {
         errors.phone = "Contact phone is required.";
       }
