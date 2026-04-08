@@ -5,7 +5,7 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// ─── PUBLIC ROUTES (no token attached) ───────────────────────────────────────
+// ─── PUBLIC ROUTES ────────────────────────────────────────────────────────────
 const PUBLIC_ROUTES = [
   '/accounts/login/',
   '/accounts/reset-password/',
@@ -416,9 +416,9 @@ export const getVendorDashboard = async () => {
   let businessCategory = 'retail';
   let currencySymbol   = 'UGX';
 
-  let isProductVendor    = raw.is_product_vendor ?? true;
-  let isServiceVendor    = raw.is_service_vendor ?? false;
-  let vendor_type        = raw.vendor_type ?? (isProductVendor ? 'product' : 'service');
+  let isProductVendor     = raw.is_product_vendor ?? true;
+  let isServiceVendor     = raw.is_service_vendor ?? false;
+  let vendor_type         = raw.vendor_type ?? (isProductVendor ? 'product' : 'service');
   let allowedListingTypes = raw.allowed_listing_types ?? (isProductVendor ? ['product'] : ['service']);
 
   try {
@@ -435,12 +435,12 @@ export const getVendorDashboard = async () => {
     liveOrders = await getVendorOrders();
   } catch (_) {}
 
-  const metricsData        = raw.metrics        || {};
-  const salesHistoryData   = raw.salesHistory   || [];
+  const metricsData         = raw.metrics         || {};
+  const salesHistoryData    = raw.salesHistory    || [];
   const inventoryAlertsData = raw.inventoryAlerts || [];
-  const reviewsData        = raw.reviews        || [];
-  const rawRecentOrders    = raw.recentOrders   || [];
-  const recentOrdersData   = rawRecentOrders.length > 0 ? rawRecentOrders : liveOrders.slice(0, 10);
+  const reviewsData         = raw.reviews         || [];
+  const rawRecentOrders     = raw.recentOrders    || [];
+  const recentOrdersData    = rawRecentOrders.length > 0 ? rawRecentOrders : liveOrders.slice(0, 10);
 
   const openOrdersCount = Number(metricsData.openOrders ?? 0) || liveOrders.filter((o) =>
     ['pending', 'confirmed', 'processing'].includes(String(o.status).toLowerCase())
@@ -453,8 +453,8 @@ export const getVendorDashboard = async () => {
     businessCategory,
     currencySymbol,
     vendor_type,
-    is_product_vendor: isProductVendor,
-    is_service_vendor: isServiceVendor,
+    is_product_vendor:     isProductVendor,
+    is_service_vendor:     isServiceVendor,
     allowed_listing_types: allowedListingTypes,
     first_name:      raw.first_name,
     last_name:       raw.last_name,
@@ -462,15 +462,15 @@ export const getVendorDashboard = async () => {
     phone_number:    raw.phone_number,
     profile_picture: raw.profile_picture,
     metrics: {
-      grossSales:      Number(metricsData.grossSales      ?? 0),
-      openOrders:      openOrdersCount,
-      pendingPayouts:  Number(metricsData.pendingPayouts  ?? 0),
-      activeListings:  Number(metricsData.activeListings  ?? 0),
+      grossSales:     Number(metricsData.grossSales     ?? 0),
+      openOrders:     openOrdersCount,
+      pendingPayouts: Number(metricsData.pendingPayouts ?? 0),
+      activeListings: Number(metricsData.activeListings ?? 0),
     },
-    salesHistory:     salesHistoryData.map((item) => ({ date: item.date, sales: Number(item.sales ?? 0) })),
-    recentOrders:     recentOrdersData.map(normalizeOrder),
-    inventoryAlerts:  inventoryAlertsData,
-    reviews:          reviewsData,
+    salesHistory:    salesHistoryData.map((item) => ({ date: item.date, sales: Number(item.sales ?? 0) })),
+    recentOrders:    recentOrdersData.map(normalizeOrder),
+    inventoryAlerts: inventoryAlertsData,
+    reviews:         reviewsData,
   };
 };
 
@@ -486,19 +486,17 @@ export const getCategories = (businessCategory = null) => {
 };
 
 // ─── LISTING NORMALISER ───────────────────────────────────────────────────────
-// FIX: properly extract quality from detail.quality and normalise capitalisation
-// so the edit form always gets 'High' / 'Medium' / 'Low' (not lowercase / undefined)
+// CRITICAL FIX: item.id must ALWAYS remain the real listing ID from the API.
+// Never override it. The dashboard previously ran a processProductVariants()
+// that could replace product.id with parent_product_id, causing deletes and
+// edits to hit the wrong record. That grouping function has been removed.
+// Products are now returned flat — the UI shows variants from product.variants
+// which are embedded in the API response, not from a separate grouping pass.
 const normalizeListing = (item) => {
   const qualityReverseMap = {
-    high:   'High',
-    medium: 'Medium',
-    low:    'Low',
-    High:   'High',
-    Medium: 'Medium',
-    Low:    'Low',
-    HIGH:   'High',
-    MEDIUM: 'Medium',
-    LOW:    'Low',
+    high:   'High',  High:   'High',  HIGH:   'High',
+    medium: 'Medium', Medium: 'Medium', MEDIUM: 'Medium',
+    low:    'Low',   Low:    'Low',   LOW:    'Low',
   };
 
   // quality lives inside detail.quality on the API response
@@ -512,24 +510,39 @@ const normalizeListing = (item) => {
 
   return {
     ...item,
+    // id is ALWAYS the real listing ID — never changed, never overwritten
+    id:                item.id,
     is_published:      item.is_published === true || item.status === 'published',
-    // expose quality under both field names so the dashboard & edit form both work
+    // expose quality under both field names so dashboard & edit form both work
     inventory_quality: normalizedQuality,
     qty:               normalizedQuality,
-    // also pull sku and stock up from detail so the edit form pre-fills correctly
+    // pull sku and stock up from detail so edit form pre-fills correctly
     sku:               item.detail?.sku   ?? item.sku   ?? '',
     stock:             item.detail?.stock ?? item.stock ?? 0,
+    // variants are already embedded in the API response under item.variants
+    // or item.detail.variants — surface them consistently
+    variants:          item.variants ?? item.detail?.variants ?? [],
   };
 };
 
 // ─── GET PRODUCTS ─────────────────────────────────────────────────────────────
+// FIX: Returns the flat normalized list directly.
+// No processProductVariants() grouping — that function was corrupting product.id
+// by substituting parent_product_id for standalone products that had no parent.
+// The ProductCard/ProductListItem components already handle showing variants
+// from product.variants[], which is populated by normalizeListing above.
 export const getProducts = async () => {
   const params = { listing_type: 'product' };
   const res    = await api.get('/listings/', { params });
   const payload = res.data?.data ?? res.data;
-  if (Array.isArray(payload))          return payload.map(normalizeListing);
-  if (Array.isArray(payload?.results)) return payload.results.map(normalizeListing);
-  return [];
+
+  let raw = [];
+  if (Array.isArray(payload))          raw = payload;
+  else if (Array.isArray(payload?.results)) raw = payload.results;
+
+  const normalized = raw.map(normalizeListing);
+  console.log('[getProducts] normalized products:', normalized.map((p) => ({ id: p.id, title: p.title })));
+  return normalized;
 };
 
 // ─── CREATE PRODUCT LISTING ───────────────────────────────────────────────────
@@ -597,6 +610,8 @@ export const createProductListing = async (productData) => {
 };
 
 // ─── UPDATE PRODUCT LISTING ───────────────────────────────────────────────────
+// FIX: listingId is now always the real API listing ID because handleEditProduct
+// in ProductDashboard stores product.id (which normalizeListing never overwrites).
 export const updateProductListing = async (listingId, productData) => {
   const qualityMap = {
     High: 'high', Medium: 'medium', Low: 'low',

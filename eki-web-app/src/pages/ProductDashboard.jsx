@@ -7,7 +7,7 @@ import {
   Plus, Search, Filter, LayoutGrid, List,
   CheckCircle2, Package, ShoppingBag,
   X, Trash2, CreditCard, Box, ListChecks,
-  Edit, Camera, ChevronDown, ChevronUp, Eye,
+  Edit, ChevronDown, ChevronUp,
 } from 'lucide-react';
 
 import {
@@ -99,11 +99,8 @@ const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => 
         <p className="text-[9px] font-bold uppercase text-slate-400">{product.category || '—'}</p>
         <p className="text-[13px] font-bold text-slate-800 truncate">{product.title}</p>
 
-        {/* SKU Display */}
         {product.sku && (
-          <p className="text-[9px] text-slate-500 font-mono">
-            SKU: {product.sku}
-          </p>
+          <p className="text-[9px] text-slate-500 font-mono">SKU: {product.sku}</p>
         )}
 
         <div className="flex items-center justify-between pt-0.5">
@@ -116,7 +113,6 @@ const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => 
           </span>
         </div>
 
-        {/* Variants Toggle */}
         {hasMultipleVariants && (
           <button
             onClick={(e) => { e.stopPropagation(); setShowVariants(!showVariants); }}
@@ -127,7 +123,6 @@ const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => 
           </button>
         )}
 
-        {/* Variants List */}
         {showVariants && hasMultipleVariants && (
           <div className="mt-2 space-y-1.5 max-h-40 overflow-y-auto">
             {product.variants?.map((variant, idx) => (
@@ -148,6 +143,111 @@ const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => 
             ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+};
+
+// ─── List View Item ───────────────────────────────────────────────────────────
+const ProductListItem = ({ product, currencySymbol, onEdit, onDelete }) => {
+  const qStyle = getQualityStyle(product.inventory_quality || product.qty);
+  const mainImage = product.images?.[0]?.image || null;
+  const variantCount = product.variants?.length || 0;
+  const [showVariants, setShowVariants] = useState(false);
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-100 p-4 hover:shadow-md transition-all">
+      <div className="flex items-start gap-4">
+        <div className="w-20 h-20 rounded-lg bg-slate-50 overflow-hidden flex-shrink-0">
+          {mainImage ? (
+            <img src={mainImage} alt={product.title} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <ShoppingBag size={24} className="text-slate-200" />
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase text-slate-400">{product.category || '—'}</p>
+              <h3 className="text-sm font-bold text-slate-800 truncate">{product.title}</h3>
+              {product.sku && (
+                <p className="text-[9px] text-slate-500 font-mono mt-0.5">SKU: {product.sku}</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${product.is_published === true ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                {product.is_published === true ? 'LIVE' : 'DRAFT'}
+              </span>
+              {variantCount > 1 && (
+                <span className="text-[9px] font-black px-2 py-0.5 rounded-full border bg-purple-50 text-purple-700 border-purple-200">
+                  {variantCount} variants
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 mt-2">
+            <p className="text-sm font-black text-[#125852]">{currencySymbol} {Number(product.price || 0).toLocaleString()}</p>
+            <span
+              className="text-[9px] font-black px-2 py-0.5 rounded-full border"
+              style={{ background: qStyle.bg, color: qStyle.text, borderColor: qStyle.border }}
+            >
+              {(product.inventory_quality || product.qty || 'Medium').toUpperCase()}
+            </span>
+            <span className="text-[10px] text-slate-500">Stock: {product.stock || 0}</span>
+          </div>
+
+          {variantCount > 1 && (
+            <button
+              onClick={() => setShowVariants(!showVariants)}
+              className="mt-2 px-3 py-1 bg-slate-50 rounded-lg text-[9px] font-bold text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-1"
+            >
+              {showVariants ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+              {showVariants ? 'Hide' : 'View'} {variantCount} variants
+            </button>
+          )}
+
+          {showVariants && variantCount > 1 && (
+            <div className="mt-3 space-y-2 max-h-60 overflow-y-auto">
+              {product.variants?.map((variant, idx) => (
+                <div key={variant.id || idx} className="bg-slate-50 rounded-lg p-3 text-[10px]">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-slate-700">
+                      {variant.size && `Size: ${variant.size}`} {variant.color && `• ${variant.color}`}
+                    </span>
+                    <span className="font-bold text-[#125852]">
+                      {currencySymbol} {Number(variant.price || product.price || 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="text-slate-500">SKU: {variant.sku || product.sku}</span>
+                    <span className="text-slate-500">Stock: {variant.stock || 0}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => onEdit(product)}
+            className="p-2 bg-slate-100 text-black rounded-lg hover:bg-slate-200 transition-colors"
+            title="Edit Product"
+          >
+            <Edit size={14} />
+          </button>
+          <button
+            onClick={() => onDelete(product)}
+            className="p-2 bg-slate-100 text-black rounded-lg hover:bg-slate-200 transition-colors"
+            title="Delete Product"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -177,7 +277,7 @@ const ProductDashboard = () => {
   const [qualityOptions, setQualityOptions] = useState(QUALITY_OPTIONS);
   const filterRef = useRef(null);
 
-  // ── Load vendor info and quality options ────────────────────────────────────
+  // ── Load vendor info ────────────────────────────────────────────────────────
   useEffect(() => {
     const loadVendorData = async () => {
       try {
@@ -187,15 +287,12 @@ const ProductDashboard = () => {
           setCurrencySymbol(getCurrencySymbol(data.country));
         }
         if (data?.businessCategory) setBusinessCategory(data.businessCategory);
-
         if (data?.quality_options && Array.isArray(data.quality_options)) {
           setQualityOptions(data.quality_options);
         }
-
         const serviceCategories = ['beauty', 'transport', 'tailoring', 'airlines', 'hotels', 'other'];
         const bc = data?.businessCategory || 'retail';
-        const vType = serviceCategories.includes(bc) ? 'service' : 'product';
-        setVendorType(vType);
+        setVendorType(serviceCategories.includes(bc) ? 'service' : 'product');
       } catch (err) {
         console.error('Failed to load vendor info', err);
       }
@@ -203,10 +300,8 @@ const ProductDashboard = () => {
     loadVendorData();
   }, []);
 
-  // ── Load products ───────────────────────────────────────────────────────────
   useEffect(() => { loadProducts(); }, []);
 
-  // ── Close filter on outside click ──────────────────────────────────────────
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (filterRef.current && !filterRef.current.contains(e.target)) setIsFilterOpen(false);
@@ -219,62 +314,13 @@ const ProductDashboard = () => {
     setIsFetching(true);
     try {
       const data = await getProducts();
-      console.log('[loadProducts] Raw products:', data);
-      const processedProducts = processProductVariants(data || []);
-      console.log('[loadProducts] Processed products:', processedProducts);
-      setProducts(processedProducts);
+      console.log('[loadProducts] raw:', data);
+      setProducts(data || []);
     } catch (err) {
       console.error('Failed to load products', err);
     } finally {
       setIsFetching(false);
     }
-  };
-
-  // ── Group variants under parent product (FIXED - preserves original IDs) ───
-  const processProductVariants = (productsList) => {
-    const productMap = new Map();
-
-    productsList.forEach((product) => {
-      const productId = product.id;
-      
-      if (!product.parent_product_id) {
-        // This is a parent product or standalone product
-        if (!productMap.has(productId)) {
-          productMap.set(productId, { 
-            ...product, 
-            variants: product.variants || [],
-            id: productId
-          });
-        }
-      } else {
-        // This is a variant - attach to parent
-        const parentId = product.parent_product_id;
-        if (!productMap.has(parentId)) {
-          // Parent not loaded yet - create placeholder with correct parent ID
-          productMap.set(parentId, { 
-            id: parentId, 
-            variants: [],
-            title: product.title || 'Product Variant',
-            is_published: product.is_published
-          });
-        }
-        // Add this variant to parent's variants array
-        const parent = productMap.get(parentId);
-        if (parent) {
-          parent.variants.push(product);
-          // Inherit properties from variant if parent doesn't have them
-          if (!parent.price && product.price) parent.price = product.price;
-          if (!parent.title || parent.title === 'Product Variant') {
-            parent.title = product.title || 'Product';
-          }
-          if (!parent.images && product.images) parent.images = product.images;
-          if (!parent.category && product.category) parent.category = product.category;
-          if (!parent.sku && product.sku) parent.sku = product.sku;
-        }
-      }
-    });
-
-    return Array.from(productMap.values());
   };
 
   const showSuccess = (msg) => {
@@ -312,8 +358,8 @@ const ProductDashboard = () => {
   const handleUpdateProduct = async (productId, payload, imageFiles) => {
     setIsLoading(true);
     try {
-      console.log('[handleUpdateProduct] Updating product:', productId, payload);
-      
+      console.log('[handleUpdateProduct] Updating listing ID:', productId);
+
       await updateProductListing(productId, {
         title: payload.title,
         description: payload.description || '',
@@ -328,11 +374,11 @@ const ProductDashboard = () => {
         category: payload.category || '',
         business_category: businessCategory,
       });
-      
+
       if (imageFiles.length > 0) {
         await uploadListingImages(productId, imageFiles);
       }
-      
+
       await loadProducts();
       setIsEditModalOpen(false);
       setSelectedProduct(null);
@@ -343,7 +389,6 @@ const ProductDashboard = () => {
       const msg = detail && typeof detail === 'object'
         ? Object.entries(detail).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' | ')
         : 'Failed to update product.';
-      showSuccess(msg);
       throw new Error(msg);
     } finally {
       setIsLoading(false);
@@ -351,10 +396,12 @@ const ProductDashboard = () => {
   };
 
   // ── Edit handler ────────────────────────────────────────────────────────────
+  // FIX: products from the API are now flat (no variant grouping that corrupts IDs)
+  // product.id is always the real listing ID from the API
   const handleEditProduct = (product) => {
-    console.log('[handleEditProduct] Editing product:', product);
-    console.log('[handleEditProduct] Product ID:', product.id);
-    
+    console.log('[handleEditProduct] product:', product);
+    console.log('[handleEditProduct] listing ID:', product.id);
+
     const normalizedQty =
       product.inventory_quality ||
       product.qty ||
@@ -362,7 +409,7 @@ const ProductDashboard = () => {
       'Medium';
 
     setSelectedProduct({
-      id: product.id,
+      id: product.id,  // real listing ID from API — never overwritten
       title: product.title || '',
       category: product.category || '',
       price: product.price ? String(product.price) : '',
@@ -380,9 +427,10 @@ const ProductDashboard = () => {
     setIsEditModalOpen(true);
   };
 
+  // ── Delete handler ──────────────────────────────────────────────────────────
   const handleDeleteProduct = (product) => {
-    console.log('[handleDeleteProduct] Product to delete:', product);
-    console.log('[handleDeleteProduct] Product ID:', product.id);
+    console.log('[handleDeleteProduct] product:', product);
+    console.log('[handleDeleteProduct] listing ID:', product.id);
     setSelectedProduct(product);
     setIsDeleteModalOpen(true);
   };
@@ -390,13 +438,13 @@ const ProductDashboard = () => {
   // ── Confirm Delete ──────────────────────────────────────────────────────────
   const confirmDelete = async () => {
     if (!selectedProduct?.id) {
-      console.error('[confirmDelete] No product ID found');
+      console.error('[confirmDelete] No product ID found:', selectedProduct);
       setIsDeleteModalOpen(false);
       return;
     }
 
-    console.log('[confirmDelete] Deleting product ID:', selectedProduct.id);
-    
+    console.log('[confirmDelete] Deleting listing ID:', selectedProduct.id);
+
     setIsDeleteModalOpen(false);
     setIsLoading(true);
     try {
@@ -406,7 +454,10 @@ const ProductDashboard = () => {
       showSuccess('Product deleted successfully.');
     } catch (err) {
       console.error('Failed to delete product', err);
-      const errorMsg = err.response?.data?.detail || err.response?.data?.message || 'Failed to delete product. Please try again.';
+      const errorMsg =
+        err.response?.data?.detail ||
+        err.response?.data?.message ||
+        'Failed to delete product. Please try again.';
       showSuccess(errorMsg);
     } finally {
       setIsLoading(false);
@@ -415,12 +466,14 @@ const ProductDashboard = () => {
 
   // ── Filtering ───────────────────────────────────────────────────────────────
   const filteredProducts = products.filter((p) => {
-    const matchesSearch = p.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch =
+      p.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = !filterCategory || p.category === filterCategory;
-    const matchesStatus = !filterStatus
-      || (filterStatus === 'published' && p.is_published === true)
-      || (filterStatus === 'draft' && p.is_published !== true);
+    const matchesStatus =
+      !filterStatus ||
+      (filterStatus === 'published' && p.is_published === true) ||
+      (filterStatus === 'draft' && p.is_published !== true);
     const rawQty = (p.inventory_quality || p.qty || '').toUpperCase();
     const matchesQuality = !filterQuality || rawQty === filterQuality.toUpperCase();
     return matchesSearch && matchesCategory && matchesStatus && matchesQuality;
@@ -428,111 +481,6 @@ const ProductDashboard = () => {
 
   const activeFilterCount = [filterCategory, filterStatus, filterQuality].filter(Boolean).length;
   const clearFilters = () => { setFilterCategory(''); setFilterStatus(''); setFilterQuality(''); };
-
-  // ─── List View Component ─────────────────────────────────────────────────────
-  const ProductListItem = ({ product, currencySymbol, onEdit, onDelete }) => {
-    const qStyle = getQualityStyle(product.inventory_quality || product.qty);
-    const mainImage = product.images?.[0]?.image || null;
-    const variantCount = product.variants?.length || 0;
-    const [showVariants, setShowVariants] = useState(false);
-
-    return (
-      <div className="bg-white rounded-xl border border-slate-100 p-4 hover:shadow-md transition-all">
-        <div className="flex items-start gap-4">
-          <div className="w-20 h-20 rounded-lg bg-slate-50 overflow-hidden flex-shrink-0">
-            {mainImage ? (
-              <img src={mainImage} alt={product.title} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <ShoppingBag size={24} className="text-slate-200" />
-              </div>
-            )}
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase text-slate-400">{product.category || '—'}</p>
-                <h3 className="text-sm font-bold text-slate-800 truncate">{product.title}</h3>
-                {product.sku && (
-                  <p className="text-[9px] text-slate-500 font-mono mt-0.5">SKU: {product.sku}</p>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${product.is_published === true ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                  {product.is_published === true ? 'LIVE' : 'DRAFT'}
-                </span>
-                {variantCount > 1 && (
-                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full border bg-purple-50 text-purple-700 border-purple-200">
-                    {variantCount} variants
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4 mt-2">
-              <p className="text-sm font-black text-[#125852]">{currencySymbol} {Number(product.price || 0).toLocaleString()}</p>
-              <span
-                className="text-[9px] font-black px-2 py-0.5 rounded-full border"
-                style={{ background: qStyle.bg, color: qStyle.text, borderColor: qStyle.border }}
-              >
-                {(product.inventory_quality || product.qty || 'Medium').toUpperCase()}
-              </span>
-              <span className="text-[10px] text-slate-500">Stock: {product.stock || 0}</span>
-            </div>
-
-            {variantCount > 1 && (
-              <button
-                onClick={() => setShowVariants(!showVariants)}
-                className="mt-2 px-3 py-1 bg-slate-50 rounded-lg text-[9px] font-bold text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-1"
-              >
-                {showVariants ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
-                {showVariants ? 'Hide' : 'View'} {variantCount} variants
-              </button>
-            )}
-
-            {showVariants && variantCount > 1 && (
-              <div className="mt-3 space-y-2 max-h-60 overflow-y-auto">
-                {product.variants?.map((variant, idx) => (
-                  <div key={variant.id || idx} className="bg-slate-50 rounded-lg p-3 text-[10px]">
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-slate-700">
-                        {variant.size && `Size: ${variant.size}`} {variant.color && `• ${variant.color}`}
-                      </span>
-                      <span className="font-bold text-[#125852]">
-                        {currencySymbol} {Number(variant.price || product.price || 0).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center mt-1">
-                      <span className="text-slate-500">SKU: {variant.sku || product.sku}</span>
-                      <span className="text-slate-500">Stock: {variant.stock || 0}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onEdit(product)}
-              className="p-2 bg-slate-100 text-black rounded-lg hover:bg-slate-200 transition-colors"
-              title="Edit Product"
-            >
-              <Edit size={14} />
-            </button>
-            <button
-              onClick={() => onDelete(product)}
-              className="p-2 bg-slate-100 text-black rounded-lg hover:bg-slate-200 transition-colors"
-              title="Delete Product"
-            >
-              <Trash2 size={14} />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -682,7 +630,7 @@ const ProductDashboard = () => {
             </div>
           )}
 
-          {/* Product grid / list / empty states */}
+          {/* Product grid / list / empty / loading */}
           {isFetching ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[...Array(8)].map((_, i) => (
@@ -703,7 +651,9 @@ const ProductDashboard = () => {
                 {activeFilterCount > 0 || searchQuery ? 'No matching products' : 'No products found'}
               </h3>
               <p className="text-slate-500 text-sm mb-6">
-                {activeFilterCount > 0 || searchQuery ? 'Try adjusting your search or filters.' : 'Start by adding your first product to the catalog.'}
+                {activeFilterCount > 0 || searchQuery
+                  ? 'Try adjusting your search or filters.'
+                  : 'Start by adding your first product to the catalog.'}
               </p>
               {!activeFilterCount && !searchQuery && (
                 <button onClick={() => setIsProductModalOpen(true)} className="bg-[#F5B841] text-white px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 mx-auto hover:bg-[#E0A83B]">

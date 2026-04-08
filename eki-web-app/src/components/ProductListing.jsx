@@ -34,13 +34,13 @@ const countWords = (text) => {
 };
 
 export const blankForm = () => ({
-  title: "",
-  category: "",
-  price: "",
-  sku: "",
-  qty: "Medium",
-  location: "",
-  description: "",
+  title: '',
+  category: '',
+  price: '',
+  sku: '',
+  qty: 'Medium',
+  location: '',
+  description: '',
   stock: 0,
   imageFiles: [],
   sizes: [],
@@ -55,97 +55,165 @@ export const isStep1Valid = (data) =>
   Number(data.price) > 0;
 
 // ─── Camera Capture Component ─────────────────────────────────────────────────
+// FIX: getUserMedia requires HTTPS. On DigitalOcean HTTP deployments
+// navigator.mediaDevices is undefined. We check the protocol first
+// and show a clear error instead of crashing with a TypeError.
 const CameraCapture = ({ onCapture, onClose }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [stream, setStream] = useState(null);
   const [error, setError] = useState('');
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
+    const isSecureContext =
+      window.location.protocol === 'https:' ||
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1';
+
+    if (!isSecureContext) {
+      setError(
+        'Camera access requires HTTPS. Your site is currently on HTTP. ' +
+        'Please configure SSL on your server, or use the file upload option instead.'
+      );
+      return;
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setError(
+        'Your browser does not support camera access. Please use file upload instead.'
+      );
+      return;
+    }
+
+    let activeStream = null;
+
     const startCamera = async () => {
       try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' }
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false,
         });
+        activeStream = mediaStream;
         setStream(mediaStream);
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
+          videoRef.current.onloadedmetadata = () => setIsReady(true);
         }
       } catch (err) {
-        setError('Unable to access camera. Please check permissions.');
         console.error('Camera error:', err);
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setError('Camera permission denied. Please allow camera access in your browser settings and try again.');
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          setError('No camera found on this device. Please use file upload instead.');
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          setError('Camera is already in use by another application. Please close other apps and try again.');
+        } else {
+          setError(`Camera error: ${err.message}. Please use file upload instead.`);
+        }
       }
     };
+
     startCamera();
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      if (activeStream) {
+        activeStream.getTracks().forEach((track) => track.stop());
       }
     };
   }, []);
 
+  // Also stop stream when component unmounts via stream state
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [stream]);
+
   const handleCapture = () => {
-    if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const context = canvas.getContext('2d');
-
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      canvas.toBlob((blob) => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(
+      (blob) => {
         const file = new File([blob], `camera-capture-${Date.now()}.jpg`, { type: 'image/jpeg' });
         onCapture(file);
         onClose();
-      }, 'image/jpeg', 0.95);
-    }
+      },
+      'image/jpeg',
+      0.92
+    );
   };
 
   return (
-    <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/90" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div
+      className="fixed inset-0 z-[400] flex items-center justify-center bg-black/90 p-4"
+      style={{ fontFamily: "'Poppins', sans-serif" }}
+    >
       <div className="relative w-full max-w-lg">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 p-2 bg-white/10 rounded-full text-white hover:bg-white/20"
+          className="absolute top-3 right-3 z-10 p-2 bg-white/20 rounded-full text-white hover:bg-white/30 transition-colors"
         >
           <X size={20} />
         </button>
 
         {error ? (
-          <div className="bg-red-500 text-white p-4 rounded-lg text-center">
-            <p>{error}</p>
-            <button onClick={onClose} className="mt-3 px-4 py-2 bg-white text-red-500 rounded-lg text-sm font-bold">
-              Close
+          /* ── Error state ── */
+          <div className="bg-white rounded-2xl p-8 text-center space-y-4">
+            <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+              <Camera size={24} className="text-red-500" />
+            </div>
+            <p className="text-sm font-bold text-slate-800">Camera unavailable</p>
+            <p className="text-xs text-slate-500 leading-relaxed">{error}</p>
+            <button
+              onClick={onClose}
+              className="px-6 py-2.5 bg-[#F5B841] text-white rounded-xl text-sm font-bold hover:bg-[#E0A83B] transition-colors"
+            >
+              Use file upload instead
             </button>
           </div>
         ) : (
-          <>
+          /* ── Live camera ── */
+          <div className="relative">
             <video
               ref={videoRef}
               autoPlay
               playsInline
-              className="w-full rounded-2xl"
-              style={{ transform: 'scaleX(-1)' }}
+              muted
+              className="w-full rounded-2xl bg-black"
+              style={{ maxHeight: '70vh' }}
             />
             <canvas ref={canvasRef} className="hidden" />
 
-            <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-4">
+            {!isReady && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-2xl">
+                <p className="text-white text-sm font-medium">Starting camera…</p>
+              </div>
+            )}
+
+            <div className="absolute bottom-6 left-0 right-0 flex justify-center items-center gap-6">
               <button
                 onClick={onClose}
-                className="px-6 py-3 bg-white/10 backdrop-blur-sm text-white rounded-full text-sm font-bold hover:bg-white/20"
+                className="px-5 py-2.5 bg-white/20 backdrop-blur-sm text-white rounded-full text-sm font-bold hover:bg-white/30 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCapture}
-                className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform"
+                disabled={!isReady}
+                className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-transform ${isReady ? 'bg-white hover:scale-105 active:scale-95' : 'bg-white/50 cursor-not-allowed'}`}
               >
-                <div className="w-14 h-14 bg-[#F5B841] rounded-full border-2 border-white" />
+                <div className={`w-14 h-14 rounded-full border-2 border-white ${isReady ? 'bg-[#F5B841]' : 'bg-slate-300'}`} />
               </button>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
@@ -314,6 +382,15 @@ const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, 
   const total = existingImages.length + pendingImages.length;
   const canAddMore = total < MAX_GENERAL_IMAGES;
   const [showCameraOptions, setShowCameraOptions] = useState(false);
+  const optionsRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (optionsRef.current && !optionsRef.current.contains(e.target)) setShowCameraOptions(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <div className="space-y-1.5">
@@ -325,8 +402,14 @@ const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, 
         {existingImages.map((img, i) => (
           <div key={img.id ?? i} className="w-16 h-16 rounded-lg border border-slate-200 overflow-hidden relative group flex-shrink-0">
             <img src={img.image} alt={`Product ${i + 1}`} className="w-full h-full object-cover" />
-            {i === 0 && <span className="absolute bottom-0 left-0 right-0 bg-[#125852]/80 text-white text-[7px] font-black text-center py-0.5">MAIN</span>}
-            <button type="button" onClick={() => onRemoveExisting(img.id, i)} className="absolute top-0.5 right-0.5 bg-white/90 p-0.5 rounded-full text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+            {i === 0 && (
+              <span className="absolute bottom-0 left-0 right-0 bg-[#125852]/80 text-white text-[7px] font-black text-center py-0.5">MAIN</span>
+            )}
+            <button
+              type="button"
+              onClick={() => onRemoveExisting(img.id, i)}
+              className="absolute top-0.5 right-0.5 bg-white/90 p-0.5 rounded-full text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+            >
               <Trash2 size={9} />
             </button>
           </div>
@@ -335,13 +418,17 @@ const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, 
           <div key={i} className="w-16 h-16 rounded-lg border border-dashed border-[#125852]/50 overflow-hidden relative group flex-shrink-0">
             <img src={img.preview} alt={`New ${i + 1}`} className="w-full h-full object-cover opacity-80" />
             <span className="absolute bottom-0 left-0 right-0 bg-amber-500/80 text-white text-[7px] font-black text-center py-0.5">PENDING</span>
-            <button type="button" onClick={() => onRemovePending(i)} className="absolute top-0.5 right-0.5 bg-white/90 p-0.5 rounded-full text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+            <button
+              type="button"
+              onClick={() => onRemovePending(i)}
+              className="absolute top-0.5 right-0.5 bg-white/90 p-0.5 rounded-full text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+            >
               <Trash2 size={9} />
             </button>
           </div>
         ))}
         {canAddMore && (
-          <div className="relative">
+          <div className="relative" ref={optionsRef}>
             <button
               type="button"
               onClick={() => setShowCameraOptions(!showCameraOptions)}
@@ -355,20 +442,14 @@ const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, 
               <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg p-1 min-w-[120px]">
                 <button
                   type="button"
-                  onClick={() => {
-                    onAdd();
-                    setShowCameraOptions(false);
-                  }}
+                  onClick={() => { onAdd(); setShowCameraOptions(false); }}
                   className="w-full px-3 py-2 text-left text-[10px] font-bold text-slate-600 hover:bg-slate-50 rounded flex items-center gap-2"
                 >
                   <ImagePlus size={12} /> Upload
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    onCameraCapture();
-                    setShowCameraOptions(false);
-                  }}
+                  onClick={() => { onCameraCapture(); setShowCameraOptions(false); }}
                   className="w-full px-3 py-2 text-left text-[10px] font-bold text-slate-600 hover:bg-slate-50 rounded flex items-center gap-2"
                 >
                   <Camera size={12} /> Take Photo
@@ -389,6 +470,18 @@ const ColorImageSection = ({
   fileRefs, onAdd, onChange, onRemove, onPreview, onCameraCapture,
 }) => {
   const [showCameraForColor, setShowCameraForColor] = useState(null);
+  const optionsRefs = useRef({});
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      const clickedInsideAny = Object.values(optionsRefs.current).some(
+        (ref) => ref && ref.contains(e.target)
+      );
+      if (!clickedInsideAny) setShowCameraForColor(null);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   if (!colors || colors.length === 0) return null;
 
@@ -428,16 +521,26 @@ const ColorImageSection = ({
               {images.map((img, i) => (
                 <div key={i} className="w-14 h-14 rounded-lg border border-dashed border-[#125852]/50 overflow-hidden relative group flex-shrink-0">
                   <img src={img.preview} alt={`${color} ${i + 1}`} className="w-full h-full object-cover opacity-90" />
-                  <span className="absolute bottom-0 left-0 right-0 text-center text-[6px] font-black py-0.5 truncate px-1" style={{ backgroundColor: (COLOR_SWATCHES[color] || '#125852') + 'cc', color: '#fff' }}>
+                  <span
+                    className="absolute bottom-0 left-0 right-0 text-center text-[6px] font-black py-0.5 truncate px-1"
+                    style={{ backgroundColor: (COLOR_SWATCHES[color] || '#125852') + 'cc', color: '#fff' }}
+                  >
                     {color.toUpperCase()}
                   </span>
-                  <button type="button" onClick={() => onRemove(color, i)} className="absolute top-0.5 right-0.5 bg-white/90 p-0.5 rounded-full text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => onRemove(color, i)}
+                    className="absolute top-0.5 right-0.5 bg-white/90 p-0.5 rounded-full text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                  >
                     <Trash2 size={7} />
                   </button>
                 </div>
               ))}
               {canAdd && (
-                <div className="relative">
+                <div
+                  className="relative"
+                  ref={(el) => { optionsRefs.current[color] = el; }}
+                >
                   <button
                     type="button"
                     onClick={() => setShowCameraForColor(showCameraForColor === color ? null : color)}
@@ -451,20 +554,14 @@ const ColorImageSection = ({
                     <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg p-1 min-w-[110px]">
                       <button
                         type="button"
-                        onClick={() => {
-                          onAdd(color);
-                          setShowCameraForColor(null);
-                        }}
+                        onClick={() => { onAdd(color); setShowCameraForColor(null); }}
                         className="w-full px-3 py-2 text-left text-[10px] font-bold text-slate-600 hover:bg-slate-50 rounded flex items-center gap-2"
                       >
                         <ImagePlus size={12} /> Upload
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          onCameraCapture(color);
-                          setShowCameraForColor(null);
-                        }}
+                        onClick={() => { onCameraCapture(color); setShowCameraForColor(null); }}
                         className="w-full px-3 py-2 text-left text-[10px] font-bold text-slate-600 hover:bg-slate-50 rounded flex items-center gap-2"
                       >
                         <Camera size={12} /> Take Photo
@@ -538,10 +635,14 @@ const ColorImagePreviewModal = ({ color, images, onClose }) => {
             {images.map((img, i) => {
               const src = img.preview || img.image || null;
               return (
-                <button key={i} type="button" onClick={() => setCurrentIndex(i)}
+                <button
+                  key={i} type="button" onClick={() => setCurrentIndex(i)}
                   className={`flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${i === currentIndex ? 'border-[#125852] shadow-md' : 'border-transparent opacity-60 hover:opacity-90'}`}
                 >
-                  {src ? <img src={src} alt={`Thumb ${i + 1}`} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-200 flex items-center justify-center"><ShoppingBag size={14} className="text-slate-400" /></div>}
+                  {src
+                    ? <img src={src} alt={`Thumb ${i + 1}`} className="w-full h-full object-cover" />
+                    : <div className="w-full h-full bg-slate-200 flex items-center justify-center"><ShoppingBag size={14} className="text-slate-400" /></div>
+                  }
                 </button>
               );
             })}
@@ -558,7 +659,7 @@ const SummaryPill = ({ formData, currencySymbol, currentStep, onEdit }) => (
     <div className="flex items-start justify-between">
       <div className="flex-1 min-w-0">
         <p className="text-[10px] font-bold uppercase text-slate-400 mb-0.5">Summary</p>
-        <p className="text-[13px] font-bold text-slate-800 truncate">{formData.title || "New Product"}</p>
+        <p className="text-[13px] font-bold text-slate-800 truncate">{formData.title || 'New Product'}</p>
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           <span className="text-[11px] text-[#125852] font-bold">{currencySymbol} {Number(formData.price || 0).toLocaleString()}</span>
           {formData.stock > 0 && <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full">Qty: {formData.stock}</span>}
@@ -576,18 +677,18 @@ const SummaryPill = ({ formData, currencySymbol, currentStep, onEdit }) => (
   </div>
 );
 
-// ─── Main Listing Form Component ─────────────────────────────────────────────
+// ─── Main Listing Form Component ──────────────────────────────────────────────
 const ProductListing = ({
   isOpen,
   onClose,
   onSubmit,
   isLoading,
   isServiceVendor = false,
-  businessCategory = "retail",
-  currencySymbol = "UGX",
+  businessCategory = 'retail',
+  currencySymbol = 'UGX',
   initialData = null,
   qualityOptions = DEFAULT_QUALITY_OPTIONS,
-  submitLabel = "Publish Product",
+  submitLabel = 'Publish Product',
 }) => {
   const [formStep, setFormStep] = useState(1);
   const [formData, setFormData] = useState(blankForm());
@@ -601,8 +702,9 @@ const ProductListing = ({
 
   const step1Valid = isStep1Valid(formData);
 
-  // Initialize form with initialData if provided (for editing)
+  // Initialize form with initialData (for editing) or blank (for create)
   useEffect(() => {
+    if (!isOpen) return;
     if (initialData) {
       const safeQty =
         initialData.qty ||
@@ -611,13 +713,13 @@ const ProductListing = ({
         'Medium';
 
       setFormData({
-        title: initialData.title || "",
-        category: initialData.category || "",
-        price: initialData.price ? String(initialData.price) : "",
-        sku: initialData.sku || "",
+        title: initialData.title || '',
+        category: initialData.category || '',
+        price: initialData.price ? String(initialData.price) : '',
+        sku: initialData.sku || '',
         qty: safeQty,
-        location: initialData.location || "",
-        description: initialData.description || "",
+        location: initialData.location || '',
+        description: initialData.description || '',
         stock: initialData.stock || 0,
         imageFiles: [],
         sizes: initialData.sizes || [],
@@ -628,13 +730,13 @@ const ProductListing = ({
     } else {
       setFormData({
         ...blankForm(),
-        qty: qualityOptions[1] || "Medium"
+        qty: qualityOptions[1] || 'Medium',
       });
       setIsPublished(true);
     }
     setFormStep(1);
     setFormErrors({});
-  }, [initialData, isOpen, qualityOptions]);
+  }, [isOpen, initialData]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -643,8 +745,7 @@ const ProductListing = ({
   };
 
   const handleDescriptionChange = (e) => {
-    const { value } = e.target;
-    setFormData((prev) => ({ ...prev, description: value }));
+    setFormData((prev) => ({ ...prev, description: e.target.value }));
     if (formErrors.description) setFormErrors((prev) => ({ ...prev, description: null }));
   };
 
@@ -654,10 +755,11 @@ const ProductListing = ({
     const remaining = MAX_GENERAL_IMAGES - formData.imageFiles.length;
     files.slice(0, remaining).forEach((file) => {
       const reader = new FileReader();
-      reader.onloadend = () => setFormData((prev) => ({
-        ...prev,
-        imageFiles: [...prev.imageFiles, { preview: reader.result, file }]
-      }));
+      reader.onloadend = () =>
+        setFormData((prev) => ({
+          ...prev,
+          imageFiles: [...prev.imageFiles, { preview: reader.result, file }],
+        }));
       reader.readAsDataURL(file);
     });
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -671,23 +773,27 @@ const ProductListing = ({
           ...prev,
           colorImageFiles: {
             ...prev.colorImageFiles,
-            [cameraTargetColor]: [...(prev.colorImageFiles[cameraTargetColor] || []), { preview: reader.result, file }]
+            [cameraTargetColor]: [
+              ...(prev.colorImageFiles[cameraTargetColor] || []),
+              { preview: reader.result, file },
+            ],
           },
         }));
       } else {
         setFormData((prev) => ({
           ...prev,
-          imageFiles: [...prev.imageFiles, { preview: reader.result, file }]
+          imageFiles: [...prev.imageFiles, { preview: reader.result, file }],
         }));
       }
     };
     reader.readAsDataURL(file);
   };
 
-  const removeCreateImage = (index) => setFormData((prev) => ({
-    ...prev,
-    imageFiles: prev.imageFiles.filter((_, i) => i !== index)
-  }));
+  const removeCreateImage = (index) =>
+    setFormData((prev) => ({
+      ...prev,
+      imageFiles: prev.imageFiles.filter((_, i) => i !== index),
+    }));
 
   const handleColorFilesChange = (color, e) => {
     const files = Array.from(e.target.files);
@@ -695,19 +801,27 @@ const ProductListing = ({
     const remaining = MAX_IMAGES_PER_COLOR - (formData.colorImageFiles[color] || []).length;
     files.slice(0, remaining).forEach((file) => {
       const reader = new FileReader();
-      reader.onloadend = () => setFormData((prev) => ({
-        ...prev,
-        colorImageFiles: { ...prev.colorImageFiles, [color]: [...(prev.colorImageFiles[color] || []), { preview: reader.result, file }] },
-      }));
+      reader.onloadend = () =>
+        setFormData((prev) => ({
+          ...prev,
+          colorImageFiles: {
+            ...prev.colorImageFiles,
+            [color]: [...(prev.colorImageFiles[color] || []), { preview: reader.result, file }],
+          },
+        }));
       reader.readAsDataURL(file);
     });
     if (colorFileInputRefs.current[color]) colorFileInputRefs.current[color].value = '';
   };
 
-  const removeColorCreateImage = (color, index) => setFormData((prev) => ({
-    ...prev,
-    colorImageFiles: { ...prev.colorImageFiles, [color]: (prev.colorImageFiles[color] || []).filter((_, i) => i !== index) },
-  }));
+  const removeColorCreateImage = (color, index) =>
+    setFormData((prev) => ({
+      ...prev,
+      colorImageFiles: {
+        ...prev.colorImageFiles,
+        [color]: (prev.colorImageFiles[color] || []).filter((_, i) => i !== index),
+      },
+    }));
 
   const toggleChip = (field, value) => {
     setFormData((prev) => {
@@ -723,9 +837,9 @@ const ProductListing = ({
 
   const validateStep1 = () => {
     const errs = {};
-    if (!formData.title?.trim()) errs.title = "Title is required";
+    if (!formData.title?.trim()) errs.title = 'Title is required';
     if (!formData.price || isNaN(Number(formData.price)) || Number(formData.price) <= 0) {
-      errs.price = "Valid price is required";
+      errs.price = 'Valid price is required';
     }
     return errs;
   };
@@ -745,20 +859,14 @@ const ProductListing = ({
 
   const handleStep1Continue = () => {
     const errs = validateStep1();
-    if (Object.keys(errs).length > 0) {
-      setFormErrors(errs);
-      return;
-    }
+    if (Object.keys(errs).length > 0) { setFormErrors(errs); return; }
     setFormErrors({});
     setFormStep(2);
   };
 
   const handleStep2Continue = () => {
     const errs = validateStep2();
-    if (Object.keys(errs).length > 0) {
-      setFormErrors(errs);
-      return;
-    }
+    if (Object.keys(errs).length > 0) { setFormErrors(errs); return; }
     setFormErrors({});
     setFormStep(3);
   };
@@ -776,7 +884,6 @@ const ProductListing = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const validationErrors = validateStep1();
     const descErrors = validateStep2();
     if (Object.keys(validationErrors).length > 0 || Object.keys(descErrors).length > 0) {
@@ -801,14 +908,25 @@ const ProductListing = ({
     };
 
     const allFiles = collectAllFiles();
-    await onSubmit(payload, allFiles);
+
+    try {
+      await onSubmit(payload, allFiles);
+    } catch (err) {
+      setFormErrors({ _server: err.message || 'Something went wrong. Please try again.' });
+    }
   };
 
-  const ErrorBanner = ({ msg }) => msg ? (
-    <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-medium px-3 py-2 rounded-lg">{msg}</div>
-  ) : null;
+  const ErrorBanner = ({ msg }) =>
+    msg ? (
+      <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-medium px-3 py-2 rounded-lg">
+        {msg}
+      </div>
+    ) : null;
 
   if (!isOpen) return null;
+
+  const modalWrap = 'fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4';
+  const modalBox = 'bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]';
 
   return (
     <>
@@ -823,134 +941,113 @@ const ProductListing = ({
         />
       )}
 
-      {/* Step 1: Basic Info */}
+      {/* ── Step 1: Basic Info ───────────────────────────────────────────── */}
       {formStep === 1 && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh] overflow-y-auto" style={{ fontFamily: "'Poppins', sans-serif" }}>
+        <div className={modalWrap}>
+          <div className={modalBox} style={{ fontFamily: "'Poppins', sans-serif" }}>
             <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
               <div>
-                <h2 className="text-lg font-bold">{initialData ? 'Edit' : 'Create New'} {isServiceVendor ? "Service" : "Product"}</h2>
+                <h2 className="text-lg font-bold">{initialData ? 'Edit' : 'Create New'} {isServiceVendor ? 'Service' : 'Product'}</h2>
                 <p className="text-[11px] text-slate-500">
                   Step 1 of 4 · <span className="font-bold text-[#125852] capitalize">{businessCategory}</span>
                 </p>
               </div>
-              <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700">
-                <X size={20} />
-              </button>
+              <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <StepProgressBar currentStep={1} />
             <div className="px-6 py-4 space-y-3 overflow-y-auto flex-1">
               <ErrorBanner msg={formErrors._server} />
+
               <div className="space-y-1">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Title *</label>
                 <input
-                  type="text"
-                  name="title"
-                  value={formData.title}
+                  type="text" name="title" value={formData.title}
                   onChange={handleInputChange}
-                  placeholder={`e.g. ${isServiceVendor ? "Website Design Package" : "Premium Wireless Headphones"}`}
+                  placeholder={`e.g. ${isServiceVendor ? 'Website Design Package' : 'Premium Wireless Headphones'}`}
                   autoComplete="off"
-                  className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.title ? "border-red-500" : "border-slate-200"}`}
+                  className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.title ? 'border-red-500' : 'border-slate-200'}`}
                 />
                 {formErrors.title && <p className="text-red-500 text-[9px] font-bold">{formErrors.title}</p>}
               </div>
+
               <div className="space-y-1">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Location</label>
                 <input
-                  type="text"
-                  name="location"
-                  value={formData.location}
+                  type="text" name="location" value={formData.location}
                   onChange={handleInputChange}
                   placeholder="e.g. Kampala, Uganda"
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
                 />
               </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold uppercase text-slate-500">Sub-category</label>
                   <select
-                    name="category"
-                    value={formData.category}
+                    name="category" value={formData.category}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
                   >
                     <option value="">— Select —</option>
-                    {CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
+                    {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold uppercase text-slate-500">Price ({currencySymbol}) *</label>
                   <input
-                    type="number"
-                    name="price"
-                    value={formData.price}
+                    type="number" name="price" value={formData.price}
                     onChange={handleInputChange}
-                    placeholder="0.00"
-                    min="0"
-                    step="any"
-                    autoComplete="off"
-                    className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.price ? "border-red-500" : "border-slate-200"}`}
+                    placeholder="0.00" min="0" step="any" autoComplete="off"
+                    className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841] ${formErrors.price ? 'border-red-500' : 'border-slate-200'}`}
                   />
                   {formErrors.price && <p className="text-red-500 text-[9px] font-bold">{formErrors.price}</p>}
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold uppercase text-slate-500">Stock Keeping Unit (SKU)</label>
+                  <label className="text-[11px] font-bold uppercase text-slate-500">SKU</label>
                   <input
-                    type="text"
-                    name="sku"
-                    value={formData.sku}
+                    type="text" name="sku" value={formData.sku}
                     onChange={handleInputChange}
-                    placeholder="ALP-TSH-M-BLK-L-2026-0001"
+                    placeholder="ALP-TSH-M-BLK-2026-001"
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold uppercase text-slate-500">Quality</label>
                   <select
-                    name="qty"
-                    value={formData.qty}
+                    name="qty" value={formData.qty}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
                   >
-                    {qualityOptions.map((q) => (
-                      <option key={q} value={q}>{q}</option>
-                    ))}
+                    {qualityOptions.map((q) => <option key={q} value={q}>{q}</option>)}
                   </select>
                 </div>
               </div>
+
               <div className="space-y-1">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Stock Quantity</label>
                 <input
-                  type="number"
-                  name="stock"
-                  value={formData.stock}
+                  type="number" name="stock" value={formData.stock}
                   onChange={handleInputChange}
-                  placeholder="e.g. 10"
-                  min="0"
-                  step="1"
+                  placeholder="e.g. 10" min="0" step="1"
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
                 />
                 <p className="text-[9px] text-slate-400">
-                  Total units available. Skip if you're using size/color variants — set stock per variant instead.
+                  Total units available. Skip if using size/color variants — set stock per variant instead.
                 </p>
               </div>
             </div>
             <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50"
-              >
+              <button type="button" onClick={onClose} className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50">
                 Cancel
               </button>
               <button
-                type="button"
-                onClick={handleStep1Continue}
-                className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${step1Valid ? "bg-[#F5B841] text-white hover:bg-[#E0A83B] cursor-pointer" : "bg-slate-300 text-slate-500 cursor-not-allowed"}`}
+                type="button" onClick={handleStep1Continue}
+                className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${
+                  step1Valid ? 'bg-[#F5B841] text-white hover:bg-[#E0A83B] cursor-pointer' : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                }`}
               >
                 Continue <ArrowRight size={13} />
               </button>
@@ -959,18 +1056,16 @@ const ProductListing = ({
         </div>
       )}
 
-      {/* Step 2: Description */}
+      {/* ── Step 2: Description ──────────────────────────────────────────── */}
       {formStep === 2 && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]" style={{ fontFamily: "'Poppins', sans-serif" }}>
+        <div className={modalWrap}>
+          <div className={modalBox} style={{ fontFamily: "'Poppins', sans-serif" }}>
             <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
               <div>
                 <h2 className="text-lg font-bold">Product Description</h2>
                 <p className="text-[11px] text-slate-500">Step 2 of 4 · Tell customers what makes this product great</p>
               </div>
-              <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700">
-                <X size={20} />
-              </button>
+              <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <StepProgressBar currentStep={2} />
             <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
@@ -983,18 +1078,10 @@ const ProductListing = ({
               />
             </div>
             <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setFormStep(1)}
-                className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5"
-              >
+              <button type="button" onClick={() => setFormStep(1)} className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5">
                 <ArrowLeft size={13} /> Back
               </button>
-              <button
-                type="button"
-                onClick={handleStep2Continue}
-                className="px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 bg-[#F5B841] text-white hover:bg-[#E0A83B]"
-              >
+              <button type="button" onClick={handleStep2Continue} className="px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 bg-[#F5B841] text-white hover:bg-[#E0A83B]">
                 Continue <ArrowRight size={13} />
               </button>
             </div>
@@ -1002,18 +1089,16 @@ const ProductListing = ({
         </div>
       )}
 
-      {/* Step 3: Variants */}
+      {/* ── Step 3: Variants ─────────────────────────────────────────────── */}
       {formStep === 3 && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]" style={{ fontFamily: "'Poppins', sans-serif" }}>
+        <div className={modalWrap}>
+          <div className={modalBox} style={{ fontFamily: "'Poppins', sans-serif" }}>
             <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
               <div>
                 <h2 className="text-lg font-bold">Sizes & Colors</h2>
                 <p className="text-[11px] text-slate-500">Step 3 of 4 · Add product variants (optional)</p>
               </div>
-              <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700">
-                <X size={20} />
-              </button>
+              <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <StepProgressBar currentStep={3} />
             <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
@@ -1025,18 +1110,10 @@ const ProductListing = ({
               />
             </div>
             <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setFormStep(2)}
-                className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5"
-              >
+              <button type="button" onClick={() => setFormStep(2)} className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5">
                 <ArrowLeft size={13} /> Back
               </button>
-              <button
-                type="button"
-                onClick={handleStep3Continue}
-                className="px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 bg-[#F5B841] text-white hover:bg-[#E0A83B]"
-              >
+              <button type="button" onClick={handleStep3Continue} className="px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 bg-[#F5B841] text-white hover:bg-[#E0A83B]">
                 Continue <ArrowRight size={13} />
               </button>
             </div>
@@ -1044,28 +1121,30 @@ const ProductListing = ({
         </div>
       )}
 
-      {/* Step 4: Images & Publish */}
+      {/* ── Step 4: Images & Publish ─────────────────────────────────────── */}
       {formStep === 4 && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <form onSubmit={handleSubmit} className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh]" style={{ fontFamily: "'Poppins', sans-serif" }}>
+        <div className={modalWrap}>
+          <form
+            onSubmit={handleSubmit}
+            className={modalBox}
+            style={{ fontFamily: "'Poppins', sans-serif" }}
+          >
             <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
               <div>
                 <h2 className="text-lg font-bold">Images & Publish</h2>
                 <p className="text-[11px] text-slate-500">Step 4 of 4 · Upload photos and go live</p>
               </div>
-              <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700">
-                <X size={20} />
-              </button>
+              <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <StepProgressBar currentStep={4} />
             <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
               <ErrorBanner msg={formErrors._server} />
               <SummaryPill formData={formData} currencySymbol={currencySymbol} currentStep={4} onEdit={setFormStep} />
+
               <ImageGrid
                 existingImages={initialData?.images || []}
                 pendingImages={formData.imageFiles}
                 onRemoveExisting={(imageId) => {
-                  // Handle removing existing images if needed
                   console.log('Remove existing image:', imageId);
                 }}
                 onRemovePending={removeCreateImage}
@@ -1083,6 +1162,7 @@ const ProductListing = ({
                 multiple
                 onChange={handleFilesChange}
               />
+
               {formData.colors.length > 0 && (
                 <ColorImageSection
                   colors={formData.colors}
@@ -1098,6 +1178,7 @@ const ProductListing = ({
                   }}
                 />
               )}
+
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                 <div>
                   <p className="text-[11px] font-bold text-slate-700">Publish immediately</p>
@@ -1106,26 +1187,24 @@ const ProductListing = ({
                 <button
                   type="button"
                   onClick={() => setIsPublished((v) => !v)}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${isPublished ? "bg-[#125852]" : "bg-slate-300"}`}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${isPublished ? 'bg-[#125852]' : 'bg-slate-300'}`}
                 >
-                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${isPublished ? "left-5" : "left-0.5"}`} />
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${isPublished ? 'left-5' : 'left-0.5'}`} />
                 </button>
               </div>
             </div>
             <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setFormStep(3)}
-                className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5"
-              >
+              <button type="button" onClick={() => setFormStep(3)} className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5">
                 <ArrowLeft size={13} /> Back
               </button>
               <button
                 type="submit"
                 disabled={isLoading}
-                className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${isLoading ? "bg-slate-300 text-slate-500 cursor-not-allowed" : "bg-[#FABB00] text-white hover:bg-[#E0A830] cursor-pointer"}`}
+                className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${
+                  isLoading ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#FABB00] text-white hover:bg-[#E0A830] cursor-pointer'
+                }`}
               >
-                {isLoading ? "Publishing…" : submitLabel}
+                {isLoading ? 'Saving…' : submitLabel}
               </button>
             </div>
           </form>
