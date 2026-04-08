@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  X, ArrowRight, ArrowLeft, Eye, CheckCircle2, Palette, Ruler, ImagePlus, Trash2, ShoppingBag, ChevronDown, ChevronUp
+  X, ArrowRight, ArrowLeft, Eye, CheckCircle2, Palette, Ruler, 
+  ImagePlus, Trash2, ShoppingBag, ChevronDown, ChevronUp, Camera,
 } from 'lucide-react';
 
 // Constants
@@ -21,6 +22,7 @@ const CATEGORIES = [
   'Electronics', 'Computers', 'Grocery', 'Home & Decor',
   'Fashion', 'Retail', 'Beauty', 'Others',
 ];
+const DEFAULT_QUALITY_OPTIONS = ['High', 'Medium', 'Low'];
 const MAX_IMAGES_PER_COLOR = 3;
 const MAX_GENERAL_IMAGES = 6;
 const DESC_MIN_WORDS = 5;
@@ -51,6 +53,104 @@ export const isStep1Valid = (data) =>
   data.price &&
   !isNaN(Number(data.price)) &&
   Number(data.price) > 0;
+
+// ─── Camera Capture Component ─────────────────────────────────────────────────
+const CameraCapture = ({ onCapture, onClose }) => {
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const [stream, setStream] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const startCamera = async () => {
+      try {
+        const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' } 
+        });
+        setStream(mediaStream);
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+        }
+      } catch (err) {
+        setError('Unable to access camera. Please check permissions.');
+        console.error('Camera error:', err);
+      }
+    };
+    startCamera();
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  const handleCapture = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+      
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      canvas.toBlob((blob) => {
+        const file = new File([blob], `camera-capture-${Date.now()}.jpg`, { type: 'image/jpeg' });
+        onCapture(file);
+        onClose();
+      }, 'image/jpeg', 0.95);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/90" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      <div className="relative w-full max-w-lg">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 z-10 p-2 bg-white/10 rounded-full text-white hover:bg-white/20"
+        >
+          <X size={20} />
+        </button>
+        
+        {error ? (
+          <div className="bg-red-500 text-white p-4 rounded-lg text-center">
+            <p>{error}</p>
+            <button onClick={onClose} className="mt-3 px-4 py-2 bg-white text-red-500 rounded-lg text-sm font-bold">
+              Close
+            </button>
+          </div>
+        ) : (
+          <>
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              className="w-full rounded-2xl"
+              style={{ transform: 'scaleX(-1)' }}
+            />
+            <canvas ref={canvasRef} className="hidden" />
+            
+            <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-4">
+              <button
+                onClick={onClose}
+                className="px-6 py-3 bg-white/10 backdrop-blur-sm text-white rounded-full text-sm font-bold hover:bg-white/20"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCapture}
+                className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform"
+              >
+                <div className="w-14 h-14 bg-[#F5B841] rounded-full border-2 border-white" />
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // ─── StepProgressBar ─────────────────────────────────────────────────────────
 const StepProgressBar = ({ currentStep, labels = ['Basic Info', 'Description', 'Variants', 'Images'] }) => (
@@ -210,9 +310,11 @@ const VariantSection = ({ sizes, colors, onToggleChip }) => {
 };
 
 // ─── ImageGrid ────────────────────────────────────────────────────────────────
-const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, onRemovePending, onAdd }) => {
+const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, onRemovePending, onAdd, onCameraCapture }) => {
   const total = existingImages.length + pendingImages.length;
   const canAddMore = total < MAX_GENERAL_IMAGES;
+  const [showCameraOptions, setShowCameraOptions] = useState(false);
+
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
@@ -239,10 +341,41 @@ const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, 
           </div>
         ))}
         {canAddMore && (
-          <button type="button" onClick={onAdd} className="w-16 h-16 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center bg-white cursor-pointer hover:bg-slate-50 hover:border-[#125852] transition-colors flex-shrink-0">
-            <ImagePlus size={16} className="text-slate-400" />
-            <span className="text-[9px] font-bold text-slate-400 mt-1">ADD</span>
-          </button>
+          <div className="relative">
+            <button 
+              type="button" 
+              onClick={() => setShowCameraOptions(!showCameraOptions)}
+              className="w-16 h-16 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center bg-white cursor-pointer hover:bg-slate-50 hover:border-[#125852] transition-colors flex-shrink-0"
+            >
+              <ImagePlus size={16} className="text-slate-400" />
+              <span className="text-[9px] font-bold text-slate-400 mt-1">ADD</span>
+            </button>
+            
+            {showCameraOptions && (
+              <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg p-1 min-w-[120px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onAdd();
+                    setShowCameraOptions(false);
+                  }}
+                  className="w-full px-3 py-2 text-left text-[10px] font-bold text-slate-600 hover:bg-slate-50 rounded flex items-center gap-2"
+                >
+                  <ImagePlus size={12} /> Upload
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onCameraCapture();
+                    setShowCameraOptions(false);
+                  }}
+                  className="w-full px-3 py-2 text-left text-[10px] font-bold text-slate-600 hover:bg-slate-50 rounded flex items-center gap-2"
+                >
+                  <Camera size={12} /> Take Photo
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
       <p className="text-[10px] text-slate-400">JPEG, PNG or WebP · max 5 MB · up to {MAX_GENERAL_IMAGES} images · first is main photo</p>
@@ -253,9 +386,12 @@ const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, 
 // ─── ColorImageSection ────────────────────────────────────────────────────────
 const ColorImageSection = ({
   colors, colorImageFiles,
-  fileRefs, onAdd, onChange, onRemove, onPreview,
+  fileRefs, onAdd, onChange, onRemove, onPreview, onCameraCapture,
 }) => {
+  const [showCameraForColor, setShowCameraForColor] = useState(null);
+
   if (!colors || colors.length === 0) return null;
+  
   return (
     <div className="space-y-3 border border-slate-100 rounded-xl p-3 bg-slate-50/50">
       <div className="flex items-center gap-2">
@@ -301,10 +437,41 @@ const ColorImageSection = ({
                 </div>
               ))}
               {canAdd && (
-                <button type="button" onClick={() => onAdd(color)} className="w-14 h-14 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center bg-white cursor-pointer hover:bg-slate-50 hover:border-[#125852] transition-colors flex-shrink-0">
-                  <ImagePlus size={13} className="text-slate-400" />
-                  <span className="text-[8px] font-bold text-slate-400 mt-0.5">ADD</span>
-                </button>
+                <div className="relative">
+                  <button 
+                    type="button" 
+                    onClick={() => setShowCameraForColor(showCameraForColor === color ? null : color)} 
+                    className="w-14 h-14 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center bg-white cursor-pointer hover:bg-slate-50 hover:border-[#125852] transition-colors flex-shrink-0"
+                  >
+                    <ImagePlus size={13} className="text-slate-400" />
+                    <span className="text-[8px] font-bold text-slate-400 mt-0.5">ADD</span>
+                  </button>
+                  
+                  {showCameraForColor === color && (
+                    <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg p-1 min-w-[110px]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onAdd(color);
+                          setShowCameraForColor(null);
+                        }}
+                        className="w-full px-3 py-2 text-left text-[10px] font-bold text-slate-600 hover:bg-slate-50 rounded flex items-center gap-2"
+                      >
+                        <ImagePlus size={12} /> Upload
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onCameraCapture(color);
+                          setShowCameraForColor(null);
+                        }}
+                        className="w-full px-3 py-2 text-left text-[10px] font-bold text-slate-600 hover:bg-slate-50 rounded flex items-center gap-2"
+                      >
+                        <Camera size={12} /> Take Photo
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
               <input
                 type="file"
@@ -352,10 +519,10 @@ const ColorImagePreviewModal = ({ color, images, onClose }) => {
           {images.length > 1 && (
             <>
               <button type="button" onClick={goPrev} className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-md rounded-full w-8 h-8 flex items-center justify-center transition-all">
-                <ChevronLeft size={16} className="text-slate-700" />
+                <ArrowLeft size={16} className="text-slate-700" />
               </button>
               <button type="button" onClick={goNext} className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-md rounded-full w-8 h-8 flex items-center justify-center transition-all">
-                <ChevronRight size={16} className="text-slate-700" />
+                <ArrowRight size={16} className="text-slate-700" />
               </button>
             </>
           )}
@@ -419,6 +586,7 @@ const ProductListing = ({
   businessCategory = "retail",
   currencySymbol = "UGX",
   initialData = null,
+  qualityOptions = DEFAULT_QUALITY_OPTIONS,
   submitLabel = "Publish Product",
 }) => {
   const [formStep, setFormStep] = useState(1);
@@ -426,6 +594,8 @@ const ProductListing = ({
   const [formErrors, setFormErrors] = useState({});
   const [isPublished, setIsPublished] = useState(true);
   const [colorPreviewModal, setColorPreviewModal] = useState(null);
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraTargetColor, setCameraTargetColor] = useState(null);
   const fileInputRef = useRef(null);
   const colorFileInputRefs = useRef({});
 
@@ -439,7 +609,7 @@ const ProductListing = ({
         category: initialData.category || "",
         price: initialData.price || "",
         sku: initialData.sku || "",
-        qty: initialData.qty || "",
+        qty: initialData.qty || qualityOptions[1] || "Medium",
         location: initialData.location || "",
         description: initialData.description || "",
         stock: initialData.stock || 0,
@@ -450,12 +620,15 @@ const ProductListing = ({
       });
       setIsPublished(initialData.is_published === true);
     } else {
-      setFormData(blankForm());
+      setFormData({
+        ...blankForm(),
+        qty: qualityOptions[1] || "Medium"
+      });
       setIsPublished(true);
     }
     setFormStep(1);
     setFormErrors({});
-  }, [initialData, isOpen]);
+  }, [initialData, isOpen, qualityOptions]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -482,6 +655,27 @@ const ProductListing = ({
       reader.readAsDataURL(file);
     });
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleCameraCapture = (file) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (cameraTargetColor) {
+        setFormData((prev) => ({
+          ...prev,
+          colorImageFiles: { 
+            ...prev.colorImageFiles, 
+            [cameraTargetColor]: [...(prev.colorImageFiles[cameraTargetColor] || []), { preview: reader.result, file }] 
+          },
+        }));
+      } else {
+        setFormData((prev) => ({ 
+          ...prev, 
+          imageFiles: [...prev.imageFiles, { preview: reader.result, file }] 
+        }));
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const removeCreateImage = (index) => setFormData((prev) => ({ 
@@ -577,7 +771,6 @@ const ProductListing = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Final validation before submit
     const validationErrors = validateStep1();
     const descErrors = validateStep2();
     if (Object.keys(validationErrors).length > 0 || Object.keys(descErrors).length > 0) {
@@ -593,7 +786,7 @@ const ProductListing = ({
       price: parseFloat(formData.price) || 0,
       sku: formData.sku,
       qty: formData.qty,
-     stock: parseInt(formData.stock) || 0,
+      stock: parseInt(formData.stock) || 0,
       sizes: formData.sizes,
       colors: formData.colors,
       is_published: isPublished,
@@ -612,10 +805,21 @@ const ProductListing = ({
 
   return (
     <>
+      {/* Camera Capture Modal */}
+      {showCamera && (
+        <CameraCapture
+          onCapture={handleCameraCapture}
+          onClose={() => {
+            setShowCamera(false);
+            setCameraTargetColor(null);
+          }}
+        />
+      )}
+
       {/* Step 1: Basic Info */}
       {formStep === 1 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left" style={{ fontFamily: "'Poppins', sans-serif" }}>
+          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col text-left max-h-[92vh] overflow-y-auto" style={{ fontFamily: "'Poppins', sans-serif" }}>
             <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
               <div>
                 <h2 className="text-lg font-bold">Create New {isServiceVendor ? "Service" : "Product"}</h2>
@@ -687,7 +891,7 @@ const ProductListing = ({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold uppercase text-slate-500">SKU</label>
+                  <label className="text-[11px] font-bold uppercase text-slate-500">Stock Keeping Unit (SKU)</label>
                   <input
                     type="text"
                     name="sku"
@@ -705,9 +909,9 @@ const ProductListing = ({
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
                   >
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
+                    {qualityOptions.map((q) => (
+                      <option key={q} value={q}>{q}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -856,6 +1060,10 @@ const ProductListing = ({
                 onRemoveExisting={() => {}}
                 onRemovePending={removeCreateImage}
                 onAdd={() => fileInputRef.current?.click()}
+                onCameraCapture={() => {
+                  setCameraTargetColor(null);
+                  setShowCamera(true);
+                }}
               />
               <input
                 ref={fileInputRef}
@@ -874,6 +1082,10 @@ const ProductListing = ({
                   onChange={handleColorFilesChange}
                   onRemove={removeColorCreateImage}
                   onPreview={(color, images) => setColorPreviewModal({ color, images })}
+                  onCameraCapture={(color) => {
+                    setCameraTargetColor(color);
+                    setShowCamera(true);
+                  }}
                 />
               )}
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
