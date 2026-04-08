@@ -6,7 +6,7 @@ import {
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import VendorSidebar from '../components/VendorSidebar';
-import Navbar3 from '../components/adminDashboard/Navbar3';
+import Navbar4 from '../components/adminDashboard/Navbar4';
 
 /* ── settings menu items — each has a path now ── */
 const menuItems = [
@@ -61,7 +61,7 @@ const SettingsPage = () => {
       <VendorSidebar activePage="settings" />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <Navbar3 />
+        <Navbar4 />
 
         <div className="flex-1 overflow-y-auto">
           <main className="flex-1 px-4 sm:px-8 py-6">

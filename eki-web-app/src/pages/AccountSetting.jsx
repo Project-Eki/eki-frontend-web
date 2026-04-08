@@ -5,6 +5,7 @@ import VendorSidebar from '../components/VendorSidebar';
 import Navbar3 from '../components/adminDashboard/Navbar4';
 import { validateAccountData } from '../utils/validationUtils';
 import { getVendorProfile, updateVendorProfile } from '../services/authService';
+import Footer from "../components/Vendormanagement/VendorFooter"; 
 
 const IS_LOCALHOST = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import VendorSidebar from "../components/VendorSidebar";
 import Navbar3 from "../components/adminDashboard/Navbar4";
+import Footer from "../components/Vendormanagement/VendorFooter"; 
 import {
   getVendorDashboard,
   getCategories,
@@ -486,10 +487,7 @@ const VendorDashboard = () => {
           </div>
         </main>
 
-        <footer className="bg-[#125852] text-white py-2.5 px-5 flex justify-between items-center text-[8px] rounded-xl mx-5 mb-3">
-          <div>Buy Smart. Sell Fast. Grow Together...</div>
-          <div>© 2026 Vendor Portal. All rights reserved.</div>
-        </footer>
+        <Footer />
       </div>
 
       {isModalOpen && (

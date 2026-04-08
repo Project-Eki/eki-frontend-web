@@ -20,7 +20,7 @@ import enLocale from "i18n-iso-countries/langs/en.json";
 countries.registerLocale(enLocale);
 
 import VendorSidebar from "../components/VendorSidebar";
-import Navbar3 from "../components/adminDashboard/Navbar3";
+import Navbar4 from "../components/adminDashboard/Navbar4";
 import { getVendorBusinessSettings, updateVendorBusinessSettings } from "../services/api";
 
 import {
@@ -74,18 +74,9 @@ const resolveDocUrl = (url) => {
 
 // ─── Footer ───────────────────────────────────────────────────────────────────
 const Footer = () => (
-  <footer className="bg-[#1D4D4C] text-white py-4 px-5 sm:px-10 flex flex-col sm:flex-row justify-between items-center gap-2 text-[11px] shrink-0 rounded-xl mx-3 mb-3">
-    <div className="hidden sm:block">Buy Smart. Sell Fast. Grow Together...</div>
+  <footer className="bg-[#125852] text-white py-2.5 px-5 flex justify-between items-center text-[8px] rounded-xl mx-5 mb-3">
+    <div>Buy Smart. Sell Fast. Grow Together...</div>
     <div>© 2026 Vendor Portal. All rights reserved.</div>
-    <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
-      <span className="relative inline-block cursor-pointer hover:underline">
-        eki<span className="absolute text-[5px] -bottom-0 -right-2">TM</span>
-      </span>
-      <span className="cursor-pointer hover:underline">Support</span>
-      <span className="cursor-pointer hover:underline">Privacy Policy</span>
-      <span className="cursor-pointer hover:underline">Terms of Service</span>
-      <span className="cursor-pointer hover:underline">Ijoema ltd</span>
-    </div>
   </footer>
 );
 
@@ -199,7 +190,7 @@ const AddressAutocomplete = ({ value, onChange, placeholder }) => {
         const data = await res.json();
         setSuggestions(data); setOpen(data.length > 0);
       } catch { /* silent */ }
-    }, 600); // 600ms debounce keeps us within Nominatim's 1 req/s limit
+    }, 600);
   }, []);
 
   const handleChange = (e) => { const v = e.target.value; setQuery(v); onChange(v); fetchSuggestions(v); };
@@ -465,16 +456,13 @@ const BusinessSettings = () => {
   const countryIso2 = getCountryCode(form.country);
 
   return (
-    <div className="flex h-screen bg-[#F8F8F8] font-sans text-slate-800 overflow-hidden">
+    <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-slate-800 p-3 gap-3">
       <VendorSidebar activePage="settings" />
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0">
+        <Navbar4 />
 
-        {/* Fixed navbar */}
-        <div className="shrink-0"><Navbar3 /></div>
-
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto flex flex-col">
+        <div className="flex-1 overflow-y-auto">
           <main className="flex-1 px-3 sm:px-5 lg:px-7 py-5">
             <div className="max-w-4xl mx-auto">
 
@@ -496,7 +484,7 @@ const BusinessSettings = () => {
                 <div className="lg:col-span-2 flex flex-col gap-4">
 
                   {/* Logo card */}
-                  <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 flex items-center gap-4">
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex items-center gap-4">
                     <div className="relative shrink-0">
                       <div className="w-16 h-16 rounded-xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden">
                         {logoPreview
@@ -516,7 +504,7 @@ const BusinessSettings = () => {
                   </div>
 
                   {/* Business Information */}
-                  <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                     <div className="px-4 py-3 border-b border-slate-100">
                       <h2 className="text-sm font-semibold text-slate-800">Business Information</h2>
                     </div>
@@ -614,10 +602,7 @@ const BusinessSettings = () => {
                       </div>
                     </div>
 
-                    {/* Save button
-                        - Gold at rest
-                        - Grey (disabled) while saving
-                        - Green briefly on success  */}
+                    {/* Save button */}
                     <div className="px-4 pb-4">
                       {saveStatus === "error" && (
                         <p className="text-xs text-rose-500 mb-2">{saveMsg}</p>
@@ -636,11 +621,11 @@ const BusinessSettings = () => {
                   </div>
                 </div>
 
-                {/*RIGHT COLUMN — Documents + Hours + Support */}
+                {/* RIGHT COLUMN — Documents + Hours + Support */}
                 <div className="flex flex-col gap-3">
 
                   {/* Vendor Documents — now in the right column */}
-                  <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                     <div className="px-4 py-3 border-b border-slate-100">
                       <h2 className="text-sm font-semibold text-slate-800">Vendor Documents</h2>
                       <p className="text-[11px] text-slate-400 mt-0.5">All 5 required for verification.</p>
@@ -678,7 +663,6 @@ const BusinessSettings = () => {
                               {isUploading ? (
                                 <Spinner size={14} />
                               ) : doc.hasIt ? (
-                                // Eye icon — opens the resolved absolute URL in the viewer
                                 <button
                                   onClick={() => setViewerDoc({ url: doc.url, label: doc.label })}
                                   className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-white transition-colors"
@@ -713,7 +697,7 @@ const BusinessSettings = () => {
                   </div>
 
                   {/* Operating Hours */}
-                  <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden ">
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                     <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
                       <h2 className="text-sm font-semibold text-slate-800">Operating Hours</h2>
                       <button onClick={editingHours ? confirmHours : startHoursEdit}
@@ -742,7 +726,7 @@ const BusinessSettings = () => {
                   </div>
 
                   {/* Support */}
-                  <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4">
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
                     <h3 className="text-sm font-semibold text-slate-800 mb-1">Need Assistance?</h3>
                     <p className="text-[11px] text-slate-400 mb-3 leading-relaxed">
                       Our support team is available to help with any vendor account issues.
