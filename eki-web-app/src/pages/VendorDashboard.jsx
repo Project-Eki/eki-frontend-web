@@ -50,6 +50,23 @@ const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
   </div>
 );
 
+// ─── Helper: format order ID professionally ───────────────────────────────────
+// Pads numeric IDs to 6 digits (e.g. 42 → #000042).
+// Truncates UUID/hash IDs to last 8 chars with a leading #.
+const formatOrderId = (raw) => {
+  if (!raw && raw !== 0) return '—';
+  const str = String(raw).trim();
+  // Pure numeric
+  if (/^\d+$/.test(str)) {
+    return `#${str.padStart(6, '0')}`;
+  }
+  // UUID or long hash — show last 8 chars uppercased
+  if (str.length > 12) {
+    return `#${str.slice(-8).toUpperCase()}`;
+  }
+  return `#${str.toUpperCase()}`;
+};
+
 const VendorDashboard = () => {
   const navigate = useNavigate();
 
@@ -97,7 +114,6 @@ const VendorDashboard = () => {
         const vendorType =
           response.vendor_type ?? (isProductVendor ? "product" : "service");
 
-        // ── FIXED: derive currency from the vendor's country using the utility ──
         const country = response.country || "Uganda";
         const resolvedCurrencySymbol = getCurrencySymbol(country);
 
@@ -123,7 +139,11 @@ const VendorDashboard = () => {
           }
         );
         setSalesHistory(response.salesHistory || []);
-        setRecentOrders(response.recentOrders || []);
+
+        // FIX: cap recent orders to 7
+        const allOrders = response.recentOrders || [];
+        setRecentOrders(allOrders.slice(0, 7));
+
         setInventoryAlerts(response.inventoryAlerts || []);
         setReviews(response.reviews || []);
 
@@ -161,11 +181,10 @@ const VendorDashboard = () => {
       );
       setTimeout(() => setSuccessMsg(""), 4000);
       
-      // Refresh dashboard data to update metrics
       await fetchDashboardData();
     } catch (err) {
       console.error("Failed to create listing:", err);
-      throw err; // Let the ProductListing component handle the error
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -273,24 +292,33 @@ const VendorDashboard = () => {
                 </div>
               </div>
 
+              {/* ── Recent Orders Table ──────────────────────────────────── */}
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-                  <h3 className="font-bold text-xs uppercase tracking-tighter">
-                    Recent Orders
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-xs uppercase tracking-tighter">
+                      Recent Orders
+                    </h3>
+                    {/* FIX: show count badge so vendor knows it's capped at 7 */}
+                    {recentOrders.length > 0 && (
+                      <span className="bg-slate-100 text-slate-500 text-[9px] font-black px-2 py-0.5 rounded-full">
+                        {recentOrders.length}
+                      </span>
+                    )}
+                  </div>
                   <Link
                     to="/order-management"
-                    className="text-[#125852] text-[9px] font-bold"
+                    className="text-[#125852] text-[9px] font-bold hover:underline"
                   >
                     VIEW ALL
                   </Link>
                 </div>
                 <div className="overflow-x-auto">
                   {recentOrders.length > 0 ? (
-                    <table className="w-full text-left text-[10px]">
+                    <table className="w-full text-left text-[10px]" style={{ fontFamily: "'Poppins', sans-serif" }}>
                       <thead className="bg-slate-50 text-slate-400 font-bold uppercase">
                         <tr>
-                          <th className="px-4 py-3">Order ID</th>
+                          <th className="px-4 py-3 whitespace-nowrap">Order ID</th>
                           <th className="px-4 py-3">Customer</th>
                           <th className="px-4 py-3">Total</th>
                           <th className="px-4 py-3">Status</th>
@@ -300,20 +328,36 @@ const VendorDashboard = () => {
                       <tbody className="divide-y divide-slate-100">
                         {recentOrders.map((order, i) => (
                           <tr
-                            key={i}
+                            key={order.id ?? i}
                             className="hover:bg-slate-50 transition-colors"
                           >
-                            <td className="px-4 py-2.5 text-[#125852] font-bold">
-                              #{order.id}
+                            {/* FIX: professional order ID formatting */}
+                            <td className="px-4 py-2.5">
+                              <span className="inline-flex items-center gap-1">
+                                <span className="font-black text-[#125852] tracking-wider font-mono text-[10px]">
+                                  {formatOrderId(order.id)}
+                                </span>
+                              </span>
                             </td>
-                            <td className="px-4 py-2.5">{order.customer}</td>
-                            <td className="px-4 py-2.5 font-bold">
+                            <td className="px-4 py-2.5 text-slate-700 font-medium">{order.customer}</td>
+                            <td className="px-4 py-2.5 font-bold text-slate-800">
                               {currencySymbol}{" "}
                               {Number(order.total || 0).toLocaleString()}
                             </td>
                             <td className="px-4 py-2.5">
-                              <span className="px-2 py-0.5 bg-slate-100 rounded text-[8px] uppercase font-bold">
-                                {order.status}
+                              {/* FIX: colour-coded status badges */}
+                              <span className={`px-2 py-0.5 rounded-full text-[8px] uppercase font-black tracking-wide ${
+                                (() => {
+                                  const s = String(order.status || '').toLowerCase();
+                                  if (s === 'pending')    return 'bg-amber-50 text-amber-700 border border-amber-200';
+                                  if (s === 'confirmed')  return 'bg-blue-50 text-blue-700 border border-blue-200';
+                                  if (s === 'processing') return 'bg-indigo-50 text-indigo-700 border border-indigo-200';
+                                  if (s === 'delivered' || s === 'completed') return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+                                  if (s === 'cancelled' || s === 'canceled')  return 'bg-red-50 text-red-700 border border-red-200';
+                                  return 'bg-slate-100 text-slate-500 border border-slate-200';
+                                })()
+                              }`}>
+                                {order.status || '—'}
                               </span>
                             </td>
                             <td className="px-4 py-2.5">
@@ -461,13 +505,14 @@ const VendorDashboard = () => {
       {/* Order Summary Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden" style={{ fontFamily: "'Poppins', sans-serif" }}>
             {/* Header */}
             <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center">
               <div>
                 <h2 className="text-base font-bold text-slate-800">Order Summary</h2>
-                <p className="text-[10px] text-slate-500 mt-0.5">
-                  Order #{selectedOrder.id} · {selectedOrder.date || "Just now"}
+                {/* FIX: use the formatter in the modal too */}
+                <p className="text-[10px] text-slate-500 mt-0.5 font-mono font-medium">
+                  {formatOrderId(selectedOrder.id)} · {selectedOrder.date || "Just now"}
                 </p>
               </div>
               <button
@@ -539,7 +584,7 @@ const VendorDashboard = () => {
                     <div className="flex justify-between items-center py-1.5">
                       <div className="flex-1">
                         <p className="text-[11px] font-bold text-slate-700">
-                          Order #{selectedOrder.id}
+                          Order {formatOrderId(selectedOrder.id)}
                         </p>
                       </div>
                       <span className="text-[11px] font-bold text-slate-800">

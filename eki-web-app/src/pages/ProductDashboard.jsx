@@ -77,18 +77,18 @@ const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => 
             </span>
           )}
         </div>
-        {/* Action Icons Overlay */}
-        <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Action Icons Overlay — always visible, black */}
+        <div className="absolute top-2 left-2 flex gap-1">
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(product); }}
-            className="p-1.5 bg-white/90 backdrop-blur-sm rounded-lg text-amber-600 hover:bg-amber-50 hover:text-amber-700 shadow-sm transition-colors"
+            className="p-1.5 bg-white/90 backdrop-blur-sm rounded-lg text-black hover:bg-gray-100 shadow-sm transition-colors"
             title="Edit Product"
           >
             <Edit size={12} />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(product); }}
-            className="p-1.5 bg-white/90 backdrop-blur-sm rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 shadow-sm transition-colors"
+            className="p-1.5 bg-white/90 backdrop-blur-sm rounded-lg text-black hover:bg-gray-100 shadow-sm transition-colors"
             title="Delete Product"
           >
             <Trash2 size={12} />
@@ -98,14 +98,14 @@ const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => 
       <div className="p-3 space-y-1">
         <p className="text-[9px] font-bold uppercase text-slate-400">{product.category || '—'}</p>
         <p className="text-[13px] font-bold text-slate-800 truncate">{product.title}</p>
-        
+
         {/* SKU Display */}
         {product.sku && (
           <p className="text-[9px] text-slate-500 font-mono">
             SKU: {product.sku}
           </p>
         )}
-        
+
         <div className="flex items-center justify-between pt-0.5">
           <p className="text-[13px] font-black text-[#125852]">{currencySymbol} {Number(product.price || 0).toLocaleString()}</p>
           <span
@@ -115,7 +115,7 @@ const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => 
             {(product.inventory_quality || product.qty || 'Medium').toUpperCase()}
           </span>
         </div>
-        
+
         {/* Variants Toggle */}
         {hasMultipleVariants && (
           <button
@@ -126,7 +126,7 @@ const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => 
             {showVariants ? 'Hide' : 'View'} {variantCount} variants
           </button>
         )}
-        
+
         {/* Variants List */}
         {showVariants && hasMultipleVariants && (
           <div className="mt-2 space-y-1.5 max-h-40 overflow-y-auto">
@@ -187,8 +187,7 @@ const ProductDashboard = () => {
           setCurrencySymbol(getCurrencySymbol(data.country));
         }
         if (data?.businessCategory) setBusinessCategory(data.businessCategory);
-        
-        // Load custom quality options if available
+
         if (data?.quality_options && Array.isArray(data.quality_options)) {
           setQualityOptions(data.quality_options);
         }
@@ -220,7 +219,6 @@ const ProductDashboard = () => {
     setIsFetching(true);
     try {
       const data = await getProducts();
-      // Process products to group variants
       const processedProducts = processProductVariants(data || []);
       setProducts(processedProducts);
     } catch (err) {
@@ -233,28 +231,26 @@ const ProductDashboard = () => {
   // Group variants under parent product
   const processProductVariants = (productsList) => {
     const productMap = new Map();
-    
+
     productsList.forEach(product => {
       const parentId = product.parent_product_id || product.id;
-      
+
       if (!productMap.has(parentId)) {
-        // This is the parent product
         productMap.set(parentId, {
           ...product,
           variants: [],
           id: parentId,
         });
       }
-      
+
       if (product.parent_product_id) {
-        // This is a variant
         const parent = productMap.get(parentId);
         if (parent) {
           parent.variants.push(product);
         }
       }
     });
-    
+
     return Array.from(productMap.values());
   };
 
@@ -295,15 +291,17 @@ const ProductDashboard = () => {
     try {
       await updateProductListing(productId, {
         title: payload.title,
+        description: payload.description || '',
+        location: payload.location || '',
         price: payload.price,
         sku: payload.sku || '',
         qty: payload.qty,
         stock: Number(payload.stock) || 0,
-        location: payload.location || '',
-        description: payload.description || '',
-        is_published: payload.is_published === true,
         sizes: payload.sizes || [],
         colors: payload.colors || [],
+        is_published: payload.is_published === true,
+        category: payload.category || '',
+        business_category: businessCategory,
       });
       if (imageFiles.length > 0) {
         await uploadListingImages(productId, imageFiles);
@@ -326,13 +324,18 @@ const ProductDashboard = () => {
 
   // ── Edit handlers ───────────────────────────────────────────────────────────
   const handleEditProduct = (product) => {
+    // Normalize quality field — API may return 'high'/'medium'/'low' (lowercase)
+    const rawQty = product.inventory_quality || product.qty || '';
+    const normalizedQty =
+      rawQty.charAt(0).toUpperCase() + rawQty.slice(1).toLowerCase() || qualityOptions[1] || 'Medium';
+
     setSelectedProduct({
       id: product.id,
       title: product.title || '',
       category: product.category || '',
       price: product.price ? String(product.price) : '',
       sku: product.sku || '',
-      qty: product.inventory_quality || product.qty || 'Medium',
+      qty: normalizedQty,
       location: product.vendor_location || product.location || '',
       description: product.description || '',
       stock: product.detail?.stock ?? product.stock ?? 0,
@@ -355,7 +358,7 @@ const ProductDashboard = () => {
       setIsDeleteModalOpen(false);
       return;
     }
-    
+
     setIsDeleteModalOpen(false);
     setIsLoading(true);
     try {
@@ -374,7 +377,7 @@ const ProductDashboard = () => {
 
   // ── Filtering ───────────────────────────────────────────────────────────────
   const filteredProducts = products.filter((p) => {
-    const matchesSearch = p.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const matchesSearch = p.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = !filterCategory || p.category === filterCategory;
     const matchesStatus = !filterStatus
@@ -407,7 +410,7 @@ const ProductDashboard = () => {
               </div>
             )}
           </div>
-          
+
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between">
               <div>
@@ -428,7 +431,7 @@ const ProductDashboard = () => {
                 )}
               </div>
             </div>
-            
+
             <div className="flex items-center gap-4 mt-2">
               <p className="text-sm font-black text-[#125852]">{currencySymbol} {Number(product.price || 0).toLocaleString()}</p>
               <span
@@ -439,7 +442,7 @@ const ProductDashboard = () => {
               </span>
               <span className="text-[10px] text-slate-500">Stock: {product.stock || 0}</span>
             </div>
-            
+
             {variantCount > 1 && (
               <button
                 onClick={() => setShowVariants(!showVariants)}
@@ -449,7 +452,7 @@ const ProductDashboard = () => {
                 {showVariants ? 'Hide' : 'View'} {variantCount} variants
               </button>
             )}
-            
+
             {showVariants && variantCount > 1 && (
               <div className="mt-3 space-y-2 max-h-60 overflow-y-auto">
                 {product.variants?.map((variant, idx) => (
@@ -471,18 +474,19 @@ const ProductDashboard = () => {
               </div>
             )}
           </div>
-          
+
+          {/* List view edit/delete — black icons, always visible */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => onEdit(product)}
-              className="p-2 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 transition-colors"
+              className="p-2 bg-slate-100 text-black rounded-lg hover:bg-slate-200 transition-colors"
               title="Edit Product"
             >
               <Edit size={14} />
             </button>
             <button
               onClick={() => onDelete(product)}
-              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+              className="p-2 bg-slate-100 text-black rounded-lg hover:bg-slate-200 transition-colors"
               title="Delete Product"
             >
               <Trash2 size={14} />
@@ -673,10 +677,10 @@ const ProductDashboard = () => {
           ) : viewType === 'grid' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {filteredProducts.map((product) => (
-                <ProductCard 
-                  key={product.id} 
-                  product={product} 
-                  currencySymbol={currencySymbol} 
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  currencySymbol={currencySymbol}
                   onClick={() => {}}
                   onEdit={handleEditProduct}
                   onDelete={handleDeleteProduct}
@@ -686,9 +690,9 @@ const ProductDashboard = () => {
           ) : (
             <div className="space-y-3">
               {filteredProducts.map((product) => (
-                <ProductListItem 
-                  key={product.id} 
-                  product={product} 
+                <ProductListItem
+                  key={product.id}
+                  product={product}
                   currencySymbol={currencySymbol}
                   onEdit={handleEditProduct}
                   onDelete={handleDeleteProduct}
@@ -717,27 +721,27 @@ const ProductDashboard = () => {
         submitLabel="Publish Product"
       />
 
-      {/* Edit Product Modal */}
-      <ProductListing
-        key={selectedProduct?.id ? `edit-${selectedProduct.id}` : 'edit-product-modal'}
-        isOpen={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false);
-          setSelectedProduct(null);
-        }}
-        onSubmit={async (payload, imageFiles) => {
-          if (selectedProduct) {
+      {/* Edit Product Modal — only mount when we have a selected product */}
+      {selectedProduct && (
+        <ProductListing
+          key={`edit-${selectedProduct.id}`}
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setSelectedProduct(null);
+          }}
+          onSubmit={async (payload, imageFiles) => {
             await handleUpdateProduct(selectedProduct.id, payload, imageFiles);
-          }
-        }}
-        isLoading={isLoading}
-        isServiceVendor={false}
-        businessCategory={businessCategory}
-        currencySymbol={currencySymbol}
-        initialData={selectedProduct}
-        qualityOptions={qualityOptions}
-        submitLabel="Save Changes"
-      />
+          }}
+          isLoading={isLoading}
+          isServiceVendor={false}
+          businessCategory={businessCategory}
+          currencySymbol={currencySymbol}
+          initialData={selectedProduct}
+          qualityOptions={qualityOptions}
+          submitLabel="Save Changes"
+        />
+      )}
 
       {/* Delete Confirm Modal */}
       {isDeleteModalOpen && (
@@ -751,17 +755,17 @@ const ProductDashboard = () => {
               "<span className="font-bold text-slate-700">{selectedProduct?.title}</span>" will be permanently removed. This cannot be undone.
             </p>
             <div className="flex gap-3">
-              <button 
-                type="button" 
-                onClick={() => setIsDeleteModalOpen(false)} 
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(false)}
                 className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-50"
                 disabled={isLoading}
               >
                 Cancel
               </button>
-              <button 
-                type="button" 
-                onClick={confirmDelete} 
+              <button
+                type="button"
+                onClick={confirmDelete}
                 className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg text-[11px] font-bold hover:bg-red-600 transition-colors"
                 disabled={isLoading}
               >
