@@ -16,26 +16,11 @@ import {
   updateProductListing,
   deleteProductListing,
   uploadListingImages,
-  deleteListingImage,
   getVendorDashboard,
 } from '../services/authService';
 import { getCurrencySymbol } from '../utils/currency';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'one_size'];
-const COLOR_OPTIONS = [
-  'Black', 'White', 'Red', 'Blue', 'Green', 'Yellow',
-  'Orange', 'Purple', 'Pink', 'Brown', 'Grey', 'Navy',
-  'Beige', 'Maroon', 'Teal', 'Gold', 'Silver',
-];
-const COLOR_SWATCHES = {
-  Black: '#1a1a1a', White: '#f5f5f5', Red: '#ef4444', Blue: '#3b82f6',
-  Green: '#22c55e', Yellow: '#eab308', Orange: '#f97316', Purple: '#a855f7',
-  Pink: '#ec4899', Brown: '#92400e', Grey: '#6b7280', Navy: '#1e3a5f',
-  Beige: '#d2b48c', Maroon: '#800000', Teal: '#14b8a6', Gold: '#d4af37',
-  Silver: '#c0c0c0',
-};
-
 const QTY_DISPLAY = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' };
 const CATEGORIES = [
   'Electronics', 'Computers', 'Grocery', 'Home & Decor',
@@ -224,7 +209,6 @@ const ProductDashboard = () => {
         colors: payload.colors || [],
       });
       
-      // Handle image deletions if needed (you may need to track which images were deleted)
       if (imageFiles.length > 0) {
         await uploadListingImages(productId, imageFiles);
       }
@@ -329,7 +313,7 @@ const ProductDashboard = () => {
               </p>
             </div>
             <button
-              onClick={() => { setFormStep(1); setIsProductModalOpen(true); }}
+              onClick={() => setIsProductModalOpen(true)}
               className="bg-[#F5B841] text-white px-5 py-2.5 rounded-lg text-[12px] font-bold flex items-center gap-2 hover:bg-[#E0A83B] transition-all active:scale-95 shadow-sm"
             >
               <Plus size={14} /> Add New Product
@@ -456,7 +440,7 @@ const ProductDashboard = () => {
               <h3 className="text-lg font-bold text-slate-800">{activeFilterCount > 0 || searchQuery ? 'No matching products' : 'No products found'}</h3>
               <p className="text-slate-500 text-sm mb-6">{activeFilterCount > 0 || searchQuery ? 'Try adjusting your search or filters.' : 'Start by adding your first product to the catalog.'}</p>
               {!activeFilterCount && !searchQuery && (
-                <button onClick={() => { setFormStep(1); setIsProductModalOpen(true); }} className="bg-[#F5B841] text-white px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 mx-auto hover:bg-[#E0A83B]">
+                <button onClick={() => setIsProductModalOpen(true)} className="bg-[#F5B841] text-white px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 mx-auto hover:bg-[#E0A83B]">
                   <Plus size={16} /> Add Your First Product
                 </button>
               )}
@@ -493,7 +477,9 @@ const ProductDashboard = () => {
           setSelectedProduct(null);
         }}
         onSubmit={async (payload, imageFiles) => {
-          await handleUpdateProduct(selectedProduct.id, payload, imageFiles);
+          if (selectedProduct) {
+            await handleUpdateProduct(selectedProduct.id, payload, imageFiles);
+          }
         }}
         isLoading={isLoading}
         isServiceVendor={false}
@@ -518,10 +504,6 @@ const ProductDashboard = () => {
             </div>
           </div>
         </div>
-      )}
-
-      {colorPreviewModal && (
-        <ColorImagePreviewModal color={colorPreviewModal.color} images={colorPreviewModal.images} onClose={() => setColorPreviewModal(null)} />
       )}
     </div>
   );
