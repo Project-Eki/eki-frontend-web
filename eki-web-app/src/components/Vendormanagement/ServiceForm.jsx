@@ -642,7 +642,7 @@ const TransportStep2 = ({ d, set, errors }) => (
         icon={MapPin}
         placeholder="e.g. Kampala, Entebbe Airport"
         value={d.origin || ""}
-        onChange={(e) => set("routes", e.target.value)}
+        onChange={(e) => set("origin", e.target.value)}
         error={errors.origin}
       />
     </Field>
