@@ -5,14 +5,14 @@ import {
   LogOut, Download, Filter, ChevronRight,
   Wallet, Landmark, Clock, Percent
 } from 'lucide-react';
+import Footer from '../components/Footer';
 
 const PaymentAndPayout = () => {
-  // Empty array to ensure no dummy data appears in the ledger
   const transactions = [];
 
   return (
-    <div className="flex min-h-screen bg-[#F9FAFB] font-sans text-slate-700">
-      {/* Sidebar - Admin Navigation */}
+    <div className="flex min-h-screen bg-[#F9FAFB] text-slate-700" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-gray-100 flex flex-col fixed h-full z-30">
         <div className="p-6 mb-4">
           <div className="bg-[#0b5d51] w-8 h-8 rounded flex items-center justify-center text-white font-bold text-lg italic">ë</div>
@@ -155,16 +155,7 @@ const PaymentAndPayout = () => {
           </div>
         </div>
 
-        {/* Admin Footer */}
-        <footer className="mt-auto bg-[#1a4d46] text-white p-4 px-8 flex justify-between items-center text-[10px] font-medium">
-          <p className="opacity-80 font-bold">Buy Smart. Sell Fast. Grow Together...</p>
-          <p className="opacity-60 uppercase tracking-tighter">© 2026 Vendor Portal. All rights reserved.</p>
-          <div className="flex gap-6 opacity-80 uppercase font-bold tracking-tight">
-            <span className="cursor-pointer">Support</span>
-            <span className="cursor-pointer">Privacy Policy</span>
-            <span className="cursor-pointer">Terms of Service</span>
-          </div>
-        </footer>
+        <Footer />
       </main>
     </div>
   );
@@ -173,7 +164,9 @@ const PaymentAndPayout = () => {
 // --- Small Helper Components ---
 
 const NavItem = ({ icon, label, active, color = "text-gray-400" }) => (
-  <div className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-all ${active ? 'bg-[#2d6a61] text-white' : `${color} hover:bg-gray-50 hover:text-slate-800`}`}>
+  <div className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-all ${active ? 'bg-[#2d6a61] text-white' : `${color} hover:bg-gray-50 hover:text-slate-800`}`}
+    style={{ fontFamily: "'Poppins', sans-serif" }}
+  >
     {icon}
     <span className="text-xs font-bold">{label}</span>
     {active && <div className="ml-auto w-1 h-4 bg-white/30 rounded-full"></div>}
@@ -181,7 +174,7 @@ const NavItem = ({ icon, label, active, color = "text-gray-400" }) => (
 );
 
 const AdminStatCard = ({ title, value, trend, icon }) => (
-  <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+  <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm" style={{ fontFamily: "'Poppins', sans-serif" }}>
     <div className="flex justify-between items-start mb-4">
       <div className="p-2 bg-gray-50 rounded-lg text-slate-400">
         {icon}

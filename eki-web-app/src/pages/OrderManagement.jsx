@@ -2,12 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import VendorSidebar from '../components/VendorSidebar';
 import Navbar3 from '../components/adminDashboard/Navbar4';
+import Footer from '../components/Footer';
+
 import {
   getVendorOrders,
 } from '../services/authService';
 import {
   Search, Filter, List, Download, Printer,
   CircleDollarSign, Clock, BarChart3, Package,
+  X, Hash, User, Calendar, MapPin, ShoppingBag, Tag,
 } from 'lucide-react';
 
 // ─── Status badge colours ─────────────────────────────────────────────────────
@@ -22,7 +25,7 @@ const STATUS_STYLES = {
 
 const TAB_FILTERS = ['All', 'Pending', 'Confirmed', 'Completed', 'Cancelled'];
 
-// ─── Stat Card Component (MUST be defined BEFORE it's used) ───────────────────
+// ─── Stat Card ────────────────────────────────────────────────────────────────
 const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
   <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
     <div className="flex items-start justify-between">
@@ -37,24 +40,207 @@ const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
   </div>
 );
 
+// ─── Order Detail Modal ───────────────────────────────────────────────────────
+const OrderDetailModal = ({ order, currencySymbol, onClose }) => {
+  if (!order) return null;
+
+  const statusKey  = String(order.status ?? '').toLowerCase();
+  const badgeClass = STATUS_STYLES[statusKey] ?? 'bg-slate-100 text-slate-600';
+
+  const customerName = typeof order.customer === 'object' && order.customer !== null
+    ? (order.customer.name || order.customer.email || '—')
+    : (order.customer ?? '—');
+
+  const statusLabel = typeof order.status === 'object' && order.status !== null
+    ? (order.status.label || order.status.name || '—')
+    : (order.status ?? '—');
+
+  const items = Array.isArray(order.items) ? order.items : [];
+
+  const displayDate = order.date
+    ? (() => { try { return new Date(order.date).toLocaleString(); } catch (_) { return order.date; } })()
+    : '—';
+
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden"
+        style={{ fontFamily: "'Poppins', sans-serif" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Drag handle (mobile) */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+          <div className="w-10 h-1 bg-slate-200 rounded-full" />
+        </div>
+
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-start flex-shrink-0">
+          <div>
+            <div className="flex items-center gap-2">
+              <Hash size={14} className="text-[#F5B841]" />
+              <h2 className="text-base font-bold text-slate-800">Order #{order.id}</h2>
+            </div>
+            <span className={`mt-1 inline-block px-2.5 py-0.5 rounded-full text-[9px] uppercase font-bold ${badgeClass}`}>
+              {statusLabel}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-full hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-700"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+
+          {/* Customer Info */}
+          <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
+            <div className="p-2 bg-white rounded-lg shadow-sm border border-slate-100">
+              <User size={14} className="text-[#125852]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] font-bold uppercase text-slate-400 mb-0.5">Customer</p>
+              <p className="text-[13px] font-bold text-slate-800 truncate">{customerName}</p>
+              {order.customer?.email && order.customer?.name && (
+                <p className="text-[10px] text-slate-400 truncate">{order.customer.email}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Date + Location row */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-start gap-2.5 p-3 bg-slate-50 rounded-xl">
+              <Calendar size={13} className="text-[#F5B841] mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-[9px] font-bold uppercase text-slate-400 mb-0.5">Date</p>
+                <p className="text-[10px] font-semibold text-slate-700">{displayDate}</p>
+              </div>
+            </div>
+            {order.location && (
+              <div className="flex items-start gap-2.5 p-3 bg-slate-50 rounded-xl">
+                <MapPin size={13} className="text-[#F5B841] mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-[9px] font-bold uppercase text-slate-400 mb-0.5">Location</p>
+                  <p className="text-[10px] font-semibold text-slate-700 truncate">{order.location}</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Order Items */}
+          <div>
+            <p className="text-[9px] font-bold uppercase text-slate-400 mb-2">Order Summary</p>
+            <div className="border border-slate-100 rounded-xl overflow-hidden">
+              {items.length > 0 ? (
+                items.map((item, i) => (
+                  <div key={i} className={`flex items-center justify-between px-3 py-2.5 ${i !== items.length - 1 ? 'border-b border-slate-50' : ''}`}>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                        {item.image ? (
+                          <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-lg" />
+                        ) : (
+                          <ShoppingBag size={12} className="text-slate-300" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold text-slate-800 truncate">{item.name || item.title || `Item ${i + 1}`}</p>
+                        {item.qty && <p className="text-[9px] text-slate-400">Qty: {item.qty}</p>}
+                        {item.variant && <p className="text-[9px] text-slate-400">{item.variant}</p>}
+                      </div>
+                    </div>
+                    {item.price != null && (
+                      <p className="text-[11px] font-bold text-slate-700 ml-2 flex-shrink-0">
+                        {currencySymbol} {Number(item.price).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="px-3 py-4 flex items-center gap-2">
+                  <Tag size={12} className="text-slate-300" />
+                  <p className="text-[11px] text-slate-400">
+                    {Array.isArray(order.items) ? order.items.length : (typeof order.items === 'number' ? order.items : '—')} item(s)
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Notes */}
+          {order.notes && (
+            <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
+              <p className="text-[9px] font-bold uppercase text-amber-600 mb-1">Notes</p>
+              <p className="text-[10px] text-amber-800">{order.notes}</p>
+            </div>
+          )}
+
+          {/* Totals */}
+          <div className="border-t border-slate-100 pt-3 space-y-1.5">
+            {order.subtotal != null && (
+              <div className="flex justify-between text-[11px]">
+                <span className="text-slate-500">Subtotal</span>
+                <span className="font-semibold text-slate-700">{currencySymbol} {Number(order.subtotal).toLocaleString()}</span>
+              </div>
+            )}
+            {order.shipping != null && (
+              <div className="flex justify-between text-[11px]">
+                <span className="text-slate-500">Shipping</span>
+                <span className="font-semibold text-slate-700">{currencySymbol} {Number(order.shipping).toLocaleString()}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-[13px] pt-1 border-t border-slate-100 mt-1">
+              <span className="font-bold text-slate-800">Total</span>
+              <span className="font-black text-[#125852]">{currencySymbol} {Number(order.total || 0).toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-slate-100 flex gap-2 bg-slate-50/30 flex-shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 text-[11px] font-bold border border-slate-200 rounded-xl bg-white hover:bg-slate-50 transition-colors"
+          >
+            Close
+          </button>
+          <Link
+            to={`/order-management/${order.id}`}
+            className="flex-1 py-2.5 text-[11px] font-bold bg-[#F5B841] text-white rounded-xl hover:bg-[#E0A83B] transition-colors text-center"
+          >
+            View Full Order
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 const OrderManagement = () => {
   const [orders,      setOrders]      = useState([]);
   const [isFetching,  setIsFetching]  = useState(true);
   const [activeTab,   setActiveTab]   = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // ── Derived metrics ──────────────────────────────────────────────────────────
+  // Order detail modal state
+  const [selectedOrder, setSelectedOrder] = useState(null);
+
   const totalOrders  = orders.length;
   const activeOrders = orders.filter((o) =>
     ['pending', 'confirmed', 'processing'].includes(String(o.status).toLowerCase())
   ).length;
   const revenue = orders.reduce((sum, o) => sum + Number(o.total ?? 0), 0);
 
-  // ── Fetch from backend ───────────────────────────────────────────────────────
   const fetchOrders = useCallback(async () => {
     setIsFetching(true);
     try {
-      // Always fetch ALL orders; we filter client-side so tab clicks are instant
       const data = await getVendorOrders();
       console.log('[OrderManagement] orders received:', data);
       setOrders(data);
@@ -67,11 +253,10 @@ const OrderManagement = () => {
 
   useEffect(() => {
     fetchOrders();
-    const interval = setInterval(fetchOrders, 30_000); // poll every 30 s
+    const interval = setInterval(fetchOrders, 30_000);
     return () => clearInterval(interval);
   }, [fetchOrders]);
 
-  // ── Client-side tab + search filter ─────────────────────────────────────────
   const filteredOrders = orders.filter((order) => {
     const matchesTab =
       activeTab === 'All' ||
@@ -89,11 +274,9 @@ const OrderManagement = () => {
   const currencySymbol = 'UGX';
 
   return (
-    <div className="flex min-h-screen bg-[#ecece7] font-sans text-slate-800 p-3 gap-3">
-      {/* VendorSidebar Component */}
+    <div className="flex min-h-screen bg-[#ecece7] text-slate-800 p-3 gap-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
       <VendorSidebar activePage="orders" />
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar3 />
 
@@ -113,7 +296,7 @@ const OrderManagement = () => {
             </div>
           </div>
 
-          {/* Stats Grid - Updated to match VendorDashboard style */}
+          {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
             <StatCard
               title="Total Orders"
@@ -195,7 +378,6 @@ const OrderManagement = () => {
               </thead>
               <tbody>
                 {isFetching ? (
-                  /* Loading skeleton */
                   [...Array(4)].map((_, i) => (
                     <tr key={i} className="border-b border-slate-50">
                       <td colSpan="7" className="px-4 py-3">
@@ -204,7 +386,6 @@ const OrderManagement = () => {
                     </tr>
                   ))
                 ) : filteredOrders.length === 0 ? (
-                  /* Empty state */
                   <tr>
                     <td colSpan="7" className="py-20 text-center">
                       <div className="flex flex-col items-center">
@@ -219,7 +400,6 @@ const OrderManagement = () => {
                     </td>
                   </tr>
                 ) : (
-                  /* Live rows */
                   filteredOrders.map((order, i) => {
                     const statusKey  = String(order.status ?? '').toLowerCase();
                     const badgeClass = STATUS_STYLES[statusKey] ?? 'bg-slate-100 text-slate-600';
@@ -254,12 +434,13 @@ const OrderManagement = () => {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <Link
-                            to={`/order-management/${order.id}`}
-                            className="px-2.5 py-1 bg-[#125852] text-white rounded-lg text-[8px] font-bold uppercase hover:bg-[#0e4440] transition-colors"
+                          <button
+                            type="button"
+                            onClick={() => setSelectedOrder(order)}
+                            className="px-2.5 py-1 bg-[#F5B841] text-white rounded-lg text-[8px] font-bold uppercase hover:bg-[#E0A83B] transition-colors"
                           >
                             View
-                          </Link>
+                          </button>
                         </td>
                       </tr>
                     );
@@ -282,12 +463,17 @@ const OrderManagement = () => {
           </div>
         </main>
 
-        {/* Footer - exactly matching VendorDashboard */}
-        <footer className="bg-[#125852] text-white py-2.5 px-5 flex justify-between items-center text-[8px] rounded-xl mx-5 mb-3">
-          <div>Buy Smart. Sell Fast. Grow Together...</div>
-          <div>© 2026 Vendor Portal. All rights reserved.</div>
-        </footer>
+        <Footer />
       </div>
+
+      {/* ORDER DETAIL MODAL */}
+      {selectedOrder && (
+        <OrderDetailModal
+          order={selectedOrder}
+          currencySymbol={currencySymbol}
+          onClose={() => setSelectedOrder(null)}
+        />
+      )}
     </div>
   );
 };
