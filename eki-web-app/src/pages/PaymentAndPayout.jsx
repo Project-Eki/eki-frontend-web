@@ -5,7 +5,7 @@ import {
   LogOut, Download, Filter, ChevronRight,
   Wallet, Landmark, Clock, Percent
 } from 'lucide-react';
-import Footer from '../components/Footer';
+import Footer from "../components/Vendormanagement/VendorFooter";
 
 const PaymentAndPayout = () => {
   const transactions = [];

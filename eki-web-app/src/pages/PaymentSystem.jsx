@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import VendorSidebar from '../components/VendorSidebar';
 import Navbar4 from '../components/adminDashboard/Navbar4';
+import Footer from "../components/Vendormanagement/VendorFooter"; 
 import { 
   Search, Download, History, DollarSign, Clock, CheckCircle,
   CreditCard, Box, ListChecks, Package
@@ -144,11 +145,8 @@ const PaymentSystemContent = () => {
           </div>
         </main>
 
-        {/* Footer - exactly matching VendorDashboard */}
-        <footer className="bg-[#125852] text-white py-2.5 px-5 flex justify-between items-center text-[8px] rounded-xl mx-5 mb-3">
-          <div>Buy Smart. Sell Fast. Grow Together...</div>
-          <div>© 2026 Vendor Portal. All rights reserved.</div>
-        </footer>
+        {/* Imported Footer Component replacing the inline one */}
+        <Footer />
       </div>
     </div>
   );
