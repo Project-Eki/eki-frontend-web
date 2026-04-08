@@ -548,7 +548,13 @@ export const createProductListing = async (productData) => {
     }
   }
 
-  if (variants.length === 0) variants.push({ color: 'Default', size: '', stock: 0 });
+  if (variants.length === 0) {
+    variants.push({ 
+      color: 'Default', 
+      size: '', 
+      stock: parseInt(productData.stock) || 0  // ← Include stock here
+    });
+  }
 
   const payload = {
     listing_type: 'product',  
@@ -564,7 +570,7 @@ export const createProductListing = async (productData) => {
       sku:        productData.sku?.trim() || '',
       base_price: String(parseFloat(productData.price)),
       quality:    qualityMap[productData.qty] ?? 'medium',
-      variants,
+      variants,   
     },
   };
 
@@ -574,7 +580,6 @@ export const createProductListing = async (productData) => {
   const res = await api.post('/listings/', payload);
   return normalizeListing(res.data?.data ?? res.data);
 };
-
 // Added listing_type: 'product' to update payload
 export const updateProductListing = async (listingId, productData) => {
   const qualityMap = {
@@ -583,6 +588,39 @@ export const updateProductListing = async (listingId, productData) => {
     HIGH: 'high', MEDIUM: 'medium', LOW: 'low',
   };
 
+  let variants = [];
+
+  // If there are size/color variants, create variant combinations
+  if (Array.isArray(productData.variants) && productData.variants.length > 0) {
+    productData.variants.forEach((v) => {
+      if (!v.value?.trim()) return;
+      if (v.type === 'Size')  variants.push({ color: '', size: v.value.trim(), stock: v.stock || 0 });
+      if (v.type === 'Color') variants.push({ color: v.value.trim(), size: '', stock: v.stock || 0 });
+    });
+  }
+
+  const sizes  = Array.isArray(productData.sizes)  ? productData.sizes.filter(Boolean)  : [];
+  const colors = Array.isArray(productData.colors) ? productData.colors.filter(Boolean) : [];
+
+  if (variants.length === 0 && (sizes.length > 0 || colors.length > 0)) {
+    if (sizes.length > 0 && colors.length > 0) {
+      sizes.forEach((size) => colors.forEach((color) => variants.push({ color, size, stock: 0 })));
+    } else if (sizes.length > 0) {
+      sizes.forEach((size)  => variants.push({ color: '', size, stock: 0 }));
+    } else {
+      colors.forEach((color) => variants.push({ color, size: '', stock: 0 }));
+    }
+  }
+
+  // If no variants, create a default variant with the stock value
+  if (variants.length === 0) {
+    variants.push({ 
+      color: 'Default', 
+      size: '', 
+      stock: parseInt(productData.stock) || 0
+    });
+  }
+  
   const payload = {
     listing_type: 'product',  
     title:       productData.title?.trim(),
@@ -595,6 +633,7 @@ export const updateProductListing = async (listingId, productData) => {
       sku:        productData.sku?.trim() || '',
       base_price: String(parseFloat(productData.price)),
       quality:    qualityMap[productData.qty] ?? 'medium',
+      variants,   
     },
   };
 
@@ -603,6 +642,26 @@ export const updateProductListing = async (listingId, productData) => {
   console.log('[listings] PATCH /listings/', listingId, '→', JSON.stringify(payload, null, 2));
   const res = await api.patch(`/listings/${listingId}/`, payload);
   return normalizeListing(res.data?.data ?? res.data);
+};
+// Add this new function to update stock for a specific variant
+export const updateVariantStock = async (listingId, variantId, stock) => {
+  const res = await api.patch(`/listings/${listingId}/variants/${variantId}/`, {
+    stock: parseInt(stock) || 0
+  });
+  return res.data?.data ?? res.data;
+};
+
+// Or if you need to update the default variant's stock
+export const updateProductStock = async (listingId, stock) => {
+  // First get the listing to find the default variant
+  const listing = await api.get(`/listings/${listingId}/`);
+  const variants = listing.data?.data?.detail?.variants || [];
+  const defaultVariant = variants.find(v => v.color === 'Default' && v.size === '');
+  
+  if (defaultVariant) {
+    return updateVariantStock(listingId, defaultVariant.id, stock);
+  }
+  throw new Error('No default variant found to update stock');
 };
 
 export const deleteProductListing = (listingId) =>
