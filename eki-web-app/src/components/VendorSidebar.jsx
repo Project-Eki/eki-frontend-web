@@ -13,11 +13,11 @@ import {
 } from "lucide-react";
 import LogoutModal from "./LogoutModal";
 
-const VendorSidebar = ({ activePage, vendorType }) => {
+const VendorSidebar = ({ activePage, vendorType, businessCategory }) => {
   const navigate = useNavigate();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // Define which categories are service vendors
+  // Define service categories
   const serviceCategories = [
     "beauty",
     "transport",
@@ -27,8 +27,23 @@ const VendorSidebar = ({ activePage, vendorType }) => {
     "other",
   ];
 
-  // If vendorType is not passed, we can determine it from businessCategory (passed separately)
-  // But for now, just use the vendorType prop
+  // Determine vendor type - prioritize vendorType prop, then use businessCategory
+  let finalVendorType = vendorType;
+
+  if (!finalVendorType && businessCategory) {
+    finalVendorType = serviceCategories.includes(businessCategory)
+      ? "service"
+      : "product";
+  }
+
+  // Default to 'product' if still not determined
+  if (!finalVendorType) {
+    finalVendorType = "product";
+  }
+
+  console.log("[VendorSidebar] vendorType prop:", vendorType);
+  console.log("[VendorSidebar] businessCategory prop:", businessCategory);
+  console.log("[VendorSidebar] finalVendorType:", finalVendorType);
 
   const menuItems = [
     {
@@ -40,7 +55,7 @@ const VendorSidebar = ({ activePage, vendorType }) => {
   ];
 
   // Only show Products tab for product vendors
-  if (vendorType === "product") {
+  if (finalVendorType === "product") {
     menuItems.push({
       to: "/product-dashboard",
       icon: <ShoppingBag size={16} />,
@@ -50,7 +65,7 @@ const VendorSidebar = ({ activePage, vendorType }) => {
   }
 
   // Only show Services tab for service vendors
-  if (vendorType === "service") {
+  if (finalVendorType === "service") {
     menuItems.push({
       to: "/servicemanagement",
       icon: <Package size={16} />,
@@ -59,7 +74,7 @@ const VendorSidebar = ({ activePage, vendorType }) => {
     });
   }
 
-  // Common menu items
+  // menu items
   menuItems.push(
     {
       to: "/order-management",
