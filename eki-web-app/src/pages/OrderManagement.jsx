@@ -9,7 +9,6 @@ import {
   getVendorDashboard,
 } from '../services/authService';
 
-// ── FIXED: import the currency utility ────────────────────────────────────────
 import { getCurrencySymbol } from '../utils/currency';
 
 import {
@@ -17,6 +16,19 @@ import {
   CircleDollarSign, Clock, BarChart3, Package,
   X, Hash, User, Calendar, MapPin, ShoppingBag, Tag,
 } from 'lucide-react';
+
+// ─── Helper: format order ID professionally ───────────────────────────────────
+const formatOrderId = (raw) => {
+  if (!raw && raw !== 0) return '—';
+  const str = String(raw).trim();
+  if (/^\d+$/.test(str)) {
+    return `#${str.padStart(6, '0')}`;
+  }
+  if (str.length > 12) {
+    return `#${str.slice(-8).toUpperCase()}`;
+  }
+  return `#${str.toUpperCase()}`;
+};
 
 // ─── Status badge colours ─────────────────────────────────────────────────────
 const STATUS_STYLES = {
@@ -86,7 +98,9 @@ const OrderDetailModal = ({ order, currencySymbol, onClose }) => {
           <div>
             <div className="flex items-center gap-2">
               <Hash size={14} className="text-[#F5B841]" />
-              <h2 className="text-base font-bold text-slate-800">Order #{order.id}</h2>
+              <h2 className="text-base font-bold text-slate-800">
+                Order {formatOrderId(order.id)}
+              </h2>
             </div>
             <span className={`mt-1 inline-block px-2.5 py-0.5 rounded-full text-[9px] uppercase font-bold ${badgeClass}`}>
               {statusLabel}
@@ -233,11 +247,7 @@ const OrderManagement = () => {
   const [isFetching,  setIsFetching]  = useState(true);
   const [activeTab,   setActiveTab]   = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-
-  // ── FIXED: dynamic currency state instead of hardcoded 'UGX' ────────────────
   const [currencySymbol, setCurrencySymbol] = useState('UGX');
-
-  // Order detail modal state
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   const totalOrders  = orders.length;
@@ -246,7 +256,6 @@ const OrderManagement = () => {
   ).length;
   const revenue = orders.reduce((sum, o) => sum + Number(o.total ?? 0), 0);
 
-  // ── FIXED: fetch vendor country and resolve currency on mount ────────────────
   useEffect(() => {
     getVendorDashboard()
       .then((data) => {
@@ -276,6 +285,7 @@ const OrderManagement = () => {
     return () => clearInterval(interval);
   }, [fetchOrders]);
 
+  // All orders are displayed — no slice applied here
   const filteredOrders = orders.filter((order) => {
     const matchesTab =
       activeTab === 'All' ||
@@ -305,10 +315,8 @@ const OrderManagement = () => {
             </div>
             <div className="flex gap-1.5">
               <button className="bg-white border border-slate-200 text-slate-600 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-slate-50 transition text-[10px] font-bold shadow-sm">
-                {/* <Download size={12} /> Export Data */}
               </button>
               <button className="bg-[#F5B841] text-white px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-[#E0A83B] transition text-[10px] font-bold shadow-sm">
-                {/* <Printer size={12} /> Print Manifests */}
               </button>
             </div>
           </div>
@@ -334,7 +342,7 @@ const OrderManagement = () => {
               number={isFetching ? '—' : `${currencySymbol} ${revenue.toLocaleString()}`}
               icon={CircleDollarSign}
               iconBgColor="bg-orange-50"
-              iconColor="text-orangeald-600"
+              iconColor="text-orange-600"
             />
             <StatCard
               title="Avg. Processing"
@@ -433,16 +441,21 @@ const OrderManagement = () => {
                         <td className="px-4 py-3">
                           <input type="checkbox" className="rounded border-slate-300 w-3 h-3" />
                         </td>
-                        <td className="px-4 py-3 text-[10px] text-[#125852] font-bold">
-                          #{order.id}
+
+                        {/* ── FIXED: formatted order ID matching VendorDashboard style ── */}
+                        <td className="px-4 py-3">
+                          <span className="font-black text-[#125852] tracking-wider font-mono text-[10px]">
+                            {formatOrderId(order.id)}
+                          </span>
                         </td>
-                        <td className="px-4 py-3 text-[10px]">
+
+                        <td className="px-4 py-3 text-[10px] text-slate-700 font-medium">
                           {order.customer}
                         </td>
                         <td className="px-4 py-3 text-[10px] text-slate-500">
                           {displayDate}
                         </td>
-                        <td className="px-4 py-3 text-[10px] font-bold">
+                        <td className="px-4 py-3 text-[10px] font-bold text-slate-800">
                           {currencySymbol} {Number(order.total ?? 0).toLocaleString()}
                         </td>
                         <td className="px-4 py-3">
