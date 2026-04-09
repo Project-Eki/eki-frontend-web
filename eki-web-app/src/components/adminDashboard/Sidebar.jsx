@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -12,6 +12,7 @@ import {
   LogOut,
   X,
 } from "lucide-react";
+import ekiLogo from "../../assets/eki-logo2.png";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admindashboard"   },
@@ -22,15 +23,68 @@ const menuItems = [
   { icon: ShoppingCart,    label: "Orders",    path: "/order-management" },
 ];
 
+// Logout Confirmation Modal Component
+const LogoutModal = ({ isOpen, onClose, onConfirm }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+        {/* Modal Header */}
+        <div className="px-5 py-4 border-b border-gray-100">
+          <h2 className="text-base font-bold text-gray-900">Confirm Logout</h2>
+          <p className="text-[11px] text-gray-500 mt-0.5">Are you sure you want to logout?</p>
+        </div>
+
+        {/* Modal Body */}
+        <div className="p-5">
+          <p className="text-xs text-gray-600">
+            You will need to login again to access your account.
+          </p>
+        </div>
+
+        {/* Modal Footer */}
+        <div className="px-5 py-4 border-t border-gray-100 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-[11px] font-bold border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 text-[11px] font-bold bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1"
+          >
+            <LogOut size={12} />
+            Logout
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Sidebar = ({ mobileOpen, onClose }) => {
   const { logout } = useAuth();
-  const navigate   = useNavigate();
+  const navigate = useNavigate();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const handleLogout = () => { logout(); navigate("/login", { replace: true }); };
+  const handleLogoutClick = () => {
+    setShowLogoutModal(true);
+  };
+
+  const handleConfirmLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+    setShowLogoutModal(false);
+  };
+
+  const handleCancelLogout = () => {
+    setShowLogoutModal(false);
+  };
 
   return (
     <>
-      {/* Mobile backdrop */}
       {mobileOpen && (
         <div
           className="fixed inset-0 bg-black/40 z-40 md:hidden"
@@ -38,66 +92,39 @@ const Sidebar = ({ mobileOpen, onClose }) => {
         />
       )}
 
-      {/*
-        Outer wrapper — provides the gap around the sidebar.
-        On desktop it's a fixed-width column; on mobile it slides in as overlay.
-        p-3 gives the breathing room from viewport edges + from the navbar above.
-      */}
       <div className={`
-        fixed top-0 left-0 z-50 h-screen w-[220px] p-3
+        fixed top-0 left-0 z-50 h-screen w-56 p-3
         flex flex-col
         transition-transform duration-300 ease-in-out
         md:translate-x-0 md:static md:z-auto md:h-full md:shrink-0
         ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
       `}>
-
-        {/*
-          Inner sidebar card — the actual visible panel.
-          rounded-2xl gives the card feel; the gradient is Eki teal.
-          flex-1 makes it fill the vertical space within the padded wrapper.
-        */}
-        <div className="flex-1 rounded-2xl flex flex-col overflow-hidden shadow-xl"
+        <div className="flex-1 rounded-2xl flex flex-col overflow-hidden shadow-xl relative"
           style={{
             background: "linear-gradient(160deg, #125852 0%, #0e4440 40%, #0b3330 100%)",
           }}
         >
-
-          {/*Logo area  */}
-          <div className="px-5 pt-5 pb-4 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2.5">
-              {/* Eki logo — white version */}
-              <img
-                src="/src/assets/eki-logo2.png"
-                alt="Eki"
-                className="h-8 w-auto object-contain"
-                onError={(e) => {
-                  // Fallback to text if image doesn't load
-                  e.target.style.display = "none";
-                  e.target.nextSibling.style.display = "block";
-                }}
-              />
-              {/* Text fallback (hidden by default) */}
-              <span
-                className="text-white font-black text-xl tracking-tight hidden"
-                style={{ fontFamily: "serif" }}
-              >
-                eki
-              </span>
-            </div>
-
-            {/* Mobile close */}
-            <button
-              onClick={onClose}
-              className="md:hidden p-1 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
-            >
-              <X size={17} />
-            </button>
+          {/* Logo area */}
+          <div className="p-4 pt-5 pb-4 flex justify-center">
+            <img
+              src={ekiLogo}
+              alt="Eki"
+              className="h-14 w-auto object-contain mx-auto"
+            />
           </div>
+
+          {/* Mobile close button */}
+          <button
+            onClick={onClose}
+            className="md:hidden absolute top-5 right-4 p-1 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            <X size={17} />
+          </button>
 
           {/* Subtle divider */}
           <div className="mx-5 border-t border-white/10 mb-3 shrink-0" />
 
-          {/*Nav links */}
+          {/* Nav links */}
           <nav className="flex-1 px-3 flex flex-col overflow-y-auto">
             <ul className="space-y-0.5">
               {menuItems.map((item) => (
@@ -124,7 +151,7 @@ const Sidebar = ({ mobileOpen, onClose }) => {
               ))}
             </ul>
 
-            {/*Settings + Logout  */}
+            {/* Settings + Logout */}
             <div className="mt-auto pb-2 pt-4 border-t border-white/10 space-y-0.5">
               <NavLink
                 to="/settings"
@@ -141,8 +168,8 @@ const Sidebar = ({ mobileOpen, onClose }) => {
                 <span>Settings</span>
               </NavLink>
 
-               <button
-                onClick={handleLogout}
+              <button
+                onClick={handleLogoutClick}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold
                            text-white/70 hover:bg-white/10 hover:text-white transition-all"
               >
@@ -153,6 +180,13 @@ const Sidebar = ({ mobileOpen, onClose }) => {
           </nav> 
         </div>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      <LogoutModal
+        isOpen={showLogoutModal}
+        onClose={handleCancelLogout}
+        onConfirm={handleConfirmLogout}
+      />
     </>
   );
 };

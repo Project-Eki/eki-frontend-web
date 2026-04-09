@@ -642,7 +642,7 @@ const TransportStep2 = ({ d, set, errors }) => (
         icon={MapPin}
         placeholder="e.g. Kampala, Entebbe Airport"
         value={d.origin || ""}
-        onChange={(e) => set("routes", e.target.value)}
+        onChange={(e) => set("origin", e.target.value)}
         error={errors.origin}
       />
     </Field>
@@ -1182,7 +1182,6 @@ const ServiceForm = ({ onClose, editingListing }) => {
       amenities: det.amenities || [],
       serviceType: det.service_type || "",
       flightCode: det.flight_number || "",
-      origin: det.origin || "",
       destinations: det.destination || "",
       flightDuration: det.flight_duration || "",
       capacity: det.seat_classes?.[0]?.seats_available || "",
@@ -1252,75 +1251,105 @@ const ServiceForm = ({ onClose, editingListing }) => {
     });
   };
 
+
   const handleSubmit = async () => {
-    const { step: errStep, errors } = validateAllSteps(
-      serviceType,
-      title,
-      data,
-    );
-    if (errStep) {
-      setStep(errStep);
-      setStepErrors(errors);
-      return;
+  const { step: errStep, errors } = validateAllSteps(
+    serviceType,
+    title,
+    data,
+  );
+  if (errStep) {
+    setStep(errStep);
+    setStepErrors(errors);
+    return;
+  }
+
+  setIsLoading(true);
+  setGlobalError("");
+
+  try {
+    const enrichedData = {
+      ...data,
+      category_id: categoryMap[data.category] || undefined,
+    };
+    // Build the payload with the vendor-selected status
+    const payload = {
+      ...buildListingPayload(serviceType, title, enrichedData),
+      status: selectedStatus, // Override the default 'published' with the vendor's choice
+    };
+
+    // Debug log to see what's being sent
+    console.log(" Submitting payload:", JSON.stringify(payload, null, 2));
+
+    let listingId;
+    if (isEditing) {
+      await api.patch(`/listings/${editingListing.id}/`, payload);
+      listingId = editingListing.id;
+    } else {
+      const res = await api.post("/listings/", payload);
+      const newListing = res.data?.data || res.data;
+      listingId = newListing?.id;
     }
 
-    setIsLoading(true);
-    setGlobalError("");
-
-    try {
-      const enrichedData = {
-        ...data,
-        category_id: categoryMap[data.category] || undefined,
-      };
-      // Build the payload with the vendor-selected status
-      const payload = {
-        ...buildListingPayload(serviceType, title, enrichedData),
-        status: selectedStatus, // Override the default 'published' with the vendor's choice
-      };
-
-      let listingId;
-      if (isEditing) {
-        await api.patch(`/listings/${editingListing.id}/`, payload);
-        listingId = editingListing.id;
-      } else {
-        const res = await api.post("/listings/", payload);
-        const newListing = res.data?.data || res.data;
-        listingId = newListing?.id;
-      }
-
-      // Upload images (only new File objects, not existing URLs)
-      if (listingId) {
-        if (coverImage1 instanceof File)
-          await uploadListingImage(listingId, coverImage1);
-        if (coverImage2 instanceof File)
-          await uploadListingImage(listingId, coverImage2);
-      }
-
-      // onClose(true) tells ServiceManagement to refresh the grid.
-      // It does NOT navigate. If you see a redirect to /products,
-      // check your App.jsx router — the issue is there, not here.
-      onClose?.(true);
-    } catch (err) {
-      const serverErrors = err.response?.data?.errors;
-      if (serverErrors && typeof serverErrors === "object") {
-        const readable = Object.entries(serverErrors)
-          .map(
-            ([f, msgs]) =>
-              `${f}: ${Array.isArray(msgs) ? msgs.join(", ") : msgs}`,
-          )
-          .join(" • ");
-        setGlobalError(`Submission failed — ${readable}`);
-      } else {
-        setGlobalError(
-          err.response?.data?.detail ||
-            err.response?.data?.message ||
-            "Failed to save. Check your connection and try again.",
-        );
-      }
-    } finally {
-      setIsLoading(false);
+    // Upload images (only new File objects, not existing URLs)
+    if (listingId) {
+      if (coverImage1 instanceof File)
+        await uploadListingImage(listingId, coverImage1);
+      if (coverImage2 instanceof File)
+        await uploadListingImage(listingId, coverImage2);
     }
-  };
+
+    onClose?.(true);
+  } catch (err) {
+    console.error("Submission error:", err.response?.data);
+    
+    const serverErrors = err.response?.data?.errors;
+    
+    if (serverErrors && serverErrors.detail && typeof serverErrors.detail === 'object') {
+      // Handle nested detail errors (like destination field)
+      const fieldErrors = [];
+      Object.entries(serverErrors.detail).forEach(([field, messages]) => {
+        const friendlyName = {
+          destination: 'Destination / Dropoff Location',
+          origin: 'Pickup Location / Origin',
+          vehicle_type: 'Vehicle Type',
+          service_mode: 'Service Mode',
+          price_per_seat: 'Price',
+          vehicle_number_plate: 'Number Plate',
+          driver_name: 'Driver Name'
+        }[field] || field;
+        
+        fieldErrors.push(`${friendlyName}: ${Array.isArray(messages) ? messages.join(', ') : messages}`);
+      });
+      
+      setGlobalError(`Please fix the following: ${fieldErrors.join(' • ')}`);
+    } 
+    else if (serverErrors && typeof serverErrors === 'object') {
+      // Handle flat error objects
+      const readable = Object.entries(serverErrors)
+        .map(([f, msgs]) => {
+          const friendlyName = {
+            destination: 'Destination',
+            origin: 'Pickup Location',
+            price: 'Price',
+            phone: 'Contact Phone'
+          }[f] || f;
+          return `${friendlyName}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`;
+        })
+        .join(' • ');
+      setGlobalError(`Please fix: ${readable}`);
+    } 
+    else {
+      setGlobalError(
+        err.response?.data?.detail ||
+        err.response?.data?.message ||
+        'Failed to save. Please check all required fields and try again.'
+      );
+    }
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // Label on the submit button changes based on selected status
   const submitLabel =

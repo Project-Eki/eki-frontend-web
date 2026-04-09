@@ -42,7 +42,7 @@ function AccountSettingsPage() {
   const availableSocials = [
     { name: 'WhatsApp',    color: '#25D366' },
     { name: 'Instagram',   color: '#E4405F' },
-    { name: 'LinkedIn',    color: '#0A66C2' },
+    // { name: 'LinkedIn',    color: '#0A66C2' },
     { name: 'Facebook',    color: '#1877F2' },
     { name: 'Twitter / X', color: '#000000' },
   ];

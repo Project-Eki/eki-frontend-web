@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import Sidebar      from "../components/adminDashboard/Sidebar";
-import Navbar3      from "../components/adminDashboard/Navbar3";
+import Sidebar from "../components/adminDashboard/Sidebar";
+import Navbar3 from "../components/adminDashboard/Navbar3";
 import VendorProfile from "../components/VendorProfile";
 import {
   getAdminDashboard,
@@ -10,16 +10,13 @@ import {
 import {
   Store, Clock, TrendingUp, X, ChevronLeft, ChevronRight,
   FileText, ExternalLink, AlertTriangle, Loader2, RefreshCw,
-  Filter, Download, Search,
+  Download, Search,
 } from "lucide-react";
-import { FaEye } from "react-icons/fa";
 import api from "../services/api";
 
-const GOLD     = "#EFB034";
-const ICON_BG  = "bg-orange-50";
-const ICON_COL = "text-orange-600";
+const GOLD = "#EFB034";
 
-//Django base URL for resolving relative media paths 
+// Django base URL for resolving relative media paths
 const DJANGO_BASE = (() => {
   const env = import.meta.env.VITE_API_BASE_URL;
   if (env) return env.replace(/\/api\/v1\/?$/, "");
@@ -33,13 +30,17 @@ const resolveUrl = (url) => {
 };
 
 const normStatus = (s) => {
-  if (!s) return s;
+  if (!s) return "Pending";
   const l = String(s).toLowerCase();
-  if (l === "under_review" || l === "under review") return "Pending";
+  if (l === "under_review" || l === "under review" || l === "pending_review") return "Pending";
+  if (l === "verified" || l === "active") return "Approved";
+  if (l === "suspended" || l === "banned") return "Suspended";
+  if (l === "rejected" || l === "denied") return "Rejected";
+  if (l === "terminated") return "Terminated";
   return String(s).charAt(0).toUpperCase() + String(s).slice(1);
 };
 
-//Stat card 
+// Stat card with custom colors per card type
 const StatCard = ({ label, value, type }) => {
   const icons = {
     vendors: Store,
@@ -47,10 +48,26 @@ const StatCard = ({ label, value, type }) => {
     earners: TrendingUp,
   };
   const Icon = icons[type] || TrendingUp;
+
+  const getCardColors = () => {
+    switch (type) {
+      case 'vendors':
+        return { bg: 'bg-[#235E5D]', text: 'text-white' };
+      case 'pending':
+        return { bg: 'bg-[#EFB034]', text: 'text-white' };
+      case 'earners':
+        return { bg: 'bg-[#EFB034]', text: 'text-white' };
+      default:
+        return { bg: 'bg-[#235E5D]', text: 'text-white' };
+    }
+  };
+
+  const colors = getCardColors();
+
   return (
     <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-3">
-      <div className={`p-2 rounded-xl ${ICON_BG} shrink-0`}>
-        <Icon className={ICON_COL} size={18} />
+      <div className={`p-2 rounded-xl ${colors.bg} shrink-0`}>
+        <Icon className={colors.text} size={18} />
       </div>
       <div>
         <p className="text-gray-500 text-[10px] font-medium uppercase tracking-wider">{label}</p>
@@ -62,18 +79,18 @@ const StatCard = ({ label, value, type }) => {
   );
 };
 
-//Document Review Modal 
+// Document Review Modal
 const DocumentReviewModal = ({ vendorId, vendorName, onClose }) => {
-  const [docs,    setDocs]    = useState(null);
+  const [docs, setDocs] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchDocs = async () => {
       setLoading(true);
       try {
         const response = await api.get(`/accounts/admin/vendors/${vendorId}/review/`);
-        const detail   = response.data?.data || response.data;
+        const detail = response.data?.data || response.data;
         setDocs(detail.documents || {});
       } catch (err) {
         setError("Failed to load documents. Please try again.");
@@ -87,10 +104,10 @@ const DocumentReviewModal = ({ vendorId, vendorName, onClose }) => {
 
   const DOC_LABELS = {
     government_issued_id: "Government Issued ID",
-    country_issued_id:    "Country Issued ID",
-    business_license:     "Business License",
-    tax_certificate:      "Tax Certificate",
-    incorporation_cert:   "Incorporation Certificate",
+    country_issued_id: "Country Issued ID",
+    business_license: "Business License",
+    tax_certificate: "Tax Certificate",
+    incorporation_cert: "Incorporation Certificate",
   };
 
   return (
@@ -116,14 +133,10 @@ const DocumentReviewModal = ({ vendorId, vendorName, onClose }) => {
             <div className="space-y-2.5">
               {Object.keys(DOC_LABELS).map((key) => {
                 const doc = docs[key];
-                // resolveUrl converts relative /media/... → http://127.0.0.1:8000/media/...
                 const absoluteUrl = resolveUrl(doc?.url);
                 return (
-                  <div
-                    key={key}
-                    className={`flex items-center justify-between p-3 rounded-xl border ${
-                      doc ? "border-green-100 bg-green-50/40" : "border-gray-100 bg-gray-50"
-                    }`}
+                  <div key={key}
+                    className={`flex items-center justify-between p-3 rounded-xl border ${doc ? "border-green-100 bg-green-50/40" : "border-gray-100 bg-gray-50"}`}
                   >
                     <div className="flex items-center gap-2.5">
                       <FileText size={14} className={doc ? "text-green-600" : "text-gray-300"} />
@@ -135,10 +148,7 @@ const DocumentReviewModal = ({ vendorId, vendorName, onClose }) => {
                       </div>
                     </div>
                     {absoluteUrl ? (
-                      <a
-                        href={absoluteUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <a href={absoluteUrl} target="_blank" rel="noopener noreferrer"
                         className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-teal-700 bg-white border border-teal-100 rounded-lg hover:bg-teal-50 transition-colors"
                       >
                         View <ExternalLink size={9} />
@@ -157,7 +167,7 @@ const DocumentReviewModal = ({ vendorId, vendorName, onClose }) => {
   );
 };
 
-//  Reject Modal 
+// Reject Modal
 const RejectVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
   const [reason, setReason] = useState("");
   return (
@@ -175,20 +185,15 @@ const RejectVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
           </p>
           <div className="space-y-1">
             <label className="text-[11px] font-semibold text-gray-700">Rejection reason <span className="text-red-400">*</span></label>
-            <textarea
-              rows={3}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
+            <textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)}
               placeholder="Explain why this application is being rejected…"
               className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-yellow-400"
             />
           </div>
           <div className="flex gap-2 pt-1">
             <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
-            <button
-              onClick={() => onConfirm(reason)}
-              disabled={!reason.trim() || loading}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-yellow-500 text-white text-xs font-bold rounded-xl hover:bg-yellow-600 disabled:opacity-40 disabled:cursor-not-allowed"
+            <button onClick={() => onConfirm(reason)} disabled={!reason.trim() || loading}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-yellow-500 text-white text-xs font-bold rounded-xl hover:bg-yellow-600 disabled:opacity-40"
             >
               {loading ? <Loader2 size={13} className="animate-spin" /> : null}
               Reject Application
@@ -203,7 +208,7 @@ const RejectVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
 // Terminate Modal
 const TerminateVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
   const [confirmText, setConfirmText] = useState("");
-  const [reason,      setReason]      = useState("");
+  const [reason, setReason] = useState("");
   const canConfirm = confirmText === "TERMINATE" && reason.trim().length > 0;
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -225,7 +230,8 @@ const TerminateVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
             <label className="text-[11px] font-semibold text-gray-700">Reason <span className="text-red-400">*</span></label>
             <textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)}
               placeholder="Explain why this vendor is being terminated…"
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-red-400" />
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-red-400"
+            />
           </div>
           <div className="space-y-1">
             <label className="text-[11px] font-semibold text-gray-700">
@@ -233,12 +239,14 @@ const TerminateVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
             </label>
             <input type="text" value={confirmText} onChange={(e) => setConfirmText(e.target.value)}
               placeholder="TERMINATE"
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-red-400" />
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-red-400"
+            />
           </div>
           <div className="flex gap-2 pt-1">
             <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
             <button onClick={() => onConfirm(reason)} disabled={!canConfirm || loading}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-red-600 text-white text-xs font-bold rounded-xl hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-red-600 text-white text-xs font-bold rounded-xl hover:bg-red-700 disabled:opacity-40"
+            >
               {loading ? <Loader2 size={13} className="animate-spin" /> : <AlertTriangle size={13} />}
               Terminate
             </button>
@@ -249,7 +257,7 @@ const TerminateVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
   );
 };
 
-// ── Reinstate Modal ────────────────────────────────────────────────────────────
+// Reinstate Modal
 const ReinstateVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
   const [reason, setReason] = useState("");
   return (
@@ -270,21 +278,14 @@ const ReinstateVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
           </p>
           <div className="space-y-1">
             <label className="text-[11px] font-semibold text-gray-700">Reason (Optional)</label>
-            <textarea
-              rows={2}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
+            <textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)}
               placeholder="Why is this vendor being reinstated?"
               className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-green-400"
             />
           </div>
           <div className="flex gap-2 pt-1">
-            <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50">
-              Cancel
-            </button>
-            <button
-              onClick={() => onConfirm(reason)}
-              disabled={loading}
+            <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
+            <button onClick={() => onConfirm(reason)} disabled={loading}
               className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-green-600 text-white text-xs font-bold rounded-xl hover:bg-green-700 disabled:opacity-40"
             >
               {loading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
@@ -297,14 +298,14 @@ const ReinstateVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
   );
 };
 
-// ── VendorList with Filter + Export + Search + Pagination ─────────────────────
+// VendorList with Filter + Export + Search + Pagination
 const STATUS_OPTIONS = ["All", "Pending", "Approved", "Rejected", "Suspended"];
 
 const VendorListWithFilters = ({ vendors, onSelect, selectedId, onRefresh }) => {
   const [statusFilter, setStatusFilter] = useState("All");
-  const [search,       setSearch]       = useState("");
-  const [page,         setPage]         = useState(1);
-  const [refreshing,   setRefreshing]   = useState(false);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [refreshing, setRefreshing] = useState(false);
   const PER_PAGE = 4;
 
   const filtered = vendors
@@ -313,19 +314,18 @@ const VendorListWithFilters = ({ vendors, onSelect, selectedId, onRefresh }) => 
       if (!search.trim()) return true;
       const q = search.toLowerCase();
       return (
-        v.name?.toLowerCase().includes(q)             ||
-        v.email?.toLowerCase().includes(q)            ||
-        v.businessName?.toLowerCase().includes(q)     ||
+        v.name?.toLowerCase().includes(q) ||
+        v.email?.toLowerCase().includes(q) ||
+        v.businessName?.toLowerCase().includes(q) ||
         v.businessCategory?.toLowerCase().includes(q) ||
         v.businessType?.toLowerCase().includes(q)
       );
     });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const safePage   = Math.min(page, totalPages);
-  const slice      = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+  const safePage = Math.min(page, totalPages);
+  const slice = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
 
-  // Export current filtered list as CSV
   const handleExport = () => {
     if (filtered.length === 0) return;
     const headers = ["Name", "Email", "Business Name", "Type", "Category", "Status", "Docs", "Submitted"];
@@ -339,11 +339,13 @@ const VendorListWithFilters = ({ vendors, onSelect, selectedId, onRefresh }) => 
       `"${v.docsCount ?? 0}/5"`,
       `"${v.submitted || ""}"`,
     ].join(","));
-    const csv  = [headers.join(","), ...rows].join("\n");
+    const csv = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href = url; a.download = "vendors.csv"; a.click();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "vendors.csv";
+    a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -356,12 +358,9 @@ const VendorListWithFilters = ({ vendors, onSelect, selectedId, onRefresh }) => 
 
   return (
     <div>
-      {/* Filter bar */}
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-xs text-gray-400 shrink-0">{filtered.length} vendor{filtered.length !== 1 ? "s" : ""}</p>
-
-          {/* Search */}
           <div className="relative">
             <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
@@ -373,37 +372,28 @@ const VendorListWithFilters = ({ vendors, onSelect, selectedId, onRefresh }) => 
             />
           </div>
         </div>
-
         <div className="flex gap-1.5 flex-wrap items-center">
-          {/* Status filter pills */}
           {STATUS_OPTIONS.map((s) => (
             <button
               key={s}
               onClick={() => { setStatusFilter(s); setPage(1); }}
               className="px-2.5 py-1 text-[10px] font-bold rounded-full border transition-colors"
               style={{
-                background:  statusFilter === s ? GOLD : "white",
-                color:       statusFilter === s ? "white" : "#6b7280",
+                background: statusFilter === s ? GOLD : "white",
+                color: statusFilter === s ? "white" : "#6b7280",
                 borderColor: statusFilter === s ? GOLD : "#e5e7eb",
               }}
             >
               {s}
             </button>
           ))}
-
-          {/* Export button */}
-          <button
-            onClick={handleExport}
+          <button onClick={handleExport}
             className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold border rounded-lg transition-colors hover:opacity-90"
             style={{ borderColor: GOLD, color: GOLD }}
           >
             <Download size={11} /> Export
           </button>
-
-          {/* Refresh button */}
-          <button
-            onClick={handleRefreshClick}
-            title="Refresh"
+          <button onClick={handleRefreshClick} title="Refresh"
             className="p-1.5 border rounded-lg transition-colors hover:opacity-90"
             style={{ borderColor: GOLD, color: GOLD }}
           >
@@ -412,7 +402,6 @@ const VendorListWithFilters = ({ vendors, onSelect, selectedId, onRefresh }) => 
         </div>
       </div>
 
-      {/* Vendor table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left min-w-[900px]">
@@ -420,7 +409,6 @@ const VendorListWithFilters = ({ vendors, onSelect, selectedId, onRefresh }) => 
               <tr>
                 <th className="px-4 py-3">Applicant</th>
                 <th className="px-4 py-3">Business Name</th>
-                {/* Type column shows business_type from onboarding form */}
                 <th className="px-4 py-3">Type</th>
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3">Status</th>
@@ -439,8 +427,7 @@ const VendorListWithFilters = ({ vendors, onSelect, selectedId, onRefresh }) => 
                 </tr>
               ) : (
                 slice.map((vendor) => (
-                  <tr
-                    key={vendor.id}
+                  <tr key={vendor.id}
                     className={`hover:bg-gray-50 transition-colors cursor-pointer ${selectedId === vendor.id ? "bg-teal-50/30" : ""}`}
                   >
                     <td className="px-4 py-3">
@@ -448,15 +435,14 @@ const VendorListWithFilters = ({ vendors, onSelect, selectedId, onRefresh }) => 
                       <p className="text-[10px] text-gray-400">{vendor.email || "—"}</p>
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{vendor.businessName || "—"}</td>
-                    {/* businessType from onboarding (products / services / other) */}
                     <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap capitalize">{vendor.businessType || "—"}</td>
                     <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap capitalize">{vendor.businessCategory || "—"}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase whitespace-nowrap ${
                         vendor.status === "Approved" ? "bg-green-50 text-green-600" :
-                        vendor.status === "Pending"  ? "bg-yellow-50 text-yellow-600" :
+                        vendor.status === "Pending" ? "bg-yellow-50 text-yellow-600" :
                         vendor.status === "Rejected" ? "bg-rose-50 text-rose-500" :
-                        vendor.status === "Suspended"? "bg-red-50 text-red-500" :
+                        vendor.status === "Suspended" ? "bg-red-50 text-red-500" :
                         "bg-gray-100 text-gray-500"
                       }`}>
                         {vendor.status}
@@ -474,12 +460,11 @@ const VendorListWithFilters = ({ vendors, onSelect, selectedId, onRefresh }) => 
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onSelect(vendor); }}
+                      <button onClick={(e) => { e.stopPropagation(); onSelect(vendor); }}
                         className="p-1.5 rounded-lg transition-colors hover:opacity-70"
                         style={{ color: GOLD }}
                       >
-                        <FaEye size={13} />
+                        <ExternalLink size={13} />
                       </button>
                     </td>
                   </tr>
@@ -490,15 +475,18 @@ const VendorListWithFilters = ({ vendors, onSelect, selectedId, onRefresh }) => 
         </div>
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-2.5 text-xs text-gray-500">
           <span>Page {safePage} of {totalPages}</span>
           <div className="flex gap-1">
             <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
-              className="p-1 rounded hover:bg-gray-100 disabled:opacity-30"><ChevronLeft size={14} /></button>
+              className="p-1 rounded hover:bg-gray-100 disabled:opacity-30">
+              <ChevronLeft size={14} />
+            </button>
             <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
-              className="p-1 rounded hover:bg-gray-100 disabled:opacity-30"><ChevronRight size={14} /></button>
+              className="p-1 rounded hover:bg-gray-100 disabled:opacity-30">
+              <ChevronRight size={14} />
+            </button>
           </div>
         </div>
       )}
@@ -506,7 +494,7 @@ const VendorListWithFilters = ({ vendors, onSelect, selectedId, onRefresh }) => 
   );
 };
 
-//Main Page 
+// Main Page
 const AdminManagement = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [vendors, setVendors] = useState([]);
@@ -515,20 +503,15 @@ const AdminManagement = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [stats, setStats] = useState({
-    total: "—",
-    pending: "—",
-    approved: "—",
-  });
+  const [stats, setStats] = useState({ total: "—", pending: "—", approved: "—" });
   const [showDocReview, setShowDocReview] = useState(false);
   const [showTerminate, setShowTerminate] = useState(false);
   const [showReject, setShowReject] = useState(false);
   const [terminateLoading, setTerminateLoading] = useState(false);
   const [rejectLoading, setRejectLoading] = useState(false);
   const [showReinstate, setShowReinstate] = useState(false);
-const [reinstateLoading, setReinstateLoading] = useState(false);
+  const [reinstateLoading, setReinstateLoading] = useState(false);
 
-  //Load data: dashboard stats + full vendor list in parallel 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -537,38 +520,36 @@ const [reinstateLoading, setReinstateLoading] = useState(false);
         api.get("/accounts/admin/vendors/"),
       ]);
 
-      const dashData = dashResponse.data;
-      const pipeline = dashData.verification_workflows?.pipeline || {};
-      const totalVendors = Object.values(pipeline).reduce(
-        (sum, v) => sum + (Number(v) || 0),
-        0,
-      );
-      setStats({
-        total: totalVendors || "—",
-        pending: pipeline.pending || "—",
-        approved: pipeline.approved || "—",
-      });
-
-      // Full vendor list — has business_category, has_* doc flags
-      const rawVendors =
-        vendorsResponse.data?.data || vendorsResponse.data || [];
+      // Get vendor array from response
+      const rawVendors = vendorsResponse.data?.data || vendorsResponse.data || [];
       const vendorArray = Array.isArray(rawVendors) ? rawVendors : [];
 
+      // Calculate stats from actual vendor data
+      const totalVendors = vendorArray.length;
+      const pendingVendors = vendorArray.filter(v =>
+        v.verification_status === "pending" || v.verification_status === "under_review"
+      ).length;
+      const approvedVendors = vendorArray.filter(v =>
+        v.verification_status === "approved"
+      ).length;
+
+      setStats({
+        total: totalVendors || "—",
+        pending: pendingVendors || "—",
+        approved: approvedVendors || "—",
+      });
+
+      // Map vendors with all fields
       setVendors(
         vendorArray.map((v) => ({
           id: v.id,
-          name: v.owner_full_name || v.user_name || "—",
+          name: v.business_name || v.owner_full_name || v.user_name || "—",
           email: v.user_email || v.business_email || "",
           status: normStatus(v.verification_status),
-          submitted: v.created_at
-            ? new Date(v.created_at).toLocaleDateString()
-            : "—",
+          submitted: v.created_at ? new Date(v.created_at).toLocaleDateString() : "—",
           daysPending: v.created_at
-            ? Math.floor(
-                (Date.now() - new Date(v.created_at).getTime()) / 86400000,
-              )
+            ? Math.floor((Date.now() - new Date(v.created_at).getTime()) / 86400000)
             : null,
-          // FIX: docsCount computed from has_* booleans (available in /admin/vendors/)
           docsCount: [
             v.has_government_issued_id,
             v.has_country_issued_id,
@@ -577,11 +558,9 @@ const [reinstateLoading, setReinstateLoading] = useState(false);
             v.has_incorporation_cert,
           ].filter(Boolean).length,
           businessName: v.business_name || "—",
-          // FIX: businessType from onboarding form (products / services / other)
           businessType: v.business_type || "—",
-          // FIX: businessCategory from onboarding form (retail / fashion / etc.)
           businessCategory: v.business_category || "—",
-        })),
+        }))
       );
     } catch (err) {
       console.error("AdminManagement load error:", err);
@@ -594,7 +573,6 @@ const [reinstateLoading, setReinstateLoading] = useState(false);
     loadData();
   }, [loadData]);
 
-  //Select vendor → fetch full detail
   const handleSelectVendor = async (vendor) => {
     setSelectedVendor(vendor);
     setVendorDetail(null);
@@ -606,7 +584,6 @@ const [reinstateLoading, setReinstateLoading] = useState(false);
         ...vendor,
         email: d.user_email || d.business_email || "—",
         name: d.user_name || d.owner_full_name || vendor.name,
-        // FIX: resolveUrl so profile picture works on localhost
         profilePicture: resolveUrl(d.profile_picture || null),
         businessName: d.business_name || "—",
         businessType: d.business_type || "—",
@@ -627,9 +604,7 @@ const [reinstateLoading, setReinstateLoading] = useState(false);
         hasTaxCert: d.has_tax_certificate || false,
         hasIncCert: d.has_incorporation_cert || false,
         daysPending: d.created_at
-          ? Math.floor(
-              (Date.now() - new Date(d.created_at).getTime()) / 86400000,
-            )
+          ? Math.floor((Date.now() - new Date(d.created_at).getTime()) / 86400000)
           : null,
       });
     } catch (err) {
@@ -645,22 +620,16 @@ const [reinstateLoading, setReinstateLoading] = useState(false);
     setVendorDetail(null);
   };
 
-  // ── Vendor actions: Approve / Suspend / Reject / Terminate ──────────────────
-  // All call updateVerificationStatus which hits PATCH /accounts/admin/verifications/{id}/
-  // Backend sends email via notify_vendor_status_change automatically
   const handleApprove = async (vendorId) => {
     setActionLoading(true);
     try {
       await updateVerificationStatus(vendorId, "approved");
       const newStatus = "Approved";
-      setVendors((prev) =>
-        prev.map((v) => (v.id === vendorId ? { ...v, status: newStatus } : v)),
-      );
+      setVendors((prev) => prev.map((v) => (v.id === vendorId ? { ...v, status: newStatus } : v)));
       setVendorDetail((prev) => (prev ? { ...prev, status: newStatus } : prev));
     } catch (err) {
       console.error("Approve failed:", err);
-      const msg = err?.response?.data?.message || "Approval failed.";
-      alert(msg);
+      alert(err?.response?.data?.message || "Approval failed.");
     } finally {
       setActionLoading(false);
     }
@@ -670,21 +639,12 @@ const [reinstateLoading, setReinstateLoading] = useState(false);
     if (!vendorDetail) return;
     setActionLoading(true);
     try {
-      await updateVendorStatus(
-        vendorDetail.id,
-        "suspended",
-        "Suspended by admin",
-      );
+      await updateVendorStatus(vendorDetail.id, "suspended", "Suspended by admin");
       const newStatus = "Suspended";
-      setVendors((prev) =>
-        prev.map((v) =>
-          v.id === vendorDetail.id ? { ...v, status: newStatus } : v,
-        ),
-      );
+      setVendors((prev) => prev.map((v) => (v.id === vendorDetail.id ? { ...v, status: newStatus } : v)));
       setVendorDetail((prev) => (prev ? { ...prev, status: newStatus } : prev));
     } catch (err) {
-      const msg = err?.response?.data?.message || "Suspension failed.";
-      alert(msg);
+      alert(err?.response?.data?.message || "Suspension failed.");
     } finally {
       setActionLoading(false);
     }
@@ -696,16 +656,11 @@ const [reinstateLoading, setReinstateLoading] = useState(false);
     try {
       await updateVendorStatus(vendorDetail.id, "suspended", reason);
       const newStatus = "Suspended";
-      setVendors((prev) =>
-        prev.map((v) =>
-          v.id === vendorDetail.id ? { ...v, status: newStatus } : v,
-        ),
-      );
+      setVendors((prev) => prev.map((v) => (v.id === vendorDetail.id ? { ...v, status: newStatus } : v)));
       setVendorDetail((prev) => (prev ? { ...prev, status: newStatus } : prev));
       setShowTerminate(false);
     } catch (err) {
-      const msg = err?.response?.data?.message || "Termination failed.";
-      alert(msg);
+      alert(err?.response?.data?.message || "Termination failed.");
     } finally {
       setTerminateLoading(false);
     }
@@ -717,96 +672,60 @@ const [reinstateLoading, setReinstateLoading] = useState(false);
     try {
       await updateVerificationStatus(vendorDetail.id, "rejected", reason);
       const newStatus = "Rejected";
-      setVendors((prev) =>
-        prev.map((v) =>
-          v.id === vendorDetail.id ? { ...v, status: newStatus } : v,
-        ),
-      );
+      setVendors((prev) => prev.map((v) => (v.id === vendorDetail.id ? { ...v, status: newStatus } : v)));
       setVendorDetail((prev) => (prev ? { ...prev, status: newStatus } : prev));
       setShowReject(false);
     } catch (err) {
-      const msg = err?.response?.data?.message || "Rejection failed.";
-      alert(msg);
+      alert(err?.response?.data?.message || "Rejection failed.");
     } finally {
       setRejectLoading(false);
     }
   };
 
   const handleReinstate = async (reason) => {
-  if (!vendorDetail) return;
-  setReinstateLoading(true);
-  try {
-    await updateVendorStatus(vendorDetail.id, "approved", reason || "Reinstated by admin");
-    const newStatus = "Approved";
-    setVendors((prev) =>
-      prev.map((v) =>
-        v.id === vendorDetail.id ? { ...v, status: newStatus } : v,
-      ),
-    );
-    setVendorDetail((prev) => (prev ? { ...prev, status: newStatus } : prev));
-    setShowReinstate(false);
-    alert("Vendor has been reinstated successfully.");
-  } catch (err) {
-    const msg = err?.response?.data?.message || "Reinstatement failed.";
-    alert(msg);
-  } finally {
-    setReinstateLoading(false);
-  }
-};
+    if (!vendorDetail) return;
+    setReinstateLoading(true);
+    try {
+      await updateVendorStatus(vendorDetail.id, "approved", reason || "Reinstated by admin");
+      const newStatus = "Approved";
+      setVendors((prev) => prev.map((v) => (v.id === vendorDetail.id ? { ...v, status: newStatus } : v)));
+      setVendorDetail((prev) => (prev ? { ...prev, status: newStatus } : prev));
+      setShowReinstate(false);
+      alert("Vendor has been reinstated successfully.");
+    } catch (err) {
+      alert(err?.response?.data?.message || "Reinstatement failed.");
+    } finally {
+      setReinstateLoading(false);
+    }
+  };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-[#F3F4F6] font-sans">
+    <div className="h-screen flex flex-col overflow-hidden bg-[#ecece7] font-sans">
       <div className="flex flex-1 min-h-0">
-        <Sidebar
-          mobileOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
-
+        <Sidebar mobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           <div className="shrink-0 pr-3 pt-3">
             <Navbar3 onMenuClick={() => setSidebarOpen(true)} />
           </div>
-
           <div className="flex-1 overflow-y-auto">
             <main className="px-4 py-4 sm:px-6 space-y-5">
-              {/* Title + refresh */}
               <div className="flex items-center justify-between">
-                <h1 className="text-lg font-bold text-gray-900">
-                  Vendor Management
-                </h1>
-                <button
-                  onClick={loadData}
+                <h1 className="text-lg font-bold text-gray-900">Vendor Management</h1>
+                <button onClick={loadData}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border rounded-lg transition-colors hover:opacity-90"
                   style={{ borderColor: GOLD, color: GOLD }}
                 >
-                  <RefreshCw
-                    size={12}
-                    className={loading ? "animate-spin" : ""}
-                  />
+                  <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
                   Refresh
                 </button>
               </div>
 
-              {/* Stat Cards — all use orange (same as AdminDashboard) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <StatCard
-                  label="Total Vendors"
-                  value={stats.total}
-                  type="vendors"
-                />
-                <StatCard
-                  label="Pending Verification"
-                  value={stats.pending}
-                  type="pending"
-                />
-                <StatCard
-                  label="Vendors Approved"
-                  value={stats.approved}
-                  type="earners"
-                />
+                <StatCard label="Total Vendors" value={stats.total} type="vendors" />
+                <StatCard label="Pending Verification" value={stats.pending} type="pending" />
+                <StatCard label="Vendors Approved" value={stats.approved} type="earners" />
               </div>
 
-              {/* Vendor list */}
               {loading ? (
                 <div className="bg-gray-100 rounded-xl h-48 animate-pulse" />
               ) : (
@@ -819,59 +738,35 @@ const [reinstateLoading, setReinstateLoading] = useState(false);
               )}
             </main>
 
-            {/* Footer — matches AdminDashboard footer exactly */}
             <footer className="bg-[#1D4D4C] text-white py-3 px-5 sm:px-10 flex flex-col sm:flex-row justify-between items-center gap-2 text-[10px] shrink-0 mx-3 mb-3 rounded-xl">
-              <div className="hidden sm:block">
-                Buy Smart. Sell Fast. Grow Together...
-              </div>
+              <div className="hidden sm:block">Buy Smart. Sell Fast. Grow Together...</div>
               <div>© 2026 Vendor Portal. All rights reserved.</div>
               <div className="flex flex-wrap justify-center gap-3">
                 <span className="relative inline-block cursor-pointer hover:underline">
-                  eki
-                  <span className="absolute text-[5px] -bottom-0 -right-2">
-                    TM
-                  </span>
+                  eki<span className="absolute text-[5px] -bottom-0 -right-2">TM</span>
                 </span>
                 <span className="cursor-pointer hover:underline">Support</span>
-                <span className="cursor-pointer hover:underline">
-                  Privacy Policy
-                </span>
-                <span className="cursor-pointer hover:underline">
-                  Terms of Service
-                </span>
-                <span className="cursor-pointer hover:underline">
-                  Ijoema ltd
-                </span>
+                <span className="cursor-pointer hover:underline">Privacy Policy</span>
+                <span className="cursor-pointer hover:underline">Terms of Service</span>
+                <span className="cursor-pointer hover:underline">Ijoema ltd</span>
               </div>
             </footer>
           </div>
         </div>
       </div>
 
-      {/* Vendor detail modal */}
       {selectedVendor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 sticky top-0 bg-white z-10">
-              <h2 className="text-sm font-bold text-gray-900">
-                Vendor Profile
-              </h2>
-              <button
-                onClick={closeModal}
-                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100"
-              >
+              <h2 className="text-sm font-bold text-gray-900">Vendor Profile</h2>
+              <button onClick={closeModal} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100">
                 <X size={16} className="text-gray-500" />
               </button>
             </div>
-
             {detailLoading ? (
               <div className="p-6 space-y-3">
-                {[1, 2, 3, 4].map((i) => (
-                  <div
-                    key={i}
-                    className="bg-gray-100 h-9 rounded-xl animate-pulse"
-                  />
-                ))}
+                {[1, 2, 3, 4].map((i) => <div key={i} className="bg-gray-100 h-9 rounded-xl animate-pulse" />)}
               </div>
             ) : vendorDetail ? (
               <VendorProfile
@@ -889,46 +784,20 @@ const [reinstateLoading, setReinstateLoading] = useState(false);
         </div>
       )}
 
-      {/* Document review modal */}
       {showDocReview && vendorDetail && (
-        <DocumentReviewModal
-          vendorId={vendorDetail.id}
-          vendorName={vendorDetail.name}
-          onClose={() => setShowDocReview(false)}
-        />
+        <DocumentReviewModal vendorId={vendorDetail.id} vendorName={vendorDetail.name} onClose={() => setShowDocReview(false)} />
       )}
-
-      {/* Reject modal */}
       {showReject && vendorDetail && (
-        <RejectVendorModal
-          vendor={vendorDetail}
-          onConfirm={handleReject}
-          onClose={() => setShowReject(false)}
-          loading={rejectLoading}
-        />
+        <RejectVendorModal vendor={vendorDetail} onConfirm={handleReject} onClose={() => setShowReject(false)} loading={rejectLoading} />
       )}
-
-      {/* Terminate modal */}
       {showTerminate && vendorDetail && (
-        <TerminateVendorModal
-          vendor={vendorDetail}
-          onConfirm={handleTerminate}
-          onClose={() => setShowTerminate(false)}
-          loading={terminateLoading}
-        />
+        <TerminateVendorModal vendor={vendorDetail} onConfirm={handleTerminate} onClose={() => setShowTerminate(false)} loading={terminateLoading} />
       )}
-
-      {/* Reinstate modal */}
       {showReinstate && vendorDetail && (
-        <ReinstateVendorModal
-          vendor={vendorDetail}
-          onConfirm={handleReinstate}
-          onClose={() => setShowReinstate(false)}
-          loading={reinstateLoading}
-        />
+        <ReinstateVendorModal vendor={vendorDetail} onConfirm={handleReinstate} onClose={() => setShowReinstate(false)} loading={reinstateLoading} />
       )}
     </div>
   );
-};;
+};
 
 export default AdminManagement;

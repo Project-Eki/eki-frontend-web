@@ -9,26 +9,34 @@ import {
   getVendorDashboard,
 } from '../services/authService';
 
-// ── FIXED: import the currency utility ────────────────────────────────────────
 import { getCurrencySymbol } from '../utils/currency';
 
 import {
-  Search, Filter, List, Download, Printer,
+  Search, Filter, List,
   CircleDollarSign, Clock, BarChart3, Package,
-  X, Hash, User, Calendar, MapPin, ShoppingBag, Tag,
+  X, Hash, User, Calendar, MapPin, ShoppingBag, Tag, Star,
 } from 'lucide-react';
 
-// ─── Status badge colours ─────────────────────────────────────────────────────
-const STATUS_STYLES = {
-  pending:    'bg-yellow-100 text-yellow-700',
-  confirmed:  'bg-blue-100 text-blue-700',
-  processing: 'bg-indigo-100 text-indigo-700',
-  completed:  'bg-green-100 text-green-700',
-  cancelled:  'bg-red-100 text-red-700',
-  delivered:  'bg-emerald-100 text-emerald-700',
+// ─── Helper: format order ID professionally ───────────────────────────────────
+const formatOrderId = (raw) => {
+  if (!raw && raw !== 0) return '—';
+  const str = String(raw).trim();
+  if (/^\d+$/.test(str)) return `#${str.padStart(6, '0')}`;
+  if (str.length > 12) return `#${str.slice(-8).toUpperCase()}`;
+  return `#${str.toUpperCase()}`;
 };
 
-const TAB_FILTERS = ['All', 'Pending', 'Confirmed', 'Completed', 'Cancelled'];
+// ─── Status badge — no background, plain black text ──────────────────────────
+const STATUS_STYLES = {
+  pending:    'text-black',
+  confirmed:  'text-black',
+  processing: 'text-black',
+  completed:  'text-black',
+  cancelled:  'text-black',
+  delivered:  'text-black',
+};
+
+const TAB_FILTERS = ['All', 'Pending', 'Confirmed', 'Processing', 'Completed', 'Cancelled', 'Delivered'];
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
@@ -45,20 +53,37 @@ const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
   </div>
 );
 
+// ─── Star Rating (gold) ───────────────────────────────────────────────────────
+const StarRating = ({ rating = 0 }) => (
+  <div className="flex items-center gap-0.5">
+    {[...Array(5)].map((_, idx) => (
+      <Star
+        key={idx}
+        size={11}
+        className="text-[#F5B841]"
+        fill={idx < rating ? '#F5B841' : 'none'}
+        strokeWidth={1.5}
+      />
+    ))}
+  </div>
+);
+
 // ─── Order Detail Modal ───────────────────────────────────────────────────────
 const OrderDetailModal = ({ order, currencySymbol, onClose }) => {
   if (!order) return null;
 
   const statusKey  = String(order.status ?? '').toLowerCase();
-  const badgeClass = STATUS_STYLES[statusKey] ?? 'bg-slate-100 text-slate-600';
+  const badgeClass = STATUS_STYLES[statusKey] ?? 'text-black';
 
-  const customerName = typeof order.customer === 'object' && order.customer !== null
-    ? (order.customer.name || order.customer.email || '—')
-    : (order.customer ?? '—');
+  const customerName =
+    typeof order.customer === 'object' && order.customer !== null
+      ? (order.customer.name || order.customer.email || '—')
+      : (order.customer ?? '—');
 
-  const statusLabel = typeof order.status === 'object' && order.status !== null
-    ? (order.status.label || order.status.name || '—')
-    : (order.status ?? '—');
+  const statusLabel =
+    typeof order.status === 'object' && order.status !== null
+      ? (order.status.label || order.status.name || '—')
+      : (order.status ?? '—');
 
   const items = Array.isArray(order.items) ? order.items : [];
 
@@ -86,7 +111,9 @@ const OrderDetailModal = ({ order, currencySymbol, onClose }) => {
           <div>
             <div className="flex items-center gap-2">
               <Hash size={14} className="text-[#F5B841]" />
-              <h2 className="text-base font-bold text-slate-800">Order #{order.id}</h2>
+              <h2 className="text-base font-bold text-slate-800">
+                Order {formatOrderId(order.id)}
+              </h2>
             </div>
             <span className={`mt-1 inline-block px-2.5 py-0.5 rounded-full text-[9px] uppercase font-bold ${badgeClass}`}>
               {statusLabel}
@@ -118,7 +145,7 @@ const OrderDetailModal = ({ order, currencySymbol, onClose }) => {
             </div>
           </div>
 
-          {/* Date + Location row */}
+          {/* Date + Location */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex items-start gap-2.5 p-3 bg-slate-50 rounded-xl">
               <Calendar size={13} className="text-[#F5B841] mt-0.5 flex-shrink-0" />
@@ -144,7 +171,12 @@ const OrderDetailModal = ({ order, currencySymbol, onClose }) => {
             <div className="border border-slate-100 rounded-xl overflow-hidden">
               {items.length > 0 ? (
                 items.map((item, i) => (
-                  <div key={i} className={`flex items-center justify-between px-3 py-2.5 ${i !== items.length - 1 ? 'border-b border-slate-50' : ''}`}>
+                  <div
+                    key={i}
+                    className={`flex items-center justify-between px-3 py-2.5 ${
+                      i !== items.length - 1 ? 'border-b border-slate-50' : ''
+                    }`}
+                  >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
                         {item.image ? (
@@ -154,7 +186,9 @@ const OrderDetailModal = ({ order, currencySymbol, onClose }) => {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[11px] font-bold text-slate-800 truncate">{item.name || item.title || `Item ${i + 1}`}</p>
+                        <p className="text-[11px] font-bold text-slate-800 truncate">
+                          {item.name || item.title || `Item ${i + 1}`}
+                        </p>
                         {item.qty && <p className="text-[9px] text-slate-400">Qty: {item.qty}</p>}
                         {item.variant && <p className="text-[9px] text-slate-400">{item.variant}</p>}
                       </div>
@@ -170,18 +204,37 @@ const OrderDetailModal = ({ order, currencySymbol, onClose }) => {
                 <div className="px-3 py-4 flex items-center gap-2">
                   <Tag size={12} className="text-slate-300" />
                   <p className="text-[11px] text-slate-400">
-                    {Array.isArray(order.items) ? order.items.length : (typeof order.items === 'number' ? order.items : '—')} item(s)
+                    {Array.isArray(order.items)
+                      ? order.items.length
+                      : typeof order.items === 'number'
+                      ? order.items
+                      : '—'}{' '}
+                    item(s)
                   </p>
                 </div>
               )}
             </div>
           </div>
 
+          {/* Review — gold stars */}
+          {order.review && (
+            <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl space-y-1.5">
+              <p className="text-[9px] font-bold uppercase text-amber-600">Customer Review</p>
+              <StarRating rating={order.review.rating} />
+              {order.review.comment && (
+                <p className="text-[10px] text-amber-800 italic">"{order.review.comment}"</p>
+              )}
+              {order.review.reviewer && (
+                <p className="text-[9px] text-amber-500">— {order.review.reviewer}</p>
+              )}
+            </div>
+          )}
+
           {/* Notes */}
           {order.notes && (
-            <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
-              <p className="text-[9px] font-bold uppercase text-amber-600 mb-1">Notes</p>
-              <p className="text-[10px] text-amber-800">{order.notes}</p>
+            <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+              <p className="text-[9px] font-bold uppercase text-slate-400 mb-1">Notes</p>
+              <p className="text-[10px] text-slate-600">{order.notes}</p>
             </div>
           )}
 
@@ -190,18 +243,24 @@ const OrderDetailModal = ({ order, currencySymbol, onClose }) => {
             {order.subtotal != null && (
               <div className="flex justify-between text-[11px]">
                 <span className="text-slate-500">Subtotal</span>
-                <span className="font-semibold text-slate-700">{currencySymbol} {Number(order.subtotal).toLocaleString()}</span>
+                <span className="font-semibold text-slate-700">
+                  {currencySymbol} {Number(order.subtotal).toLocaleString()}
+                </span>
               </div>
             )}
             {order.shipping != null && (
               <div className="flex justify-between text-[11px]">
                 <span className="text-slate-500">Shipping</span>
-                <span className="font-semibold text-slate-700">{currencySymbol} {Number(order.shipping).toLocaleString()}</span>
+                <span className="font-semibold text-slate-700">
+                  {currencySymbol} {Number(order.shipping).toLocaleString()}
+                </span>
               </div>
             )}
             <div className="flex justify-between text-[13px] pt-1 border-t border-slate-100 mt-1">
               <span className="font-bold text-slate-800">Total</span>
-              <span className="font-black text-[#125852]">{currencySymbol} {Number(order.total || 0).toLocaleString()}</span>
+              <span className="font-black text-[#125852]">
+                {currencySymbol} {Number(order.total || 0).toLocaleString()}
+              </span>
             </div>
           </div>
         </div>
@@ -229,40 +288,41 @@ const OrderDetailModal = ({ order, currencySymbol, onClose }) => {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const OrderManagement = () => {
-  const [orders,      setOrders]      = useState([]);
-  const [isFetching,  setIsFetching]  = useState(true);
-  const [activeTab,   setActiveTab]   = useState('All');
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // ── FIXED: dynamic currency state instead of hardcoded 'UGX' ────────────────
+  const [orders,         setOrders]         = useState([]);
+  const [isFetching,     setIsFetching]     = useState(true);
+  const [activeTab,      setActiveTab]      = useState('All');
+  const [searchQuery,    setSearchQuery]    = useState('');
   const [currencySymbol, setCurrencySymbol] = useState('UGX');
+  const [selectedOrder,  setSelectedOrder]  = useState(null);
 
-  // Order detail modal state
-  const [selectedOrder, setSelectedOrder] = useState(null);
-
+  // ── Derived stats ──────────────────────────────────────────────────────────
   const totalOrders  = orders.length;
   const activeOrders = orders.filter((o) =>
-    ['pending', 'confirmed', 'processing'].includes(String(o.status).toLowerCase())
+    ['pending', 'confirmed', 'processing'].includes(String(o.status ?? '').toLowerCase())
   ).length;
   const revenue = orders.reduce((sum, o) => sum + Number(o.total ?? 0), 0);
 
-  // ── FIXED: fetch vendor country and resolve currency on mount ────────────────
+  // ── Fetch currency ─────────────────────────────────────────────────────────
   useEffect(() => {
     getVendorDashboard()
       .then((data) => {
-        if (data?.country) {
-          setCurrencySymbol(getCurrencySymbol(data.country));
-        }
+        const country =
+          data?.country ||
+          data?.business_country ||
+          localStorage.getItem('vendor_country') ||
+          '';
+        if (country) setCurrencySymbol(getCurrencySymbol(country));
       })
       .catch(() => {});
   }, []);
 
+  // ── Fetch orders ───────────────────────────────────────────────────────────
   const fetchOrders = useCallback(async () => {
     setIsFetching(true);
     try {
       const data = await getVendorOrders();
       console.log('[OrderManagement] orders received:', data);
-      setOrders(data);
+      setOrders(Array.isArray(data) ? data : []);
     } catch (_) {
       setOrders([]);
     } finally {
@@ -276,41 +336,55 @@ const OrderManagement = () => {
     return () => clearInterval(interval);
   }, [fetchOrders]);
 
+  // ── Filter + Search (work together) ───────────────────────────────────────
   const filteredOrders = orders.filter((order) => {
+    // Tab filter
     const matchesTab =
       activeTab === 'All' ||
       String(order.status ?? '').toLowerCase() === activeTab.toLowerCase();
 
+    // Search — matches order ID, formatted ID, customer name/email, status, total
     const q = searchQuery.toLowerCase().trim();
+    const customerStr =
+      typeof order.customer === 'object' && order.customer !== null
+        ? `${order.customer.name ?? ''} ${order.customer.email ?? ''}`
+        : String(order.customer ?? '');
+
     const matchesSearch =
       !q ||
-      String(order.id       ?? '').toLowerCase().includes(q) ||
-      String(order.customer ?? '').toLowerCase().includes(q);
+      String(order.id ?? '').toLowerCase().includes(q) ||
+      formatOrderId(order.id).toLowerCase().includes(q) ||
+      customerStr.toLowerCase().includes(q) ||
+      String(order.status ?? '').toLowerCase().includes(q) ||
+      String(order.total ?? '').includes(q);
 
     return matchesTab && matchesSearch;
   });
 
+  // ── Count per tab for badge numbers ───────────────────────────────────────
+  const countForTab = (tab) =>
+    tab === 'All'
+      ? orders.length
+      : orders.filter((o) =>
+          String(o.status ?? '').toLowerCase() === tab.toLowerCase()
+        ).length;
+
   return (
-    <div className="flex min-h-screen bg-[#ecece7] text-slate-800 p-3 gap-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div
+      className="flex min-h-screen bg-[#ecece7] text-slate-800 p-3 gap-3"
+      style={{ fontFamily: "'Poppins', sans-serif" }}
+    >
       <VendorSidebar activePage="orders" />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar3 />
 
         <main className="p-5 max-w-[1400px] mx-auto w-full pb-16">
-          <div className="flex justify-between items-center mb-5">
-            <div>
-              <h1 className="text-xl font-bold text-[#1A1A1A] tracking-tight">Order Management</h1>
-              <p className="text-slate-400 text-[11px] mt-0.5">View and process incoming customer orders.</p>
-            </div>
-            <div className="flex gap-1.5">
-              <button className="bg-white border border-slate-200 text-slate-600 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-slate-50 transition text-[10px] font-bold shadow-sm">
-                <Download size={12} /> Export Data
-              </button>
-              <button className="bg-[#F5B841] text-white px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-[#E0A83B] transition text-[10px] font-bold shadow-sm">
-                <Printer size={12} /> Print Manifests
-              </button>
-            </div>
+
+          {/* Page Header */}
+          <div className="mb-5">
+            <h1 className="text-xl font-bold text-[#1A1A1A] tracking-tight">Order Management</h1>
+            <p className="text-slate-400 text-[11px] mt-0.5">View and process incoming customer orders.</p>
           </div>
 
           {/* Stats */}
@@ -334,7 +408,7 @@ const OrderManagement = () => {
               number={isFetching ? '—' : `${currencySymbol} ${revenue.toLocaleString()}`}
               icon={CircleDollarSign}
               iconBgColor="bg-orange-50"
-              iconColor="text-orangeald-600"
+              iconColor="text-orange-600"
             />
             <StatCard
               title="Avg. Processing"
@@ -345,46 +419,82 @@ const OrderManagement = () => {
             />
           </div>
 
-          {/* Search and Filters */}
-          <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm mb-5 flex items-center justify-between">
-            <div className="flex gap-4 items-center flex-1">
-              <div className="relative w-72">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by Order ID or Customer..."
-                  className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-1 focus:ring-[#F5B841] transition font-medium"
-                />
-              </div>
-              <div className="flex gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                {TAB_FILTERS.map((tab) => (
-                  <span
+          {/* Search Bar */}
+          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm mb-3">
+            <div className="relative w-full max-w-lg">
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                size={14}
+              />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by Order ID, customer name, status or amount…"
+                className="w-full pl-9 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-[#F5B841] focus:border-transparent transition font-medium text-slate-700 placeholder-slate-400"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Tab Filters */}
+          <div className="bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm mb-5 overflow-x-auto">
+            <div className="flex gap-1 min-w-max">
+              {TAB_FILTERS.map((tab) => {
+                const count    = countForTab(tab);
+                const isActive = activeTab === tab;
+                return (
+                  <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`cursor-pointer pb-1 transition-colors ${
-                      activeTab === tab
-                        ? 'text-[#125852] border-b-2 border-[#125852]'
-                        : 'hover:text-slate-600'
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all whitespace-nowrap ${
+                      isActive
+                        ? 'bg-[#125852] text-white shadow-sm'
+                        : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
                     }`}
                   >
                     {tab}
-                  </span>
-                ))}
-              </div>
+                    {count > 0 && (
+                      <span
+                        className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${
+                          isActive
+                            ? 'bg-white/20 text-white'
+                            : 'bg-slate-100 text-slate-500'
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
-            <button className="flex items-center gap-1.5 px-2.5 py-1 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:bg-slate-50 shadow-sm transition">
-              <Filter size={12} /> Filters
-            </button>
           </div>
+
+          {/* Search result hint */}
+          {searchQuery && (
+            <p className="text-[10px] text-slate-400 font-medium mb-3 px-1">
+              {filteredOrders.length === 0
+                ? `No results for "${searchQuery}"`
+                : `${filteredOrders.length} result${filteredOrders.length !== 1 ? 's' : ''} for "${searchQuery}"`}
+            </p>
+          )}
 
           {/* Orders Table */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <table className="w-full text-left">
               <thead className="bg-slate-50/50 text-[9px] font-black text-slate-400 uppercase tracking-[0.1em] border-b border-slate-100">
                 <tr>
-                  <th className="px-4 py-3 w-10"><input type="checkbox" className="rounded border-slate-300 w-3 h-3" /></th>
+                  <th className="px-4 py-3 w-10">
+                    <input type="checkbox" className="rounded border-slate-300 w-3 h-3" />
+                  </th>
                   <th className="px-4 py-3">Order ID</th>
                   <th className="px-4 py-3">Customer</th>
                   <th className="px-4 py-3">Date</th>
@@ -411,15 +521,26 @@ const OrderManagement = () => {
                         </div>
                         <p className="text-xs font-bold text-slate-900">No orders found</p>
                         <p className="text-[10px] text-slate-400 mt-1 font-medium">
-                          When you receive orders, they will appear here.
+                          {searchQuery
+                            ? 'Try a different search term or clear the search.'
+                            : 'When you receive orders, they will appear here.'}
                         </p>
+                        {searchQuery && (
+                          <button
+                            onClick={() => setSearchQuery('')}
+                            className="mt-3 px-3 py-1.5 bg-[#F5B841] text-white text-[10px] font-bold rounded-lg hover:bg-[#E0A83B] transition-colors"
+                          >
+                            Clear Search
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
                 ) : (
                   filteredOrders.map((order, i) => {
                     const statusKey  = String(order.status ?? '').toLowerCase();
-                    const badgeClass = STATUS_STYLES[statusKey] ?? 'bg-slate-100 text-slate-600';
+                    const badgeClass =
+                      STATUS_STYLES[statusKey] ?? 'text-black';
 
                     const displayDate = order.date
                       ? (() => {
@@ -428,28 +549,44 @@ const OrderManagement = () => {
                         })()
                       : '—';
 
+                    const customerDisplay =
+                      typeof order.customer === 'object' && order.customer !== null
+                        ? (order.customer.name || order.customer.email || '—')
+                        : (order.customer ?? '—');
+
                     return (
-                      <tr key={order.id ?? i} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                      <tr
+                        key={order.id ?? i}
+                        className="border-b border-slate-50 hover:bg-slate-50 transition-colors"
+                      >
                         <td className="px-4 py-3">
                           <input type="checkbox" className="rounded border-slate-300 w-3 h-3" />
                         </td>
-                        <td className="px-4 py-3 text-[10px] text-[#125852] font-bold">
-                          #{order.id}
+
+                        {/* Formatted Order ID */}
+                        <td className="px-4 py-3">
+                          <span className="font-black text-[#125852] tracking-wider font-mono text-[10px]">
+                            {formatOrderId(order.id)}
+                          </span>
                         </td>
-                        <td className="px-4 py-3 text-[10px]">
-                          {order.customer}
+
+                        <td className="px-4 py-3 text-[10px] text-slate-700 font-medium">
+                          {customerDisplay}
                         </td>
                         <td className="px-4 py-3 text-[10px] text-slate-500">
                           {displayDate}
                         </td>
-                        <td className="px-4 py-3 text-[10px] font-bold">
+                        <td className="px-4 py-3 text-[10px] font-bold text-slate-800">
                           {currencySymbol} {Number(order.total ?? 0).toLocaleString()}
                         </td>
+
+                        {/* Status badge — coloured bg, black text */}
                         <td className="px-4 py-3">
                           <span className={`px-2 py-0.5 rounded text-[8px] uppercase font-bold ${badgeClass}`}>
-                            {order.status ?? '—'}
+                            {String(order.status ?? '—')}
                           </span>
                         </td>
+
                         <td className="px-4 py-3">
                           <button
                             type="button"
@@ -466,15 +603,21 @@ const OrderManagement = () => {
               </tbody>
             </table>
 
-            {/* Pagination */}
+            {/* Pagination footer */}
             <div className="p-3 border-t border-slate-100 flex justify-between items-center bg-white">
               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                Showing {filteredOrders.length} of {orders.length} results
+                Showing {filteredOrders.length} of {orders.length} orders
               </p>
               <div className="flex items-center gap-1">
-                <button className="px-2.5 py-1 text-[10px] font-bold border border-slate-200 rounded-md text-slate-400 cursor-not-allowed">Previous</button>
-                <button className="w-7 h-7 text-[10px] font-bold bg-[#125852] text-white rounded-md shadow-sm">1</button>
-                <button className="px-2.5 py-1 text-[10px] font-bold border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50">Next</button>
+                <button className="px-2.5 py-1 text-[10px] font-bold border border-slate-200 rounded-md text-slate-400 cursor-not-allowed">
+                  Previous
+                </button>
+                <button className="w-7 h-7 text-[10px] font-bold bg-[#125852] text-white rounded-md shadow-sm">
+                  1
+                </button>
+                <button className="px-2.5 py-1 text-[10px] font-bold border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50">
+                  Next
+                </button>
               </div>
             </div>
           </div>

@@ -9,8 +9,7 @@ import DataTable     from "../components/adminDashboard/DataTable";
 import { getAdminDashboard, getAdminLogs } from "../services/api";
 
 const GOLD = "#EFB034";
-const ICON_BG  = "bg-orange-50";
-const ICON_COL = "text-orange-600";
+
 
 const normStatus = (s) => {
   if (!s) return s;
@@ -190,7 +189,7 @@ const AdminDashboard = () => {
   ];
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-[#F3F4F6]">
+    <div className="h-screen flex flex-col overflow-hidden bg-[#ecece7]">
       <div className="flex flex-1 min-h-0">
         <Sidebar mobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
@@ -231,10 +230,10 @@ const AdminDashboard = () => {
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    <StatCard title="Total Users"           number={stats.totalUsers}           icon={Users}           iconBgColor={ICON_BG} iconColor={ICON_COL} />
-                    <StatCard title="Active Listings"       number={stats.activeListings}       icon={Box}             iconBgColor={ICON_BG} iconColor={ICON_COL} />
-                    <StatCard title="Pending Verifications" number={stats.pendingVerifications} icon={ShieldCheck}     iconBgColor={ICON_BG} iconColor={ICON_COL} />
-                    <StatCard title="Daily Transactions"    number={stats.dailyTransactions}    icon={ArrowLeftRight} iconBgColor={ICON_BG} iconColor={ICON_COL} />
+                    <StatCard title="Total Users"           number={stats.totalUsers}           icon={Users}           iconBgColor="bg-[#235E5D]" iconColor="text-white" />
+                    <StatCard title="Active Listings"       number={stats.activeListings}       icon={Box}             iconBgColor="bg-[#EFB034]" iconColor="text-white" />
+                    <StatCard title="Pending Verifications" number={stats.pendingVerifications} icon={ShieldCheck}     iconBgColor="bg-[#EFB034]" iconColor="text-white" />
+                    <StatCard title="Daily Transactions"    number={stats.dailyTransactions}    icon={ArrowLeftRight}  iconBgColor="bg-[#235E5D]" iconColor="text-white"  />
                   </div>
                 )}
 
