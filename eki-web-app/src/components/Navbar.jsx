@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom' // Added useNavigate
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faSearch,
@@ -8,12 +8,13 @@ import {
   faBars,
   faTimes
 } from '@fortawesome/free-solid-svg-icons'
-import logoImage from '../assets/eki-white-logo.png'
+import logoImage from '../assets/eki-logo-black.png'
 import { useTranslation } from 'react-i18next'
 
 const Navbar = () => {
   const { t, i18n } = useTranslation()
-  const navigate = useNavigate() // Added navigate hook
+  const navigate = useNavigate()
+  const location = useLocation()
   const [isOpen, setIsOpen] = useState(false)
   const [isLanguageOpen, setIsLanguageOpen] = useState(false)
 
@@ -36,17 +37,13 @@ const Navbar = () => {
   // Handle home navigation
   const handleHomeClick = (e) => {
     e.preventDefault()
-    // Check if we're on the home page
     if (window.location.pathname === '/') {
-      // If on home page, scroll to home section
       const homeSection = document.getElementById('home')
       if (homeSection) {
         homeSection.scrollIntoView({ behavior: 'smooth' })
       }
     } else {
-      // If not on home page, navigate to home page
       navigate('/')
-      // After navigation, scroll to home section
       setTimeout(() => {
         const homeSection = document.getElementById('home')
         if (homeSection) {
@@ -56,10 +53,18 @@ const Navbar = () => {
     }
   }
 
+  // Helper function to get nav item classes
+  const getNavItemClasses = (path) => {
+    const isActive = location.pathname === path
+    return isActive
+      ? 'bg-[#efb034] text-white px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-[#d99c1c] transition-all active:scale-95'
+      : 'text-gray-700 text-sm font-semibold hover:text-[#efb034] transition-colors cursor-pointer'
+  }
+
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">
       <div className="container mx-auto px-4 flex justify-between items-center h-14">
-        {/* Logo - Made larger */}
+        {/* Logo */}
         <div className="flex-shrink-0">
           <Link to="/">
             <img 
@@ -76,20 +81,23 @@ const Navbar = () => {
             <li>
               <button
                 onClick={handleHomeClick}
-                className="text-gray-700 text-sm font-semibold hover:text-[#efb034] transition-colors cursor-pointer"
+                className={getNavItemClasses('/')}
               >
                 {t('nav.home')}
               </button>
             </li>
             <li>
-              <Link to="/Login" className="text-gray-700 text-sm font-semibold hover:text-[#efb034] transition-colors">
+              <Link 
+                to="/Login" 
+                className={getNavItemClasses('/Login')}
+              >
                 {t('nav.login')}
               </Link>
             </li>
             <li>
               <Link
                 to="/vendorOnboarding"
-                className="bg-[#efb034] text-white px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-[#d99c1c] transition-all active:scale-95"
+                className={getNavItemClasses('/vendorOnboarding')}
               >
                 {t('nav.signup')}
               </Link>
@@ -149,20 +157,32 @@ const Navbar = () => {
               handleHomeClick()
               setIsOpen(false)
             }}
-            className="block w-full text-left font-medium text-gray-800 text-sm"
+            className={`block w-full text-left ${
+              location.pathname === '/' 
+                ? 'bg-[#efb034] text-white px-4 py-2 rounded-lg text-sm font-bold'
+                : 'font-medium text-gray-800 text-sm'
+            }`}
           >
             {t('nav.home')}
           </button>
           <Link
             to="/Login"
-            className="block font-medium text-gray-800 text-sm"
+            className={`block w-full text-left ${
+              location.pathname === '/Login'
+                ? 'bg-[#efb034] text-white px-4 py-2 rounded-lg text-sm font-bold'
+                : 'font-medium text-gray-800 text-sm'
+            }`}
             onClick={() => setIsOpen(false)}
           >
             {t('nav.login')}
           </Link>
           <Link
             to="/vendorOnboarding"
-            className="block w-full text-center bg-[#efb034] text-white py-2 rounded-lg text-sm font-bold"
+            className={`block w-full text-left ${
+              location.pathname === '/vendorOnboarding'
+                ? 'bg-[#efb034] text-white px-4 py-2 rounded-lg text-sm font-bold'
+                : 'font-medium text-gray-800 text-sm'
+            }`}
             onClick={() => setIsOpen(false)}
           >
             {t('nav.signup')}
