@@ -71,11 +71,11 @@ const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => 
           <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${product.is_published === true ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
             {product.is_published === true ? 'LIVE' : 'DRAFT'}
           </span>
-          {hasMultipleVariants && (
+          {/* {hasMultipleVariants && (
             <span className="text-[9px] font-black px-2 py-0.5 rounded-full border bg-purple-50 text-purple-700 border-purple-200">
               {variantCount} variants
             </span>
-          )}
+          )} */}
         </div>
         {/* Action Icons Overlay */}
         <div className="absolute top-2 left-2 flex gap-1">
