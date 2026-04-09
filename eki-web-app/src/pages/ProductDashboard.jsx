@@ -22,10 +22,6 @@ import { getCurrencySymbol } from '../utils/currency';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const QUALITY_OPTIONS = ['High', 'Medium', 'Low'];
-const CATEGORIES = [
-  'Electronics', 'Computers', 'Grocery', 'Home & Decor',
-  'Fashion', 'Retail', 'Beauty', 'Others',
-];
 
 const getQualityStyle = (quality) => {
   const q = (quality || '').toLowerCase();
@@ -71,11 +67,6 @@ const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => 
           <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${product.is_published === true ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
             {product.is_published === true ? 'LIVE' : 'DRAFT'}
           </span>
-          {/* {hasMultipleVariants && (
-            <span className="text-[9px] font-black px-2 py-0.5 rounded-full border bg-purple-50 text-purple-700 border-purple-200">
-              {variantCount} variants
-            </span>
-          )} */}
         </div>
         {/* Action Icons Overlay */}
         <div className="absolute top-2 left-2 flex gap-1">
@@ -270,7 +261,6 @@ const ProductDashboard = () => {
   const [searchFocused, setSearchFocused] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterQuality, setFilterQuality] = useState('');
   const [vendorType, setVendorType] = useState('product');
@@ -396,8 +386,6 @@ const ProductDashboard = () => {
   };
 
   // ── Edit handler ────────────────────────────────────────────────────────────
-  // FIX: products from the API are now flat (no variant grouping that corrupts IDs)
-  // product.id is always the real listing ID from the API
   const handleEditProduct = (product) => {
     console.log('[handleEditProduct] product:', product);
     console.log('[handleEditProduct] listing ID:', product.id);
@@ -409,7 +397,7 @@ const ProductDashboard = () => {
       'Medium';
 
     setSelectedProduct({
-      id: product.id,  // real listing ID from API — never overwritten
+      id: product.id,
       title: product.title || '',
       category: product.category || '',
       price: product.price ? String(product.price) : '',
@@ -469,18 +457,17 @@ const ProductDashboard = () => {
     const matchesSearch =
       p.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = !filterCategory || p.category === filterCategory;
     const matchesStatus =
       !filterStatus ||
       (filterStatus === 'published' && p.is_published === true) ||
       (filterStatus === 'draft' && p.is_published !== true);
     const rawQty = (p.inventory_quality || p.qty || '').toUpperCase();
     const matchesQuality = !filterQuality || rawQty === filterQuality.toUpperCase();
-    return matchesSearch && matchesCategory && matchesStatus && matchesQuality;
+    return matchesSearch && matchesStatus && matchesQuality;
   });
 
-  const activeFilterCount = [filterCategory, filterStatus, filterQuality].filter(Boolean).length;
-  const clearFilters = () => { setFilterCategory(''); setFilterStatus(''); setFilterQuality(''); };
+  const activeFilterCount = [filterStatus, filterQuality].filter(Boolean).length;
+  const clearFilters = () => { setFilterStatus(''); setFilterQuality(''); };
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -562,7 +549,7 @@ const ProductDashboard = () => {
                 </button>
 
                 {isFilterOpen && (
-                  <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-slate-200 rounded-2xl shadow-2xl p-5 w-72">
+                  <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-slate-200 rounded-2xl shadow-2xl p-5 w-64">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-[12px] font-bold text-slate-800 uppercase tracking-wide">Filter Products</h3>
                       {activeFilterCount > 0 && (
@@ -582,7 +569,7 @@ const ProductDashboard = () => {
                       </div>
                     </div>
 
-                    <div className="mb-4">
+                    <div>
                       <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Quality</label>
                       <div className="flex gap-2 flex-wrap">
                         {['', ...qualityOptions].map((q) => (
@@ -592,15 +579,6 @@ const ProductDashboard = () => {
                           </button>
                         ))}
                       </div>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Category</label>
-                      <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[11px] bg-white outline-none focus:border-[#125852]">
-                        <option value="">All Categories</option>
-                        {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-                      </select>
                     </div>
 
                     <div className="mt-4 pt-3 border-t border-slate-100 text-[10px] text-slate-400 text-center">
@@ -626,7 +604,6 @@ const ProductDashboard = () => {
               <span className="text-[10px] text-slate-400 font-bold uppercase">Active:</span>
               {filterStatus && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterStatus} <button onClick={() => setFilterStatus('')}><X size={9} /></button></span>}
               {filterQuality && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterQuality} <button onClick={() => setFilterQuality('')}><X size={9} /></button></span>}
-              {filterCategory && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterCategory}<button onClick={() => setFilterCategory('')}><X size={9} /></button></span>}
             </div>
           )}
 

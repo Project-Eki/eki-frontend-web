@@ -87,15 +87,15 @@ const PaymentSystemContent = () => {
           <div className="flex justify-between items-start mb-5">
             <div>
               <h1 className="text-xl font-bold text-[#1A1A1A] tracking-tight">Payments & Financial</h1>
-              <p className="text-slate-400 text-[11px] mt-0.5">Manage your earnings, payouts, and billing methods securely.</p>
+              <p className="text-slate-400 text-[11px] mt-0.5">Streamline your earnings, payouts, and billing in one secure place.</p>
             </div>
             <div className="flex gap-2">
-              <button className="bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-slate-50 transition shadow-sm font-bold text-[10px]">
+              {/* <button className="bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-slate-50 transition shadow-sm font-bold text-[10px]">
                 <History size={12} /> History
-              </button>
-              <button className="bg-[#F5B841] text-white px-3 py-1.5 rounded-lg hover:bg-[#E0A83B] transition shadow-sm font-bold text-[10px]">
+              </button> */}
+              {/* <button className="bg-[#F5B841] text-white px-3 py-1.5 rounded-lg hover:bg-[#E0A83B] transition shadow-sm font-bold text-[10px]">
                 Request Payout
-              </button>
+              </button> */}
             </div>
           </div>
 
@@ -139,9 +139,9 @@ const PaymentSystemContent = () => {
                   className="pl-8 pr-3 py-1 border border-slate-200 rounded-lg text-[10px] outline-none focus:ring-1 focus:ring-[#F5B841] w-48" 
                 />
               </div>
-              <button className="flex items-center gap-1.5 px-3 py-1 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-700 hover:bg-slate-50">
+              {/* <button className="flex items-center gap-1.5 px-3 py-1 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-700 hover:bg-slate-50">
                 <Download size={10} /> Export CSV
-              </button>
+              </button> */}
             </div>
           </div>
 
