@@ -5,9 +5,7 @@ import VendorSidebar from '../components/VendorSidebar';
 import Navbar3 from '../components/adminDashboard/Navbar4';
 import { validateAccountData } from '../utils/validationUtils';
 import { getVendorProfile, updateVendorProfile } from '../services/authService';
-import Footer from "../components/Vendormanagement/VendorFooter"; 
-
-const IS_LOCALHOST = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+import Footer from "../components/Vendormanagement/VendorFooter";
 
 function AccountSettingsPage() {
   const [userData, setUserData] = useState({
@@ -34,17 +32,24 @@ function AccountSettingsPage() {
   const [cameraStream,    setCameraStream]    = useState(null);
   const [cameraError,     setCameraError]     = useState('');
 
+  // Social link input state: which platform is currently being linked
+  const [linkingPlatform, setLinkingPlatform] = useState(null); // { name, color }
+  const [linkInputValue,  setLinkInputValue]  = useState('');
+  const [linkInputError,  setLinkInputError]  = useState('');
+
   const fileInputRef  = useRef(null);
   const videoRef      = useRef(null);
   const canvasRef     = useRef(null);
   const photoMenuRef  = useRef(null);
 
   const availableSocials = [
-    { name: 'WhatsApp',    color: '#25D366' },
-    { name: 'Instagram',   color: '#E4405F' },
-    // { name: 'LinkedIn',    color: '#0A66C2' },
-    { name: 'Facebook',    color: '#1877F2' },
-    { name: 'Twitter / X', color: '#000000' },
+    { name: 'WhatsApp',    color: '#25D366', placeholder: 'e.g. https://wa.me/256700000000' },
+    { name: 'Instagram',   color: '#E4405F', placeholder: 'e.g. https://instagram.com/yourhandle' },
+    { name: 'Facebook',    color: '#1877F2', placeholder: 'e.g. https://facebook.com/yourpage' },
+    { name: 'Twitter / X', color: '#000000', placeholder: 'e.g. https://x.com/yourhandle' },
+    { name: 'TikTok',      color: '#010101', placeholder: 'e.g. https://tiktok.com/@yourhandle' },
+    { name: 'YouTube',     color: '#FF0000', placeholder: 'e.g. https://youtube.com/@yourchannel' },
+    { name: 'Telegram',    color: '#26A5E4', placeholder: 'e.g. https://t.me/yourusername' },
   ];
 
   useEffect(() => {
@@ -106,10 +111,41 @@ function AccountSettingsPage() {
   }, [showCamera, cameraStream]);
 
   const handleLinkSocial = (social) => {
-    if (!linkedSocials.find(s => s.name === social.name)) {
-      setLinkedSocials([...linkedSocials, social]);
+    // If already linked, do nothing
+    if (linkedSocials.find(s => s.name === social.name)) {
+      setIsDropdownOpen(false);
+      return;
     }
+    // Open the link input form for this platform
+    setLinkingPlatform(social);
+    setLinkInputValue('');
+    setLinkInputError('');
     setIsDropdownOpen(false);
+  };
+
+  const handleConfirmLink = () => {
+    const url = linkInputValue.trim();
+    if (!url) {
+      setLinkInputError('Please enter a link before saving.');
+      return;
+    }
+    // Basic URL validation
+    try {
+      new URL(url);
+    } catch {
+      setLinkInputError('Please enter a valid URL (e.g. https://instagram.com/yourhandle).');
+      return;
+    }
+    setLinkedSocials(prev => [...prev, { ...linkingPlatform, url }]);
+    setLinkingPlatform(null);
+    setLinkInputValue('');
+    setLinkInputError('');
+  };
+
+  const handleCancelLink = () => {
+    setLinkingPlatform(null);
+    setLinkInputValue('');
+    setLinkInputError('');
   };
 
   const handleUnlink = (name) => {
@@ -123,6 +159,7 @@ function AccountSettingsPage() {
     fileInputRef.current?.click();
   };
 
+  // Camera works on all environments (localhost + production)
   const handleOpenCamera = async () => {
     setPhotoMenuOpen(false);
     setCameraError('');
@@ -257,16 +294,20 @@ function AccountSettingsPage() {
     return (f + l).toUpperCase() || '?';
   };
 
-  return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
-        .poppins-page, .poppins-page * {
-          font-family: 'Poppins', sans-serif !important;
-        }
-      `}</style>
+  // Inject Poppins font once — no tailwind.config.js change needed
+  useEffect(() => {
+    const id = 'poppins-font-link';
+    if (!document.getElementById(id)) {
+      const link = document.createElement('link');
+      link.id   = id;
+      link.rel  = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap';
+      document.head.appendChild(link);
+    }
+  }, []);
 
-      <div className="poppins-page flex min-h-screen bg-[#ecece7] font-sans text-slate-800 p-3 gap-3">
+  return (
+      <div style={{ fontFamily: "'Poppins', sans-serif" }} className="flex min-h-screen bg-[#ecece7] text-slate-800 p-3 gap-3">
         <VendorSidebar activePage="settings" />
 
         <div className="flex-1 flex flex-col min-w-0">
@@ -279,7 +320,8 @@ function AccountSettingsPage() {
             <div className="max-w-4xl mx-auto">
               <h1 className="text-xl font-bold text-[#1A1A1A] mb-6">Account Settings</h1>
 
-              {showCamera && IS_LOCALHOST && (
+              {/* ── Camera Modal — works on all environments ─────────────── */}
+              {showCamera && (
                 <div className="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-4">
                   <div className="bg-white rounded-2xl overflow-hidden shadow-2xl w-full max-w-md">
                     <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
@@ -310,6 +352,54 @@ function AccountSettingsPage() {
                             d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
                         </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Social Link Input Modal ───────────────────────────────── */}
+              {linkingPlatform && (
+                <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4">
+                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: linkingPlatform.color }} />
+                      <h3 className="text-sm font-bold text-slate-800">
+                        Add your {linkingPlatform.name} link
+                      </h3>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mb-3">
+                      Buyers will see this link on your profile and tap it to visit your page.
+                    </p>
+                    <input
+                      type="url"
+                      value={linkInputValue}
+                      onChange={(e) => {
+                        setLinkInputValue(e.target.value);
+                        setLinkInputError('');
+                      }}
+                      placeholder={linkingPlatform.placeholder}
+                      className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none transition-all ${
+                        linkInputError ? 'border-red-400' : 'border-slate-200 focus:border-[#125852]'
+                      }`}
+                    />
+                    {linkInputError && (
+                      <p className="text-[11px] text-red-500 font-medium mt-1.5">{linkInputError}</p>
+                    )}
+                    <div className="flex gap-3 mt-4">
+                      <button
+                        type="button"
+                        onClick={handleCancelLink}
+                        className="flex-1 py-2 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleConfirmLink}
+                        className="flex-1 py-2 text-[11px] font-bold bg-[#F5B841] text-white rounded-lg hover:bg-[#E0A83B] transition-colors"
+                      >
+                        Save Link
                       </button>
                     </div>
                   </div>
@@ -372,7 +462,7 @@ function AccountSettingsPage() {
                             <button
                               type="button"
                               onClick={handleChooseFile}
-                              className={`w-full flex items-center gap-3 px-4 py-3 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors ${IS_LOCALHOST ? 'border-b border-slate-100' : ''}`}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors border-b border-slate-100"
                             >
                               <svg className="w-4 h-4 text-[#125852]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
@@ -380,25 +470,24 @@ function AccountSettingsPage() {
                               </svg>
                               Choose from gallery
                             </button>
-                            {IS_LOCALHOST && (
-                              <button
-                                type="button"
-                                onClick={handleOpenCamera}
-                                className="w-full flex items-center gap-3 px-4 py-3 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-                              >
-                                <svg className="w-4 h-4 text-[#125852]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                </svg>
-                                Take a photo
-                              </button>
-                            )}
+                            {/* Take a photo — available on all environments */}
+                            <button
+                              type="button"
+                              onClick={handleOpenCamera}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                            >
+                              <svg className="w-4 h-4 text-[#125852]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                              </svg>
+                              Take a photo
+                            </button>
                           </div>
                         )}
                       </div>
 
-                      {cameraError && IS_LOCALHOST && (
+                      {cameraError && (
                         <p className="text-[10px] text-red-500 font-medium mt-1 mb-2">{cameraError}</p>
                       )}
 
@@ -563,20 +652,32 @@ function AccountSettingsPage() {
                       </div>
                     </div>
 
-                    {/* Linked Accounts Card */}
+                    {/* ── Linked Accounts Card ─────────────────────────────────── */}
                     <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
                       <h3 className="text-[10px] font-bold text-slate-800 mb-4 uppercase tracking-widest">Linked Accounts</h3>
                       <div className="space-y-3 mb-5">
                         {linkedSocials.map((social, index) => (
                           <div key={index} className="flex items-center justify-between bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                            <div className="flex items-center gap-3">
-                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: social.color }}/>
-                              <span className="text-[11px] text-slate-700 font-semibold">{social.name} Connected</span>
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: social.color }}/>
+                              <div className="min-w-0">
+                                <p className="text-[11px] text-slate-700 font-semibold">{social.name} Connected</p>
+                                {/* Clickable link — buyers tap this on the mobile app */}
+                                <a
+                                  href={social.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[10px] text-[#125852] hover:underline truncate block max-w-[160px]"
+                                  title={social.url}
+                                >
+                                  {social.url}
+                                </a>
+                              </div>
                             </div>
                             <button
                               type="button"
                               onClick={() => handleUnlink(social.name)}
-                              className="text-red-500 text-[9px] font-bold uppercase hover:underline cursor-pointer"
+                              className="text-red-500 text-[9px] font-bold uppercase hover:underline cursor-pointer shrink-0 ml-2"
                             >
                               Unlink
                             </button>
@@ -597,21 +698,27 @@ function AccountSettingsPage() {
                         </button>
                         {isDropdownOpen && (
                           <div className="absolute top-full left-0 w-full bg-white mt-2 border border-slate-200 rounded-lg shadow-xl z-[70] overflow-hidden">
-                            {availableSocials.map((social) => (
-                              <button
-                                type="button"
-                                key={social.name}
-                                onClick={() => handleLinkSocial(social)}
-                                className="w-full text-left px-4 py-2.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3 border-b last:border-none transition-colors cursor-pointer"
-                              >
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: social.color }}/>
-                                {social.name}
-                              </button>
-                            ))}
+                            {availableSocials
+                              .filter(s => !linkedSocials.find(l => l.name === s.name))
+                              .map((social) => (
+                                <button
+                                  type="button"
+                                  key={social.name}
+                                  onClick={() => handleLinkSocial(social)}
+                                  className="w-full text-left px-4 py-2.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3 border-b last:border-none transition-colors cursor-pointer"
+                                >
+                                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: social.color }}/>
+                                  {social.name}
+                                </button>
+                              ))}
+                            {availableSocials.filter(s => !linkedSocials.find(l => l.name === s.name)).length === 0 && (
+                              <p className="text-[10px] text-slate-400 text-center py-3">All platforms linked!</p>
+                            )}
                           </div>
                         )}
                       </div>
                     </div>
+
                   </div>
                 </div>
               )}
@@ -621,7 +728,6 @@ function AccountSettingsPage() {
           <Footer />
         </div>
       </div>
-    </>
   );
 }
 
