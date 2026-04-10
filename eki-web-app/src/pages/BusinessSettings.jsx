@@ -1,16 +1,3 @@
-/**
- * BusinessSettings.jsx — updated layout
- *
- * Changes in this version:
- *  - Vendor Documents moved to the RIGHT column (above Need Assistance)
- *  - Verification Status card removed entirely
- *  - Logo card no longer shows any verification status badge
- *  - Website field is now full-width (sm:col-span-2)
- *  - Save Changes button is gold (#EFB034) at rest, grey while saving
- *  - Document URLs resolved against Django base URL so the viewer
- *    works on localhost (Django :8000 ≠ Vite :5173)
- */
-
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
@@ -22,6 +9,7 @@ countries.registerLocale(enLocale);
 import VendorSidebar from "../components/VendorSidebar";
 import Navbar4 from "../components/adminDashboard/Navbar4";
 import { getVendorBusinessSettings, updateVendorBusinessSettings } from "../services/api";
+import Footer from "../components/Footer2";  
 
 import {
   HiOutlinePencil,
