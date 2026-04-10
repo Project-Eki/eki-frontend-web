@@ -43,7 +43,7 @@ const VendorOnboarding = () => {
   };
 
   return (
-    <div className="vendor-onboarding-root h-screen w-full flex flex-col bg-[#F8F9FA] font-sans overflow-hidden">
+    <div className="vendor-onboarding-root h-screen w-full flex flex-col bg-[#ecece7] font-sans overflow-hidden">
       
       {/* Navbar */}
       <Navbar />
@@ -51,7 +51,10 @@ const VendorOnboarding = () => {
       <div className="flex flex-1 overflow-hidden">
 
         {/* SIDEBAR */}
-        <aside className="w-[300px] bg-[#235E5D] p-4 ml-10 my-4 rounded-[32px] flex flex-col shrink-0 shadow-xl border border-white/10">
+        <aside className="w-[300px]  p-4 ml-10 my-4 rounded-[32px] flex flex-col shrink-0 shadow-xl border border-white/10"   style={{
+    background: "linear-gradient(160deg, #125852 0%, #0e4440 40%, #0b3330 100%)"
+  }}
+>
           
           <div className="relative w-full space-y-3 mt-10">
 

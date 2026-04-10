@@ -73,7 +73,7 @@ const ContactLocation = () => {
               value={formData.business_email || ""} // Use context value
               onChange={(e) => handleChange("business_email", e.target.value)}
               placeholder="contact@company.com"
-              className={`w-full h-11 pl-4 pr-20 border ${errors.business_email ? "border-red-400" : "border-gray-200"} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`}
+              className={`w-full h-11 pl-4 pr-20 border ${errors.business_email ? "border-red-400" : "border-gray-200"} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all  bg-white `}
             />
             {errors.business_email && (
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">
@@ -122,7 +122,7 @@ const ContactLocation = () => {
               value={formData.address || ""}
               onChange={(e) => handleChange("address", e.target.value)}
               placeholder="123 Business Way, Suite 4"
-              className={`w-full h-11 pl-4 pr-16 border ${errors.address ? "border-red-400" : "border-gray-200"} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`}
+              className={`w-full h-11 pl-4 pr-16 border ${errors.address ? "border-red-400" : "border-gray-200"} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all  bg-white `}
             />
             {errors.address && (
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold pointer-events-none">
@@ -141,7 +141,7 @@ const ContactLocation = () => {
       value={formData.city || ""}
       onChange={(e) => handleChange("city", e.target.value)}
       placeholder="e.g. Kampala"
-      className={`w-full h-11 pl-4 pr-20 border ${errors.city ? "border-red-500 bg-red-50" : "border-gray-200"} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all`}
+      className={`w-full h-11 pl-4 pr-20 border ${errors.city ? "border-red-500 bg-red-50" : "border-gray-200"} rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all  bg-white `}
     />
     {errors.city && (
       <span className="absolute right-4 text-red-500 text-[10px] font-bold pointer-events-none">
