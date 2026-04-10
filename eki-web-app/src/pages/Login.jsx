@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react';
 
 import loginIllustration from '../assets/Login.jpeg';
 import logoImage from '../assets/logo.jpeg';
@@ -9,7 +9,18 @@ import { validateLoginForm } from '../utils/Validation';
 import { SigninUser as manualLogin } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
-import Footer from "../components/Footer"; 
+import Footer from "../components/Footer";
+
+// Reusable error message component shown below each field
+const FieldError = ({ message }) => {
+  if (!message) return null;
+  return (
+    <div className="flex items-center gap-1.5 mt-1.5 ml-1">
+      <AlertCircle size={13} className="text-red-500 shrink-0" />
+      <span className="text-[12px] text-red-500 font-medium">{message}</span>
+    </div>
+  );
+};
 
 const Login = () => {
   const navigate = useNavigate();
@@ -18,10 +29,10 @@ const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState({ 
-    email: '', 
-    password: '', 
-    general: '' 
+  const [fieldErrors, setFieldErrors] = useState({
+    email: '',
+    password: '',
+    apiError: '',   // replaces `general` — always shown below the password field
   });
 
   const isFormFilled = formData.email.trim() !== '' && formData.password.trim() !== '';
@@ -33,7 +44,7 @@ const Login = () => {
     const userRole = (authData?.user?.role || authData?.role || 'vendor').toString().toLowerCase();
 
     if (accessToken) {
-      login(accessToken, userRole, refreshToken); 
+      login(accessToken, userRole, refreshToken);
 
       if (userRole.includes('admin')) {
         navigate('/admindashboard');
@@ -43,9 +54,9 @@ const Login = () => {
         navigate('/');
       }
     } else {
-      setFieldErrors(prev => ({ 
-        ...prev, 
-        general: "Authentication successful, but no security token was received." 
+      setFieldErrors(prev => ({
+        ...prev,
+        apiError: "Login was successful but no access token was received. Please try again.",
       }));
     }
   };
@@ -54,11 +65,14 @@ const Login = () => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
 
+    // Clear api error as soon as user starts typing again
+    setFieldErrors(prev => ({ ...prev, apiError: '' }));
+
     const { errors } = validateLoginForm({ ...formData, [name]: value });
     if (value.length > 0 && errors[name]) {
-      setFieldErrors(prev => ({ ...prev, [name]: errors[name], general: '' }));
+      setFieldErrors(prev => ({ ...prev, [name]: errors[name] }));
     } else {
-      setFieldErrors(prev => ({ ...prev, [name]: '', general: '' }));
+      setFieldErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
@@ -75,7 +89,7 @@ const Login = () => {
     const { isValid, errors } = validateLoginForm(formData);
 
     if (!isValid) {
-      setFieldErrors(prev => ({ ...prev, ...errors }));
+      setFieldErrors(prev => ({ ...prev, ...errors, apiError: '' }));
       return;
     }
 
@@ -84,12 +98,30 @@ const Login = () => {
       const result = await manualLogin(formData);
       handleAuthSuccess(result);
     } catch (err) {
-      const apiError = 
-        err.response?.status === 403 
-          ? "Your account is pending admin approval." 
-          : err.response?.data?.message || err.response?.data?.detail || "Invalid credentials";
+      const status = err.response?.status;
+      const serverMsg = err.response?.data?.message || err.response?.data?.detail || '';
 
-      setFieldErrors({ email: '', password: '', general: apiError });
+      let apiError = "Something went wrong. Please try again later.";
+
+      if (status === 403) {
+        apiError = "Your account is awaiting admin approval. You'll be notified once it's activated.";
+      } else if (
+        status === 401 ||
+        serverMsg.toLowerCase().includes('invalid') ||
+        serverMsg.toLowerCase().includes('credentials')
+      ) {
+        apiError = "Incorrect email or password. Please check your details and try again.";
+      } else if (
+        status === 404 ||
+        serverMsg.toLowerCase().includes('not found') ||
+        serverMsg.toLowerCase().includes('not registered')
+      ) {
+        apiError = "No account found with this email address. Please sign up to get started.";
+      } else if (serverMsg) {
+        apiError = serverMsg;
+      }
+
+      setFieldErrors({ email: '', password: '', apiError });
       setFormData(prev => ({ ...prev, password: '' }));
     } finally {
       setIsLoading(false);
@@ -101,15 +133,15 @@ const Login = () => {
       <Navbar />
 
       <div className="flex-1 flex w-full overflow-hidden">
-        {/*  Image Section */}
+        {/* Image Section */}
         <div className="hidden lg:block lg:w-1/2 relative overflow-hidden bg-white">
           {/* Decorative Shapes */}
           <div className="absolute -top-6 -left-6 w-32 h-32 border-4 border-[#235E5DFF] rounded-full opacity-20 z-10"></div>
           <div className="absolute -bottom-10 -right-6 w-40 h-40 border-4 border-[#EFB034] rounded-lg opacity-20 transform rotate-12 z-10"></div>
           <div className="absolute top-1/3 -left-8 w-24 h-24 border-4 border-[#235E5DFF] rounded-lg opacity-10 transform -rotate-12 z-10"></div>
           <div className="absolute bottom-1/4 -right-8 w-28 h-28 border-4 border-[#EFB034] rounded-full opacity-20 z-10"></div>
-          
-          {/* Image Container  */}
+
+          {/* Image Container */}
           <div className="relative z-20 w-full h-full flex items-center justify-center p-8">
             <div className="relative w-full h-full max-h-[70vh]">
               <img
@@ -122,7 +154,7 @@ const Login = () => {
           </div>
         </div>
 
-        {/*  Login Form Section  */}
+        {/* Login Form Section */}
         <div className="w-full lg:w-1/2 flex items-center justify-center bg-white overflow-y-auto">
           <div className="w-full max-w-md px-8 py-6">
             <div className="mb-5 text-left">
@@ -135,66 +167,65 @@ const Login = () => {
             </div>
 
             <form className="w-full space-y-4" onSubmit={handleSubmit} noValidate>
-              
-              {fieldErrors.general && (
-                <div className="text-red-600 text-sm font-bold py-2 text-center bg-red-50 rounded-xl border border-red-100 mb-2">
-                  {fieldErrors.general}
-                </div>
-              )}
 
-              {/* Email Input*/}
-              <div className="relative">
-                <input
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  placeholder="Email Address"
-                  className={`w-full rounded-xl border h-12 px-4 focus:outline-none transition-all text-sm text-slate-900 bg-white
-                    ${fieldErrors.email 
-                      ? 'border-red-500 bg-red-50/10 focus:border-red-500' 
-                      : 'border-slate-200 focus:border-[#EFB034] focus:ring-1 focus:ring-[#EFB034]/20'
-                    }`}
-                />
-                {fieldErrors.email && (
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-red-500 font-bold italic pointer-events-none">
-                    {fieldErrors.email}
-                  </span>
-                )}
+              {/* Email Input */}
+              <div>
+                <div className="relative">
+                  <Mail
+                    size={16}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10"
+                  />
+                  <input
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder="Email Address"
+                    className={`w-full rounded-xl border h-12 pl-10 pr-4 focus:outline-none transition-all text-sm text-slate-900 bg-white
+                      ${fieldErrors.email
+                        ? 'border-red-400 focus:border-red-400'
+                        : 'border-slate-200 focus:border-[#EFB034] focus:ring-1 focus:ring-[#EFB034]/20'
+                      }`}
+                  />
+                </div>
+                <FieldError message={fieldErrors.email} />
               </div>
 
               {/* Password Input */}
-              <div className="relative">
-                <input
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password" 
-                  value={formData.password}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  placeholder="Password"
-                  className={`w-full rounded-xl border h-12 px-4 pr-24 focus:outline-none transition-all text-sm text-slate-900 bg-white
-                    ${fieldErrors.password 
-                      ? 'border-red-500 bg-red-50/10 focus:border-red-500' 
-                      : 'border-slate-200 focus:border-[#EFB034] focus:ring-1 focus:ring-[#EFB034]/20'
-                    }`}
-                />
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                  {fieldErrors.password && (
-                    <span className="text-[10px] text-red-500 font-bold italic pointer-events-none">
-                      {fieldErrors.password}
-                    </span>
-                  )}
+              <div>
+                <div className="relative">
+                  <Lock
+                    size={16}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10"
+                  />
+                  <input
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder="Password"
+                    className={`w-full rounded-xl border h-12 pl-10 pr-12 focus:outline-none transition-all text-sm text-slate-900 bg-white
+                      ${fieldErrors.password || fieldErrors.apiError
+                        ? 'border-red-400 focus:border-red-400'
+                        : 'border-slate-200 focus:border-[#EFB034] focus:ring-1 focus:ring-[#EFB034]/20'
+                      }`}
+                  />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="text-slate-400 hover:text-[#EFB034FF] transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#EFB034] transition-colors"
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
+                {/* Validation error for password field */}
+                <FieldError message={fieldErrors.password} />
+                {/* API / server error always appears here, below the password field */}
+                <FieldError message={fieldErrors.apiError} />
               </div>
 
               {/* Remember Me & Forgot Password */}
@@ -203,9 +234,9 @@ const Login = () => {
                   <input className="mr-2 h-4 w-4 accent-[#234E4D] border-slate-300 rounded" type="checkbox" />
                   <span className="text-[13px]">Remember me</span>
                 </label>
-                <button 
-                  type="button" 
-                  onClick={() => navigate('/forgot-password')} 
+                <button
+                  type="button"
+                  onClick={() => navigate('/forgot-password')}
                   className="text-[#EFB034] hover:underline font-medium text-[13px]"
                 >
                   Forgot Password?
@@ -218,7 +249,7 @@ const Login = () => {
                 disabled={isLoading || !isFormFilled}
                 className={`w-full h-12 rounded-full font-bold transition-all duration-300
                   ${isFormFilled && !isLoading
-                    ? 'bg-[#efb034] hover:bg-[#d99c1c] hover:-translate-y-1 hover:shadow-lg text-white cursor-pointer' 
+                    ? 'bg-[#efb034] hover:bg-[#d99c1c] hover:-translate-y-1 hover:shadow-lg text-white cursor-pointer'
                     : 'bg-gray-300 cursor-not-allowed text-white/70'
                   }`}
               >
@@ -229,9 +260,9 @@ const Login = () => {
               <div className="text-center pt-3">
                 <p className="text-[13px] text-slate-600">
                   Don't have an account?{" "}
-                  <button 
-                    type="button" 
-                    onClick={() => navigate('/vendorOnboarding')} 
+                  <button
+                    type="button"
+                    onClick={() => navigate('/vendorOnboarding')}
                     className="text-[#234E4D] font-semibold hover:underline"
                   >
                     Sign up
@@ -242,7 +273,7 @@ const Login = () => {
           </div>
         </div>
       </div>
-      
+
       <Footer />
     </div>
   );
