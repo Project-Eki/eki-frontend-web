@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react';
 
 import loginIllustration from '../assets/Login.jpeg';
-import logoImage from '../assets/logo.jpeg';
-
 import { validateLoginForm } from '../utils/Validation';
 import { SigninUser as manualLogin } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
@@ -32,34 +30,41 @@ const Login = () => {
   const [fieldErrors, setFieldErrors] = useState({
     email: '',
     password: '',
-    apiError: '',   // replaces `general` — always shown below the password field
+    apiError: '',
   });
 
   const isFormFilled = formData.email.trim() !== '' && formData.password.trim() !== '';
 
-  const handleAuthSuccess = (response) => {
-    const authData = response?.data?.data || response?.data;
-    const accessToken = authData?.access || authData?.token;
-    const refreshToken = authData?.refresh;
-    const userRole = (authData?.user?.role || authData?.role || 'vendor').toString().toLowerCase();
+  // Handle successful login response
+const handleAuthSuccess = (response) => {
+  const inner = response?.data ?? response;
+  const userData = inner?.user;
+  const accessToken = inner?.access ?? localStorage.getItem("access_token");
+  const refreshToken = inner?.refresh ?? localStorage.getItem("refresh_token");
+  const finalUserRole =
+    userData?.role ||
+    localStorage.getItem("vendor_role") ||
+    localStorage.getItem("userRole");
 
-    if (accessToken) {
-      login(accessToken, userRole, refreshToken);
+  console.log("Role:", finalUserRole, "Token:", accessToken ? "Present" : "Missing");
 
-      if (userRole.includes('admin')) {
-        navigate('/admindashboard');
-      } else if (userRole.includes('vendor')) {
-        navigate('/vendordashboard');
-      } else {
-        navigate('/');
-      }
+  if (finalUserRole && accessToken) {
+    login(accessToken, finalUserRole, refreshToken);
+
+    if (finalUserRole.toLowerCase() === 'admin') {
+      navigate('/admindashboard');
+    } else if (finalUserRole.toLowerCase() === 'vendor') {
+      navigate('/vendordashboard');
     } else {
-      setFieldErrors(prev => ({
-        ...prev,
-        apiError: "Login was successful but no access token was received. Please try again.",
-      }));
+      navigate('/');
     }
-  };
+  } else {
+    setFieldErrors(prev => ({
+      ...prev,
+      apiError: "Login successful but role/token missing. Please try again.",
+    }));
+  }
+};
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -96,8 +101,12 @@ const Login = () => {
     setIsLoading(true);
     try {
       const result = await manualLogin(formData);
+      console.log("API Response:", result);
+      console.log("Calling handleAuthSuccess...");
       handleAuthSuccess(result);
+      console.log("handleAuthSuccess completed");
     } catch (err) {
+      console.error("Login error:", err);
       const status = err.response?.status;
       const serverMsg = err.response?.data?.message || err.response?.data?.detail || '';
 
@@ -161,9 +170,6 @@ const Login = () => {
               <h2 className="text-[28px] font-black text-gray-900 leading-tight mb-2">
                 Welcome back!
               </h2>
-              <p className="text-gray-500 text-[14px]">
-                {/* Ready to sell? */}
-              </p>
             </div>
 
             <form className="w-full space-y-4" onSubmit={handleSubmit} noValidate>
@@ -222,9 +228,7 @@ const Login = () => {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                {/* Validation error for password field */}
                 <FieldError message={fieldErrors.password} />
-                {/* API / server error always appears here, below the password field */}
                 <FieldError message={fieldErrors.apiError} />
               </div>
 

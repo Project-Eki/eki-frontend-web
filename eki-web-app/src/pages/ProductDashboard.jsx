@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import VendorSidebar from '../components/VendorSidebar';
+import { useVendor } from '../context/useVendor';
 import Navbar3 from '../components/adminDashboard/Navbar4';
 import Footer from "../components/Vendormanagement/VendorFooter";
 import ProductListing from '../components/ProductListing';
@@ -16,9 +17,7 @@ import {
   updateProductListing,
   deleteProductListing,
   uploadListingImages,
-  getVendorDashboard,
 } from '../services/authService';
-import { getCurrencySymbol } from '../utils/currency';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const QUALITY_OPTIONS = ['High', 'Medium', 'Low'];
@@ -246,6 +245,9 @@ const ProductListItem = ({ product, currencySymbol, onEdit, onDelete }) => {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const ProductDashboard = () => {
+  // Get vendor data from context
+  const { vendorType, businessCategory, vendorCountry, currencySymbol } = useVendor();
+
   const [viewType, setViewType] = useState('grid');
   const [products, setProducts] = useState([]);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -254,44 +256,21 @@ const ProductDashboard = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
-  const [currencySymbol, setCurrencySymbol] = useState('$');
-  const [vendorCountry, setVendorCountry] = useState('');
-  const [businessCategory, setBusinessCategory] = useState('retail');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterQuality, setFilterQuality] = useState('');
-  const [vendorType, setVendorType] = useState('product');
   const [qualityOptions, setQualityOptions] = useState(QUALITY_OPTIONS);
   const filterRef = useRef(null);
 
-  // ── Load vendor info ────────────────────────────────────────────────────────
-  useEffect(() => {
-    const loadVendorData = async () => {
-      try {
-        const data = await getVendorDashboard();
-        if (data?.country) {
-          setVendorCountry(data.country);
-          setCurrencySymbol(getCurrencySymbol(data.country));
-        }
-        if (data?.businessCategory) setBusinessCategory(data.businessCategory);
-        if (data?.quality_options && Array.isArray(data.quality_options)) {
-          setQualityOptions(data.quality_options);
-        }
-        const serviceCategories = ['beauty', 'transport', 'tailoring', 'airlines', 'hotels', 'other'];
-        const bc = data?.businessCategory || 'retail';
-        setVendorType(serviceCategories.includes(bc) ? 'service' : 'product');
-      } catch (err) {
-        console.error('Failed to load vendor info', err);
-      }
-    };
-    loadVendorData();
+  // Load products
+  useEffect(() => { 
+    loadProducts(); 
   }, []);
 
-  useEffect(() => { loadProducts(); }, []);
-
+  // Handle click outside filter
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (filterRef.current && !filterRef.current.contains(e.target)) setIsFilterOpen(false);
@@ -472,7 +451,7 @@ const ProductDashboard = () => {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="flex min-h-screen bg-[#ecece7] text-slate-800 p-3 gap-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
-      <VendorSidebar activePage="products" vendorType={vendorType} businessCategory={businessCategory} />
+      <VendorSidebar activePage="products" />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar3 />
@@ -744,3 +723,6 @@ const ProductDashboard = () => {
 };
 
 export default ProductDashboard;
+
+
+

@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { useVendor } from "../context/useVendor";
+import { useAuth } from "../context/AuthContext";
 import logo from "../assets/eki-logo2.png";
 import {
   LayoutDashboard,
@@ -13,37 +15,46 @@ import {
 } from "lucide-react";
 import LogoutModal from "./LogoutModal";
 
-const VendorSidebar = ({ activePage, vendorType, businessCategory }) => {
+const VendorSidebar = ({ activePage }) => {
   const navigate = useNavigate();
+  const { vendorType, businessCategory, loading: vendorLoading } = useVendor();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // Define service categories
-  const serviceCategories = [
-    "beauty",
-    "transport",
-    "tailoring",
-    "airlines",
-    "hotels",
-    "other",
-  ];
-
-  // Determine vendor type - prioritize vendorType prop, then use businessCategory
-  let finalVendorType = vendorType;
-
-  if (!finalVendorType && businessCategory) {
-    finalVendorType = serviceCategories.includes(businessCategory)
-      ? "service"
-      : "product";
+  // Show loading while checking authentication
+  if (authLoading || vendorLoading) {
+    return (
+      <aside
+        className="w-56 flex flex-col sticky top-3 h-[calc(100vh-1.5rem)] shadow-sm rounded-2xl font-popins"
+        style={{
+          background: "linear-gradient(160deg, #125852 0%, #0e4440 40%, #0b3330 100%)",
+        }}
+      >
+        <div className="p-4 pt-5 pb-4">
+          <img src={logo} alt="Eki" className="h-14 w-auto object-contain mx-auto" />
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-white/60 text-sm">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white/60 mx-auto mb-2"></div>
+            Loading...
+          </div>
+        </div>
+      </aside>
+    );
   }
 
-  // Default to 'product' if still not determined
-  if (!finalVendorType) {
-    finalVendorType = "product";
+  // If not authenticated, don't show sidebar (but don't redirect here)
+  if (!isAuthenticated) {
+    return null;
   }
 
-  console.log("[VendorSidebar] vendorType prop:", vendorType);
-  console.log("[VendorSidebar] businessCategory prop:", businessCategory);
-  console.log("[VendorSidebar] finalVendorType:", finalVendorType);
+  // For vendor pages, we still want to show sidebar even if role isn't set yet
+  // The vendorType will determine what menu items to show
+  // Don't return null for non-vendors on vendor pages - they shouldn't be here anyway
+
+  console.log("[VendorSidebar] vendorType from context:", vendorType);
+  console.log("[VendorSidebar] isAuthenticated:", isAuthenticated);
+  console.log("[VendorSidebar] user role:", user?.role);
 
   const menuItems = [
     {
@@ -55,7 +66,7 @@ const VendorSidebar = ({ activePage, vendorType, businessCategory }) => {
   ];
 
   // Only show Products tab for product vendors
-  if (finalVendorType === "product") {
+  if (vendorType === "product") {
     menuItems.push({
       to: "/product-dashboard",
       icon: <ShoppingBag size={16} />,
@@ -65,7 +76,7 @@ const VendorSidebar = ({ activePage, vendorType, businessCategory }) => {
   }
 
   // Only show Services tab for service vendors
-  if (finalVendorType === "service") {
+  if (vendorType === "service") {
     menuItems.push({
       to: "/servicemanagement",
       icon: <Package size={16} />,
@@ -74,7 +85,7 @@ const VendorSidebar = ({ activePage, vendorType, businessCategory }) => {
     });
   }
 
-  // menu items
+  // Common menu items
   menuItems.push(
     {
       to: "/order-management",

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import VendorSidebar from "../components/VendorSidebar";
 import Navbar3 from "../components/adminDashboard/Navbar4";
 import Footer from "../components/Vendormanagement/VendorFooter";
@@ -65,6 +66,8 @@ const formatOrderId = (raw) => {
 
 const VendorDashboard = () => {
   const navigate = useNavigate();
+  const { isAuthenticated, user, loading: authLoading } = useAuth();
+  const [redirected, setRedirected] = useState(false);
 
   const [vendorData, setVendorData] = useState({
     storeName: "",
@@ -94,9 +97,25 @@ const VendorDashboard = () => {
   const [currencySymbol, setCurrencySymbol] = useState("");
   const [selectedOrder, setSelectedOrder] = useState(null);
 
+  //Handle redirects in useEffect, NOT during render
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    if (!authLoading && !redirected) {
+      if (!isAuthenticated) {
+        setRedirected(true);
+        navigate('/login');
+      } else if (user?.role !== 'vendor') {
+        setRedirected(true);
+        navigate('/');
+      }
+    }
+  }, [authLoading, isAuthenticated, user?.role, navigate, redirected]);
+
+  //Fetch dashboard data in useEffect
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'vendor') {
+      fetchDashboardData();
+    }
+  }, [isAuthenticated, user?.role]);
 
   const fetchDashboardData = async () => {
     setIsFetching(true);
@@ -110,7 +129,6 @@ const VendorDashboard = () => {
         const isServiceVendor = response.is_service_vendor ?? false;
         const vendorType = response.vendor_type ?? (isProductVendor ? "product" : "service");
 
-        // ─── FIXED: Check all possible country sources ───
         const country = response.country || 
                         response.business_country || 
                         localStorage.getItem('vendor_country') || 
@@ -118,7 +136,6 @@ const VendorDashboard = () => {
         
         console.log('[VendorDashboard] Resolved country:', country);
         
-        // ─── FIXED: Derive currency symbol dynamically using the utility ───
         const resolvedCurrencySymbol = country ? getCurrencySymbol(country) : "";
         
         console.log('[VendorDashboard] Currency symbol:', resolvedCurrencySymbol);
@@ -158,10 +175,32 @@ const VendorDashboard = () => {
       }
     } catch (error) {
       console.error("Dashboard fetch error:", error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        navigate('/login');
+      }
     } finally {
       setIsFetching(false);
     }
   };
+
+  // Show loading state while checking authentication
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen bg-[#ecece7] items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F5B841] mx-auto"></div>
+          <p className="mt-4 text-slate-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  //Return null while checking - useEffect handles redirect
+  if (!isAuthenticated || user?.role !== 'vendor') {
+    return null;
+  }
 
   const isServiceVendor = vendorData.is_service_vendor;
   const vendorType = vendorData.vendor_type;
@@ -198,11 +237,7 @@ const VendorDashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-[#ecece7] font-sans text-slate-800 p-3 gap-3">
-      <VendorSidebar
-        activePage="dashboard"
-        vendorType={vendorType}
-        businessCategory={businessCategory}
-      />
+      <VendorSidebar activePage="dashboard" />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar3 />
@@ -346,7 +381,7 @@ const VendorDashboard = () => {
                             <td className="px-4 py-2.5 font-bold text-slate-800">
                               {displayCurrency}{" "}
                               {Number(order.total || 0).toLocaleString()}
-                            </td>
+                             </td>
                             <td className="px-4 py-2.5">
                               <span className={`px-2 py-0.5 rounded-full text-[8px] uppercase font-black tracking-wide ${
                                 (() => {
@@ -361,7 +396,7 @@ const VendorDashboard = () => {
                               }`}>
                                 {order.status || '—'}
                               </span>
-                            </td>
+                             </td>
                             <td className="px-4 py-2.5">
                               <button
                                 onClick={() => setSelectedOrder(order)}
@@ -369,7 +404,7 @@ const VendorDashboard = () => {
                               >
                                 View
                               </button>
-                            </td>
+                             </td>
                           </tr>
                         ))}
                       </tbody>
@@ -383,6 +418,7 @@ const VendorDashboard = () => {
               </div>
             </div>
 
+            {/* Quick Actions, Payout, Inventory Alerts, Reviews sections remain the same */}
             <div className="space-y-5">
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                 <h3 className="font-bold text-xs mb-3 uppercase tracking-tighter">
@@ -524,6 +560,7 @@ const VendorDashboard = () => {
             </div>
 
             <div className="p-5 space-y-4">
+              {/* Customer Details */}
               <div className="bg-slate-50 rounded-xl p-4">
                 <h3 className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-3">
                   Customer Details
@@ -554,6 +591,7 @@ const VendorDashboard = () => {
                 </div>
               </div>
 
+              {/* Order Items */}
               <div className="bg-slate-50 rounded-xl p-4">
                 <h3 className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-3">
                   Order Items
@@ -592,6 +630,7 @@ const VendorDashboard = () => {
                 )}
               </div>
 
+              {/* Payment Summary */}
               <div className="bg-slate-50 rounded-xl p-4">
                 <h3 className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-3">
                   Payment Summary
