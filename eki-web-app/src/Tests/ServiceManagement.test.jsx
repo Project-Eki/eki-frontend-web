@@ -39,6 +39,25 @@ vi.mock('../components/Vendormanagement/ServiceForm', () => ({
   ),
 }));
 
+vi.mock('../context/useVendor', () => ({
+  useVendor: () => ({
+    vendorType: 'service',
+    businessCategory: 'professional',
+    vendorCountry: 'Uganda',
+    currencySymbol: 'UGX',
+    loading: false,
+    error: null,
+    refreshVendorData: vi.fn(),
+  }),
+}));
+
+vi.mock('../context/AuthContext', () => ({
+  useAuth: () => ({
+    user: { role: 'vendor', isAuthenticated: true },
+    isAuthenticated: true,
+  }),
+}));
+
 //  Import AFTER vi.mock calls 
 import { getServices, deleteListing } from '../services/api';
 
