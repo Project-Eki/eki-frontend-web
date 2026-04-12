@@ -26,7 +26,6 @@ import VendorReviews from "./pages/VendorReview";
 import Demo from "./pages/Demo";
 
 // --- THE OTP IMPORT ---
-import OtpVerify from "./pages/otp"; 
 import OtpVerify from "./pages/otp";
 
 import "./App.css";
