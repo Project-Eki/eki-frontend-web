@@ -89,7 +89,7 @@ const VendorSidebar = ({ activePage, vendorType, businessCategory }) => {
       key: "payments",
     },
     {
-      to: "/reviews",
+      to: "/vendor-reviews",
       icon: <MessageSquare size={16} />,
       label: "Reviews",
       key: "reviews",

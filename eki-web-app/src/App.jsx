@@ -21,6 +21,7 @@ import OrderManagement from "./pages/OrderManagement";
 import PaymentSystem from "./pages/PaymentSystem";
 import PaymentAndPayout from "./pages/PaymentAndPayout";
 import BusinessSettings from "./pages/BusinessSettings";
+import VendorReviews from "./pages/VendorReview";
 
 // --- THE OTP IMPORT ---
 import OtpVerify from "./pages/otp"; 
@@ -74,6 +75,7 @@ function App() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/payment" element={<ProtectedRoute><PaymentSystem /></ProtectedRoute>} />
           <Route path="/account-settings" element={<ProtectedRoute><AccountSettingsPage /></ProtectedRoute>} />
+          <Route path="/vendor-reviews" element={<ProtectedRoute allowedRole="vendor"><VendorReviews /></ProtectedRoute>} />
 
           {/* 404 Fallback */}
           <Route path="*" element={<div className="p-10 text-center text-red-500 font-bold">404 - Page Not Found</div>} />
