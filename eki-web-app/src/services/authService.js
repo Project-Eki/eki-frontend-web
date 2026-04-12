@@ -94,7 +94,7 @@ api.interceptors.response.use(
 
       try {
         const res = await axios.post(
-          'http://joineki.com/api/v1/accounts/token-refresh/',
+          'http://134.122.22.45/api/v1/accounts/token-refresh/',
           { refresh: refreshToken }
         );
         const newAccess = res.data?.access || res.data?.data?.access;
@@ -485,7 +485,13 @@ export const getCategories = (businessCategory = null) => {
     });
 };
 
-
+// ─── LISTING NORMALISER ───────────────────────────────────────────────────────
+// CRITICAL FIX: item.id must ALWAYS remain the real listing ID from the API.
+// Never override it. The dashboard previously ran a processProductVariants()
+// that could replace product.id with parent_product_id, causing deletes and
+// edits to hit the wrong record. That grouping function has been removed.
+// Products are now returned flat — the UI shows variants from product.variants
+// which are embedded in the API response, not from a separate grouping pass.
 const normalizeListing = (item) => {
   const qualityReverseMap = {
     high:   'High',  High:   'High',  HIGH:   'High',
@@ -603,7 +609,9 @@ export const createProductListing = async (productData) => {
   return normalizeListing(res.data?.data ?? res.data);
 };
 
-
+// ─── UPDATE PRODUCT LISTING ───────────────────────────────────────────────────
+// FIX: listingId is now always the real API listing ID because handleEditProduct
+// in ProductDashboard stores product.id (which normalizeListing never overwrites).
 export const updateProductListing = async (listingId, productData) => {
   const qualityMap = {
     High: 'high', Medium: 'medium', Low: 'low',

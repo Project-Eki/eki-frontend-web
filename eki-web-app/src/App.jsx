@@ -22,6 +22,7 @@ import PaymentSystem from "./pages/PaymentSystem";
 import PaymentAndPayout from "./pages/PaymentAndPayout";
 import BusinessSettings from "./pages/BusinessSettings";
 import VendorReviews from "./pages/VendorReview";
+import Demo from "./pages/Demo";
 
 // --- THE OTP IMPORT ---
 import OtpVerify from "./pages/otp"; 
@@ -44,6 +45,7 @@ function App() {
           {/* Public & Auth Routes */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/demo" element={<Demo />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           
           {/* CRITICAL FIX: Path must be '/otp' to match your ForgotPassword navigate call */}
