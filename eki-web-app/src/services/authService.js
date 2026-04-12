@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://joineki.com/api/v1/',
+  baseURL: 'http://134.122.22.45/api/v1/',
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -486,12 +486,6 @@ export const getCategories = (businessCategory = null) => {
 };
 
 // ─── LISTING NORMALISER ───────────────────────────────────────────────────────
-// CRITICAL FIX: item.id must ALWAYS remain the real listing ID from the API.
-// Never override it. The dashboard previously ran a processProductVariants()
-// that could replace product.id with parent_product_id, causing deletes and
-// edits to hit the wrong record. That grouping function has been removed.
-// Products are now returned flat — the UI shows variants from product.variants
-// which are embedded in the API response, not from a separate grouping pass.
 const normalizeListing = (item) => {
   const qualityReverseMap = {
     high:   'High',  High:   'High',  HIGH:   'High',
@@ -499,7 +493,6 @@ const normalizeListing = (item) => {
     low:    'Low',   Low:    'Low',   LOW:    'Low',
   };
 
-  // quality lives inside detail.quality on the API response
   const rawQuality =
     item.detail?.quality ||
     item.inventory_quality ||
@@ -510,34 +503,24 @@ const normalizeListing = (item) => {
 
   return {
     ...item,
-    // id is ALWAYS the real listing ID — never changed, never overwritten
     id:                item.id,
     is_published:      item.is_published === true || item.status === 'published',
-    // expose quality under both field names so dashboard & edit form both work
     inventory_quality: normalizedQuality,
     qty:               normalizedQuality,
-    // pull sku and stock up from detail so edit form pre-fills correctly
     sku:               item.detail?.sku   ?? item.sku   ?? '',
     stock:             item.detail?.stock ?? item.stock ?? 0,
-    // variants are already embedded in the API response under item.variants
-    // or item.detail.variants — surface them consistently
     variants:          item.variants ?? item.detail?.variants ?? [],
   };
 };
 
 // ─── GET PRODUCTS ─────────────────────────────────────────────────────────────
-// FIX: Returns the flat normalized list directly.
-// No processProductVariants() grouping — that function was corrupting product.id
-// by substituting parent_product_id for standalone products that had no parent.
-// The ProductCard/ProductListItem components already handle showing variants
-// from product.variants[], which is populated by normalizeListing above.
 export const getProducts = async () => {
   const params = { listing_type: 'product' };
   const res    = await api.get('/listings/', { params });
   const payload = res.data?.data ?? res.data;
 
   let raw = [];
-  if (Array.isArray(payload))          raw = payload;
+  if (Array.isArray(payload))               raw = payload;
   else if (Array.isArray(payload?.results)) raw = payload.results;
 
   const normalized = raw.map(normalizeListing);
@@ -610,8 +593,6 @@ export const createProductListing = async (productData) => {
 };
 
 // ─── UPDATE PRODUCT LISTING ───────────────────────────────────────────────────
-// FIX: listingId is now always the real API listing ID because handleEditProduct
-// in ProductDashboard stores product.id (which normalizeListing never overwrites).
 export const updateProductListing = async (listingId, productData) => {
   const qualityMap = {
     High: 'high', Medium: 'medium', Low: 'low',
