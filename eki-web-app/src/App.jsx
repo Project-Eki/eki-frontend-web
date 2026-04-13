@@ -2,13 +2,14 @@ import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { VendorOnboardingProvider } from "./context/vendorOnboardingContext";
+import { VendorProvider } from "./context/vendorContext";
 
 // Pages
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-import AdminSignin from "./pages/AdminLogin"; 
+import AdminSignin from "./pages/AdminLogin";
 import AccountSettingsPage from "./pages/AccountSetting";
 import VendorOnboarding from "./pages/VendorOnboarding";
 import Settings from "./pages/Settings";
@@ -25,32 +26,47 @@ import VendorReviews from "./pages/VendorReview";
 import Demo from "./pages/Demo";
 
 // --- THE OTP IMPORT ---
-import OtpVerify from "./pages/otp"; 
+import OtpVerify from "./pages/otp";
 
 import "./App.css";
 
-// --- PROTECTED ROUTE COMPONENT ---
+// --- PROTECTED ROUTE — reads directly from localStorage as fallback ---
 const ProtectedRoute = ({ children, allowedRole }) => {
   const { user } = useAuth();
-  if (!user.isAuthenticated) return <Navigate to="/login" replace />;
-  if (allowedRole && user.role !== allowedRole) return <Navigate to="/" replace />;
+
+  // Fall back to localStorage in case context hasn't settled yet
+  const isAuthenticated =
+    user.isAuthenticated ||
+    (!!localStorage.getItem("access_token") &&
+      !!(localStorage.getItem("userRole") || localStorage.getItem("vendor_role")));
+
+  const role =
+    user.role ||
+    localStorage.getItem("userRole") ||
+    localStorage.getItem("vendor_role");
+
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (allowedRole && role !== allowedRole) return <Navigate to="/" replace />;
   return children;
 };
+
+// --- VENDOR LAYOUT — wraps VendorProvider around vendor-only routes ---
+// This prevents VendorProvider from running on public pages like /login
+const VendorLayout = ({ children }) => (
+  <VendorProvider>{children}</VendorProvider>
+);
 
 function App() {
   return (
     <AuthProvider>
       <div className="App">
         <Routes>
-          {/* Public & Auth Routes */}
+          {/* Public & Auth Routes — NO VendorProvider here */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/demo" element={<Demo />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          
-          {/* CRITICAL FIX: Path must be '/otp' to match your ForgotPassword navigate call */}
           <Route path="/otp" element={<OtpVerify />} />
-          
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/admin-login" element={<AdminSignin />} />
 
@@ -61,17 +77,55 @@ function App() {
             </VendorOnboardingProvider>
           } />
 
-          {/* Protected Vendor Routes */}
-          <Route path="/vendordashboard" element={<ProtectedRoute allowedRole="vendor"><VendorDashboard /></ProtectedRoute>} />
-          <Route path="/product-dashboard" element={<ProtectedRoute allowedRole="vendor"><ProductDashboard /></ProtectedRoute>} />
-          <Route path="/order-management" element={<ProtectedRoute allowedRole="vendor"><OrderManagement /></ProtectedRoute>} />
-          <Route path="/business-settings" element={<BusinessSettings />} />
-          {/* <Route path="/servicemanagement" element={<ProtectedRoute allowedRole="vendor"><ServiceManagement /></ProtectedRoute>} /> */}
-            <Route path="/servicemanagement" element={<ServiceManagement />} />  
+          {/* Protected Vendor Routes — VendorProvider scoped here only */}
+          <Route path="/vendordashboard" element={
+            <ProtectedRoute allowedRole="vendor">
+              <VendorLayout><VendorDashboard /></VendorLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/product-dashboard" element={
+            <ProtectedRoute allowedRole="vendor">
+              <VendorLayout><ProductDashboard /></VendorLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/order-management" element={
+            <ProtectedRoute allowedRole="vendor">
+              <VendorLayout><OrderManagement /></VendorLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/business-settings" element={
+            <ProtectedRoute allowedRole="vendor">
+              <VendorLayout><BusinessSettings /></VendorLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/servicemanagement" element={
+            <ProtectedRoute allowedRole="vendor">
+              <VendorLayout><ServiceManagement /></VendorLayout>
+            </ProtectedRoute>
+          } />
+
           {/* Protected Admin Routes */}
-          <Route path="/admindashboard" element={<ProtectedRoute allowedRole="admin"><AdminDashboard /></ProtectedRoute>} />
-          <Route path="/admin-management" element={<ProtectedRoute allowedRole="admin"><AdminManagement /></ProtectedRoute>} />
-          <Route path="/admin-payments" element={<ProtectedRoute allowedRole="admin"><PaymentAndPayout /></ProtectedRoute>} />
+          <Route path="/admindashboard" element={
+            <ProtectedRoute allowedRole="admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/admin-management" element={
+            <ProtectedRoute allowedRole="admin">
+              <AdminManagement />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/admin-payments" element={
+            <ProtectedRoute allowedRole="admin">
+              <PaymentAndPayout />
+            </ProtectedRoute>
+          } />
 
           {/* Shared Protected Routes */}
           <Route path="/settings" element={<Settings />} />
@@ -80,7 +134,11 @@ function App() {
           <Route path="/vendor-reviews" element={<ProtectedRoute allowedRole="vendor"><VendorReviews /></ProtectedRoute>} />
 
           {/* 404 Fallback */}
-          <Route path="*" element={<div className="p-10 text-center text-red-500 font-bold">404 - Page Not Found</div>} />
+          <Route path="*" element={
+            <div className="p-10 text-center text-red-500 font-bold">
+              404 - Page Not Found
+            </div>
+          } />
         </Routes>
       </div>
     </AuthProvider>

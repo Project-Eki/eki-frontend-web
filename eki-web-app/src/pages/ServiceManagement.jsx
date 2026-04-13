@@ -8,11 +8,13 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { getServices, deleteListing } from "../services/api";
+import { useVendor } from '../context/useVendor';
 import api from "../services/api";
 import VendorSidebar from "../components/VendorSidebar";
 import Navbar4 from "../components/adminDashboard/Navbar4";
 import ServiceForm from "../components/Vendormanagement/ServiceForm";
 import { resolveImageUrl, getPrimaryImage } from "../utils/imageUtils";
+import Footer2 from "../components/Footer2";
 
 //Import currency utility
 // If the import fails (file not found), the fallback function below is used.
@@ -263,6 +265,7 @@ const TealFooter = () => (
 
 // MAIN COMPONENT
 const ServiceManagement = () => {
+  const { vendorType, businessCategory, vendorCountry, currencySymbol } = useVendor();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState("grid");
   const [search, setSearch] = useState("");
@@ -276,59 +279,6 @@ const ServiceManagement = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
-  const [currencySymbol, setCurrencySymbol] = useState("UGX");
-  const [vendorCountry, setVendorCountry] = useState("");
-  const [vendorType, setVendorType] = useState("product");
-  const [businessCategory, setBusinessCategory] = useState("retail");
-
-  // ── Fetch vendor country for currency ──────────────────────────────────────
-  useEffect(() => {
-    const loadVendorData = async () => {
-      try {
-        const res = await api.get("/accounts/vendor/profile/");
-        const d = res.data?.data ?? res.data;
-        console.log("[Currency DEBUG] /vendor/profile/ response:", d);
-        const country =
-          d?.country ||
-          d?.business_country ||
-          d?.vendor_country ||
-          d?.location ||
-          "";
-        if (country) {
-          setVendorCountry(country);
-          setCurrencySymbol(getCurrencySymbol(country));
-        }
-
-        // Set vendor type and business category from the profile
-        setVendorType(
-          d?.vendor_type || (d?.is_service_vendor ? "service" : "product"),
-        );
-        setBusinessCategory(
-          d?.business_category || d?.businessCategory || "retail",
-        );
-
-        // If the profile doesn't have vendor_type, determine from business_category
-        if (!d?.vendor_type && d?.business_category) {
-          const serviceCategories = [
-            "beauty",
-            "transport",
-            "tailoring",
-            "airlines",
-            "hotels",
-            "other",
-          ];
-          const isService = serviceCategories.includes(d.business_category);
-          setVendorType(isService ? "service" : "product");
-        }
-      } catch (err) {
-        console.warn("[Vendor Data] fetch failed:", err.message);
-        // Fallback values
-        setVendorType("product");
-        setBusinessCategory("retail");
-      }
-    };
-    loadVendorData();
-  }, []);
 
   // Fetch services
   useEffect(() => {
@@ -339,26 +289,8 @@ const ServiceManagement = () => {
         const raw = Array.isArray(response)
           ? response
           : response.data || response.results || response.listings || [];
-        // setServices(raw.map(item => ({
-        //   id:       item.id,
-        //   category: (item.business_category || '').toUpperCase(),
-        //   title:    item.title       || '—',
-        //   desc:     item.description || '',
-        //   price:    item.price       || '0',
-        //   unit:     item.price_unit  || 'session',
-        //   duration: item.detail?.duration
-        //             || item.detail?.flight_duration
-        //             || (item.detail?.duration_days ? `${item.detail.duration_days} days` : 'N/A'),
-        //   avail:    item.availability || 'Available',
-        //   status:   item.status       || 'draft',
-        //   mode:     item.detail?.delivery_mode
-        //             || (item.detail?.available_24h ? 'remote' : 'in-person'),
-        //  img: getPrimaryImage(item.images),
-        //   _raw: item,
-        // })));
         setServices(
           raw.map((item) => {
-            // DEBUG: Log image information for each service
             const imageUrl = getPrimaryImage(item.images);
             console.log("========== SERVICE DEBUG ==========");
             console.log("Service Title:", item.title);
@@ -398,7 +330,7 @@ const ServiceManagement = () => {
     fetchMyServices();
   }, [refreshKey]);
 
-  // ── Modal helpers ───────────────────────────────────────────────────────────
+  //Modal helpers 
   const openCreate = () => {
     setEditingService(null);
     setIsModalOpen(true);
@@ -413,7 +345,7 @@ const ServiceManagement = () => {
     if (didSave === true) setRefreshKey((k) => k + 1);
   };
 
-  // ── Delete helpers ──────────────────────────────────────────────────────────
+  // Delete helpers
   const handleDeleteRequest = (s) => {
     setDeleteTarget(s);
     setDeleteError("");
@@ -435,7 +367,7 @@ const ServiceManagement = () => {
     }
   };
 
-  // ── Counts for stat cards ────────────────────────────────────────────────────
+  //Counts for stat cards
   const counts = useMemo(
     () => ({
       all: services.length,
@@ -448,7 +380,7 @@ const ServiceManagement = () => {
     [services],
   );
 
-  // ── Filter + sort ───────────────────────────────────────────────────────────
+  //Filter + sort
   const filtered = useMemo(() => {
     let list = services;
     if (statusFilter !== "all") {
@@ -485,11 +417,7 @@ const ServiceManagement = () => {
     <div className="flex min-h-screen bg-[#ecece7] font-sans text-slate-800 p-3 gap-3">
       {/* Desktop sidebar */}
       <div className="hidden md:block shrink-0">
-        <VendorSidebar
-          activePage="services"
-          vendorType={vendorType}
-          businessCategory={businessCategory}
-        />
+        <VendorSidebar activePage="services" />
       </div>
 
       {/* Mobile sidebar overlay */}
@@ -500,11 +428,7 @@ const ServiceManagement = () => {
             onClick={() => setSidebarOpen(false)}
           />
           <div className="absolute left-0 top-0 h-full w-56 p-3">
-            <VendorSidebar
-              activePage="services"
-              vendorType={vendorType}
-              businessCategory={businessCategory}
-            />
+            <VendorSidebar activePage="services" />
           </div>
         </div>
       )}
@@ -537,7 +461,7 @@ const ServiceManagement = () => {
             </button>
           </div>
 
-          {/* ─── Stat cards (exactly matching VendorDashboard style) ─── */}
+                   {/* ─── Stat cards (exactly matching VendorDashboard style) ─── */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
             <StatCard
               title="Total Services"
@@ -731,9 +655,9 @@ const ServiceManagement = () => {
               </div>
             </div>
           )}
-        </main>
+                  </main>
 
-        <TealFooter />
+        <Footer2 />
       </div>
 
       {/* Service form modal */}
@@ -764,6 +688,11 @@ const ServiceManagement = () => {
       )}
     </div>
   );
-};;
+};
 
 export default ServiceManagement;
+
+
+
+
+
