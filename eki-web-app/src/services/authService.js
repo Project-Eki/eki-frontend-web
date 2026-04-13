@@ -181,6 +181,8 @@ export const getVendorProfile = async () => {
       if (data?.phone_number)     localStorage.setItem('vendor_phone_number',    data.phone_number);
       if (data?.business_country) localStorage.setItem('vendor_country',         data.business_country);
       else if (data?.country)     localStorage.setItem('vendor_country',         data.country);
+      // ── store branch_location from vendor onboarding ──
+      if (data?.branch_location)  localStorage.setItem('vendor_branch_location', data.branch_location);
 
       _profileCache = data;
       return data;
@@ -194,6 +196,7 @@ export const getVendorProfile = async () => {
           profile_picture:  localStorage.getItem('vendor_profile_picture') || null,
           phone_number:     localStorage.getItem('vendor_phone_number')    || '',
           business_country: localStorage.getItem('vendor_country')         || 'Uganda',
+          branch_location:  localStorage.getItem('vendor_branch_location') || '',
         };
         _profileCache = fallback;
         return fallback;
@@ -241,6 +244,7 @@ export const updateVendorProfile = async (changedFields) => {
       if (d.phone_number)     localStorage.setItem('vendor_phone_number',    d.phone_number);
       if (d.business_country) localStorage.setItem('vendor_country',         d.business_country);
       else if (d.country)     localStorage.setItem('vendor_country',         d.country);
+      if (d.branch_location)  localStorage.setItem('vendor_branch_location', d.branch_location);
     }
 
     return res.data?.data ?? res.data;
@@ -415,6 +419,7 @@ export const getVendorDashboard = async () => {
   let vendorType       = 'Products';
   let businessCategory = 'retail';
   let currencySymbol   = 'UGX';
+  let branchLocation   = '';
 
   let isProductVendor     = raw.is_product_vendor ?? true;
   let isServiceVendor     = raw.is_service_vendor ?? false;
@@ -428,6 +433,8 @@ export const getVendorDashboard = async () => {
     vendorType       = p.business_type || (isProductVendor ? 'Products' : 'Services');
     businessCategory = p.business_category || raw.business_category || 'retail';
     currencySymbol   = raw.currencySymbol || p.currencySymbol || 'UGX';
+    // ── pull branch_location from vendor profile ──
+    branchLocation   = p.branch_location || localStorage.getItem('vendor_branch_location') || '';
   } catch (_) {}
 
   let liveOrders = [];
@@ -452,6 +459,7 @@ export const getVendorDashboard = async () => {
     country,
     businessCategory,
     currencySymbol,
+    branchLocation,
     vendor_type,
     is_product_vendor:     isProductVendor,
     is_service_vendor:     isServiceVendor,
@@ -501,6 +509,12 @@ const normalizeListing = (item) => {
 
   const normalizedQuality = qualityReverseMap[rawQuality] ?? 'Medium';
 
+  // ── normalise sales_status back to UI-friendly fields ──
+  const salesStatus      = item.sales_status || item.detail?.sales_status || {};
+  const discountEnabled  = salesStatus?.on_sale === true;
+  const discountPct      = salesStatus?.discount_percentage ?? item.discount_percentage ?? 0;
+  const discountedPrice  = salesStatus?.discounted_price    ?? item.discounted_price    ?? null;
+
   return {
     ...item,
     id:                item.id,
@@ -510,6 +524,12 @@ const normalizeListing = (item) => {
     sku:               item.detail?.sku   ?? item.sku   ?? '',
     stock:             item.detail?.stock ?? item.stock ?? 0,
     variants:          item.variants ?? item.detail?.variants ?? [],
+    // branch_location from vendor profile
+    branch_location:   item.branch_location ?? item.detail?.branch_location ?? '',
+    // normalised discount fields for ProductCard display
+    discount_enabled:    discountEnabled,
+    discount_percentage: discountPct,
+    discounted_price:    discountedPrice,
   };
 };
 
@@ -566,6 +586,17 @@ export const createProductListing = async (productData) => {
     }
   }
 
+  // ── sales_status replaces old discount fields ──
+  const salesStatus = productData.sales_status
+    ? productData.sales_status
+    : productData.discount_enabled
+      ? {
+          on_sale: true,
+          discount_percentage: productData.discount_percentage ?? 0,
+          discounted_price: productData.discounted_price ?? null,
+        }
+      : { on_sale: false };
+
   const payload = {
     listing_type:      'product',
     business_category: productData.business_category,
@@ -575,7 +606,9 @@ export const createProductListing = async (productData) => {
     availability:      'available',
     price:             String(parseFloat(productData.price)),
     price_unit:        'item',
-    location:          productData.location?.trim() || '',
+    // ── branch_location from vendor onboarding, not user-typed ──
+    branch_location:   productData.branch_location || localStorage.getItem('vendor_branch_location') || '',
+    sales_status:      salesStatus,
     detail: {
       sku:        productData.sku?.trim() || '',
       base_price: String(parseFloat(productData.price)),
@@ -630,14 +663,27 @@ export const updateProductListing = async (listingId, productData) => {
     }
   }
 
+  // ── sales_status replaces old discount fields ──
+  const salesStatus = productData.sales_status
+    ? productData.sales_status
+    : productData.discount_enabled
+      ? {
+          on_sale: true,
+          discount_percentage: productData.discount_percentage ?? 0,
+          discounted_price: productData.discounted_price ?? null,
+        }
+      : { on_sale: false };
+
   const payload = {
-    listing_type: 'product',
-    title:        productData.title?.trim(),
-    description:  productData.description?.trim() || '',
-    status:       productData.is_published ? 'published' : 'draft',
-    price:        String(parseFloat(productData.price)),
-    price_unit:   'item',
-    location:     productData.location?.trim() || '',
+    listing_type:   'product',
+    title:          productData.title?.trim(),
+    description:    productData.description?.trim() || '',
+    status:         productData.is_published ? 'published' : 'draft',
+    price:          String(parseFloat(productData.price)),
+    price_unit:     'item',
+    // ── branch_location from vendor onboarding ──
+    branch_location: productData.branch_location || localStorage.getItem('vendor_branch_location') || '',
+    sales_status:   salesStatus,
     detail: {
       sku:        productData.sku?.trim() || '',
       base_price: String(parseFloat(productData.price)),
@@ -677,7 +723,13 @@ export const updateListingStatus = (listingId, newStatus) =>
   api.patch(`/listings/${listingId}/status/`, { status: newStatus })
     .then((r) => r.data?.data ?? r.data);
 
-export const uploadListingImage = (listingId, imageFile) => {
+// ─── IMAGE UPLOAD HELPERS ─────────────────────────────────────────────────────
+export const uploadListingImage = async (listingId, imageFile) => {
+  // Guard: only process actual File objects
+  if (!(imageFile instanceof File)) {
+    console.warn('[uploadListingImage] Skipping non-File value:', imageFile);
+    return null;
+  }
   const form = new FormData();
   form.append('image', imageFile);
   return api
@@ -688,9 +740,17 @@ export const uploadListingImage = (listingId, imageFile) => {
 };
 
 export const uploadListingImages = async (listingId, imageFiles) => {
+  if (!Array.isArray(imageFiles) || imageFiles.length === 0) return [];
   const results = [];
   for (const file of imageFiles) {
-    results.push(await uploadListingImage(listingId, file));
+    // Each entry may be a raw File or a { file, preview } object from the form state
+    const actualFile = file instanceof File ? file : file?.file;
+    if (actualFile instanceof File) {
+      const result = await uploadListingImage(listingId, actualFile);
+      if (result) results.push(result);
+    } else {
+      console.warn('[uploadListingImages] Skipping invalid entry:', file);
+    }
   }
   return results;
 };

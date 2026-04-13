@@ -18,10 +18,6 @@ const COLOR_SWATCHES = {
   Beige: '#d2b48c', Maroon: '#800000', Teal: '#14b8a6', Gold: '#d4af37',
   Silver: '#c0c0c0',
 };
-const CATEGORIES = [
-  'Electronics', 'Computers', 'Grocery', 'Home & Decor',
-  'Fashion', 'Retail', 'Beauty', 'Others',
-];
 const MAX_IMAGES_PER_COLOR = 3;
 const MAX_GENERAL_IMAGES = 6;
 const DESC_MIN_WORDS = 5;
@@ -45,10 +41,8 @@ const getCategoryName = (category) => {
 
 export const blankForm = () => ({
   title: '',
-  category: '',
   price: '',
   sku: '',
-  location: '',
   description: '',
   stock: 0,
   imageFiles: [],
@@ -664,8 +658,6 @@ const SummaryPill = ({ formData, currencySymbol, currentStep, onEdit }) => {
     ? Number(formData.price) * (1 - formData.discountPercentage / 100)
     : Number(formData.price || 0);
 
-  const categoryDisplay = getCategoryName(formData.category);
-
   return (
     <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
       <div className="flex items-start justify-between">
@@ -691,7 +683,6 @@ const SummaryPill = ({ formData, currencySymbol, currentStep, onEdit }) => {
               </span>
             )}
             {formData.stock > 0 && <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full">Qty: {formData.stock}</span>}
-            {categoryDisplay && <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">{categoryDisplay}</span>}
             {formData.sizes?.length > 0 && <span className="text-[9px] bg-[#125852]/10 text-[#125852] px-1.5 py-0.5 rounded-full">{formData.sizes.length} size{formData.sizes.length !== 1 ? 's' : ''}</span>}
             {formData.colors?.length > 0 && <span className="text-[9px] bg-[#125852]/10 text-[#125852] px-1.5 py-0.5 rounded-full">{formData.colors.length} color{formData.colors.length !== 1 ? 's' : ''}</span>}
           </div>
@@ -717,6 +708,8 @@ const ProductListing = ({
   currencySymbol = 'UGX',
   initialData = null,
   submitLabel = 'Publish Product',
+  // ── NEW: branch_location passed in from vendor profile ──
+  branchLocation = '',
 }) => {
   const [formStep, setFormStep] = useState(1);
   const [formData, setFormData] = useState(blankForm());
@@ -735,10 +728,8 @@ const ProductListing = ({
     if (initialData) {
       setFormData({
         title: initialData.title || '',
-        category: getCategoryName(initialData.category),
         price: initialData.price ? String(initialData.price) : '',
         sku: initialData.sku || '',
-        location: initialData.location || '',
         description: initialData.description || '',
         stock: initialData.stock || 0,
         imageFiles: [],
@@ -914,10 +905,16 @@ const ProductListing = ({
       return;
     }
 
+    // ── CHANGED: discount now sends sales_status; branch_location comes from vendor profile ──
+    const discountedPrice = formData.discountEnabled && formData.price
+      ? parseFloat(formData.price) * (1 - formData.discountPercentage / 100)
+      : null;
+
     const payload = {
       title: formData.title,
       description: formData.description,
-      location: formData.location,
+      // branch_location comes from vendor onboarding info, not typed by user
+      branch_location: branchLocation || '',
       price: parseFloat(formData.price) || 0,
       sku: formData.sku,
       stock: parseInt(formData.stock) || 0,
@@ -925,12 +922,14 @@ const ProductListing = ({
       colors: formData.colors,
       is_published: isPublished,
       business_category: businessCategory,
-      category: formData.category,
-      discount_enabled: formData.discountEnabled,
-      discount_percentage: formData.discountEnabled ? formData.discountPercentage : null,
-      discounted_price: formData.discountEnabled && formData.price
-        ? parseFloat(formData.price) * (1 - formData.discountPercentage / 100)
-        : null,
+      // sales_status replaces the old discount_enabled / discount_percentage / discounted_price fields
+      sales_status: formData.discountEnabled
+        ? {
+            on_sale: true,
+            discount_percentage: formData.discountPercentage,
+            discounted_price: discountedPrice,
+          }
+        : { on_sale: false },
     };
 
     const allFiles = collectAllFiles();
@@ -982,6 +981,14 @@ const ProductListing = ({
             <div className="px-6 py-4 space-y-3 overflow-y-auto flex-1">
               <ErrorBanner msg={formErrors._server} />
 
+              {/* ── Branch Location display (read-only, from vendor profile) ── */}
+              {branchLocation && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
+                  <span className="text-[10px] font-bold uppercase text-slate-400">Branch Location</span>
+                  <span className="text-[11px] font-bold text-[#125852] ml-auto">{branchLocation}</span>
+                </div>
+              )}
+
               <div className="space-y-1">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Title *</label>
                 <input
@@ -994,28 +1001,8 @@ const ProductListing = ({
                 {formErrors.title && <p className="text-red-500 text-[9px] font-bold">{formErrors.title}</p>}
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold uppercase text-slate-500">Location</label>
-                <input
-                  type="text" name="location" value={formData.location}
-                  onChange={handleInputChange}
-                  placeholder="e.g. Kampala, Uganda"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
-                />
-              </div>
-
+              {/* ── Price & SKU row (sub-category field removed) ── */}
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold uppercase text-slate-500">Sub-category</label>
-                  <select
-                    name="category" value={formData.category}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
-                  >
-                    <option value="">— Select —</option>
-                    {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-                  </select>
-                </div>
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold uppercase text-slate-500">Price ({currencySymbol}) *</label>
                   <input
@@ -1026,16 +1013,15 @@ const ProductListing = ({
                   />
                   {formErrors.price && <p className="text-red-500 text-[9px] font-bold">{formErrors.price}</p>}
                 </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold uppercase text-slate-500">SKU</label>
-                <input
-                  type="text" name="sku" value={formData.sku}
-                  onChange={handleInputChange}
-                  placeholder="ALP-TSH-M-BLK-2026-001"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
-                />
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold uppercase text-slate-500">SKU</label>
+                  <input
+                    type="text" name="sku" value={formData.sku}
+                    onChange={handleInputChange}
+                    placeholder="ALP-TSH-M-BLK-2026-001"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
+                  />
+                </div>
               </div>
 
               <div className="space-y-1">
@@ -1051,15 +1037,16 @@ const ProductListing = ({
                 </p>
               </div>
 
+              {/* ── Discount → sales_status ── */}
               <div className="space-y-3 border border-slate-100 rounded-xl p-4 bg-slate-50/50">
                 <div className="flex items-center justify-between">
                   <label className="text-[11px] font-bold uppercase text-slate-600">Apply Discount</label>
                   <button
                     type="button"
                     onClick={() => {
-                      setFormData(prev => ({ 
-                        ...prev, 
-                        discountEnabled: !prev.discountEnabled 
+                      setFormData(prev => ({
+                        ...prev,
+                        discountEnabled: !prev.discountEnabled
                       }));
                     }}
                     className={`relative w-11 h-6 rounded-full transition-colors ${
@@ -1082,20 +1069,20 @@ const ProductListing = ({
                         {DISCOUNT_MIN}% – {DISCOUNT_MAX}%
                       </span>
                     </div>
-                    
+
                     <input
                       type="range"
                       min={DISCOUNT_MIN}
                       max={DISCOUNT_MAX}
                       step="1"
                       value={formData.discountPercentage}
-                      onChange={(e) => setFormData(prev => ({ 
-                        ...prev, 
-                        discountPercentage: parseInt(e.target.value) 
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        discountPercentage: parseInt(e.target.value)
                       }))}
                       className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#F5B841]"
                     />
-                    
+
                     {formData.price && !isNaN(Number(formData.price)) && Number(formData.price) > 0 && (
                       <div className="bg-white rounded-lg p-3 border border-slate-200">
                         <p className="text-[9px] font-bold uppercase text-slate-400 mb-1">Price Preview</p>
@@ -1117,7 +1104,7 @@ const ProductListing = ({
                     )}
                   </div>
                 )}
-                
+
                 {!formData.discountEnabled && (
                   <p className="text-[10px] text-slate-400 italic">Toggle on to apply a discount to this product</p>
                 )}

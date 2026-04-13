@@ -78,6 +78,7 @@ const VendorDashboard = () => {
     is_product_vendor: true,
     is_service_vendor: false,
     currencySymbol: "",
+    branchLocation: "",
   });
   const [metrics, setMetrics] = useState({
     grossSales: 0,
@@ -95,6 +96,7 @@ const VendorDashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const [currencySymbol, setCurrencySymbol] = useState("");
+  const [branchLocation, setBranchLocation] = useState("");
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   //Handle redirects in useEffect, NOT during render
@@ -129,16 +131,22 @@ const VendorDashboard = () => {
         const isServiceVendor = response.is_service_vendor ?? false;
         const vendorType = response.vendor_type ?? (isProductVendor ? "product" : "service");
 
-        const country = response.country || 
-                        response.business_country || 
-                        localStorage.getItem('vendor_country') || 
+        const country = response.country ||
+                        response.business_country ||
+                        localStorage.getItem('vendor_country') ||
                         "";
-        
+
         console.log('[VendorDashboard] Resolved country:', country);
-        
+
         const resolvedCurrencySymbol = country ? getCurrencySymbol(country) : "";
-        
+
         console.log('[VendorDashboard] Currency symbol:', resolvedCurrencySymbol);
+
+        // ── pull branch_location from vendor dashboard response ──
+        const resolvedBranchLocation =
+          response.branchLocation ||
+          localStorage.getItem('vendor_branch_location') ||
+          "";
 
         setVendorData({
           storeName: response.storeName || "",
@@ -149,8 +157,10 @@ const VendorDashboard = () => {
           is_product_vendor: isProductVendor,
           is_service_vendor: isServiceVendor,
           currencySymbol: resolvedCurrencySymbol,
+          branchLocation: resolvedBranchLocation,
         });
         setCurrencySymbol(resolvedCurrencySymbol);
+        setBranchLocation(resolvedBranchLocation);
 
         setMetrics(
           response.metrics || {
@@ -223,7 +233,7 @@ const VendorDashboard = () => {
         `${isServiceVendor ? "Service" : "Product"} created successfully!`
       );
       setTimeout(() => setSuccessMsg(""), 4000);
-      
+
       await fetchDashboardData();
     } catch (err) {
       console.error("Failed to create listing:", err);
@@ -693,6 +703,7 @@ const VendorDashboard = () => {
         </div>
       )}
 
+      {/* ── ProductListing modal — branchLocation from vendor profile ── */}
       <ProductListing
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -701,6 +712,7 @@ const VendorDashboard = () => {
         isServiceVendor={isServiceVendor}
         businessCategory={businessCategory}
         currencySymbol={displayCurrency}
+        branchLocation={branchLocation}
         submitLabel={isServiceVendor ? "Publish Service" : "Publish Product"}
       />
     </div>

@@ -279,6 +279,7 @@ const ProductDashboard = () => {
   const [currencySymbol, setCurrencySymbol] = useState('$');
   const [vendorCountry, setVendorCountry] = useState('');
   const [businessCategory, setBusinessCategory] = useState('retail');
+  const [branchLocation, setBranchLocation] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
@@ -296,6 +297,8 @@ const ProductDashboard = () => {
           setCurrencySymbol(getCurrencySymbol(data.country));
         }
         if (data?.businessCategory) setBusinessCategory(data.businessCategory);
+        // ── pull branch_location from vendor dashboard ──
+        if (data?.branchLocation) setBranchLocation(data.branchLocation);
         const serviceCategories = ['beauty', 'transport', 'tailoring', 'airlines', 'hotels', 'other'];
         const bc = data?.businessCategory || 'retail';
         setVendorType(serviceCategories.includes(bc) ? 'service' : 'product');
@@ -367,18 +370,16 @@ const ProductDashboard = () => {
       await updateProductListing(productId, {
         title: payload.title,
         description: payload.description || '',
-        location: payload.location || '',
+        branch_location: payload.branch_location || branchLocation || '',
         price: payload.price,
         sku: payload.sku || '',
         stock: Number(payload.stock) || 0,
         sizes: payload.sizes || [],
         colors: payload.colors || [],
         is_published: payload.is_published === true,
-        category: payload.category || '',
         business_category: businessCategory,
-        discount_enabled: payload.discount_enabled,
-        discount_percentage: payload.discount_percentage,
-        discounted_price: payload.discounted_price,
+        // ── pass sales_status through directly ──
+        sales_status: payload.sales_status,
       });
 
       if (imageFiles.length > 0) {
@@ -408,10 +409,9 @@ const ProductDashboard = () => {
     setSelectedProduct({
       id: product.id,
       title: product.title || '',
-      category: product.category || '',
       price: product.price ? String(product.price) : '',
       sku: product.sku || '',
-      location: product.vendor_location || product.location || '',
+      branch_location: product.branch_location || branchLocation || '',
       description: product.description || '',
       stock: product.detail?.stock ?? product.stock ?? 0,
       sizes: product.sizes || [],
@@ -652,6 +652,7 @@ const ProductDashboard = () => {
         <Footer />
       </div>
 
+      {/* ── Create modal — branchLocation passed from vendor profile ── */}
       <ProductListing
         key="create-product-modal"
         isOpen={isProductModalOpen}
@@ -661,9 +662,11 @@ const ProductDashboard = () => {
         isServiceVendor={false}
         businessCategory={businessCategory}
         currencySymbol={currencySymbol}
+        branchLocation={branchLocation}
         submitLabel="Publish Product"
       />
 
+      {/* ── Edit modal — branchLocation passed from vendor profile ── */}
       {selectedProduct && (
         <ProductListing
           key={`edit-${selectedProduct.id}`}
@@ -679,6 +682,7 @@ const ProductDashboard = () => {
           isServiceVendor={false}
           businessCategory={businessCategory}
           currencySymbol={currencySymbol}
+          branchLocation={branchLocation}
           initialData={selectedProduct}
           submitLabel="Save Changes"
         />
