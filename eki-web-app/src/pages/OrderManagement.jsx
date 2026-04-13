@@ -38,6 +38,8 @@ const STATUS_STYLES = {
 
 const TAB_FILTERS = ['All', 'Pending', 'Confirmed', 'Processing', 'Completed', 'Cancelled', 'Delivered'];
 
+const ORDERS_PER_PAGE = 10;
+
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
   <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
@@ -294,6 +296,7 @@ const OrderManagement = () => {
   const [searchQuery,    setSearchQuery]    = useState('');
   const [currencySymbol, setCurrencySymbol] = useState('UGX');
   const [selectedOrder,  setSelectedOrder]  = useState(null);
+  const [currentPage,    setCurrentPage]    = useState(1);
 
   // ── Derived stats ──────────────────────────────────────────────────────────
   const totalOrders  = orders.length;
@@ -336,14 +339,17 @@ const OrderManagement = () => {
     return () => clearInterval(interval);
   }, [fetchOrders]);
 
-  // ── Filter + Search (work together) ───────────────────────────────────────
+  // ── Reset to page 1 whenever tab or search changes ─────────────────────────
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery]);
+
+  // ── Filter + Search ────────────────────────────────────────────────────────
   const filteredOrders = orders.filter((order) => {
-    // Tab filter
     const matchesTab =
       activeTab === 'All' ||
       String(order.status ?? '').toLowerCase() === activeTab.toLowerCase();
 
-    // Search — matches order ID, formatted ID, customer name/email, status, total
     const q = searchQuery.toLowerCase().trim();
     const customerStr =
       typeof order.customer === 'object' && order.customer !== null
@@ -360,6 +366,27 @@ const OrderManagement = () => {
 
     return matchesTab && matchesSearch;
   });
+
+  // ── Pagination calculations ────────────────────────────────────────────────
+  const totalPages   = Math.max(1, Math.ceil(filteredOrders.length / ORDERS_PER_PAGE));
+  const safePage     = Math.min(currentPage, totalPages);
+  const startIndex   = (safePage - 1) * ORDERS_PER_PAGE;
+  const pagedOrders  = filteredOrders.slice(startIndex, startIndex + ORDERS_PER_PAGE);
+
+  const goToPage = (page) => {
+    const p = Math.max(1, Math.min(page, totalPages));
+    setCurrentPage(p);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // ── Page number buttons (show up to 5 around current page) ────────────────
+  const pageNumbers = (() => {
+    const pages = [];
+    const start = Math.max(1, safePage - 2);
+    const end   = Math.min(totalPages, start + 4);
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  })();
 
   // ── Count per tab for badge numbers ───────────────────────────────────────
   const countForTab = (tab) =>
@@ -512,7 +539,7 @@ const OrderManagement = () => {
                       </td>
                     </tr>
                   ))
-                ) : filteredOrders.length === 0 ? (
+                ) : pagedOrders.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="py-20 text-center">
                       <div className="flex flex-col items-center">
@@ -537,10 +564,9 @@ const OrderManagement = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredOrders.map((order, i) => {
+                  pagedOrders.map((order, i) => {
                     const statusKey  = String(order.status ?? '').toLowerCase();
-                    const badgeClass =
-                      STATUS_STYLES[statusKey] ?? 'text-black';
+                    const badgeClass = STATUS_STYLES[statusKey] ?? 'text-black';
 
                     const displayDate = order.date
                       ? (() => {
@@ -562,14 +588,11 @@ const OrderManagement = () => {
                         <td className="px-4 py-3">
                           <input type="checkbox" className="rounded border-slate-300 w-3 h-3" />
                         </td>
-
-                        {/* Formatted Order ID */}
                         <td className="px-4 py-3">
                           <span className="font-black text-[#125852] tracking-wider font-mono text-[10px]">
                             {formatOrderId(order.id)}
                           </span>
                         </td>
-
                         <td className="px-4 py-3 text-[10px] text-slate-700 font-medium">
                           {customerDisplay}
                         </td>
@@ -579,14 +602,11 @@ const OrderManagement = () => {
                         <td className="px-4 py-3 text-[10px] font-bold text-slate-800">
                           {currencySymbol} {Number(order.total ?? 0).toLocaleString()}
                         </td>
-
-                        {/* Status badge — coloured bg, black text */}
                         <td className="px-4 py-3">
                           <span className={`px-2 py-0.5 rounded text-[8px] uppercase font-bold ${badgeClass}`}>
                             {String(order.status ?? '—')}
                           </span>
                         </td>
-
                         <td className="px-4 py-3">
                           <button
                             type="button"
@@ -606,16 +626,36 @@ const OrderManagement = () => {
             {/* Pagination footer */}
             <div className="p-3 border-t border-slate-100 flex justify-between items-center bg-white">
               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                Showing {filteredOrders.length} of {orders.length} orders
+                Showing {filteredOrders.length === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + ORDERS_PER_PAGE, filteredOrders.length)} of {filteredOrders.length} orders
               </p>
               <div className="flex items-center gap-1">
-                <button className="px-2.5 py-1 text-[10px] font-bold border border-slate-200 rounded-md text-slate-400 cursor-not-allowed">
+                <button
+                  onClick={() => goToPage(safePage - 1)}
+                  disabled={safePage === 1}
+                  className="px-2.5 py-1 text-[10px] font-bold border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed transition-colors"
+                >
                   Previous
                 </button>
-                <button className="w-7 h-7 text-[10px] font-bold bg-[#125852] text-white rounded-md shadow-sm">
-                  1
-                </button>
-                <button className="px-2.5 py-1 text-[10px] font-bold border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50">
+
+                {pageNumbers.map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => goToPage(page)}
+                    className={`w-7 h-7 text-[10px] font-bold rounded-md transition-colors ${
+                      page === safePage
+                        ? 'bg-[#125852] text-white shadow-sm'
+                        : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => goToPage(safePage + 1)}
+                  disabled={safePage === totalPages}
+                  className="px-2.5 py-1 text-[10px] font-bold border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed transition-colors"
+                >
                   Next
                 </button>
               </div>
