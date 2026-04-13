@@ -2,10 +2,7 @@ import { useState } from "react";
 import Navbar3 from '../components/adminDashboard/Navbar4';
 import VendorSidebar from '../components/VendorSidebar';
 import Footer from "../components/Vendormanagement/VendorFooter";
-
-// ─── Brand Colors ─────────────────────────────────────────────────────────────
-// Primary Green : #235E5D
-// Primary Gold  : #EFB034
+import { VendorProvider } from '../context/vendorContext';
 
 // ─── Stars ───────────────────────────────────────────────────────────────────
 const Stars = ({ rating = 0, max = 5 }) => (
@@ -212,11 +209,8 @@ const ReviewCard = ({ review, onSaveReply, onFlagReview }) => {
   );
 };
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
-const PAGE_SIZE = 4;
-
-export default function VendorReviews() {
-  // ── State (will be populated when API is connected) ───────────────────────
+// ─── Inner Page Content ───────────────────────────────────────────────────────
+const VendorReviewsContent = () => {
   const [reviews, setReviews]           = useState([]);
   const [total, setTotal]               = useState(0);
   const [page, setPage]                 = useState(1);
@@ -225,7 +219,6 @@ export default function VendorReviews() {
   const [ratingFilter, setRatingFilter] = useState("All");
   const [sort, setSort]                 = useState("newest");
 
-  // ── Derived stats ─────────────────────────────────────────────────────────
   const avgRating = reviews.length
     ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
     : "0.0";
@@ -237,54 +230,43 @@ export default function VendorReviews() {
 
   const hasMore = reviews.length < total;
 
-  // ── TODO: Connect these to your API when ready ────────────────────────────
-  //
-  // fetchReviews(page, replace) → GET /api/vendor/reviews?page=&limit=&sort=&rating=&search=
-  // Response shape: { reviews: [...], total: number }
-  //
-  // Each review object:
-  // {
-  //   id, reviewerName, verified, createdAt,
-  //   productName, rating (1–5), comment, vendorReply
-  // }
-  //
-  // handleSaveReply(id, text) → POST /api/vendor/reviews/:id/reply  { reply: text }
-  // handleFlagReview(id)      → POST /api/vendor/reviews/:id/flag
-
   const handleSaveReply = async (reviewId, replyText) => {
-    // TODO: replace with API call
     setReviews((prev) =>
       prev.map((r) => r.id === reviewId ? { ...r, vendorReply: replyText } : r)
     );
   };
 
   const handleFlagReview = async (reviewId) => {
-    // TODO: replace with API call
     console.log("Flag review:", reviewId);
   };
 
   const handleLoadMore = async () => {
-    // TODO: fetch next page from API and append to reviews
     setPage((p) => p + 1);
   };
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  // ── Outer shell matches OrderManagement exactly ───────────────────────────
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col" style={{ fontFamily: "Poppins, sans-serif" }}>
-      <Navbar3 />
+    <div
+      className="flex min-h-screen bg-[#ecece7] text-slate-800 p-3 gap-3"
+      style={{ fontFamily: "'Poppins', sans-serif" }}
+    >
+      <VendorSidebar activePage="reviews" />
 
-      <div className="flex flex-1">
-        <VendorSidebar />
+      <div className="flex-1 flex flex-col min-w-0">
 
-        <main className="flex-1 p-6 lg:px-8 lg:py-6 overflow-y-auto">
+        {/* Navbar — same position as OrderManagement */}
+        <Navbar3 />
 
-          {/* Page title */}
-          <h1 className="text-xl font-semibold text-gray-800 mb-5">Reviews &amp; Ratings</h1>
+        <main className="p-5 max-w-[1400px] mx-auto w-full pb-16">
 
-          {/* ── Summary cards ── */}
+          {/* Page Header */}
+          <div className="mb-5">
+            <h1 className="text-xl font-bold text-[#1A1A1A] tracking-tight">Reviews &amp; Ratings</h1>
+            <p className="text-slate-400 text-[11px] mt-0.5">Monitor and respond to customer feedback on your products.</p>
+          </div>
+
+          {/* Summary cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-
-            {/* Average Rating */}
             <div
               className="rounded-xl p-6 flex flex-col items-center justify-center text-center"
               style={{ backgroundColor: "#E8F3F3", border: "1px solid #C5DEDD" }}
@@ -303,7 +285,6 @@ export default function VendorReviews() {
               </p>
             </div>
 
-            {/* Distribution */}
             <div className="bg-white rounded-xl p-5" style={{ border: "1px solid #E5E7EB" }}>
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm font-semibold text-gray-700">Rating Distribution</p>
@@ -317,9 +298,8 @@ export default function VendorReviews() {
             </div>
           </div>
 
-          {/* ── Filters ── */}
+          {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
-            {/* Search */}
             <div className="relative flex-1">
               <svg
                 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
@@ -333,14 +313,11 @@ export default function VendorReviews() {
                 placeholder="Search reviews by content or customer..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 text-sm bg-white rounded-lg focus:outline-none"
-                style={{ border: "1px solid #E5E7EB", fontFamily: "Poppins, sans-serif" }}
-                onFocus={(e) => (e.target.style.borderColor = "#235E5D")}
-                onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-[#F5B841] focus:border-transparent transition font-medium text-slate-700 placeholder-slate-400"
+                style={{ fontFamily: "Poppins, sans-serif" }}
               />
             </div>
 
-            {/* Rating filter */}
             <div className="flex items-center gap-1.5">
               <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -349,8 +326,8 @@ export default function VendorReviews() {
               <select
                 value={ratingFilter}
                 onChange={(e) => setRatingFilter(e.target.value)}
-                className="text-sm bg-white rounded-lg px-3 py-2.5 focus:outline-none"
-                style={{ border: "1px solid #E5E7EB", fontFamily: "Poppins, sans-serif" }}
+                className="text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#F5B841]"
+                style={{ fontFamily: "Poppins, sans-serif" }}
               >
                 <option value="All">Rating: All</option>
                 {[5, 4, 3, 2, 1].map((v) => (
@@ -359,12 +336,11 @@ export default function VendorReviews() {
               </select>
             </div>
 
-            {/* Sort */}
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value)}
-              className="text-sm bg-white rounded-lg px-3 py-2.5 focus:outline-none"
-              style={{ border: "1px solid #E5E7EB", fontFamily: "Poppins, sans-serif" }}
+              className="text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#F5B841]"
+              style={{ fontFamily: "Poppins, sans-serif" }}
             >
               <option value="newest">↑ Newest First</option>
               <option value="oldest">↓ Oldest First</option>
@@ -373,15 +349,19 @@ export default function VendorReviews() {
             </select>
           </div>
 
-          {/* ── Reviews list ── */}
+          {/* Reviews list */}
           {reviews.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <svg className="w-12 h-12 mb-4" fill="none" stroke="#C5DEDD" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-              </svg>
-              <p className="text-sm text-gray-400">No reviews yet.</p>
-              <p className="text-xs text-gray-300 mt-1">Reviews will appear here once customers start rating your products.</p>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center py-20 text-center">
+              <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-3">
+                <svg className="w-6 h-6" fill="none" stroke="#CBD5E1" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+              </div>
+              <p className="text-xs font-bold text-slate-900">No reviews yet</p>
+              <p className="text-[10px] text-slate-400 mt-1 font-medium">
+                Reviews will appear here once customers start rating your products.
+              </p>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
@@ -396,18 +376,17 @@ export default function VendorReviews() {
             </div>
           )}
 
-          {/* ── Load more ── */}
+          {/* Load more */}
           {reviews.length > 0 && (
             <div className="mt-6 flex flex-col items-center gap-3">
-              <p className="text-xs text-gray-400">
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
                 Showing {reviews.length} of {total} review{total !== 1 ? "s" : ""}
               </p>
               {hasMore && (
                 <button
                   onClick={handleLoadMore}
                   disabled={loadingMore}
-                  className="px-10 py-2.5 text-sm rounded-lg border text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
-                  style={{ border: "1px solid #D1D5DB" }}
+                  className="px-10 py-2.5 text-[11px] font-bold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
                 >
                   {loadingMore ? "Loading..." : "Load More Reviews"}
                 </button>
@@ -416,9 +395,20 @@ export default function VendorReviews() {
           )}
 
         </main>
-      </div>
 
-      <Footer />
+        {/* Footer — same position as OrderManagement */}
+        <Footer />
+
+      </div>
     </div>
+  );
+};
+
+// ─── Main Export ──────────────────────────────────────────────────────────────
+export default function VendorReviews() {
+  return (
+    <VendorProvider>
+      <VendorReviewsContent />
+    </VendorProvider>
   );
 }

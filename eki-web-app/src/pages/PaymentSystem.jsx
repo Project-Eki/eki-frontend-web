@@ -9,11 +9,12 @@ import {
 } from 'lucide-react';
 
 import { getVendorDashboard } from '../services/authService';
-
-// ── FIXED: import the currency utility ────────────────────────────────────────
 import { getCurrencySymbol } from '../utils/currency';
 
-// ─── Stat Card Component (exactly matching VendorDashboard) ───────────────────
+// ── Import VendorProvider so VendorSidebar's useVendor hook has its context ───
+import { VendorProvider } from '../context/vendorContext';
+
+// ─── Stat Card Component ───────────────────────────────────────────────────────
 const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
   <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
     <div className="flex items-start justify-between">
@@ -59,10 +60,8 @@ class ErrorBoundary extends React.Component {
 const PaymentSystemContent = () => {
   const transactions = [];
 
-  // ── FIXED: dynamic currency state instead of hardcoded '$' ──────────────────
   const [currencySymbol, setCurrencySymbol] = useState('$');
 
-  // ── FIXED: fetch vendor country and resolve currency on mount ────────────────
   useEffect(() => {
     getVendorDashboard()
       .then((data) => {
@@ -75,14 +74,11 @@ const PaymentSystemContent = () => {
 
   return (
     <div className="flex min-h-screen bg-[#ecece7] font-sans text-slate-800 p-3 gap-3">
-      {/* VendorSidebar Component */}
       <VendorSidebar activePage="payments" />
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar4 />
 
-        {/* Dashboard Body */}
         <main className="p-5 max-w-[1400px] mx-auto w-full pb-16">
           <div className="flex justify-between items-start mb-5">
             <div>
@@ -99,7 +95,7 @@ const PaymentSystemContent = () => {
             </div>
           </div>
 
-          {/* Stats Grid — FIXED: use currencySymbol state instead of hardcoded '$' */}
+          {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
             <StatCard
               title="Current Balance"
@@ -164,18 +160,19 @@ const PaymentSystemContent = () => {
           </div>
         </main>
 
-        {/* Imported Footer Component replacing the inline one */}
         <Footer />
       </div>
     </div>
   );
 };
 
-// Final Wrapped Component
+// Final Wrapped Component — VendorProvider added so VendorSidebar's useVendor hook works
 const PaymentSystem = () => {
   return (
     <ErrorBoundary>
-      <PaymentSystemContent />
+      <VendorProvider>
+        <PaymentSystemContent />
+      </VendorProvider>
     </ErrorBoundary>
   );
 };
