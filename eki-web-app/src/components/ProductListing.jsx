@@ -22,15 +22,25 @@ const CATEGORIES = [
   'Electronics', 'Computers', 'Grocery', 'Home & Decor',
   'Fashion', 'Retail', 'Beauty', 'Others',
 ];
-const DEFAULT_QUALITY_OPTIONS = ['High', 'Medium', 'Low'];
 const MAX_IMAGES_PER_COLOR = 3;
 const MAX_GENERAL_IMAGES = 6;
 const DESC_MIN_WORDS = 5;
 const DESC_MAX_WORDS = 21;
+const DISCOUNT_MIN = 3;
+const DISCOUNT_MAX = 50;
 
 const countWords = (text) => {
   if (!text || !text.trim()) return 0;
   return text.trim().split(/\s+/).filter(Boolean).length;
+};
+
+// Helper function to safely get category name
+const getCategoryName = (category) => {
+  if (!category) return '';
+  if (typeof category === 'object' && category !== null) {
+    return category.name || category.slug || '';
+  }
+  return String(category);
 };
 
 export const blankForm = () => ({
@@ -38,7 +48,6 @@ export const blankForm = () => ({
   category: '',
   price: '',
   sku: '',
-  qty: 'Medium',
   location: '',
   description: '',
   stock: 0,
@@ -46,6 +55,8 @@ export const blankForm = () => ({
   sizes: [],
   colors: [],
   colorImageFiles: {},
+  discountEnabled: false,
+  discountPercentage: 10,
 });
 
 export const isStep1Valid = (data) =>
@@ -55,9 +66,6 @@ export const isStep1Valid = (data) =>
   Number(data.price) > 0;
 
 // ─── Camera Capture Component ─────────────────────────────────────────────────
-// FIX: getUserMedia requires HTTPS. On DigitalOcean HTTP deployments
-// navigator.mediaDevices is undefined. We check the protocol first
-// and show a clear error instead of crashing with a TypeError.
 const CameraCapture = ({ onCapture, onClose }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -123,7 +131,6 @@ const CameraCapture = ({ onCapture, onClose }) => {
     };
   }, []);
 
-  // Also stop stream when component unmounts via stream state
   useEffect(() => {
     return () => {
       if (stream) {
@@ -165,7 +172,6 @@ const CameraCapture = ({ onCapture, onClose }) => {
         </button>
 
         {error ? (
-          /* ── Error state ── */
           <div className="bg-white rounded-2xl p-8 text-center space-y-4">
             <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto">
               <Camera size={24} className="text-red-500" />
@@ -180,7 +186,6 @@ const CameraCapture = ({ onCapture, onClose }) => {
             </button>
           </div>
         ) : (
-          /* ── Live camera ── */
           <div className="relative">
             <video
               ref={videoRef}
@@ -654,28 +659,52 @@ const ColorImagePreviewModal = ({ color, images, onClose }) => {
 };
 
 // ─── SummaryPill ──────────────────────────────────────────────────────────────
-const SummaryPill = ({ formData, currencySymbol, currentStep, onEdit }) => (
-  <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-    <div className="flex items-start justify-between">
-      <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-bold uppercase text-slate-400 mb-0.5">Summary</p>
-        <p className="text-[13px] font-bold text-slate-800 truncate">{formData.title || 'New Product'}</p>
-        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-          <span className="text-[11px] text-[#125852] font-bold">{currencySymbol} {Number(formData.price || 0).toLocaleString()}</span>
-          {formData.stock > 0 && <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full">Qty: {formData.stock}</span>}
-          {formData.category && <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">{formData.category}</span>}
-          {formData.sizes?.length > 0 && <span className="text-[9px] bg-[#125852]/10 text-[#125852] px-1.5 py-0.5 rounded-full">{formData.sizes.length} size{formData.sizes.length !== 1 ? 's' : ''}</span>}
-          {formData.colors?.length > 0 && <span className="text-[9px] bg-[#125852]/10 text-[#125852] px-1.5 py-0.5 rounded-full">{formData.colors.length} color{formData.colors.length !== 1 ? 's' : ''}</span>}
+const SummaryPill = ({ formData, currencySymbol, currentStep, onEdit }) => {
+  const displayPrice = formData.discountEnabled && formData.price
+    ? Number(formData.price) * (1 - formData.discountPercentage / 100)
+    : Number(formData.price || 0);
+
+  const categoryDisplay = getCategoryName(formData.category);
+
+  return (
+    <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+      <div className="flex items-start justify-between">
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] font-bold uppercase text-slate-400 mb-0.5">Summary</p>
+          <p className="text-[13px] font-bold text-slate-800 truncate">{formData.title || 'New Product'}</p>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            {formData.discountEnabled && formData.price ? (
+              <>
+                <span className="text-[10px] text-slate-400 line-through">
+                  {currencySymbol} {Number(formData.price).toLocaleString()}
+                </span>
+                <span className="text-[11px] text-[#125852] font-bold">
+                  {currencySymbol} {displayPrice.toLocaleString()}
+                </span>
+                <span className="text-[8px] bg-[#F5B841] text-white px-1.5 py-0.5 rounded-full font-bold">
+                  -{formData.discountPercentage}%
+                </span>
+              </>
+            ) : (
+              <span className="text-[11px] text-[#125852] font-bold">
+                {currencySymbol} {Number(formData.price || 0).toLocaleString()}
+              </span>
+            )}
+            {formData.stock > 0 && <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full">Qty: {formData.stock}</span>}
+            {categoryDisplay && <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">{categoryDisplay}</span>}
+            {formData.sizes?.length > 0 && <span className="text-[9px] bg-[#125852]/10 text-[#125852] px-1.5 py-0.5 rounded-full">{formData.sizes.length} size{formData.sizes.length !== 1 ? 's' : ''}</span>}
+            {formData.colors?.length > 0 && <span className="text-[9px] bg-[#125852]/10 text-[#125852] px-1.5 py-0.5 rounded-full">{formData.colors.length} color{formData.colors.length !== 1 ? 's' : ''}</span>}
+          </div>
         </div>
+        {currentStep > 1 && (
+          <button type="button" onClick={() => onEdit(1)} className="text-[10px] font-bold text-slate-400 hover:text-[#125852] flex items-center gap-1 ml-2 mt-1 flex-shrink-0">
+            <ArrowLeft size={12} /> Edit
+          </button>
+        )}
       </div>
-      {currentStep > 1 && (
-        <button type="button" onClick={() => onEdit(1)} className="text-[10px] font-bold text-slate-400 hover:text-[#125852] flex items-center gap-1 ml-2 mt-1 flex-shrink-0">
-          <ArrowLeft size={12} /> Edit
-        </button>
-      )}
     </div>
-  </div>
-);
+  );
+};
 
 // ─── Main Listing Form Component ──────────────────────────────────────────────
 const ProductListing = ({
@@ -687,7 +716,6 @@ const ProductListing = ({
   businessCategory = 'retail',
   currencySymbol = 'UGX',
   initialData = null,
-  qualityOptions = DEFAULT_QUALITY_OPTIONS,
   submitLabel = 'Publish Product',
 }) => {
   const [formStep, setFormStep] = useState(1);
@@ -702,22 +730,14 @@ const ProductListing = ({
 
   const step1Valid = isStep1Valid(formData);
 
-  // Initialize form with initialData (for editing) or blank (for create)
   useEffect(() => {
     if (!isOpen) return;
     if (initialData) {
-      const safeQty =
-        initialData.qty ||
-        initialData.inventory_quality ||
-        qualityOptions[1] ||
-        'Medium';
-
       setFormData({
         title: initialData.title || '',
-        category: initialData.category || '',
+        category: getCategoryName(initialData.category),
         price: initialData.price ? String(initialData.price) : '',
         sku: initialData.sku || '',
-        qty: safeQty,
         location: initialData.location || '',
         description: initialData.description || '',
         stock: initialData.stock || 0,
@@ -725,12 +745,14 @@ const ProductListing = ({
         sizes: initialData.sizes || [],
         colors: initialData.colors || [],
         colorImageFiles: {},
+        discountEnabled: initialData.discount_enabled || false,
+        discountPercentage: initialData.discount_percentage || 10,
       });
       setIsPublished(initialData.is_published === true);
     } else {
       setFormData({
         ...blankForm(),
-        qty: qualityOptions[1] || 'Medium',
+        discountPercentage: 10,
       });
       setIsPublished(true);
     }
@@ -898,13 +920,17 @@ const ProductListing = ({
       location: formData.location,
       price: parseFloat(formData.price) || 0,
       sku: formData.sku,
-      qty: formData.qty,
       stock: parseInt(formData.stock) || 0,
       sizes: formData.sizes,
       colors: formData.colors,
       is_published: isPublished,
       business_category: businessCategory,
       category: formData.category,
+      discount_enabled: formData.discountEnabled,
+      discount_percentage: formData.discountEnabled ? formData.discountPercentage : null,
+      discounted_price: formData.discountEnabled && formData.price
+        ? parseFloat(formData.price) * (1 - formData.discountPercentage / 100)
+        : null,
     };
 
     const allFiles = collectAllFiles();
@@ -930,7 +956,6 @@ const ProductListing = ({
 
   return (
     <>
-      {/* Camera Capture Modal */}
       {showCamera && (
         <CameraCapture
           onCapture={handleCameraCapture}
@@ -941,7 +966,6 @@ const ProductListing = ({
         />
       )}
 
-      {/* ── Step 1: Basic Info ───────────────────────────────────────────── */}
       {formStep === 1 && (
         <div className={modalWrap}>
           <div className={modalBox} style={{ fontFamily: "'Poppins', sans-serif" }}>
@@ -1004,26 +1028,14 @@ const ProductListing = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold uppercase text-slate-500">SKU</label>
-                  <input
-                    type="text" name="sku" value={formData.sku}
-                    onChange={handleInputChange}
-                    placeholder="ALP-TSH-M-BLK-2026-001"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold uppercase text-slate-500">Quality</label>
-                  <select
-                    name="qty" value={formData.qty}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none bg-white"
-                  >
-                    {qualityOptions.map((q) => <option key={q} value={q}>{q}</option>)}
-                  </select>
-                </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold uppercase text-slate-500">SKU</label>
+                <input
+                  type="text" name="sku" value={formData.sku}
+                  onChange={handleInputChange}
+                  placeholder="ALP-TSH-M-BLK-2026-001"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
+                />
               </div>
 
               <div className="space-y-1">
@@ -1037,6 +1049,78 @@ const ProductListing = ({
                 <p className="text-[9px] text-slate-400">
                   Total units available. Skip if using size/color variants — set stock per variant instead.
                 </p>
+              </div>
+
+              <div className="space-y-3 border border-slate-100 rounded-xl p-4 bg-slate-50/50">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold uppercase text-slate-600">Apply Discount</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        discountEnabled: !prev.discountEnabled 
+                      }));
+                    }}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${
+                      formData.discountEnabled ? 'bg-[#125852]' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${
+                      formData.discountEnabled ? 'left-5' : 'left-0.5'
+                    }`} />
+                  </button>
+                </div>
+
+                {formData.discountEnabled && (
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold text-slate-500">
+                        Discount: <span className="text-[#125852]">{formData.discountPercentage}% OFF</span>
+                      </label>
+                      <span className="text-[10px] text-slate-400">
+                        {DISCOUNT_MIN}% – {DISCOUNT_MAX}%
+                      </span>
+                    </div>
+                    
+                    <input
+                      type="range"
+                      min={DISCOUNT_MIN}
+                      max={DISCOUNT_MAX}
+                      step="1"
+                      value={formData.discountPercentage}
+                      onChange={(e) => setFormData(prev => ({ 
+                        ...prev, 
+                        discountPercentage: parseInt(e.target.value) 
+                      }))}
+                      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#F5B841]"
+                    />
+                    
+                    {formData.price && !isNaN(Number(formData.price)) && Number(formData.price) > 0 && (
+                      <div className="bg-white rounded-lg p-3 border border-slate-200">
+                        <p className="text-[9px] font-bold uppercase text-slate-400 mb-1">Price Preview</p>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm text-slate-400 line-through">
+                            {currencySymbol} {Number(formData.price).toLocaleString()}
+                          </span>
+                          <span className="text-lg font-black text-[#125852]">
+                            {currencySymbol} {(Number(formData.price) * (1 - formData.discountPercentage / 100)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          </span>
+                          <span className="text-[10px] font-bold text-white bg-[#F5B841] px-2 py-0.5 rounded-full">
+                            -{formData.discountPercentage}%
+                          </span>
+                        </div>
+                        <p className="text-[9px] text-emerald-600 font-medium mt-1">
+                          Customer saves {currencySymbol} {(Number(formData.price) * (formData.discountPercentage / 100)).toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {!formData.discountEnabled && (
+                  <p className="text-[10px] text-slate-400 italic">Toggle on to apply a discount to this product</p>
+                )}
               </div>
             </div>
             <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
@@ -1056,7 +1140,6 @@ const ProductListing = ({
         </div>
       )}
 
-      {/* ── Step 2: Description ──────────────────────────────────────────── */}
       {formStep === 2 && (
         <div className={modalWrap}>
           <div className={modalBox} style={{ fontFamily: "'Poppins', sans-serif" }}>
@@ -1089,7 +1172,6 @@ const ProductListing = ({
         </div>
       )}
 
-      {/* ── Step 3: Variants ─────────────────────────────────────────────── */}
       {formStep === 3 && (
         <div className={modalWrap}>
           <div className={modalBox} style={{ fontFamily: "'Poppins', sans-serif" }}>
@@ -1121,7 +1203,6 @@ const ProductListing = ({
         </div>
       )}
 
-      {/* ── Step 4: Images & Publish ─────────────────────────────────────── */}
       {formStep === 4 && (
         <div className={modalWrap}>
           <form
@@ -1211,7 +1292,6 @@ const ProductListing = ({
         </div>
       )}
 
-      {/* Color Preview Modal */}
       {colorPreviewModal && (
         <ColorImagePreviewModal
           color={colorPreviewModal.color}

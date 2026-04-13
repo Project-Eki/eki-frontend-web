@@ -6,7 +6,7 @@ import ProductListing from '../components/ProductListing';
 import {
   Plus, Search, Filter, LayoutGrid, List,
   CheckCircle2, Package, ShoppingBag,
-  X, Trash2, CreditCard, Box, ListChecks,
+  X, Trash2, CreditCard, ListChecks,
   Edit, ChevronDown, ChevronUp,
 } from 'lucide-react';
 
@@ -20,14 +20,13 @@ import {
 } from '../services/authService';
 import { getCurrencySymbol } from '../utils/currency';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const QUALITY_OPTIONS = ['High', 'Medium', 'Low'];
-
-const getQualityStyle = (quality) => {
-  const q = (quality || '').toLowerCase();
-  if (q === 'high') return { bg: '#FFF8E7', text: '#B8860B', border: '#F5B841' };
-  if (q === 'low')  return { bg: '#FFF3E0', text: '#C07000', border: '#E09030' };
-  return              { bg: '#FFFBF0', text: '#A07800', border: '#F5C842' };
+// Helper function to safely get category name
+const getCategoryName = (category) => {
+  if (!category) return '—';
+  if (typeof category === 'object' && category !== null) {
+    return category.name || category.slug || '—';
+  }
+  return String(category);
 };
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
@@ -47,11 +46,12 @@ const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
 
 // ─── ProductCard ──────────────────────────────────────────────────────────────
 const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => {
-  const qStyle = getQualityStyle(product.inventory_quality || product.qty);
   const mainImage = product.images?.[0]?.image || null;
   const variantCount = product.variants?.length || 0;
   const hasMultipleVariants = variantCount > 1;
   const [showVariants, setShowVariants] = useState(false);
+
+  const categoryDisplay = getCategoryName(product.category);
 
   return (
     <div className="bg-white rounded-xl border border-slate-100 overflow-hidden hover:shadow-md transition-all group">
@@ -68,7 +68,6 @@ const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => 
             {product.is_published === true ? 'LIVE' : 'DRAFT'}
           </span>
         </div>
-        {/* Action Icons Overlay */}
         <div className="absolute top-2 left-2 flex gap-1">
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(product); }}
@@ -87,7 +86,7 @@ const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => 
         </div>
       </div>
       <div className="p-3 space-y-1">
-        <p className="text-[9px] font-bold uppercase text-slate-400">{product.category || '—'}</p>
+        <p className="text-[9px] font-bold uppercase text-slate-400">{categoryDisplay}</p>
         <p className="text-[13px] font-bold text-slate-800 truncate">{product.title}</p>
 
         {product.sku && (
@@ -95,13 +94,25 @@ const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => 
         )}
 
         <div className="flex items-center justify-between pt-0.5">
-          <p className="text-[13px] font-black text-[#125852]">{currencySymbol} {Number(product.price || 0).toLocaleString()}</p>
-          <span
-            className="text-[8px] font-black px-2 py-0.5 rounded-full border"
-            style={{ background: qStyle.bg, color: qStyle.text, borderColor: qStyle.border }}
-          >
-            {(product.inventory_quality || product.qty || 'Medium').toUpperCase()}
-          </span>
+          <div className="flex items-center gap-2">
+            {product.discount_enabled && product.discounted_price ? (
+              <>
+                <span className="text-[10px] text-slate-400 line-through">
+                  {currencySymbol} {Number(product.price || 0).toLocaleString()}
+                </span>
+                <span className="text-[13px] font-black text-[#125852]">
+                  {currencySymbol} {Number(product.discounted_price).toLocaleString()}
+                </span>
+                <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-[#F5B841] text-white">
+                  -{product.discount_percentage}%
+                </span>
+              </>
+            ) : (
+              <span className="text-[13px] font-black text-[#125852]">
+                {currencySymbol} {Number(product.price || 0).toLocaleString()}
+              </span>
+            )}
+          </div>
         </div>
 
         {hasMultipleVariants && (
@@ -141,10 +152,11 @@ const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => 
 
 // ─── List View Item ───────────────────────────────────────────────────────────
 const ProductListItem = ({ product, currencySymbol, onEdit, onDelete }) => {
-  const qStyle = getQualityStyle(product.inventory_quality || product.qty);
   const mainImage = product.images?.[0]?.image || null;
   const variantCount = product.variants?.length || 0;
   const [showVariants, setShowVariants] = useState(false);
+
+  const categoryDisplay = getCategoryName(product.category);
 
   return (
     <div className="bg-white rounded-xl border border-slate-100 p-4 hover:shadow-md transition-all">
@@ -162,7 +174,7 @@ const ProductListItem = ({ product, currencySymbol, onEdit, onDelete }) => {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-[10px] font-bold uppercase text-slate-400">{product.category || '—'}</p>
+              <p className="text-[10px] font-bold uppercase text-slate-400">{categoryDisplay}</p>
               <h3 className="text-sm font-bold text-slate-800 truncate">{product.title}</h3>
               {product.sku && (
                 <p className="text-[9px] text-slate-500 font-mono mt-0.5">SKU: {product.sku}</p>
@@ -181,13 +193,23 @@ const ProductListItem = ({ product, currencySymbol, onEdit, onDelete }) => {
           </div>
 
           <div className="flex items-center gap-4 mt-2">
-            <p className="text-sm font-black text-[#125852]">{currencySymbol} {Number(product.price || 0).toLocaleString()}</p>
-            <span
-              className="text-[9px] font-black px-2 py-0.5 rounded-full border"
-              style={{ background: qStyle.bg, color: qStyle.text, borderColor: qStyle.border }}
-            >
-              {(product.inventory_quality || product.qty || 'Medium').toUpperCase()}
-            </span>
+            {product.discount_enabled && product.discounted_price ? (
+              <>
+                <span className="text-xs text-slate-400 line-through">
+                  {currencySymbol} {Number(product.price || 0).toLocaleString()}
+                </span>
+                <span className="text-sm font-black text-[#125852]">
+                  {currencySymbol} {Number(product.discounted_price).toLocaleString()}
+                </span>
+                <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-[#F5B841] text-white">
+                  -{product.discount_percentage}% OFF
+                </span>
+              </>
+            ) : (
+              <span className="text-sm font-black text-[#125852]">
+                {currencySymbol} {Number(product.price || 0).toLocaleString()}
+              </span>
+            )}
             <span className="text-[10px] text-slate-500">Stock: {product.stock || 0}</span>
           </div>
 
@@ -262,12 +284,9 @@ const ProductDashboard = () => {
   const [successMsg, setSuccessMsg] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState('');
-  const [filterQuality, setFilterQuality] = useState('');
   const [vendorType, setVendorType] = useState('product');
-  const [qualityOptions, setQualityOptions] = useState(QUALITY_OPTIONS);
   const filterRef = useRef(null);
 
-  // ── Load vendor info ────────────────────────────────────────────────────────
   useEffect(() => {
     const loadVendorData = async () => {
       try {
@@ -277,9 +296,6 @@ const ProductDashboard = () => {
           setCurrencySymbol(getCurrencySymbol(data.country));
         }
         if (data?.businessCategory) setBusinessCategory(data.businessCategory);
-        if (data?.quality_options && Array.isArray(data.quality_options)) {
-          setQualityOptions(data.quality_options);
-        }
         const serviceCategories = ['beauty', 'transport', 'tailoring', 'airlines', 'hotels', 'other'];
         const bc = data?.businessCategory || 'retail';
         setVendorType(serviceCategories.includes(bc) ? 'service' : 'product');
@@ -318,7 +334,6 @@ const ProductDashboard = () => {
     setTimeout(() => setSuccessMsg(''), 4000);
   };
 
-  // ── Create ──────────────────────────────────────────────────────────────────
   const handleCreateProduct = async (payload, imageFiles) => {
     setIsLoading(true);
     try {
@@ -344,7 +359,6 @@ const ProductDashboard = () => {
     }
   };
 
-  // ── Update ──────────────────────────────────────────────────────────────────
   const handleUpdateProduct = async (productId, payload, imageFiles) => {
     setIsLoading(true);
     try {
@@ -356,13 +370,15 @@ const ProductDashboard = () => {
         location: payload.location || '',
         price: payload.price,
         sku: payload.sku || '',
-        qty: payload.qty,
         stock: Number(payload.stock) || 0,
         sizes: payload.sizes || [],
         colors: payload.colors || [],
         is_published: payload.is_published === true,
         category: payload.category || '',
         business_category: businessCategory,
+        discount_enabled: payload.discount_enabled,
+        discount_percentage: payload.discount_percentage,
+        discounted_price: payload.discounted_price,
       });
 
       if (imageFiles.length > 0) {
@@ -385,16 +401,9 @@ const ProductDashboard = () => {
     }
   };
 
-  // ── Edit handler ────────────────────────────────────────────────────────────
   const handleEditProduct = (product) => {
     console.log('[handleEditProduct] product:', product);
     console.log('[handleEditProduct] listing ID:', product.id);
-
-    const normalizedQty =
-      product.inventory_quality ||
-      product.qty ||
-      qualityOptions[1] ||
-      'Medium';
 
     setSelectedProduct({
       id: product.id,
@@ -402,7 +411,6 @@ const ProductDashboard = () => {
       category: product.category || '',
       price: product.price ? String(product.price) : '',
       sku: product.sku || '',
-      qty: normalizedQty,
       location: product.vendor_location || product.location || '',
       description: product.description || '',
       stock: product.detail?.stock ?? product.stock ?? 0,
@@ -411,11 +419,13 @@ const ProductDashboard = () => {
       is_published: product.is_published === true || product.status === 'published',
       images: product.images || [],
       variants: product.variants || [],
+      discount_enabled: product.discount_enabled || false,
+      discount_percentage: product.discount_percentage || 10,
+      discounted_price: product.discounted_price || null,
     });
     setIsEditModalOpen(true);
   };
 
-  // ── Delete handler ──────────────────────────────────────────────────────────
   const handleDeleteProduct = (product) => {
     console.log('[handleDeleteProduct] product:', product);
     console.log('[handleDeleteProduct] listing ID:', product.id);
@@ -423,7 +433,6 @@ const ProductDashboard = () => {
     setIsDeleteModalOpen(true);
   };
 
-  // ── Confirm Delete ──────────────────────────────────────────────────────────
   const confirmDelete = async () => {
     if (!selectedProduct?.id) {
       console.error('[confirmDelete] No product ID found:', selectedProduct);
@@ -452,7 +461,6 @@ const ProductDashboard = () => {
     }
   };
 
-  // ── Filtering ───────────────────────────────────────────────────────────────
   const filteredProducts = products.filter((p) => {
     const matchesSearch =
       p.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -461,15 +469,12 @@ const ProductDashboard = () => {
       !filterStatus ||
       (filterStatus === 'published' && p.is_published === true) ||
       (filterStatus === 'draft' && p.is_published !== true);
-    const rawQty = (p.inventory_quality || p.qty || '').toUpperCase();
-    const matchesQuality = !filterQuality || rawQty === filterQuality.toUpperCase();
-    return matchesSearch && matchesStatus && matchesQuality;
+    return matchesSearch && matchesStatus;
   });
 
-  const activeFilterCount = [filterStatus, filterQuality].filter(Boolean).length;
-  const clearFilters = () => { setFilterStatus(''); setFilterQuality(''); };
+  const activeFilterCount = [filterStatus].filter(Boolean).length;
+  const clearFilters = () => { setFilterStatus(''); };
 
-  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="flex min-h-screen bg-[#ecece7] text-slate-800 p-3 gap-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
       <VendorSidebar activePage="products" vendorType={vendorType} businessCategory={businessCategory} />
@@ -477,7 +482,6 @@ const ProductDashboard = () => {
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar3 />
 
-        {/* Success toast */}
         {successMsg && (
           <div className="fixed top-6 right-6 z-[200] bg-emerald-600 text-white px-4 py-2 rounded-xl shadow-lg text-xs font-bold flex items-center gap-2 animate-pulse">
             <CheckCircle2 size={12} /> {successMsg}
@@ -486,7 +490,6 @@ const ProductDashboard = () => {
 
         <main className="p-5 max-w-[1400px] mx-auto w-full pb-16">
 
-          {/* Header */}
           <div className="flex justify-between items-center mb-5">
             <div>
               <h1 className="text-xl font-bold text-[#1A1A1A] tracking-tight">Product Management</h1>
@@ -507,15 +510,12 @@ const ProductDashboard = () => {
             </button>
           </div>
 
-          {/* Stat cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
             <StatCard title="Total Products" number={products.length} icon={Package} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
             <StatCard title="Active Listings" number={products.filter((p) => p.is_published === true).length} icon={ListChecks} iconBgColor="bg-blue-50" iconColor="text-blue-600" />
-            <StatCard title="High Quality" number={products.filter((p) => (p.inventory_quality || p.qty || '').toUpperCase() === 'HIGH').length} icon={Box} iconBgColor="bg-orange-50" iconColor="text-orange-600" />
             <StatCard title="Drafts" number={products.filter((p) => p.is_published !== true).length} icon={CreditCard} iconBgColor="bg-indigo-50" iconColor="text-indigo-600" />
           </div>
 
-          {/* Search + Filter + View toggle */}
           <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
             <div className={`relative w-80 flex items-center border rounded-lg shadow-sm transition-all bg-white ${searchFocused ? 'border-[#F5B841] ring-1 ring-[#F5B841]' : 'border-slate-200'}`}>
               <Search className={`absolute left-3 transition-colors ${searchFocused ? 'text-[#F5B841]' : 'text-slate-400'}`} size={16} />
@@ -536,7 +536,6 @@ const ProductDashboard = () => {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Filter dropdown */}
               <div className="relative" ref={filterRef}>
                 <button
                   onClick={() => setIsFilterOpen((v) => !v)}
@@ -569,18 +568,6 @@ const ProductDashboard = () => {
                       </div>
                     </div>
 
-                    <div>
-                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block">Quality</label>
-                      <div className="flex gap-2 flex-wrap">
-                        {['', ...qualityOptions].map((q) => (
-                          <button key={q} type="button" onClick={() => setFilterQuality(q)}
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${filterQuality === q ? 'bg-[#125852] text-white border-[#125852]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#125852]'}`}>
-                            {q === '' ? 'All' : q}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
                     <div className="mt-4 pt-3 border-t border-slate-100 text-[10px] text-slate-400 text-center">
                       Showing {filteredProducts.length} of {products.length} products
                     </div>
@@ -590,7 +577,6 @@ const ProductDashboard = () => {
 
               <div className="h-8 w-[1px] bg-slate-200 mx-1" />
 
-              {/* View toggle */}
               <div className="flex bg-white border border-slate-200 rounded-lg p-1">
                 <button onClick={() => setViewType('grid')} className={`p-1.5 rounded ${viewType === 'grid' ? 'bg-slate-100' : ''}`}><LayoutGrid size={16} /></button>
                 <button onClick={() => setViewType('list')} className={`p-1.5 rounded ${viewType === 'list' ? 'bg-slate-100' : ''}`}><List size={16} /></button>
@@ -598,16 +584,13 @@ const ProductDashboard = () => {
             </div>
           </div>
 
-          {/* Active filter pills */}
           {activeFilterCount > 0 && (
             <div className="flex items-center gap-2 mb-4 flex-wrap">
               <span className="text-[10px] text-slate-400 font-bold uppercase">Active:</span>
               {filterStatus && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterStatus} <button onClick={() => setFilterStatus('')}><X size={9} /></button></span>}
-              {filterQuality && <span className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2.5 py-1 rounded-full text-[10px] font-bold">{filterQuality} <button onClick={() => setFilterQuality('')}><X size={9} /></button></span>}
             </div>
           )}
 
-          {/* Product grid / list / empty / loading */}
           {isFetching ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[...Array(8)].map((_, i) => (
@@ -669,9 +652,6 @@ const ProductDashboard = () => {
         <Footer />
       </div>
 
-      {/* ── Modals ─────────────────────────────────────────────────────────── */}
-
-      {/* Create Product Modal */}
       <ProductListing
         key="create-product-modal"
         isOpen={isProductModalOpen}
@@ -681,11 +661,9 @@ const ProductDashboard = () => {
         isServiceVendor={false}
         businessCategory={businessCategory}
         currencySymbol={currencySymbol}
-        qualityOptions={qualityOptions}
         submitLabel="Publish Product"
       />
 
-      {/* Edit Product Modal */}
       {selectedProduct && (
         <ProductListing
           key={`edit-${selectedProduct.id}`}
@@ -702,12 +680,10 @@ const ProductDashboard = () => {
           businessCategory={businessCategory}
           currencySymbol={currencySymbol}
           initialData={selectedProduct}
-          qualityOptions={qualityOptions}
           submitLabel="Save Changes"
         />
       )}
 
-      {/* Delete Confirm Modal */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center" style={{ fontFamily: "'Poppins', sans-serif" }}>
