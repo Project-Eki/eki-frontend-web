@@ -1,15 +1,67 @@
-import React, { useState, useEffect } from 'react';
-import { HiOutlineBriefcase } from "react-icons/hi";
+import React, { useState, useEffect, useMemo } from 'react';
+import { HiOutlineBriefcase, HiOutlineBuildingOffice, HiOutlineUser, HiOutlineIdentification, HiOutlineDocumentText, HiOutlineClipboardDocumentList } from "react-icons/hi2";
+import { FaRegBuilding, FaRegFileAlt } from "react-icons/fa";
 import { validateBusinessIdentity } from "../utils/onboardingValidation";
 import MessageAlert from './MessageAlert';
 import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
 
-// Reusable inline error tag — floats inside the right of any input
+// Reusable inline error tag
 const InlineError = ({ message }) => (
-  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-red-500 bg-red-50 border border-red-200 rounded-md px-1.5 py-0.5 whitespace-nowrap pointer-events-none z-20">
+  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-bold text-red-500 bg-red-50 border border-red-200 rounded-md px-1.5 py-0.5 whitespace-nowrap pointer-events-none z-20">
     {message}
   </span>
 );
+
+// Category options based on business type
+const getCategoryOptions = (businessType) => {
+  const commonCategories = [
+    { value: "retail", label: "Retail" },
+    { value: "ecommerce", label: "E-commerce" },
+    { value: "wholesale", label: "Wholesale" },
+    { value: "other", label: "Other" }
+  ];
+
+  const productCategories = [
+    { value: "electronics", label: "Electronics" },
+    { value: "fashion", label: "Fashion & Apparel" },
+    { value: "food", label: "Food & Beverages" },
+    { value: "beauty", label: "Beauty & Health" },
+    { value: "home", label: "Home & Garden" },
+    { value: "sports", label: "Sports & Outdoors" },
+    { value: "automotive", label: "Automotive" },
+    { value: "toys", label: "Toys & Games" },
+    { value: "books", label: "Books & Media" },
+    { value: "jewelry", label: "Jewelry & Watches" },
+    { value: "pet", label: "Pet Supplies" },
+    { value: "office", label: "Office Supplies" },
+    { value: "medical", label: "Medical & Pharmacy" },
+  ];
+
+  const serviceCategories = [
+    { value: "consulting", label: "Consulting" },
+    { value: "marketing", label: "Marketing & Advertising" },
+    { value: "it", label: "IT & Software" },
+    { value: "financial", label: "Financial Services" },
+    { value: "legal", label: "Legal Services" },
+    { value: "education", label: "Education & Training" },
+    { value: "healthcare", label: "Healthcare" },
+    { value: "hospitality", label: "Hospitality" },
+    { value: "transport", label: "Transport & Logistics" },
+    { value: "realestate", label: "Real Estate" },
+    { value: "construction", label: "Construction" },
+    { value: "cleaning", label: "Cleaning & Maintenance" },
+    { value: "beauty_service", label: "Beauty & Wellness" },
+    { value: "photography", label: "Photography" },
+    { value: "event", label: "Event Planning" },
+  ];
+
+  if (businessType === 'products') {
+    return [...productCategories, ...commonCategories];
+  } else if (businessType === 'services') {
+    return [...serviceCategories, ...commonCategories];
+  }
+  return commonCategories;
+};
 
 const BusinessIdentity = () => {
   const { state, dispatch } = useOnboarding();
@@ -19,8 +71,11 @@ const BusinessIdentity = () => {
   const [touched, setTouched] = useState({});
   const [generalError, setGeneralError] = useState("");
 
-  // Auto-fill owner name from Step 1 on first mount.
-  // Only fires if the field is empty — never overwrites manual input.
+  const categoryOptions = useMemo(() => 
+    getCategoryOptions(formData.business_type), 
+    [formData.business_type]
+  );
+
   useEffect(() => {
     if (!formData.owner_full_name && formData.first_name && formData.last_name) {
       dispatch({
@@ -30,9 +85,20 @@ const BusinessIdentity = () => {
         }
       });
     }
-  }, []);
+  }, [formData.first_name, formData.last_name, formData.owner_full_name, dispatch]);
 
-  // Mark field as touched + validate on every keystroke
+  useEffect(() => {
+    if (formData.business_type && formData.business_category) {
+      const isValidCategory = categoryOptions.some(opt => opt.value === formData.business_category);
+      if (!isValidCategory) {
+        dispatch({
+          type: ACTIONS.UPDATE_FORM,
+          payload: { business_category: "" }
+        });
+      }
+    }
+  }, [formData.business_type, formData.business_category, categoryOptions, dispatch]);
+
   const handleChange = (field, value) => {
     dispatch({ type: ACTIONS.UPDATE_FORM, payload: { [field]: value } });
     setTouched(prev => ({ ...prev, [field]: true }));
@@ -40,17 +106,14 @@ const BusinessIdentity = () => {
     setErrors(validationErrors);
   };
 
-  // Mark field as touched + validate when user clicks away
   const handleBlur = (field) => {
     setTouched(prev => ({ ...prev, [field]: true }));
     const validationErrors = validateBusinessIdentity(formData);
     setErrors(validationErrors);
   };
 
-  // On Continue: mark ALL fields touched so every empty required field shows "Required"
   const handleContinue = () => {
     setGeneralError("");
-
     setTouched({
       business_name: true,
       business_category: true,
@@ -59,97 +122,63 @@ const BusinessIdentity = () => {
       registration_number: true,
       tax_id: true,
     });
-
     const validationErrors = validateBusinessIdentity(formData);
     setErrors(validationErrors);
-
     if (Object.keys(validationErrors).length === 0) {
       dispatch({ type: ACTIONS.NEXT_STEP });
     }
   };
 
-  // Helper — only surface an error if the field has been touched
   const showError = (field) => touched[field] && errors[field];
 
   return (
-    // pb-6 gives breathing room above the footer
-    <div className="w-full animate-fadeIn pb-6">
-
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-9 h-9 bg-[#FFF8ED] rounded-lg flex items-center justify-center shrink-0">
-          <HiOutlineBriefcase className="text-[#F2B53D]" size={20} />
+    <div className="w-full animate-fadeIn">
+      {/* Header - Reduced margin bottom */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-7 h-7 bg-[#FFF8ED] rounded-lg flex items-center justify-center shrink-0">
+          <HiOutlineBriefcase className="text-[#F2B53D]" size={16} />
         </div>
         <div>
-          <h3 className="font-bold text-[16px] text-gray-800">Business Identity</h3>
-          <p className="text-[12px] text-gray-500">Provide legal details as they appear on official documents.</p>
+          <h3 className="font-bold text-[13px] text-gray-800">Business Identity</h3>
+          <p className="text-[10px] text-gray-500">Legal details as on official documents</p>
         </div>
       </div>
 
-      {generalError && <MessageAlert message={generalError} type="error" className="mb-4" />}
+      {generalError && <MessageAlert message={generalError} type="error" className="mb-2" />}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-
+      {/* Reduced gap between fields */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-2">
         {/* Legal Business Name */}
         <div className="flex flex-col">
-          <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Legal Business Name</label>
+          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">Legal Business Name</label>
           <div className="relative">
+            <HiOutlineBuildingOffice className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={12} />
             <input
               type="text"
               value={formData.business_name || ""}
               onChange={(e) => handleChange('business_name', e.target.value)}
               onBlur={() => handleBlur('business_name')}
               placeholder="e.g. Global Tech Solutions Ltd."
-              className={`w-full h-10 pl-4 border rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all bg-white ${
+              className={`w-full h-8 pl-9 pr-3 bg-white border rounded-xl focus:outline-none text-[11px] ${
                 showError('business_name')
-                  ? 'pr-28 border-red-400'
-                  : 'pr-4 border-gray-200'
+                  ? 'border-red-400 placeholder:text-gray-400'
+                  : 'border-gray-200 placeholder:text-gray-400'
               }`}
             />
             {showError('business_name') && <InlineError message={errors.business_name} />}
           </div>
         </div>
 
-        {/* Business Category */}
-        <div className="flex flex-col">
-          <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Business Category</label>
-          <div className="relative">
-            <select
-              value={formData.business_category || ""}
-              onChange={(e) => handleChange('business_category', e.target.value)}
-              onBlur={() => handleBlur('business_category')}
-              className={`w-full h-10 pl-4 pr-10 border rounded-xl text-[14px] focus:border-[#F2B53D] outline-none bg-white cursor-pointer appearance-none ${
-                showError('business_category') ? 'border-red-400' : 'border-gray-200'
-              }`}
-            >
-              <option value="">Select category</option>
-              <option value="retail">Retail</option>
-              <option value="fashion">Fashion & Apparel</option>
-              <option value="electronics">Electronics</option>
-              <option value="food">Food & Beverages</option>
-              <option value="beauty">Beauty & Health</option>
-              <option value="home" >Home & Garden</option>
-              <option value="sports" >Sports & Outdoors</option>
-              <option value="automotive" >Automotive</option>
-              <option value="transport" >Transport</option>
-              <option value="tailoring" >Tailoring</option>
-              <option value="airlines" >Airlines</option>
-              <option value="hotels" >Hotels</option>
-              <option value="other">Other</option>
-            </select>
-            {showError('business_category') && <InlineError message={errors.business_category} />}
-          </div>
-        </div>
-
         {/* Business Type */}
         <div className="flex flex-col">
-          <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Business Type</label>
+          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">Business Type</label>
           <div className="relative">
+            <FaRegBuilding className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={11} />
             <select
               value={formData.business_type || ""}
               onChange={(e) => handleChange('business_type', e.target.value)}
               onBlur={() => handleBlur('business_type')}
-              className={`w-full h-10 pl-4 pr-10 border rounded-xl text-[14px] focus:border-[#F2B53D] outline-none bg-white cursor-pointer appearance-none ${
+              className={`w-full h-8 pl-9 pr-8 border rounded-xl text-[11px] focus:border-[#F2B53D] outline-none bg-white cursor-pointer appearance-none ${
                 showError('business_type') ? 'border-red-400' : 'border-gray-200'
               }`}
             >
@@ -162,22 +191,46 @@ const BusinessIdentity = () => {
           </div>
         </div>
 
-        {/* Owner Full Name — auto-filled from Step 1, still editable */}
+        {/* Business Category */}
         <div className="flex flex-col">
-          <label className="text-[13px] font-bold text-gray-600 mb-1 ml-1">
-            Owner Full Name
-          </label>
+          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">Business Category</label>
           <div className="relative">
+            <HiOutlineClipboardDocumentList className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={12} />
+            <select
+              value={formData.business_category || ""}
+              onChange={(e) => handleChange('business_category', e.target.value)}
+              onBlur={() => handleBlur('business_category')}
+              disabled={!formData.business_type}
+              className={`w-full h-8 pl-9 pr-8 border rounded-xl text-[11px] focus:border-[#F2B53D] outline-none bg-white cursor-pointer appearance-none ${
+                  !formData.business_type ? 'bg-gray-50 text-gray-400' : ''
+                } ${
+                  showError('business_category') ? 'border-red-400' : 'border-gray-200'
+                }`}
+              >
+                <option value="">{!formData.business_type ? "Select business type first" : "Select category"}</option>
+                {categoryOptions.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            {showError('business_category') && <InlineError message={errors.business_category} />}
+          </div>
+        </div>
+
+        {/* Owner Full Name */}
+        <div className="flex flex-col">
+          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">Owner Full Name</label>
+          <div className="relative">
+            <HiOutlineUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={12} />
             <input
               type="text"
               value={formData.owner_full_name || ""}
               onChange={(e) => handleChange('owner_full_name', e.target.value)}
               onBlur={() => handleBlur('owner_full_name')}
-              placeholder="Enter full legal name"
-              className={`w-full h-10 pl-4 border rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all  bg-white ${
+              placeholder="First & Last name"
+              className={`w-full h-8 pl-9 pr-3 bg-white border rounded-xl focus:outline-none text-[11px] ${
                 showError('owner_full_name')
-                  ? 'pr-28 border-red-400'
-                  : 'pr-4 border-gray-200'
+                  ? 'border-red-400 placeholder:text-gray-400'
+                  : 'border-gray-200 placeholder:text-gray-400'
               }`}
             />
             {showError('owner_full_name') && <InlineError message={errors.owner_full_name} />}
@@ -186,18 +239,19 @@ const BusinessIdentity = () => {
 
         {/* Registration Number */}
         <div className="flex flex-col">
-          <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Registration Number</label>
+          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">Registration Number</label>
           <div className="relative">
+            <HiOutlineIdentification className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={12} />
             <input
               type="text"
               value={formData.registration_number || ""}
               onChange={(e) => handleChange('registration_number', e.target.value)}
               onBlur={() => handleBlur('registration_number')}
               placeholder="e.g. BN123456 or CPR/2020/1234"
-              className={`w-full h-10 pl-4 border rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all  bg-white  ${
+              className={`w-full h-8 pl-9 pr-3 bg-white border rounded-xl focus:outline-none text-[11px] ${
                 showError('registration_number')
-                  ? 'pr-28 border-red-400'
-                  : 'pr-4 border-gray-200'
+                  ? 'border-red-400 placeholder:text-gray-400'
+                  : 'border-gray-200 placeholder:text-gray-400'
               }`}
             />
             {showError('registration_number') && <InlineError message={errors.registration_number} />}
@@ -206,58 +260,59 @@ const BusinessIdentity = () => {
 
         {/* Tax ID */}
         <div className="flex flex-col">
-          <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Tax ID (TIN)</label>
+          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">Tax ID (TIN)</label>
           <div className="relative">
+            <FaRegFileAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={11} />
             <input
               type="text"
               value={formData.tax_id || ""}
               onChange={(e) => handleChange('tax_id', e.target.value)}
               onBlur={() => handleBlur('tax_id')}
               placeholder="e.g. 1234567890 or A123456789Z"
-              className={`w-full h-10 pl-4 border rounded-xl text-[14px] focus:border-[#F2B53D] outline-none transition-all  bg-white  ${
+              className={`w-full h-8 pl-9 pr-3 bg-white border rounded-xl focus:outline-none text-[11px] ${
                 showError('tax_id')
-                  ? 'pr-28 border-red-400 bg-red-50'
-                  : 'pr-4 border-gray-200'
+                  ? 'border-red-400 placeholder:text-gray-400'
+                  : 'border-gray-200 placeholder:text-gray-400'
               }`}
             />
             {showError('tax_id') && <InlineError message={errors.tax_id} />}
           </div>
         </div>
 
-        {/* Business Description */}
+        {/* Business Description - Full width */}
         <div className="flex flex-col md:col-span-2">
-          <label className="text-[13px] font-bold text-gray-700 mb-1 ml-1">Business Description</label>
-          <textarea
-            value={formData.business_description || ""}
-            onChange={(e) => handleChange('business_description', e.target.value)}
-            placeholder="Describe what you sell or your business mission..."
-            className="h-16 p-3 border border-gray-200 rounded-xl text-[14px] focus:border-[#F2B53D] outline-none resize-none transition-all  bg-white "
-          />
+          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">Business Description</label>
+          <div className="relative">
+            <HiOutlineDocumentText className="absolute left-3 top-2.5 text-gray-400 z-10" size={12} />
+            <textarea
+              value={formData.business_description || ""}
+              onChange={(e) => handleChange('business_description', e.target.value)}
+              placeholder="Describe what you sell or your business mission..."
+              className="w-full h-14 pl-9 pr-3 pt-2 border border-gray-200 rounded-xl text-[11px] focus:border-[#F2B53D] outline-none resize-none transition-all bg-white"
+            />
+          </div>
         </div>
-
       </div>
 
-      
-      <div className="w-full flex justify-center items-center gap-4 mt-1 mb-4">
+      {/* Buttons - Reduced margin top */}
+      <div className="w-full flex justify-center items-center gap-3 mt-3">
         <button
           type="button"
           onClick={() => dispatch({ type: ACTIONS.PREV_STEP })}
-          className="flex-1 max-w-35 h-11 border-2 border-gray-100 text-gray-500 font-bold rounded-full hover:bg-gray-50 transition-all text-[14px]"
+          className="flex-1 max-w-[100px] h-7 rounded-full text-gray-500 font-semibold text-[11px] border border-gray-200 hover:bg-gray-50 transition-all"
         >
           Back
         </button>
         <button
           type="button"
           onClick={handleContinue}
-          className="flex-1 max-w-50 h-11 text-white font-bold rounded-full shadow-lg transition-all text-[14px] bg-[#F2B53D] hover:bg-[#e0a630]"
+          className="flex-1 max-w-[120px] h-7 rounded-full text-white font-bold text-[11px] transition-all bg-[#D99201] hover:bg-[#e0a630]"
         >
           Continue
         </button>
       </div>
-
     </div>
   );
 };
 
 export default BusinessIdentity;
-

@@ -2,17 +2,18 @@ import { useOnboarding } from "../context/vendorOnboardingContext";
 import { ACTIONS } from "../context/vendorOnboardingContext";
 import Navbar from "../components/Navbar";
 import AccountBasics from "../components/AccountBasics";
-import VerifyIdentity from "../components/VerifyIdentity";
+import VerifyEmail from "../components/VerifyEmail";
 import BusinessIdentity from "../components/BusinessIdentity";
 import ContactLocation from "../components/ContactLocation";
 import OperationCompliance from "../components/OperationCompliance";
+import ReviewAndSubmit from "../components/ReviewAndSubmit";
 import OnboardingSuccess from "../components/OnboardingSuccess";
 import Footer from "../components/Footer";
 import { HiCheck } from "react-icons/hi";
 
 const VendorOnboarding = () => {
   const { state, dispatch } = useOnboarding();
-  const { currentStep, isSubmitted, formData } = state;
+  const { currentStep, formData } = state;
 
   // Update form data
   const handleUpdate = (newData) => {
@@ -44,22 +45,21 @@ const VendorOnboarding = () => {
 
   return (
     <div className="vendor-onboarding-root h-screen w-full flex flex-col bg-[#ecece7] font-sans overflow-hidden">
-      
       {/* Navbar */}
       <Navbar />
 
       <div className="flex flex-1 overflow-hidden">
-
-        {/* SIDEBAR */}
-        <aside className="w-[300px]  p-4 ml-10 my-4 rounded-[32px] flex flex-col shrink-0 shadow-xl border border-white/10"   style={{
-    background: "linear-gradient(160deg, #125852 0%, #0e4440 40%, #0b3330 100%)"
-  }}
->
-          
-          <div className="relative w-full space-y-3 mt-10">
-
-            {/* vertical-line */}
-            <div className="absolute left-[28px] top-[30px] bottom-[30px] w-[1px] bg-white/20"></div>
+        {/* SIDEBAR - Shows steps 1-6, Step 7 (Success) is NOT shown */}
+        <aside
+          className="w-[240px] lg:w-[260px] p-2 lg:p-3 ml-3 lg:ml-2 my-2 rounded-[14px] flex flex-col shrink-0 shadow-xl border border-white/10"
+          style={{
+            background: "linear-gradient(160deg, #125852 0%, #0e4440 40%, #0b3330 100%)",
+            boxShadow: "0px 4px 9px rgba(23, 26, 31, 0.11), 0px 0px 2px rgba(23, 26, 31, 0.12)",
+          }}
+        >
+          <div className="relative w-full space-y-1.5 lg:space-y-2 mt-4 lg:mt-6">
+            {/* Vertical connecting line */}
+            <div className="absolute left-[20px] lg:left-[22px] top-[22px] lg:top-[24px] bottom-[22px] lg:bottom-[24px] w-[1px] bg-white/20"></div>
 
             <StepCard
               title="Account Basics"
@@ -69,7 +69,7 @@ const VendorOnboarding = () => {
             />
 
             <StepCard
-              title="Verify Identity"
+              title="Verify Email"
               subtitle="Confirm your email address"
               isActive={currentStep === 2}
               isCompleted={currentStep > 2}
@@ -90,135 +90,210 @@ const VendorOnboarding = () => {
             />
 
             <StepCard
-              title="Secure Account"
-              subtitle="Protect your merchant profile"
+              title="Compliance & Documents"
+              subtitle="Upload business credentials"
               isActive={currentStep === 5}
-              isCompleted={isSubmitted || currentStep === 6}
+              isCompleted={currentStep > 5}
+            />
+
+            {/* Step 6 - Review & Submit (shows in sidebar) */}
+            <StepCard
+              title="Review & Submit"
+              subtitle="Verify all details"
+              isActive={currentStep === 6}
+              isCompleted={currentStep > 6}
             />
           </div>
         </aside>
 
         {/* MAIN CONTENT */}
-        <main className="flex-1 flex flex-col items-center px-10">
-          
-           {/* Mobile progress bar — hidden on desktop via CSS */}
+        <main className="flex-1 flex flex-col items-center pl-4 pr-10 py-2 overflow-y-auto">
+          {/* Mobile progress bar for small screens */}
           <div className="mobile-progress-bar">
-            {[1,2,3,4,5].map(n => (
-              <div key={n} className={`mobile-progress-step ${
-                n < currentStep ? 'done' :
-                n === currentStep ? 'active' : ''
-              }`}/>
+            {[1, 2, 3, 4, 5, 6].map((n) => (
+              <div
+                key={n}
+                className={`mobile-progress-step ${
+                  n < currentStep ? "done" : n === currentStep ? "active" : ""
+                }`}
+              />
             ))}
-          </div> 
+          </div>
 
           <div
             className={`w-full transition-all duration-300 ${
               currentStep >= 3 ? "max-w-[900px]" : "max-w-[600px]"
             }`}
           >
-
-            {isSubmitted || currentStep === 6 ? (
+            {/* Step 7 - Success (NOT shown in sidebar) */}
+            {currentStep === 7 ? (
               <OnboardingSuccess />
             ) : (
               <>
-                {/* STEP 1 */}
+                {/* STEP 1: Account Basics */}
                 {currentStep === 1 && (
-                  <>
-                    <div className="mb-4">
-                      <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20">
-                        Step 1 of 5
+                  <div className="animate-slideUp">
+                    <div className="mb-4 mt-2">
+                      <span className="bg-[#FFF8ED] text-[#F2B53D] px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase border border-[#F2B53D]/20">
+                        Step 1 of 6
                       </span>
-
-                      <h2 className="text-[28px] font-black text-gray-900 mt-2 leading-tight">
-                        Join to enjoy faster Sales
-                      </h2>
-
-                      <p className="text-gray-500 text-[14px]">
-                        Let's start with the basics to get your account ready.
-                      </p>
                     </div>
 
-                    <AccountBasics
-                      formData={formData}
-                      updateFormData={handleUpdate}
-                      onNext={handleNextStep}
-                    />
-                  </>
+                    <div
+                      className="w-full rounded-[16px] border border-white/30 p-6 backdrop-blur-md"
+                      style={{
+                        background: "rgba(255, 255, 255, 0.7)",
+                        boxShadow: "0px 8px 32px rgba(0, 0, 0, 0.1), 0px 1px 3px rgba(0, 0, 0, 0.05)",
+                        backdropFilter: "blur(16px)",
+                      }}
+                    >
+                      <div className="mb-5">
+                        <h2 className="text-[22px] font-black text-gray-900 leading-tight">
+                          Join to enjoy faster Sales
+                        </h2>
+                        <p className="text-gray-500 text-[13px] mt-1">
+                          Let's start with the basics to get your account ready.
+                        </p>
+                      </div>
+
+                      <AccountBasics
+                        formData={formData}
+                        updateFormData={handleUpdate}
+                        onNext={handleNextStep}
+                      />
+                    </div>
+                  </div>
                 )}
 
-                {/* STEP 2 */}
+                {/* STEP 2: Verify Email */}
                 {currentStep === 2 && (
-                  <div className="flex flex-col items-start w-full">
+                  <div className="animate-slideUp">
+                    <div className="mb-4 mt-2">
+                      <span className="bg-[#FFF8ED] text-[#F2B53D] px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase border border-[#F2B53D]/20">
+                        Step 2 of 6
+                      </span>
+                    </div>
 
-                    <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">
-                      Step 2 of 5
-                    </span>
-
-                    <div className="w-full flex justify-center">
-                      <VerifyIdentity
+                    <div
+                      className="w-full rounded-[16px] border border-white/30 p-6 backdrop-blur-md"
+                      style={{
+                        background: "rgba(255, 255, 255, 0.7)",
+                        boxShadow: "0px 8px 32px rgba(0, 0, 0, 0.1), 0px 1px 3px rgba(0, 0, 0, 0.05)",
+                        backdropFilter: "blur(16px)",
+                      }}
+                    >
+                      <VerifyEmail
                         formData={formData}
                         onNext={handleNextStep}
                         onBack={handleBackStep}
                       />
                     </div>
-
                   </div>
                 )}
 
-                {/* STEP 3 */}
+                {/* STEP 3: Business Identity */}
                 {currentStep === 3 && (
-                  <div className="flex flex-col items-start w-full pb-10">
+                  <div className="animate-slideUp">
+                    <div className="mb-4 mt-2">
+                      <span className="bg-[#FFF8ED] text-[#F2B53D] px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase border border-[#F2B53D]/20">
+                        Step 3 of 6
+                      </span>
+                    </div>
 
-                    <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">
-                      Step 3 of 5
-                    </span>
-
-                    <BusinessIdentity
-                      formData={formData}
-                      updateFormData={handleUpdate}
-                      onNext={handleNextStep}
-                      onBack={handleBackStep}
-                    />
-
+                    <div
+                      className="w-full rounded-[16px] border border-white/30 p-6 backdrop-blur-md"
+                      style={{
+                        background: "rgba(255, 255, 255, 0.7)",
+                        boxShadow: "0px 8px 32px rgba(0, 0, 0, 0.1), 0px 1px 3px rgba(0, 0, 0, 0.05)",
+                        backdropFilter: "blur(16px)",
+                      }}
+                    >
+                      <BusinessIdentity
+                        formData={formData}
+                        updateFormData={handleUpdate}
+                        onNext={handleNextStep}
+                        onBack={handleBackStep}
+                      />
+                    </div>
                   </div>
                 )}
 
-                {/* STEP 4 */}
+                {/* STEP 4: Contact & Location */}
                 {currentStep === 4 && (
-                  <div className="flex flex-col items-start w-full">
+                  <div className="animate-slideUp">
+                    <div className="mb-4 mt-2">
+                      <span className="bg-[#FFF8ED] text-[#F2B53D] px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase border border-[#F2B53D]/20">
+                        Step 4 of 6
+                      </span>
+                    </div>
 
-                    <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">
-                      Step 4 of 5
-                    </span>
-
-                    <ContactLocation
-                      formData={formData}
-                      updateFormData={handleUpdate}
-                      onNext={handleNextStep}
-                      onBack={() =>
-                        dispatch({ type: ACTIONS.SET_STEP, payload: 3 })
-                      }
-                    />
-
+                    <div
+                      className="w-full rounded-[16px] border border-white/30 p-6 backdrop-blur-md"
+                      style={{
+                        background: "rgba(255, 255, 255, 0.7)",
+                        boxShadow: "0px 8px 32px rgba(0, 0, 0, 0.1), 0px 1px 3px rgba(0, 0, 0, 0.05)",
+                        backdropFilter: "blur(16px)",
+                      }}
+                    >
+                      <ContactLocation
+                        formData={formData}
+                        updateFormData={handleUpdate}
+                        onNext={handleNextStep}
+                        onBack={() => dispatch({ type: ACTIONS.SET_STEP, payload: 3 })}
+                      />
+                    </div>
                   </div>
                 )}
 
-                {/* STEP 5 */}
+                {/* STEP 5: Operations & Compliance (Documents) */}
                 {currentStep === 5 && (
-                  <div className="flex flex-col items-start w-full mb-10">
+                  <div className="animate-slideUp">
+                    <div className="mb-4 mt-2">
+                      <span className="bg-[#FFF8ED] text-[#F2B53D] px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase border border-[#F2B53D]/20">
+                        Step 5 of 6
+                      </span>
+                    </div>
 
-                    <span className="bg-[#FFF8ED] text-[#F2B53D] px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-[#F2B53D]/20 mb-8">
-                      Step 5 of 5
-                    </span>
+                    <div
+                      className="w-full rounded-[16px] border border-white/30 p-6 backdrop-blur-md"
+                      style={{
+                        background: "rgba(255, 255, 255, 0.7)",
+                        boxShadow: "0px 8px 32px rgba(0, 0, 0, 0.1), 0px 1px 3px rgba(0, 0, 0, 0.05)",
+                        backdropFilter: "blur(16px)",
+                      }}
+                    >
+                      <OperationCompliance
+                        formData={formData}
+                        updateFormData={handleUpdate}
+                        onBack={() => dispatch({ type: ACTIONS.SET_STEP, payload: 4 })}
+                      />
+                    </div>
+                  </div>
+                )}
 
-                    <OperationCompliance
-                      formData={formData}
-                      updateFormData={handleUpdate}
-                      onBack={() =>
-                        dispatch({ type: ACTIONS.SET_STEP, payload: 4 })
-                      }
-                    />
+                {/* STEP 6: Review & Submit */}
+                {currentStep === 6 && (
+                  <div className="animate-slideUp">
+                    <div className="mb-4 mt-2">
+                      <span className="bg-[#FFF8ED] text-[#F2B53D] px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase border border-[#F2B53D]/20">
+                        Step 6 of 6
+                      </span>
+                    </div>
 
+                    <div
+                      className="w-full rounded-[16px] border border-white/30 p-6 backdrop-blur-md"
+                      style={{
+                        background: "rgba(255, 255, 255, 0.7)",
+                        boxShadow: "0px 8px 32px rgba(0, 0, 0, 0.1), 0px 1px 3px rgba(0, 0, 0, 0.05)",
+                        backdropFilter: "blur(16px)",
+                      }}
+                    >
+                      <ReviewAndSubmit
+                        formData={formData}
+                        onBack={() => dispatch({ type: ACTIONS.SET_STEP, payload: 5 })}
+                        onSubmitSuccess={() => dispatch({ type: ACTIONS.SET_STEP, payload: 7 })}
+                      />
+                    </div>
                   </div>
                 )}
               </>
@@ -229,12 +304,13 @@ const VendorOnboarding = () => {
 
       {/* Footer */}
       <Footer />
-     {/*  PASTING THE DEV TOOLS TO HELP ME WITH NAVIGATION  */}
-      {process.env.NODE_ENV === 'development' && (
+
+      {/* Development Tools - Only visible in development mode */}
+      {process.env.NODE_ENV === "development" && (
         <div className="fixed bottom-4 right-4 bg-black/80 p-4 rounded-2xl flex gap-2 z-50">
           <p className="text-white text-xs self-center mr-2">Dev Tools:</p>
-          {[1, 2, 3, 4, 5, 6].map((num) => (
-            <button 
+          {[1, 2, 3, 4, 5, 6, 7].map((num) => (
+            <button
               key={num}
               onClick={() => dispatch({ type: ACTIONS.SET_STEP, payload: num })}
               className="w-8 h-8 bg-white/20 text-white rounded-lg hover:bg-[#F2B53D] transition-colors"
@@ -243,45 +319,42 @@ const VendorOnboarding = () => {
             </button>
           ))}
         </div>
-      )} 
+      )}
     </div>
   );
 };
 
-
-/* STEP CARD COMPONENT */
-
+/* STEP CARD COMPONENT - Individual step item in sidebar */
 const StepCard = ({ title, subtitle, isActive, isCompleted }) => (
   <div
-    className={`flex items-center gap-3 px-4 h-[60px] rounded-[15px] transition-all relative z-10 w-full 
-    ${
+    className={`flex items-center gap-2 px-2 lg:px-3 py-1.5 lg:py-2 rounded-[10px] lg:rounded-[12px] transition-all relative z-10 w-full ${
       isActive
-        ? "bg-white shadow-xl"
-        : "bg-white/40 backdrop-blur-md border border-white/40 shadow-lg"
+        ? "bg-white shadow-lg"
+        : "bg-white/40 backdrop-blur-md border border-white/40 shadow-md"
     }`}
   >
+    {/* Step circle with checkmark when completed */}
     <div
-      className={`w-6 h-6 shrink-0 rounded-full border-[1.5px] flex items-center justify-center 
-      ${
+      className={`w-4 h-4 lg:w-5 lg:h-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center ${
         isActive || isCompleted
           ? "border-[#235E5D] bg-white"
           : "border-white/40 bg-white/20 backdrop-blur-md"
       }`}
     >
-      {isCompleted && <HiCheck className="text-[#235E5D]" size={14} />}
+      {isCompleted && <HiCheck className="text-[#235E5D]" size={10} />}
     </div>
 
-    <div>
+    {/* Step title and subtitle */}
+    <div className="flex-1 min-w-0">
       <p
-        className={`font-semibold text-[13px] ${
+        className={`font-semibold text-[11px] lg:text-[12px] truncate ${
           isActive || isCompleted ? "text-gray-800" : "text-gray-700"
         }`}
       >
         {title}
       </p>
-
       <p
-        className={`text-[11px] ${
+        className={`text-[9px] lg:text-[10px] truncate ${
           isActive || isCompleted ? "text-gray-600" : "text-gray-600/80"
         }`}
       >

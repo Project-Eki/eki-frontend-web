@@ -1,94 +1,56 @@
 import React, { useRef, useState } from "react";
-import { HiOutlineCloudUpload, HiCheckCircle, HiExclamationCircle } from "react-icons/hi";
-import ReviewPhase from "./Review all details";
+import { HiOutlineCloudUpload, HiCheckCircle, HiExclamationCircle, HiOutlineCalendar } from "react-icons/hi";
 import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
-import { validateOperationCompliance } from "../utils/operationComplianceValidation";
-import { completeVendorOnboarding, submitVendorApplication } from "../services/api";
+import { validateOperationCompliance } from "../utils/onboardingValidation";
 
 const OperationCompliance = () => {
   const { state, dispatch } = useOnboarding();
   const { formData } = state;
 
   const [isLoading, setIsLoading] = useState(false);
-  const [showReview, setShowReview] = useState(false);
-  const [errors, setErrors] = useState({}); // Local state for validation errors
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [submitError, setSubmitError] = useState("");
 
-  const incorporationRef = useRef(null);
-  const taxRef = useRef(null);
-  const idRef = useRef(null);
-  const countryIdRef = useRef(null); 
-  const licenseRef = useRef(null);
+  // File refs for 5 documents
+  const govtIdRef = useRef(null);
+  const professionalCertRef = useRef(null);
+  const businessLicenseRef = useRef(null);
+  const taxCertificateRef = useRef(null);
+  const incCertificateRef = useRef(null);
 
   const fileRefs = {
-    incorporation_cert: incorporationRef,
-    tax_certificate: taxRef,
-    government_issued_id: idRef,
-    country_issued_id: countryIdRef,
-    business_license: licenseRef,
+    government_issued_id: govtIdRef,
+    professional_certification: professionalCertRef,
+    business_license: businessLicenseRef,
+    tax_certificate: taxCertificateRef,
+    incorporation_cert: incCertificateRef,
   };
 
+  const showError = (field) => touched[field] && errors[field];
 
+  const handleReviewClick = () => {
+    setTouched({
+      government_issued_id: true,
+      government_issued_id_expiry: true,
+      business_license: true,
+      business_license_expiry: true,
+      tax_certificate: true,
+      tax_certificate_expiry: true,
+      incorporation_cert: true,
+    });
 
-const handleFinalSubmit = async () => {
-  setIsLoading(true);
-  try {
-    // Ensure the vendor profile (including files) is saved before final review submission.
-    await completeVendorOnboarding(formData);
-
-    await submitVendorApplication(formData);
-
-    // 1. Mark as submitted so the success screen shows
-    // 2. Move to step 6 to trigger the final checkmark in sidebar
-    dispatch({ type: ACTIONS.UPDATE_FORM, payload: { isSubmitted: true } });
-    dispatch({ type: ACTIONS.SET_STEP, payload: 6 }); 
-  } catch (error) {
-    console.error("Registration Error:", error);
-
-    const apiData = error.response?.data || {};
-    const serverErrors = apiData.errors;
-    const serverMessage =
-      apiData.message || apiData.detail || apiData.error || error.message;
-
-    if (
-      serverErrors &&
-      typeof serverErrors === "object" &&
-      Object.keys(serverErrors).length > 0
-    ) {
-      const firstField = Object.keys(serverErrors)[0];
-      const fieldError = Array.isArray(serverErrors[firstField])
-        ? serverErrors[firstField][0]
-        : serverErrors[firstField];
-      alert(`Submission Error: ${fieldError || serverMessage}`);
-    } else if (Array.isArray(serverErrors) && serverErrors.length > 0) {
-      alert(`Submission Error: ${serverErrors[0]}`);
-    } else if (serverMessage) {
-      alert(`Submission Error: ${serverMessage}`);
-    } else {
-      alert("Something went wrong. Please check your connection or try again.");
-    }
-
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-  // Logic to handle the "Review" button click
- const handleReviewClick = () => {
-    // We combine the base formData and the documents object 
-    // so the validator can see everything in one flat object
     const dataToValidate = {
       ...formData,
-      ...(formData.documents || {}) 
+      ...(formData.documents || {})
     };
 
     const validationErrors = validateOperationCompliance(dataToValidate);
-    
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      // This will now trigger the red borders/icons on the Business License card too
-    } else {
-      setErrors({});
-      setShowReview(true);
+    setErrors(validationErrors);
+
+    if (Object.keys(validationErrors).length === 0) {
+      // Go to Step 6 (Review & Submit)
+      dispatch({ type: ACTIONS.SET_STEP, payload: 6 });
     }
   };
 
@@ -96,12 +58,12 @@ const handleFinalSubmit = async () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Clear error for this field specifically when a file is picked
     setErrors(prev => {
       const newErrors = { ...prev };
       delete newErrors[field];
       return newErrors;
     });
+    setTouched(prev => ({ ...prev, [field]: true }));
 
     dispatch({
       type: ACTIONS.UPDATE_FORM,
@@ -114,99 +76,191 @@ const handleFinalSubmit = async () => {
     });
   };
 
-  const UploadCard = ({ label, field }) => {
+  const handleExpiryChange = (field, value) => {
+    dispatch({
+      type: ACTIONS.UPDATE_FORM,
+      payload: { [field]: value },
+    });
+    setTouched(prev => ({ ...prev, [field]: true }));
+    
+    // Clear error for this field
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  };
+
+  const DocumentSection = ({ label, field, description, required = true, showExpiry = true }) => {
     const file = formData.documents?.[field];
     const isUploaded = !!file;
-    const hasError = !!errors[field];
+    const hasError = showError(field) && errors[field];
+    const expiryValue = formData[`${field}_expiry`] || "";
+    const hasExpiryError = showError(`${field}_expiry`) && errors[`${field}_expiry`];
 
     return (
-      <div
-        onClick={() => fileRefs[field]?.current?.click()}
-        className={`upload-card relative p-3 min-h-[110px] h-auto py-4 rounded-2xl border-2 border-dashed cursor-pointer transition-all flex flex-col items-center justify-center text-center
-        ${isUploaded ? "border-green-500 bg-green-50" : 
-          hasError ? "border-red-400 bg-red-50" : "border-gray-200 hover:border-[#F2B53D] bg-white shadow-sm"}`}
-      >
-        <input type="file" ref={fileRefs[field]} onChange={(e) => handleFileChange(field, e)} className="hidden" accept=".pdf,.jpg,.png" />
-
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 
-          ${isUploaded ? "bg-green-100" : hasError ? "bg-red-100" : "bg-[#FFF8ED]"}`}>
-          {isUploaded ? <HiCheckCircle className="text-green-600" size={18} /> : 
-           hasError ? <HiExclamationCircle className="text-red-500" size={18} /> :
-           <HiOutlineCloudUpload className="text-[#F2B53D]" size={18} />}
+      <div className="border-t border-gray-100 pt-4 first:border-t-0 first:pt-0">
+        {/* Header */}
+        <div className="mb-2">
+          <label className="text-[12px] font-semibold text-gray-800">
+            {label} {required && <span className="text-red-500">*</span>}
+          </label>
+          {description && (
+            <p className="text-[10px] text-gray-500 mt-0.5">{description}</p>
+          )}
         </div>
 
-        <span className={`text-[11px] font-bold leading-tight ${hasError ? "text-red-600" : "text-gray-700"}`}>
-          {label}
-        </span>
-        <span className="text-[9px] text-gray-400 mt-1">
-          {isUploaded ? file.name.substring(0, 12) + "..." : hasError ? errors[field] : "PDF, PNG or JPG"}
-        </span>
+        {/* Row with Upload Area and Expiry Date side by side */}
+        <div className="flex flex-col sm:flex-row gap-3 items-start">
+          {/* Upload Area - Takes remaining space */}
+          <div className="flex-1">
+            <div
+              onClick={() => fileRefs[field]?.current?.click()}
+              className={`relative border-2 border-dashed rounded-xl cursor-pointer transition-all p-3 text-center
+                ${isUploaded ? "border-green-500 bg-green-50" :
+                  hasError ? "border-red-400 bg-red-50" : "border-gray-300 hover:border-[#F2B53D] bg-gray-50"}`}
+            >
+              <input
+                type="file"
+                ref={fileRefs[field]}
+                onChange={(e) => handleFileChange(field, e)}
+                className="hidden"
+                accept=".pdf,.jpg,.png,.jpeg"
+              />
+
+              <div className="flex flex-col items-center justify-center">
+                {isUploaded ? (
+                  <>
+                    <HiCheckCircle className="text-green-600" size={24} />
+                    <span className="text-[11px] font-medium text-green-600 mt-1">
+                      {file.name.length > 30 ? file.name.substring(0, 27) + "..." : file.name}
+                    </span>
+                    <span className="text-[9px] text-gray-500 mt-0.5">Click to change</span>
+                  </>
+                ) : (
+                  <>
+                    <HiOutlineCloudUpload className="text-[#F2B53D]" size={24} />
+                    <span className="text-[11px] font-medium text-gray-600 mt-1">Click to upload or drag and drop</span>
+                    <span className="text-[9px] text-gray-400 mt-0.5">PDF, PNG or JPG (max. 10MB)</span>
+                  </>
+                )}
+              </div>
+            </div>
+            {hasError && !isUploaded && (
+              <p className="text-red-500 text-[9px] font-bold mt-1">{errors[field]}</p>
+            )}
+          </div>
+
+          {/* Expiry Date - On the right side for ALL documents that show expiry */}
+          {showExpiry && (
+            <div className="sm:w-[220px]">
+              <label className="text-[10px] font-semibold text-gray-700 mb-1 flex items-center gap-1">
+                <HiOutlineCalendar size={11} />
+                Expiry Date {required && <span className="text-red-500">*</span>}
+              </label>
+              <input
+                type="date"
+                value={expiryValue}
+                onChange={(e) => handleExpiryChange(`${field}_expiry`, e.target.value)}
+                className={`w-full h-8 px-3 bg-white border rounded-lg text-[11px] focus:border-[#F2B53D] outline-none ${
+                  hasExpiryError ? 'border-red-400' : 'border-gray-200'
+                }`}
+              />
+              {hasExpiryError && (
+                <span className="text-red-500 text-[8px] font-bold mt-0.5 block">{errors[`${field}_expiry`]}</span>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     );
   };
 
   return (
-    <div className="w-full animate-fadeIn pb-4">
-      {!showReview ? (
-        <>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-[#FFF8ED] rounded-xl flex items-center justify-center shrink-0">
-              <HiOutlineCloudUpload className="text-[#F2B53D]" size={22} />
-            </div>
-            <div>
-              <h3 className="font-black text-[17px] text-gray-900 leading-tight">Compliance & Documents</h3>
-              <p className="text-[12px] text-gray-500">Upload your business credentials.</p>
-            </div>
-          </div>
+    <div className="w-full animate-fadeIn">
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-7 h-7 bg-[#FFF8ED] rounded-lg flex items-center justify-center shrink-0">
+          <HiOutlineCloudUpload className="text-[#F2B53D]" size={16} />
+        </div>
+        <div>
+          <h3 className="font-bold text-[13px] text-gray-800">Operations & Compliance</h3>
+          <p className="text-[10px] text-gray-500">Upload supporting documents for faster verification. Documents must be current (not expired) and clearly legible.</p>
+        </div>
+      </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-2">
-            <div className={`p-3 rounded-xl border transition-colors ${errors.opening_time ? 'border-red-300 bg-red-50' : 'bg-gray-50 border-gray-100'}`}>
-              <p className="text-[9px] font-bold text-gray-400 uppercase mb-1">Opening Time</p>
-              <input 
-                type="time" 
-                value={formData.opening_time || ""} 
-                onChange={(e) => {
-                  setErrors(prev => ({...prev, opening_time: null}));
-                  dispatch({ type: ACTIONS.UPDATE_FORM, payload: { opening_time: e.target.value } });
-                }} 
-                className="bg-transparent font-bold text-gray-800 outline-none w-full text-sm" 
-              />
-            </div>
-            <div className={`p-3 rounded-xl border transition-colors ${errors.closing_time ? 'border-red-300 bg-red-50' : 'bg-gray-50 border-gray-100'}`}>
-              <p className="text-[9px] font-bold text-gray-400 uppercase mb-1">Closing Time</p>
-              <input 
-                type="time" 
-                value={formData.closing_time || ""} 
-                onChange={(e) => {
-                  setErrors(prev => ({...prev, closing_time: null}));
-                  dispatch({ type: ACTIONS.UPDATE_FORM, payload: { closing_time: e.target.value } });
-                }} 
-                className="bg-transparent font-bold text-gray-800 outline-none w-full text-sm" 
-              />
-            </div>
-          </div>
-
-          <div className="upload-grid grid grid-cols-3 gap-3 mb-3">
-            <UploadCard label="Govt Issued ID" field="government_issued_id" />
-            <UploadCard label="Country Issued ID" field="country_issued_id" />
-            <UploadCard label="Business License" field="business_license" />
-            <UploadCard label="Tax Certificate" field="tax_certificate" />
-            <UploadCard label="Inc. Certificate" field="incorporation_cert" />
-          </div>
-
-          <div className="flex gap-4">
-            <button onClick={() => dispatch({ type: ACTIONS.PREV_STEP })} className="flex-1 h-11 border-2 border-gray-100 text-gray-400 font-bold rounded-full text-sm hover:bg-gray-50 transition-all">Back</button>
-            <button onClick={handleReviewClick} className="flex-1 h-11 bg-[#F2B53D] text-white font-bold rounded-full shadow-lg text-sm hover:bg-[#e0a630] transition-all">Review All Details</button>
-          </div>
-        </>
-      ) : (
-        <ReviewPhase formData={formData} onEdit={() => setShowReview(false)} onSubmit={handleFinalSubmit} isLoading={isLoading} />
+      {/* Display submission error if any */}
+      {submitError && (
+        <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-600 text-[10px] font-medium">{submitError}</p>
+        </div>
       )}
+
+      {/* Document Sections - Single Column */}
+      <div className="space-y-4 mb-4">
+        {/* 1. Government Issued ID - Required with expiry */}
+        <DocumentSection
+          label="Government Issued ID"
+          field="government_issued_id"
+          description="Passport, Driver's License, National ID, or State ID"
+          required={true}
+          showExpiry={true}
+        />
+
+        {/* 2. Professional Body Certification - Optional with expiry */}
+        <DocumentSection
+          label="Professional Body Certification"
+          field="professional_certification"
+          description="Optional: PRC ID, CPA, Engineering, Medical, etc."
+          required={false}
+          showExpiry={true}
+        />
+
+        {/* 3. Business License - Required with expiry */}
+        <DocumentSection
+          label="Business License"
+          field="business_license"
+          description="Official business operating license"
+          required={true}
+          showExpiry={true}
+        />
+
+        {/* 4. Tax Certificate - Required with expiry */}
+        <DocumentSection
+          label="Tax Certificate"
+          field="tax_certificate"
+          description="TIN certificate or VAT registration"
+          required={true}
+          showExpiry={true}
+        />
+
+        {/* 5. Incorporation Certificate - Required (No Expiry) */}
+        <DocumentSection
+          label="Incorporation Certificate"
+          field="incorporation_cert"
+          description="Certificate of incorporation or registration"
+          required={true}
+          showExpiry={false}
+        />
+      </div>
+
+      {/* Buttons */}
+      <div className="flex gap-3 mt-2">
+        <button
+          onClick={() => dispatch({ type: ACTIONS.PREV_STEP })}
+          className="flex-1 max-w-[100px] h-7 rounded-full text-gray-500 font-semibold text-[11px] border border-gray-200 hover:bg-gray-50 transition-all"
+        >
+          Back
+        </button>
+        <button
+          onClick={handleReviewClick}
+          className="flex-1 max-w-[120px] h-7 rounded-full text-white font-bold text-[11px] transition-all bg-[#D99201] hover:bg-[#e0a630]"
+        >
+          Review All
+        </button>
+      </div>
     </div>
   );
 };
-
-
-
 
 export default OperationCompliance;

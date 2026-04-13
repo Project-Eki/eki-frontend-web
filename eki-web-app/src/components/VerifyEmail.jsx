@@ -2,12 +2,9 @@ import React, { useState, useRef, useEffect } from "react";
 import { HiOutlineShieldCheck, HiMinus } from "react-icons/hi";
 import { MdOutlineMail } from "react-icons/md";
 import { verifyEmail, resendOtp } from "../services/api";
-
-//  Import Context and Actions
 import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
 
-const VerifyIdentity = () => {
-  //  Access Global State and Dispatch
+const VerifyEmail = () => {
   const { state, dispatch } = useOnboarding();
   const { formData } = state;
 
@@ -18,7 +15,8 @@ const VerifyIdentity = () => {
   const [resendMessage, setResendMessage] = useState("");
   const inputRefs = useRef([]);
 
-  const inputClass = `w-14 h-14 text-center text-2xl font-black border-2 bg-white text-gray-800 rounded-2xl outline-none transition-all shadow-sm 
+  // Smaller OTP input class
+  const inputClass = `w-10 h-10 sm:w-12 sm:h-12 text-center text-lg sm:text-xl font-bold border-2 bg-white text-gray-800 rounded-xl outline-none transition-all shadow-sm 
     ${otp.join("").length === 6 ? "border-green-400" : "border-gray-100"} 
     focus:border-[#F2B53D] focus:ring-2 focus:ring-[#F2B53D]/20`;
 
@@ -39,7 +37,6 @@ const VerifyIdentity = () => {
     setIsLoading(true);
     setError("");
     try {
-      // Use the email from our Global Context
       const data = await verifyEmail({ email: formData.email, otp_code: code });
 
       if (data.data?.access)
@@ -47,12 +44,9 @@ const VerifyIdentity = () => {
       if (data.data?.refresh)
         localStorage.setItem("refresh_token", data.data.refresh);
 
-      //  Success: Tell the Global State to move to next step
       dispatch({ type: ACTIONS.NEXT_STEP });
     } catch (err) {
-      const msg = setError(
-        err.message || "Invalid or expired code. Please try again.",
-      );
+      const msg = err.message || "Invalid or expired code. Please try again.";
       setError(msg);
       setOtp(new Array(6).fill(""));
       if (inputRefs.current[0]) inputRefs.current[0].focus();
@@ -71,7 +65,7 @@ const VerifyIdentity = () => {
     } catch (err) {
       setError(
         err.response?.data?.detail ||
-          "Failed to resend code. Please try again.",
+          "Failed to resend code. Please try again."
       );
     } finally {
       setIsResending(false);
@@ -104,26 +98,35 @@ const VerifyIdentity = () => {
 
   return (
     <div className="w-full flex flex-col items-center animate-fadeIn">
-      <div className="w-14 h-14 bg-[#FFF8ED] rounded-full flex items-center justify-center mb-4 border border-[#F2B53D]/10">
-        <HiOutlineShieldCheck className="text-[#F2B53D]" size={28} />
+      {/* Smaller Icon */}
+      <div className="w-10 h-10 bg-[#FFF8ED] rounded-full flex items-center justify-center mb-3 border border-[#F2B53D]/10">
+        <HiOutlineShieldCheck className="text-[#F2B53D]" size={20} />
       </div>
 
-      <h2 className="text-[28px] font-black text-gray-900 leading-tight text-center">
-        Verify your identity
+      {/* Smaller Heading */}
+      <h2 className="text-xl sm:text-2xl font-black text-gray-900 leading-tight text-center">
+        Verify your email
       </h2>
-      <p className="text-gray-500 mt-2 text-[15px]">
+      
+      {/* Smaller Subtitle */}
+      <p className="text-gray-500 mt-1 text-xs sm:text-sm">
         We've sent a 6-digit security code to
       </p>
 
-      <div className="mt-3 flex items-center gap-2 bg-gray-50 px-4 py-1.5 rounded-full border border-gray-100">
-        <MdOutlineMail className="text-[#F2B53D]" size={16} />
-        <span className="text-[13px] font-bold text-gray-700">
+      {/* Smaller Email Display */}
+      <div className="mt-2 flex items-center gap-1.5 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+        <MdOutlineMail className="text-[#F2B53D]" size={12} />
+        <span className="text-[11px] sm:text-xs font-semibold text-gray-700">
           {formData.email || "your email"}
         </span>
       </div>
 
-      {/* <div className="flex items-center gap-4 mt-10 mb-4" onPaste={handlePaste}>
-        <div className="flex gap-3">
+      {/* OTP Input Fields - Smaller and more compact */}
+      <div 
+        className="otp-wrapper flex items-center gap-2 sm:gap-4 mt-6 mb-3" 
+        onPaste={handlePaste}
+      >
+        <div className="otp-group flex gap-1.5 sm:gap-2">
           {otp.slice(0, 3).map((data, index) => (
             <input
               key={index}
@@ -139,9 +142,9 @@ const VerifyIdentity = () => {
           ))}
         </div>
 
-        <HiMinus className="text-gray-300" size={24} />
+        <HiMinus className="text-gray-300" size={16} />
 
-        <div className="flex gap-3">
+        <div className="otp-group flex gap-1.5 sm:gap-2">
           {otp.slice(3, 6).map((data, index) => (
             <input
               key={index + 3}
@@ -152,63 +155,30 @@ const VerifyIdentity = () => {
               onChange={(e) => handleChange(e.target.value, index + 3)}
               onKeyDown={(e) => handleKeyDown(e, index + 3)}
               className={inputClass}
-              disabled={isLoading}
-            />
-          ))}
-        </div>
-      </div> */}
-            <div className="otp-wrapper flex items-center gap-4 mt-10 mb-4" onPaste={handlePaste}>
-        <div className="otp-group flex gap-3">
-          {otp.slice(0, 3).map((data, index) => (
-            <input
-              key={index}
-              type="text"
-              maxLength="1"
-              ref={(el) => (inputRefs.current[index] = el)}
-              value={data}
-              onChange={(e) => handleChange(e.target.value, index)}
-              onKeyDown={(e) => handleKeyDown(e, index)}
-              className={`otp-input ${inputClass}`}
-              disabled={isLoading}
-            />
-          ))}
-        </div>
-
-        <HiMinus className="text-gray-300" size={24} />
-
-        <div className="otp-group flex gap-3">
-          {otp.slice(3, 6).map((data, index) => (
-            <input
-              key={index + 3}
-              type="text"
-              maxLength="1"
-              ref={(el) => (inputRefs.current[index + 3] = el)}
-              value={data}
-              onChange={(e) => handleChange(e.target.value, index + 3)}
-              onKeyDown={(e) => handleKeyDown(e, index + 3)}
-              className={`otp-input ${inputClass}`}
               disabled={isLoading}
             />
           ))}
         </div>
       </div>
 
+      {/* Status Messages - Smaller text */}
       {isLoading && (
-        <p className="text-[#F2B53D] text-[13px] font-bold mb-4 animate-pulse">
+        <p className="text-[#F2B53D] text-[11px] font-bold mb-3 animate-pulse">
           Verifying...
         </p>
       )}
       {error && (
-        <p className="text-red-500 text-[13px] font-bold mb-4">{error}</p>
+        <p className="text-red-500 text-[11px] font-bold mb-3">{error}</p>
       )}
       {resendMessage && !error && (
-        <p className="text-green-600 text-[13px] font-bold mb-4">
+        <p className="text-green-600 text-[11px] font-bold mb-3">
           {resendMessage}
         </p>
       )}
 
-      <div className="w-full max-width:340px; flex flex-col items-center gap-4 mt-2">
-        <p className="text-gray-500 text-[13px]">
+      {/* Action Buttons - More compact */}
+      <div className="w-full flex flex-col items-center gap-2 mt-2">
+        <p className="text-gray-500 text-[11px] sm:text-xs">
           Didn't receive the email?{" "}
           <button
             type="button"
@@ -221,9 +191,8 @@ const VerifyIdentity = () => {
         </p>
 
         <button
-          //  Back button uses dispatch now
           onClick={() => dispatch({ type: ACTIONS.PREV_STEP })}
-          className="text-[14px] font-bold text-gray-400 hover:text-gray-600 transition-all cursor-pointer"
+          className="text-xs font-bold text-gray-400 hover:text-gray-600 transition-all cursor-pointer"
         >
           Back
         </button>
@@ -232,4 +201,4 @@ const VerifyIdentity = () => {
   );
 };
 
-export default VerifyIdentity;
+export default VerifyEmail;
