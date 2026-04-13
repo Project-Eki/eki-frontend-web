@@ -68,10 +68,12 @@ const Navbar3 = ({ userName = '', onMenuClick, profileImage = null }) => {
     fetchProfile();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Load order notifications from the orders service ────────────────────────
+  // ─── Load order notifications filtered by vendor's location ──────────────────
   const loadNotifications = async () => {
     try {
-      const data  = await getOrderNotifications({ limit: 15 });
+      const country         = localStorage.getItem('vendor_country')         || '';
+      const branch_location = localStorage.getItem('vendor_branch_location') || '';
+      const data  = await getOrderNotifications({ limit: 15, country, branch_location });
       const items = data?.notifications ?? [];
       setNotifications(items);
       setUnreadCount(items.filter(n => !n.is_read).length);

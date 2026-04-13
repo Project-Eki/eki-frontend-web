@@ -296,9 +296,12 @@ export const markAllVendorNotificationsRead = async () => {
 };
 
 // ─── ORDER NOTIFICATIONS (orders service — live) ──────────────────────────────
-export const getOrderNotifications = async ({ limit = 15 } = {}) => {
+export const getOrderNotifications = async ({ limit = 15, country = '', branch_location = '' } = {}) => {
   try {
-    const r       = await api.get(`/orders/vendor/notifications/?limit=${limit}`);
+    const params = new URLSearchParams({ limit });
+    if (country)         params.append('country',         country);
+    if (branch_location) params.append('branch_location', branch_location);
+    const r       = await api.get(`/orders/vendor/notifications/?${params.toString()}`);
     const payload = r.data?.data ?? r.data;
     if (Array.isArray(payload))                return { notifications: payload };
     if (Array.isArray(payload?.notifications)) return payload;
