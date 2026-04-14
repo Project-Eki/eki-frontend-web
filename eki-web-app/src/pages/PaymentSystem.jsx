@@ -17,13 +17,39 @@ import { VendorProvider } from '../context/vendorContext';
 
 const PAYMENTS_PER_PAGE = 10;
 
-// ─── Helper: format order ID exactly like OrderManagement page ───────────────
-const formatOrderId = (raw) => {
+// ─── Helper: format transaction ID like TX-XXXX from order id ────────────────
+const formatTransactionId = (raw) => {
   if (!raw && raw !== 0) return '—';
   const str = String(raw).trim();
-  if (/^\d+$/.test(str)) return `#${str.padStart(6, '0')}`;
-  if (str.length > 12) return `#${str.slice(-8).toUpperCase()}`;
-  return `#${str.toUpperCase()}`;
+  // If it already looks like TX-XXXX keep it
+  if (/^TX-/i.test(str)) return str.toUpperCase();
+  // If numeric, pad and prefix
+  if (/^\d+$/.test(str)) return `TX-${str.padStart(4, '0')}`;
+  // Fallback: last 6 chars uppercased
+  return `TX-${str.slice(-6).toUpperCase()}`;
+};
+
+// ─── Helper: derive transaction type from order data ─────────────────────────
+const deriveType = (order) => {
+  const rawType = order.type ?? order.transaction_type ?? order.payment_type ?? '';
+  if (rawType) return rawType;
+  const status = String(order.status ?? '').toLowerCase();
+  if (status === 'cancelled' || status === 'canceled') return 'Refund';
+  if (status === 'completed' || status === 'delivered') return 'Sale';
+  if (status.includes('payout')) return 'Payout';
+  return 'Sale';
+};
+
+// ─── Helper: format display date ─────────────────────────────────────────────
+const formatDate = (raw) => {
+  if (!raw) return '—';
+  try {
+    return new Date(raw).toLocaleDateString('en-US', {
+      month: 'short', day: '2-digit', year: 'numeric',
+    });
+  } catch (_) {
+    return raw;
+  }
 };
 
 const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
@@ -76,6 +102,7 @@ const PaymentSystemContent = () => {
   const [isFetching,       setIsFetching]       = useState(true);
   const [searchQuery,      setSearchQuery]      = useState('');
   const [currentPage,      setCurrentPage]      = useState(1);
+  const [activeTab,        setActiveTab]        = useState('history'); // 'history' | 'payout'
 
   useEffect(() => {
     const load = async () => {
@@ -85,7 +112,7 @@ const PaymentSystemContent = () => {
         const dash = await getVendorDashboard();
         if (dash?.country) setCurrencySymbol(getCurrencySymbol(dash.country));
 
-        // ── Current Balance  →  GET /api/v1/payments/wallet/vendor/ ──
+        // ── Current Balance → GET /api/v1/payments/wallet/vendor/ ──
         const wallet = await getVendorWallet();
         const bal = wallet?.balance ?? wallet?.current_balance ?? wallet?.amount ?? 0;
         setBalance(
@@ -96,14 +123,14 @@ const PaymentSystemContent = () => {
           Number(lp).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         );
 
-        // ── Pending Earnings  →  GET /api/v1/orders/vendor/escrow-summary/ ──
+        // ── Pending Earnings → GET /api/v1/orders/vendor/escrow-summary/ ──
         const escrow = await getVendorEscrow();
         const held = escrow?.held_amount ?? escrow?.escrow_amount ?? escrow?.pending ?? 0;
         setPendingEarnings(
           Number(held).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         );
 
-        // ── Transaction History  →  GET /api/v1/orders/vendor/order-list/ ──
+        // ── Transaction History → GET /api/v1/orders/vendor/order-list/ ──
         const orders = await getVendorOrders();
         setTransactions(Array.isArray(orders) ? orders : []);
       } catch (e) {
@@ -120,19 +147,23 @@ const PaymentSystemContent = () => {
     setCurrentPage(1);
   }, [searchQuery]);
 
+  // ── Filter by transaction ID or status ───────────────────────────────────
   const filteredTx = transactions.filter((o) => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
+    const txId = formatTransactionId(o.id).toLowerCase();
     return (
+      txId.includes(q) ||
       String(o.id ?? '').toLowerCase().includes(q) ||
-      String(o.status ?? '').toLowerCase().includes(q)
+      String(o.status ?? '').toLowerCase().includes(q) ||
+      deriveType(o).toLowerCase().includes(q)
     );
   });
 
   // Pagination calculations
-  const totalPages = Math.max(1, Math.ceil(filteredTx.length / PAYMENTS_PER_PAGE));
-  const safePage = Math.min(currentPage, totalPages);
-  const startIndex = (safePage - 1) * PAYMENTS_PER_PAGE;
+  const totalPages       = Math.max(1, Math.ceil(filteredTx.length / PAYMENTS_PER_PAGE));
+  const safePage         = Math.min(currentPage, totalPages);
+  const startIndex       = (safePage - 1) * PAYMENTS_PER_PAGE;
   const pagedTransactions = filteredTx.slice(startIndex, startIndex + PAYMENTS_PER_PAGE);
 
   const goToPage = (page) => {
@@ -145,10 +176,41 @@ const PaymentSystemContent = () => {
   const pageNumbers = (() => {
     const pages = [];
     const start = Math.max(1, safePage - 2);
-    const end = Math.min(totalPages, start + 4);
+    const end   = Math.min(totalPages, start + 4);
     for (let i = start; i <= end; i++) pages.push(i);
     return pages;
   })();
+
+  // ── Status badge styling ─────────────────────────────────────────────────
+  const getStatusBadge = (status) => {
+    const key = String(status ?? '').toLowerCase();
+    if (key === 'completed' || key === 'delivered' || key === 'success')
+      return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+    if (key === 'pending')
+      return 'bg-amber-50 text-amber-700 border border-amber-200';
+    if (key === 'cancelled' || key === 'canceled' || key === 'failed')
+      return 'bg-red-50 text-red-700 border border-red-200';
+    if (key === 'confirmed')
+      return 'bg-blue-50 text-blue-700 border border-blue-200';
+    if (key === 'processing')
+      return 'bg-indigo-50 text-indigo-700 border border-indigo-200';
+    return 'bg-slate-100 text-slate-500 border border-slate-200';
+  };
+
+  // ── Type icon ────────────────────────────────────────────────────────────
+  const getTypeIcon = (type) => {
+    const t = String(type ?? '').toLowerCase();
+    if (t === 'payout')  return '↗';
+    if (t === 'refund')  return '↙';
+    return '↗'; // Sale
+  };
+
+  // ── Amount prefix ────────────────────────────────────────────────────────
+  const getAmountPrefix = (type) => {
+    const t = String(type ?? '').toLowerCase();
+    if (t === 'refund') return '';
+    return '+';
+  };
 
   return (
     <div className="flex min-h-screen bg-[#ecece7] font-sans text-slate-800 p-3 gap-3">
@@ -158,6 +220,8 @@ const PaymentSystemContent = () => {
         <Navbar4 />
 
         <main className="p-5 max-w-[1400px] mx-auto w-full pb-16">
+
+          {/* ── Page Header ─────────────────────────────────────────────── */}
           <div className="flex justify-between items-start mb-5">
             <div>
               <h1 className="text-xl font-bold text-[#1A1A1A] tracking-tight">Payments & Financial</h1>
@@ -167,7 +231,7 @@ const PaymentSystemContent = () => {
             </div>
           </div>
 
-          {/* Stats Grid */}
+          {/* ── Stats Grid ──────────────────────────────────────────────── */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
             <StatCard
               title="Current Balance"
@@ -192,22 +256,39 @@ const PaymentSystemContent = () => {
             />
           </div>
 
-          {/* Table Controls */}
+          {/* ── Table Controls ───────────────────────────────────────────── */}
           <div className="flex items-center justify-between mb-4">
+            {/* Tabs */}
             <div className="flex gap-6 text-xs font-bold">
-              <span className="text-[#125852] border-b-2 border-[#125852] pb-1.5 cursor-pointer">
+              <span
+                onClick={() => setActiveTab('history')}
+                className={`pb-1.5 cursor-pointer transition-colors ${
+                  activeTab === 'history'
+                    ? 'text-[#125852] border-b-2 border-[#125852]'
+                    : 'text-slate-400 hover:text-slate-700'
+                }`}
+              >
                 Transaction History
               </span>
-              <span className="text-slate-400 hover:text-slate-700 cursor-pointer transition">
+              <span
+                onClick={() => setActiveTab('payout')}
+                className={`pb-1.5 cursor-pointer transition-colors ${
+                  activeTab === 'payout'
+                    ? 'text-[#125852] border-b-2 border-[#125852]'
+                    : 'text-slate-400 hover:text-slate-700'
+                }`}
+              >
                 Payout Settings
               </span>
             </div>
+
+            {/* Search */}
             <div className="flex gap-2">
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
                 <input
                   type="text"
-                  placeholder="Filter by ID..."
+                  placeholder="Filter by ID or date..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8 pr-3 py-1 border border-slate-200 rounded-lg text-[10px] outline-none focus:ring-1 focus:ring-[#F5B841] w-48"
@@ -216,137 +297,158 @@ const PaymentSystemContent = () => {
             </div>
           </div>
 
-          {/* Table / Empty / Loading */}
-          {isFetching ? (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[280px] flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#F5B841]" />
-            </div>
-          ) : filteredTx.length === 0 ? (
+          {/* ── Tab: Payout Settings (placeholder) ──────────────────────── */}
+          {activeTab === 'payout' && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[280px] flex flex-col items-center justify-center">
               <div className="bg-slate-50 p-4 rounded-full mb-3">
-                <History size={24} className="text-slate-300" />
+                <CheckCircle size={24} className="text-slate-300" />
               </div>
-              <p className="font-bold text-xs text-slate-800">No transactions recorded</p>
+              <p className="font-bold text-xs text-slate-800">Payout Settings</p>
               <p className="text-[9px] text-slate-400 mt-0.5">
-                Your financial activity will appear here once processed.
+                Payout configuration will appear here.
               </p>
             </div>
-          ) : (
+          )}
+
+          {/* ── Tab: Transaction History ─────────────────────────────────── */}
+          {activeTab === 'history' && (
             <>
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <table
-                  className="w-full text-left text-[10px]"
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                >
-                  <thead className="bg-slate-50 text-slate-400 font-bold uppercase text-[9px]">
-                    <tr>
-                      <th className="px-4 py-3">Order ID</th>
-                      <th className="px-4 py-3">Customer</th>
-                      <th className="px-4 py-3">Date</th>
-                      <th className="px-4 py-3">Amount</th>
-                      <th className="px-4 py-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {pagedTransactions.map((order, i) => {
-                      const customerDisplay =
-                        typeof order.customer === 'object' && order.customer !== null
-                          ? order.customer.name || order.customer.email || '—'
-                          : order.customer ?? '—';
-
-                      const displayDate = order.date
-                        ? (() => {
-                            try { return new Date(order.date).toLocaleDateString(); }
-                            catch (_) { return order.date; }
-                          })()
-                        : '—';
-
-                      const statusKey = String(order.status ?? '').toLowerCase();
-                      const badgeClass =
-                        statusKey === 'completed' || statusKey === 'delivered'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : statusKey === 'pending'
-                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                          : statusKey === 'cancelled' || statusKey === 'canceled'
-                          ? 'bg-red-50 text-red-700 border border-red-200'
-                          : statusKey === 'confirmed'
-                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                          : statusKey === 'processing'
-                          ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                          : 'bg-slate-100 text-slate-500 border border-slate-200';
-
-                      return (
-                        <tr key={order.id ?? i} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-4 py-2.5 font-black text-[#125852] tracking-wider font-mono">
-                            {formatOrderId(order.id)}
-                          </td>
-                          <td className="px-4 py-2.5 text-slate-700 font-medium">
-                            {customerDisplay}
-                          </td>
-                          <td className="px-4 py-2.5 text-slate-500">{displayDate}</td>
-                          <td className="px-4 py-2.5 font-bold text-slate-800">
-                            {currencySymbol} {Number(order.total ?? 0).toLocaleString()}
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[8px] uppercase font-black tracking-wide ${badgeClass}`}
-                            >
-                              {order.status || '—'}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination Footer */}
-              <div className="mt-4 p-3 bg-white rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                  Showing {filteredTx.length === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + PAYMENTS_PER_PAGE, filteredTx.length)} of {filteredTx.length} transactions
-                </p>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => goToPage(safePage - 1)}
-                    disabled={safePage === 1}
-                    className="px-2.5 py-1 text-[10px] font-bold border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Previous
-                  </button>
-
-                  {pageNumbers.map((page) => (
-                    <button
-                      key={page}
-                      onClick={() => goToPage(page)}
-                      className={`w-7 h-7 text-[10px] font-bold rounded-md transition-colors ${
-                        page === safePage
-                          ? 'bg-[#125852] text-white shadow-sm'
-                          : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-
-                  <button
-                    onClick={() => goToPage(safePage + 1)}
-                    disabled={safePage === totalPages}
-                    className="px-2.5 py-1 text-[10px] font-bold border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Next
-                  </button>
+              {isFetching ? (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[280px] flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#F5B841]" />
                 </div>
+
+              ) : filteredTx.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[280px] flex flex-col items-center justify-center">
+                  <div className="bg-slate-50 p-4 rounded-full mb-3">
+                    <History size={24} className="text-slate-300" />
+                  </div>
+                  <p className="font-bold text-xs text-slate-800">No transactions recorded</p>
+                  <p className="text-[9px] text-slate-400 mt-0.5">
+                    Your financial activity will appear here once processed.
+                  </p>
+                </div>
+
+              ) : (
+                <>
+                  {/* ── Table ─────────────────────────────────────────── */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <table
+                      className="w-full text-left text-[10px]"
+                      style={{ fontFamily: "'Poppins', sans-serif" }}
+                    >
+                      <thead className="bg-slate-50 text-slate-400 font-bold uppercase text-[9px]">
+                        <tr>
+                          {/* ✅ Columns match original design */}
+                          <th className="px-4 py-3">Date</th>
+                          <th className="px-4 py-3">Transaction ID</th>
+                          <th className="px-4 py-3">Type</th>
+                          <th className="px-4 py-3">Status</th>
+                          <th className="px-4 py-3 text-right">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {pagedTransactions.map((order, i) => {
+                          const txId      = formatTransactionId(order.id);
+                          const txType    = deriveType(order);
+                          const txDate    = formatDate(order.date ?? order.created_at ?? order.order_date);
+                          const statusKey = String(order.status ?? '').toLowerCase();
+                          const amount    = Number(order.total ?? 0).toLocaleString(undefined, {
+                            minimumFractionDigits: 2, maximumFractionDigits: 2,
+                          });
+                          const prefix    = getAmountPrefix(txType);
+                          const typeIcon  = getTypeIcon(txType);
+
+                          return (
+                            <tr key={order.id ?? i} className="hover:bg-slate-50 transition-colors">
+
+                              {/* Date */}
+                              <td className="px-4 py-2.5 text-slate-500 font-medium">
+                                {txDate}
+                              </td>
+
+                              {/* Transaction ID */}
+                              <td className="px-4 py-2.5 font-black text-[#125852] tracking-wider font-mono">
+                                {txId}
+                              </td>
+
+                              {/* Type */}
+                              <td className="px-4 py-2.5">
+                                <span className="flex items-center gap-1.5 text-slate-700 font-medium">
+                                  <span className="text-[11px]">{typeIcon}</span>
+                                  {txType}
+                                </span>
+                              </td>
+
+                              {/* Status */}
+                              <td className="px-4 py-2.5">
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-[8px] uppercase font-black tracking-wide ${getStatusBadge(statusKey)}`}
+                                >
+                                  {order.status || '—'}
+                                </span>
+                              </td>
+
+                              {/* Amount */}
+                              <td className="px-4 py-2.5 font-bold text-slate-800 text-right">
+                                {prefix}{currencySymbol} {amount}
+                              </td>
+
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* ── Pagination Footer ──────────────────────────────── */}
+                  <div className="mt-4 p-3 bg-white rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                      Showing {filteredTx.length === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + PAYMENTS_PER_PAGE, filteredTx.length)} of {filteredTx.length} transactions
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => goToPage(safePage - 1)}
+                        disabled={safePage === 1}
+                        className="px-2.5 py-1 text-[10px] font-bold border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Previous
+                      </button>
+
+                      {pageNumbers.map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => goToPage(page)}
+                          className={`w-7 h-7 text-[10px] font-bold rounded-md transition-colors ${
+                            page === safePage
+                              ? 'bg-[#125852] text-white shadow-sm'
+                              : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+
+                      <button
+                        onClick={() => goToPage(safePage + 1)}
+                        disabled={safePage === totalPages}
+                        className="px-2.5 py-1 text-[10px] font-bold border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Results count footer */}
+              <div className="mt-5 pt-4 border-t border-slate-100 flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                <p>
+                  {filteredTx.length} Result{filteredTx.length !== 1 ? 's' : ''}
+                </p>
               </div>
             </>
           )}
-
-          {/* Footer */}
-          <div className="mt-5 pt-4 border-t border-slate-100 flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-            <p>
-              {filteredTx.length} Result{filteredTx.length !== 1 ? 's' : ''}
-            </p>
-          </div>
         </main>
 
         <Footer />

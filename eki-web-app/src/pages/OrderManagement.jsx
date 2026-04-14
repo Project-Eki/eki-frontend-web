@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import VendorSidebar from '../components/VendorSidebar';
 import Navbar3 from '../components/adminDashboard/Navbar4';
@@ -33,10 +33,12 @@ const STATUS_STYLES = {
   processing: 'text-black',
   completed:  'text-black',
   cancelled:  'text-black',
-  delivered:  'text-black',
+  fulfilled:  'text-black',   // was 'delivered'
+  delivered:  'text-black',   // keep for backward compatibility
 };
 
-const TAB_FILTERS = ['All', 'Pending', 'Confirmed', 'Processing', 'Completed', 'Cancelled', 'Delivered'];
+// Tab filters: "Delivered" replaced with "Fulfilled"
+const TAB_FILTERS = ['All', 'Pending', 'Confirmed', 'Processing', 'Completed', 'Cancelled', 'Fulfilled'];
 
 const ORDERS_PER_PAGE = 10;
 
@@ -74,6 +76,12 @@ const StarRating = ({ rating = 0 }) => (
 const OrderDetailModal = ({ order, currencySymbol, onClose }) => {
   if (!order) return null;
 
+  // Normalize status: if it's 'delivered', display as 'Fulfilled'
+  let displayStatus = order.status;
+  if (typeof displayStatus === 'string' && displayStatus.toLowerCase() === 'delivered') {
+    displayStatus = 'Fulfilled';
+  }
+
   const statusKey  = String(order.status ?? '').toLowerCase();
   const badgeClass = STATUS_STYLES[statusKey] ?? 'text-black';
 
@@ -85,7 +93,7 @@ const OrderDetailModal = ({ order, currencySymbol, onClose }) => {
   const statusLabel =
     typeof order.status === 'object' && order.status !== null
       ? (order.status.label || order.status.name || '—')
-      : (order.status ?? '—');
+      : displayStatus;
 
   const items = Array.isArray(order.items) ? order.items : [];
 
@@ -298,6 +306,10 @@ const OrderManagement = () => {
   const [selectedOrder,  setSelectedOrder]  = useState(null);
   const [currentPage,    setCurrentPage]    = useState(1);
 
+  // Refs for stability
+  const isMountedRef = useRef(true);
+  const abortControllerRef = useRef(null);
+
   // ── Derived stats ──────────────────────────────────────────────────────────
   const totalOrders  = orders.length;
   const activeOrders = orders.filter((o) =>
@@ -309,6 +321,7 @@ const OrderManagement = () => {
   useEffect(() => {
     getVendorDashboard()
       .then((data) => {
+        if (!isMountedRef.current) return;
         const country =
           data?.country ||
           data?.business_country ||
@@ -319,24 +332,49 @@ const OrderManagement = () => {
       .catch(() => {});
   }, []);
 
-  // ── Fetch orders ───────────────────────────────────────────────────────────
+  // ── Fetch orders (with abort support) ──────────────────────────────────────
   const fetchOrders = useCallback(async () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsFetching(true);
     try {
       const data = await getVendorOrders();
-      console.log('[OrderManagement] orders received:', data);
-      setOrders(Array.isArray(data) ? data : []);
-    } catch (_) {
-      setOrders([]);
+      if (isMountedRef.current) {
+        console.log('[OrderManagement] orders received:', data);
+        setOrders(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        // ignore
+      } else if (isMountedRef.current) {
+        console.error('[OrderManagement] fetch error:', err);
+        setOrders([]);
+      }
     } finally {
-      setIsFetching(false);
+      if (isMountedRef.current) {
+        setIsFetching(false);
+      }
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
     }
   }, []);
 
   useEffect(() => {
+    isMountedRef.current = true;
     fetchOrders();
     const interval = setInterval(fetchOrders, 30_000);
-    return () => clearInterval(interval);
+    return () => {
+      isMountedRef.current = false;
+      clearInterval(interval);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [fetchOrders]);
 
   // ── Reset to page 1 whenever tab or search changes ─────────────────────────
@@ -344,11 +382,15 @@ const OrderManagement = () => {
     setCurrentPage(1);
   }, [activeTab, searchQuery]);
 
-  // ── Filter + Search ────────────────────────────────────────────────────────
+  // ── Filter + Search (map 'delivered' status to 'fulfilled' for filtering) ──
   const filteredOrders = orders.filter((order) => {
+    let orderStatus = String(order.status ?? '').toLowerCase();
+    // For filtering, treat 'delivered' as 'fulfilled'
+    if (orderStatus === 'delivered') orderStatus = 'fulfilled';
+
     const matchesTab =
       activeTab === 'All' ||
-      String(order.status ?? '').toLowerCase() === activeTab.toLowerCase();
+      orderStatus === activeTab.toLowerCase();
 
     const q = searchQuery.toLowerCase().trim();
     const customerStr =
@@ -361,7 +403,7 @@ const OrderManagement = () => {
       String(order.id ?? '').toLowerCase().includes(q) ||
       formatOrderId(order.id).toLowerCase().includes(q) ||
       customerStr.toLowerCase().includes(q) ||
-      String(order.status ?? '').toLowerCase().includes(q) ||
+      orderStatus.includes(q) ||
       String(order.total ?? '').includes(q);
 
     return matchesTab && matchesSearch;
@@ -388,13 +430,22 @@ const OrderManagement = () => {
     return pages;
   })();
 
-  // ── Count per tab for badge numbers ───────────────────────────────────────
-  const countForTab = (tab) =>
-    tab === 'All'
-      ? orders.length
-      : orders.filter((o) =>
-          String(o.status ?? '').toLowerCase() === tab.toLowerCase()
-        ).length;
+  // ── Count per tab (treat 'delivered' as 'fulfilled') ──────────────────────
+  const countForTab = (tab) => {
+    if (tab === 'All') return orders.length;
+    const tabLower = tab.toLowerCase();
+    return orders.filter((o) => {
+      let status = String(o.status ?? '').toLowerCase();
+      if (status === 'delivered') status = 'fulfilled';
+      return status === tabLower;
+    }).length;
+  };
+
+  // Helper to display status label (convert 'delivered' to 'Fulfilled')
+  const getDisplayStatus = (status) => {
+    if (typeof status === 'string' && status.toLowerCase() === 'delivered') return 'Fulfilled';
+    return status;
+  };
 
   return (
     <div
@@ -414,8 +465,8 @@ const OrderManagement = () => {
             <p className="text-slate-400 text-[11px] mt-0.5">View and process incoming customer orders.</p>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+          {/* Stats Grid - Avg. Processing removed, now only 3 cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
             <StatCard
               title="Total Orders"
               number={isFetching ? '—' : String(totalOrders)}
@@ -436,13 +487,6 @@ const OrderManagement = () => {
               icon={CircleDollarSign}
               iconBgColor="bg-orange-50"
               iconColor="text-orange-600"
-            />
-            <StatCard
-              title="Avg. Processing"
-              number="—"
-              icon={BarChart3}
-              iconBgColor="bg-indigo-50"
-              iconColor="text-indigo-600"
             />
           </div>
 
@@ -567,6 +611,7 @@ const OrderManagement = () => {
                   pagedOrders.map((order, i) => {
                     const statusKey  = String(order.status ?? '').toLowerCase();
                     const badgeClass = STATUS_STYLES[statusKey] ?? 'text-black';
+                    const displayStatus = getDisplayStatus(order.status);
 
                     const displayDate = order.date
                       ? (() => {
@@ -604,7 +649,7 @@ const OrderManagement = () => {
                         </td>
                         <td className="px-4 py-3">
                           <span className={`px-2 py-0.5 rounded text-[8px] uppercase font-bold ${badgeClass}`}>
-                            {String(order.status ?? '—')}
+                            {displayStatus}
                           </span>
                         </td>
                         <td className="px-4 py-3">

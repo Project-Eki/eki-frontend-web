@@ -17,7 +17,7 @@ const PUBLIC_ROUTES = [
 ];
 
 let isRefreshing = false;
-let failedQueue  = [];
+let failedQueue = [];
 
 const processQueue = (error, token = null) => {
   failedQueue.forEach((prom) => {
@@ -44,7 +44,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const status          = error.response?.status;
+    const status = error.response?.status;
     const originalRequest = error.config;
 
     if (status === 400) {
@@ -76,7 +76,7 @@ api.interceptors.response.use(
       }
 
       originalRequest._retry = true;
-      isRefreshing           = true;
+      isRefreshing = true;
 
       const refreshToken = localStorage.getItem('refresh_token');
 
@@ -97,8 +97,8 @@ api.interceptors.response.use(
         localStorage.setItem('access_token', newAccess);
         api.defaults.headers.common.Authorization = `Bearer ${newAccess}`;
         processQueue(null, newAccess);
-        isRefreshing                               = false;
-        originalRequest.headers.Authorization      = `Bearer ${newAccess}`;
+        isRefreshing = false;
+        originalRequest.headers.Authorization = `Bearer ${newAccess}`;
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
@@ -114,22 +114,22 @@ api.interceptors.response.use(
 );
 
 const saveTokens = ({ access, refresh }) => {
-  if (access)  localStorage.setItem('access_token',  access);
+  if (access) localStorage.setItem('access_token', access);
   if (refresh) localStorage.setItem('refresh_token', refresh);
 };
 
 export const SigninUser = async (credentials) => {
   const response = await api.post('/accounts/login/', {
-    email:    credentials.email?.trim().toLowerCase(),
+    email: credentials.email?.trim().toLowerCase(),
     password: credentials.password,
   });
   const data = response.data?.data ?? response.data;
   saveTokens({ access: data?.access, refresh: data?.refresh });
 
-  if (data?.first_name)   localStorage.setItem('vendor_first_name',   data.first_name);
-  if (data?.last_name)    localStorage.setItem('vendor_last_name',    data.last_name);
-  if (data?.email)        localStorage.setItem('vendor_email',        data.email);
-  if (data?.role)         localStorage.setItem('vendor_role',         data.role);
+  if (data?.first_name) localStorage.setItem('vendor_first_name', data.first_name);
+  if (data?.last_name) localStorage.setItem('vendor_last_name', data.last_name);
+  if (data?.email) localStorage.setItem('vendor_email', data.email);
+  if (data?.role) localStorage.setItem('vendor_role', data.role);
   if (data?.phone_number) localStorage.setItem('vendor_phone_number', data.phone_number);
 
   return response.data;
@@ -140,40 +140,32 @@ export const SignoutUser = () => {
   window.location.href = '/Login';
 };
 
-export const verifyOtp = (data) =>
-  api.post('/accounts/verify-email/', data).then((r) => r.data);
+export const verifyOtp = (data) => api.post('/accounts/verify-email/', data).then((r) => r.data);
+export const resendOtp = (email) => api.post('/accounts/resend-code/', { email }).then((r) => r.data);
+export const getBuyerProfile = () => api.get('/accounts/buyer/profile/').then((r) => r.data?.data ?? r.data);
+export const updateBuyerProfile = (data) => api.patch('/accounts/buyer/profile/', data).then((r) => r.data?.data ?? r.data);
 
-export const resendOtp = (email) =>
-  api.post('/accounts/resend-code/', { email }).then((r) => r.data);
-
-export const getBuyerProfile = () =>
-  api.get('/accounts/buyer/profile/').then((r) => r.data?.data ?? r.data);
-
-export const updateBuyerProfile = (data) =>
-  api.patch('/accounts/buyer/profile/', data).then((r) => r.data?.data ?? r.data);
-
-let _profileCache    = null;
+let _profileCache = null;
 let _profileFetching = null;
-
 export const clearProfileCache = () => { _profileCache = null; };
 
 export const getVendorProfile = async () => {
-  if (_profileCache)    return _profileCache;
+  if (_profileCache) return _profileCache;
   if (_profileFetching) return _profileFetching;
 
   _profileFetching = (async () => {
     try {
-      const r    = await api.get('/accounts/vendor/profile/');
+      const r = await api.get('/accounts/vendor/profile/');
       const data = r.data?.data ?? r.data;
 
-      if (data?.first_name)       localStorage.setItem('vendor_first_name',      data.first_name);
-      if (data?.last_name)        localStorage.setItem('vendor_last_name',       data.last_name);
-      if (data?.email)            localStorage.setItem('vendor_email',            data.email);
-      if (data?.profile_picture)  localStorage.setItem('vendor_profile_picture', data.profile_picture);
-      if (data?.phone_number)     localStorage.setItem('vendor_phone_number',    data.phone_number);
-      if (data?.business_country) localStorage.setItem('vendor_country',         data.business_country);
-      else if (data?.country)     localStorage.setItem('vendor_country',         data.country);
-      if (data?.branch_location)  localStorage.setItem('vendor_branch_location', data.branch_location);
+      if (data?.first_name) localStorage.setItem('vendor_first_name', data.first_name);
+      if (data?.last_name) localStorage.setItem('vendor_last_name', data.last_name);
+      if (data?.email) localStorage.setItem('vendor_email', data.email);
+      if (data?.profile_picture) localStorage.setItem('vendor_profile_picture', data.profile_picture);
+      if (data?.phone_number) localStorage.setItem('vendor_phone_number', data.phone_number);
+      if (data?.business_country) localStorage.setItem('vendor_country', data.business_country);
+      else if (data?.country) localStorage.setItem('vendor_country', data.country);
+      if (data?.branch_location) localStorage.setItem('vendor_branch_location', data.branch_location);
 
       _profileCache = data;
       return data;
@@ -181,13 +173,13 @@ export const getVendorProfile = async () => {
       const status = err.response?.status;
       if (status === 500 || status === 404) {
         const fallback = {
-          first_name:       localStorage.getItem('vendor_first_name')      || '',
-          last_name:        localStorage.getItem('vendor_last_name')       || '',
-          email:            localStorage.getItem('vendor_email')            || '',
-          profile_picture:  localStorage.getItem('vendor_profile_picture') || null,
-          phone_number:     localStorage.getItem('vendor_phone_number')    || '',
-          business_country: localStorage.getItem('vendor_country')         || 'Uganda',
-          branch_location:  localStorage.getItem('vendor_branch_location') || '',
+          first_name: localStorage.getItem('vendor_first_name') || '',
+          last_name: localStorage.getItem('vendor_last_name') || '',
+          email: localStorage.getItem('vendor_email') || '',
+          profile_picture: localStorage.getItem('vendor_profile_picture') || null,
+          phone_number: localStorage.getItem('vendor_phone_number') || '',
+          business_country: localStorage.getItem('vendor_country') || 'Uganda',
+          branch_location: localStorage.getItem('vendor_branch_location') || '',
         };
         _profileCache = fallback;
         return fallback;
@@ -228,14 +220,14 @@ export const updateVendorProfile = async (changedFields) => {
 
     const d = res.data?.data ?? res.data;
     if (d) {
-      if (d.first_name)       localStorage.setItem('vendor_first_name',      d.first_name);
-      if (d.last_name)        localStorage.setItem('vendor_last_name',       d.last_name);
-      if (d.email)            localStorage.setItem('vendor_email',            d.email);
-      if (d.profile_picture)  localStorage.setItem('vendor_profile_picture', d.profile_picture);
-      if (d.phone_number)     localStorage.setItem('vendor_phone_number',    d.phone_number);
-      if (d.business_country) localStorage.setItem('vendor_country',         d.business_country);
-      else if (d.country)     localStorage.setItem('vendor_country',         d.country);
-      if (d.branch_location)  localStorage.setItem('vendor_branch_location', d.branch_location);
+      if (d.first_name) localStorage.setItem('vendor_first_name', d.first_name);
+      if (d.last_name) localStorage.setItem('vendor_last_name', d.last_name);
+      if (d.email) localStorage.setItem('vendor_email', d.email);
+      if (d.profile_picture) localStorage.setItem('vendor_profile_picture', d.profile_picture);
+      if (d.phone_number) localStorage.setItem('vendor_phone_number', d.phone_number);
+      if (d.business_country) localStorage.setItem('vendor_country', d.business_country);
+      else if (d.country) localStorage.setItem('vendor_country', d.country);
+      if (d.branch_location) localStorage.setItem('vendor_branch_location', d.branch_location);
     }
 
     return res.data?.data ?? res.data;
@@ -250,15 +242,14 @@ const NOTIFICATIONS_ENDPOINT_READY = false;
 export const getVendorNotifications = async ({ limit = 15 } = {}) => {
   if (!NOTIFICATIONS_ENDPOINT_READY) return { notifications: [] };
   try {
-    const r       = await api.get(`/accounts/vendor/notifications/?limit=${limit}`);
+    const r = await api.get(`/accounts/vendor/notifications/?limit=${limit}`);
     const payload = r.data?.data ?? r.data;
-    if (Array.isArray(payload))                return { notifications: payload };
+    if (Array.isArray(payload)) return { notifications: payload };
     if (Array.isArray(payload?.notifications)) return payload;
-    if (Array.isArray(payload?.results))       return { notifications: payload.results };
+    if (Array.isArray(payload?.results)) return { notifications: payload.results };
     return { notifications: [] };
   } catch (err) {
-    if (err.response?.status === 404 || err.response?.status === 500)
-      return { notifications: [] };
+    if (err.response?.status === 404 || err.response?.status === 500) return { notifications: [] };
     throw err;
   }
 };
@@ -288,24 +279,23 @@ export const markAllVendorNotificationsRead = async () => {
 export const getOrderNotifications = async ({ limit = 15, country = '', branch_location = '' } = {}) => {
   try {
     const params = new URLSearchParams({ limit });
-    if (country)         params.append('country',         country);
+    if (country) params.append('country', country);
     if (branch_location) params.append('branch_location', branch_location);
-    const r       = await api.get(`/orders/vendor/notifications/?${params.toString()}`);
+    const r = await api.get(`/orders/vendor/notifications/?${params.toString()}`);
     const payload = r.data?.data ?? r.data;
-    if (Array.isArray(payload))                return { notifications: payload };
+    if (Array.isArray(payload)) return { notifications: payload };
     if (Array.isArray(payload?.notifications)) return payload;
-    if (Array.isArray(payload?.results))       return { notifications: payload.results };
+    if (Array.isArray(payload?.results)) return { notifications: payload.results };
     return { notifications: [] };
   } catch (err) {
-    if (err.response?.status === 404 || err.response?.status === 500)
-      return { notifications: [] };
+    if (err.response?.status === 404 || err.response?.status === 500) return { notifications: [] };
     throw err;
   }
 };
 
 export const getOrderNotificationsUnreadCount = async () => {
   try {
-    const r       = await api.get('/orders/vendor/notifications/unread-count/');
+    const r = await api.get('/orders/vendor/notifications/unread-count/');
     const payload = r.data?.data ?? r.data;
     return Number(payload?.count ?? payload?.unread_count ?? 0);
   } catch (_) { return 0; }
@@ -321,32 +311,43 @@ export const markOrderNotificationRead = async (notifId) => {
   }
 };
 
+// ──────────────────────────────────────────────────────────────────────────
+// NEW: Helper to derive transaction type from order status
+// Used in normalizeOrder to add a `transaction_type` field
+// ──────────────────────────────────────────────────────────────────────────
+const deriveTransactionType = (status) => {
+  const s = String(status ?? '').toLowerCase();
+  if (s === 'cancelled' || s === 'canceled') return 'Refund';
+  if (s === 'payout' || s.includes('payout')) return 'Payout';
+  return 'Sale'; // completed, delivered, confirmed, processing, pending
+};
+
 const normalizeOrderItems = (o) => {
   if (Array.isArray(o.items) && o.items.length > 0 && typeof o.items[0] === 'object') {
     return o.items.map((item) => ({
-      name:    item.name        ?? item.title        ?? item.product_name  ?? item.listing_title ?? `Item`,
-      qty:     item.qty         ?? item.quantity      ?? item.amount        ?? 1,
-      price:   item.price       ?? item.unit_price    ?? item.item_price    ?? 0,
-      total:   item.total       ?? item.subtotal      ?? item.line_total    ??
-               (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
-      variant: item.variant     ?? item.variant_label ?? item.variant_name  ??
-               [item.size, item.color].filter(Boolean).join(' / ') ?? '',
-      image:   item.image       ?? item.product_image ?? item.listing_image ?? null,
-      sku:     item.sku         ?? item.product_sku   ?? '',
+      name: item.name ?? item.title ?? item.product_name ?? item.listing_title ?? `Item`,
+      qty: item.qty ?? item.quantity ?? item.amount ?? 1,
+      price: item.price ?? item.unit_price ?? item.item_price ?? 0,
+      total: item.total ?? item.subtotal ?? item.line_total ??
+        (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
+      variant: item.variant ?? item.variant_label ?? item.variant_name ??
+        [item.size, item.color].filter(Boolean).join(' / ') ?? '',
+      image: item.image ?? item.product_image ?? item.listing_image ?? null,
+      sku: item.sku ?? item.product_sku ?? '',
     }));
   }
 
   if (Array.isArray(o.order_items) && o.order_items.length > 0) {
     return o.order_items.map((item) => ({
-      name:    item.name        ?? item.title        ?? item.product_name  ?? item.listing_title ?? `Item`,
-      qty:     item.qty         ?? item.quantity      ?? 1,
-      price:   item.price       ?? item.unit_price    ?? item.item_price    ?? 0,
-      total:   item.total       ?? item.subtotal      ??
-               (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
-      variant: item.variant     ?? item.variant_label ??
-               [item.size, item.color].filter(Boolean).join(' / ') ?? '',
-      image:   item.image       ?? item.product_image ?? null,
-      sku:     item.sku         ?? '',
+      name: item.name ?? item.title ?? item.product_name ?? item.listing_title ?? `Item`,
+      qty: item.qty ?? item.quantity ?? 1,
+      price: item.price ?? item.unit_price ?? item.item_price ?? 0,
+      total: item.total ?? item.subtotal ??
+        (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
+      variant: item.variant ?? item.variant_label ??
+        [item.size, item.color].filter(Boolean).join(' / ') ?? '',
+      image: item.image ?? item.product_image ?? null,
+      sku: item.sku ?? '',
     }));
   }
 
@@ -355,15 +356,15 @@ const normalizeOrderItems = (o) => {
   );
   if (altKey) {
     return o[altKey].map((item) => ({
-      name:    item.name    ?? item.title        ?? item.product_name ?? `Item`,
-      qty:     item.qty     ?? item.quantity     ?? 1,
-      price:   item.price   ?? item.unit_price   ?? 0,
-      total:   item.total   ?? item.subtotal     ??
-               (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
+      name: item.name ?? item.title ?? item.product_name ?? `Item`,
+      qty: item.qty ?? item.quantity ?? 1,
+      price: item.price ?? item.unit_price ?? 0,
+      total: item.total ?? item.subtotal ??
+        (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
       variant: item.variant ?? item.variant_label ??
-               [item.size, item.color].filter(Boolean).join(' / ') ?? '',
-      image:   item.image   ?? item.product_image ?? null,
-      sku:     item.sku     ?? '',
+        [item.size, item.color].filter(Boolean).join(' / ') ?? '',
+      image: item.image ?? item.product_image ?? null,
+      sku: item.sku ?? '',
     }));
   }
 
@@ -373,79 +374,88 @@ const normalizeOrderItems = (o) => {
 const normalizeOrderCustomer = (o) => {
   if (o.customer && typeof o.customer === 'object') {
     return {
-      name:    o.customer.name    ?? o.customer.full_name ?? o.customer.username ??
-               [o.customer.first_name, o.customer.last_name].filter(Boolean).join(' ') ?? '—',
-      email:   o.customer.email   ?? '',
-      phone:   o.customer.phone   ?? o.customer.phone_number ?? '',
+      name: o.customer.name ?? o.customer.full_name ?? o.customer.username ??
+        [o.customer.first_name, o.customer.last_name].filter(Boolean).join(' ') ?? '—',
+      email: o.customer.email ?? '',
+      phone: o.customer.phone ?? o.customer.phone_number ?? '',
       address: o.customer.address ?? o.customer.delivery_address ?? o.customer.location ?? '',
     };
   }
 
   const name =
     (typeof o.customer === 'string' && o.customer) ||
-    o.customer_name  ||
-    o.buyer_name     ||
-    o.buyer?.name    ||
+    o.customer_name ||
+    o.buyer_name ||
+    o.buyer?.name ||
     o.buyer?.full_name ||
     [o.buyer?.first_name, o.buyer?.last_name].filter(Boolean).join(' ') ||
-    o.user?.name     ||
-    o.user?.full_name  ||
+    o.user?.name ||
+    o.user?.full_name ||
     [o.user?.first_name, o.user?.last_name].filter(Boolean).join(' ') ||
-    o.user?.username   ||
+    o.user?.username ||
     '—';
 
   const email =
-    o.customer_email  ||
-    o.buyer?.email    ||
-    o.user?.email     ||
-    o.email           ||
+    o.customer_email ||
+    o.buyer?.email ||
+    o.user?.email ||
+    o.email ||
     '';
 
   const phone =
-    o.customer_phone  ||
-    o.buyer?.phone    ||
+    o.customer_phone ||
+    o.buyer?.phone ||
     o.buyer?.phone_number ||
-    o.user?.phone     ||
-    o.phone           ||
-    o.phone_number    ||
+    o.user?.phone ||
+    o.phone ||
+    o.phone_number ||
     '';
 
   const address =
     o.delivery_address ||
     o.shipping_address ||
     o.customer_address ||
-    o.buyer?.address   ||
-    o.location         ||
+    o.buyer?.address ||
+    o.location ||
     '';
 
   return { name, email, phone, address };
 };
 
+// ──────────────────────────────────────────────────────────────────────────
+// MODIFIED: normalizeOrder now includes `transaction_type`
+// Also ensures `type` field is set for backward compatibility
+// ──────────────────────────────────────────────────────────────────────────
 const normalizeOrder = (o) => {
   const customer = normalizeOrderCustomer(o);
-  const items    = normalizeOrderItems(o);
+  const items = normalizeOrderItems(o);
+  const derivedType = deriveTransactionType(o.status);
 
   return {
     ...o,
-    id:       o.id ?? o.order_id ?? o.pk,
+    id: o.id ?? o.order_id ?? o.pk,
     customer,
     items,
     total: Number(
-      o.total        ??
+      o.total ??
       o.total_amount ??
-      o.total_price  ??
-      o.amount       ??
-      o.grand_total  ??
+      o.total_price ??
+      o.amount ??
+      o.grand_total ??
       0
     ),
     subtotal: Number(o.subtotal ?? o.sub_total ?? o.subtotal_amount ?? 0) || null,
-    shipping:  Number(o.shipping ?? o.shipping_fee ?? o.delivery_fee   ?? 0) || null,
-    tax:       Number(o.tax      ?? o.tax_amount   ?? o.vat            ?? 0) || null,
-    status:   o.status ?? o.order_status ?? 'pending',
-    date:     o.date ?? o.created_at ?? o.order_date ?? '',
+    shipping: Number(o.shipping ?? o.shipping_fee ?? o.delivery_fee ?? 0) || null,
+    tax: Number(o.tax ?? o.tax_amount ?? o.vat ?? 0) || null,
+    status: o.status ?? o.order_status ?? 'pending',
+    date: o.date ?? o.created_at ?? o.order_date ?? '',
     location: o.location ?? o.delivery_address ?? o.shipping_address ?? '',
-    notes:    o.notes ?? o.order_notes ?? o.special_instructions ?? '',
-    review:   o.review ?? o.customer_review ?? null,
+    notes: o.notes ?? o.order_notes ?? o.special_instructions ?? '',
+    review: o.review ?? o.customer_review ?? null,
+    // NEW fields for payment page
+    transaction_type: derivedType,
+    type: derivedType,           // alias for convenience
+    transaction_id: o.id ?? o.order_id ?? o.pk, // raw ID, component will format
   };
 };
 
@@ -456,16 +466,16 @@ export const getVendorOrders = async ({ status = '', search = '' } = {}) => {
     if (search) params.append('search', search);
     const query = params.toString() ? `?${params.toString()}` : '';
 
-    const r       = await api.get(`/orders/vendor/order-list/${query}`);
+    const r = await api.get(`/orders/vendor/order-list/${query}`);
     const payload = r.data?.data ?? r.data;
 
     console.log('[getVendorOrders] raw response:', payload);
 
     let list = [];
-    if (Array.isArray(payload))               list = payload;
+    if (Array.isArray(payload)) list = payload;
     else if (Array.isArray(payload?.results)) list = payload.results;
-    else if (Array.isArray(payload?.orders))  list = payload.orders;
-    else if (Array.isArray(payload?.data))    list = payload.data;
+    else if (Array.isArray(payload?.orders)) list = payload.orders;
+    else if (Array.isArray(payload?.data)) list = payload.data;
 
     return list.map(normalizeOrder);
   } catch (err) {
@@ -527,26 +537,26 @@ export const getVendorDashboard = async () => {
     console.error('[getVendorDashboard] command-center failed:', dashErr);
   }
 
-  let country          = 'Uganda';
-  let storeName        = '';
-  let vendorType       = 'Products';
+  let country = 'Uganda';
+  let storeName = '';
+  let vendorType = 'Products';
   let businessCategory = 'retail';
-  let currencySymbol   = 'UGX';
-  let branchLocation   = '';
+  let currencySymbol = 'UGX';
+  let branchLocation = '';
 
-  let isProductVendor     = raw.is_product_vendor ?? true;
-  let isServiceVendor     = raw.is_service_vendor ?? false;
-  let vendor_type         = raw.vendor_type ?? (isProductVendor ? 'product' : 'service');
+  let isProductVendor = raw.is_product_vendor ?? true;
+  let isServiceVendor = raw.is_service_vendor ?? false;
+  let vendor_type = raw.vendor_type ?? (isProductVendor ? 'product' : 'service');
   let allowedListingTypes = raw.allowed_listing_types ?? (isProductVendor ? ['product'] : ['service']);
 
   try {
     const p = await getVendorProfile();
-    country          = p.business_country || p.country || localStorage.getItem('vendor_country') || 'Uganda';
-    storeName        = p.business_name || '';
-    vendorType       = p.business_type || (isProductVendor ? 'Products' : 'Services');
+    country = p.business_country || p.country || localStorage.getItem('vendor_country') || 'Uganda';
+    storeName = p.business_name || '';
+    vendorType = p.business_type || (isProductVendor ? 'Products' : 'Services');
     businessCategory = p.business_category || raw.business_category || 'retail';
-    currencySymbol   = raw.currencySymbol || p.currencySymbol || 'UGX';
-    branchLocation   = p.branch_location || localStorage.getItem('vendor_branch_location') || '';
+    currencySymbol = raw.currencySymbol || p.currencySymbol || 'UGX';
+    branchLocation = p.branch_location || localStorage.getItem('vendor_branch_location') || '';
   } catch (_) {}
 
   let liveOrders = [];
@@ -554,18 +564,17 @@ export const getVendorDashboard = async () => {
     liveOrders = await getVendorOrders();
   } catch (_) {}
 
-  const metricsData         = raw.metrics         || {};
-  const salesHistoryData    = raw.salesHistory    || [];
+  const metricsData = raw.metrics || {};
+  const salesHistoryData = raw.salesHistory || [];
   const inventoryAlertsData = raw.inventoryAlerts || [];
-  const reviewsData         = raw.reviews         || [];
-  const rawRecentOrders     = raw.recentOrders    || [];
-  const recentOrdersData    = rawRecentOrders.length > 0 ? rawRecentOrders : liveOrders.slice(0, 10);
+  const reviewsData = raw.reviews || [];
+  const rawRecentOrders = raw.recentOrders || [];
+  const recentOrdersData = rawRecentOrders.length > 0 ? rawRecentOrders : liveOrders.slice(0, 10);
 
   const openOrdersCount = Number(metricsData.openOrders ?? 0) || liveOrders.filter((o) =>
     ['pending', 'confirmed', 'processing'].includes(String(o.status).toLowerCase())
   ).length;
 
-  // ── Derive salesHistory from liveOrders if API doesn't provide it ──
   let derivedSalesHistory = salesHistoryData;
   if (derivedSalesHistory.length === 0 && liveOrders.length > 0) {
     const byDate = {};
@@ -588,24 +597,24 @@ export const getVendorDashboard = async () => {
     currencySymbol,
     branchLocation,
     vendor_type,
-    is_product_vendor:     isProductVendor,
-    is_service_vendor:     isServiceVendor,
+    is_product_vendor: isProductVendor,
+    is_service_vendor: isServiceVendor,
     allowed_listing_types: allowedListingTypes,
-    first_name:      raw.first_name,
-    last_name:       raw.last_name,
-    email:           raw.email,
-    phone_number:    raw.phone_number,
+    first_name: raw.first_name,
+    last_name: raw.last_name,
+    email: raw.email,
+    phone_number: raw.phone_number,
     profile_picture: raw.profile_picture,
     metrics: {
-      grossSales:     Number(metricsData.grossSales     ?? 0),
-      openOrders:     openOrdersCount,
+      grossSales: Number(metricsData.grossSales ?? 0),
+      openOrders: openOrdersCount,
       pendingPayouts: Number(metricsData.pendingPayouts ?? 0),
       activeListings: Number(metricsData.activeListings ?? 0),
     },
-    salesHistory:    derivedSalesHistory.map((item) => ({ date: item.date, sales: Number(item.sales ?? 0) })),
-    recentOrders:    recentOrdersData.map(normalizeOrder),
+    salesHistory: derivedSalesHistory.map((item) => ({ date: item.date, sales: Number(item.sales ?? 0) })),
+    recentOrders: recentOrdersData.map(normalizeOrder),
     inventoryAlerts: inventoryAlertsData,
-    reviews:         reviewsData,
+    reviews: reviewsData,
   };
 };
 
@@ -621,9 +630,9 @@ export const getCategories = (businessCategory = null) => {
 
 const normalizeListing = (item) => {
   const qualityReverseMap = {
-    high:   'High',  High:   'High',  HIGH:   'High',
+    high: 'High', High: 'High', HIGH: 'High',
     medium: 'Medium', Medium: 'Medium', MEDIUM: 'Medium',
-    low:    'Low',   Low:    'Low',   LOW:    'Low',
+    low: 'Low', Low: 'Low', LOW: 'Low',
   };
 
   const rawQuality =
@@ -634,16 +643,16 @@ const normalizeListing = (item) => {
 
   const normalizedQuality = qualityReverseMap[rawQuality] ?? 'Medium';
 
-  const salesStatus      = item.sales_status || item.detail?.sales_status || {};
-  const discountEnabled  = salesStatus?.on_sale === true;
-  const discountPct      = salesStatus?.discount_percentage ?? item.discount_percentage ?? 0;
-  const discountedPrice  = salesStatus?.discounted_price    ?? item.discounted_price    ?? null;
+  const salesStatus = item.sales_status || item.detail?.sales_status || {};
+  const discountEnabled = salesStatus?.on_sale === true;
+  const discountPct = salesStatus?.discount_percentage ?? item.discount_percentage ?? 0;
+  const discountedPrice = salesStatus?.discounted_price ?? item.discounted_price ?? null;
 
   const normalizedVariants = (item.variants ?? item.detail?.variants ?? []).map((v) => ({
     ...v,
     stock:
-      v.stock         ??
-      v.quantity      ??
+      v.stock ??
+      v.quantity ??
       v.stock_quantity ??
       v.detail?.stock ??
       0,
@@ -651,32 +660,32 @@ const normalizeListing = (item) => {
 
   return {
     ...item,
-    id:                item.id,
-    is_published:      item.is_published === true || item.status === 'published',
+    id: item.id,
+    is_published: item.is_published === true || item.status === 'published',
     inventory_quality: normalizedQuality,
-    qty:               normalizedQuality,
-    sku:               item.detail?.sku   ?? item.sku   ?? '',
+    qty: normalizedQuality,
+    sku: item.detail?.sku ?? item.sku ?? '',
     stock:
-      item.detail?.stock    ??
-      item.stock            ??
-      item.stock_quantity   ??
-      item.quantity         ??
+      item.detail?.stock ??
+      item.stock ??
+      item.stock_quantity ??
+      item.quantity ??
       0,
-    variants:          normalizedVariants,
-    branch_location:   item.branch_location ?? item.detail?.branch_location ?? '',
-    discount_enabled:    discountEnabled,
+    variants: normalizedVariants,
+    branch_location: item.branch_location ?? item.detail?.branch_location ?? '',
+    discount_enabled: discountEnabled,
     discount_percentage: discountPct,
-    discounted_price:    discountedPrice,
+    discounted_price: discountedPrice,
   };
 };
 
 export const getProducts = async () => {
   const params = { listing_type: 'product' };
-  const res    = await api.get('/listings/', { params });
+  const res = await api.get('/listings/', { params });
   const payload = res.data?.data ?? res.data;
 
   let raw = [];
-  if (Array.isArray(payload))               raw = payload;
+  if (Array.isArray(payload)) raw = payload;
   else if (Array.isArray(payload?.results)) raw = payload.results;
 
   const normalized = raw.map(normalizeListing);
@@ -693,7 +702,7 @@ export const createProductListing = async (productData) => {
 
   const stockQty = parseInt(productData.stock) || 0;
   const hasRealVariants =
-    (Array.isArray(productData.sizes)  && productData.sizes.filter(Boolean).length  > 0) ||
+    (Array.isArray(productData.sizes) && productData.sizes.filter(Boolean).length > 0) ||
     (Array.isArray(productData.colors) && productData.colors.filter(Boolean).length > 0);
 
   let variants = [];
@@ -702,19 +711,19 @@ export const createProductListing = async (productData) => {
     if (Array.isArray(productData.variants) && productData.variants.length > 0) {
       productData.variants.forEach((v) => {
         if (!v.value?.trim()) return;
-        if (v.type === 'Size')  variants.push({ color: '',             size: v.value.trim(), stock: parseInt(v.stock) || 0 });
-        if (v.type === 'Color') variants.push({ color: v.value.trim(), size: '',             stock: parseInt(v.stock) || 0 });
+        if (v.type === 'Size') variants.push({ color: '', size: v.value.trim(), stock: parseInt(v.stock) || 0 });
+        if (v.type === 'Color') variants.push({ color: v.value.trim(), size: '', stock: parseInt(v.stock) || 0 });
       });
     }
 
-    const sizes  = Array.isArray(productData.sizes)  ? productData.sizes.filter(Boolean)  : [];
+    const sizes = Array.isArray(productData.sizes) ? productData.sizes.filter(Boolean) : [];
     const colors = Array.isArray(productData.colors) ? productData.colors.filter(Boolean) : [];
 
     if (variants.length === 0) {
       if (sizes.length > 0 && colors.length > 0) {
         sizes.forEach((size) => colors.forEach((color) => variants.push({ color, size, stock: 0 })));
       } else if (sizes.length > 0) {
-        sizes.forEach((size)  => variants.push({ color: '', size, stock: 0 }));
+        sizes.forEach((size) => variants.push({ color: '', size, stock: 0 }));
       } else {
         colors.forEach((color) => variants.push({ color, size: '', stock: 0 }));
       }
@@ -732,21 +741,21 @@ export const createProductListing = async (productData) => {
       : { on_sale: false };
 
   const payload = {
-    listing_type:      'product',
+    listing_type: 'product',
     business_category: productData.business_category,
-    title:             productData.title?.trim(),
-    description:       productData.description?.trim() || '',
-    status:            productData.is_published ? 'published' : 'draft',
-    availability:      'available',
-    price:             String(parseFloat(productData.price)),
-    price_unit:        'item',
-    branch_location:   productData.branch_location || localStorage.getItem('vendor_branch_location') || '',
-    sales_status:      salesStatus,
+    title: productData.title?.trim(),
+    description: productData.description?.trim() || '',
+    status: productData.is_published ? 'published' : 'draft',
+    availability: 'available',
+    price: String(parseFloat(productData.price)),
+    price_unit: 'item',
+    branch_location: productData.branch_location || localStorage.getItem('vendor_branch_location') || '',
+    sales_status: salesStatus,
     detail: {
-      sku:        productData.sku?.trim() || '',
+      sku: productData.sku?.trim() || '',
       base_price: String(parseFloat(productData.price)),
-      quality:    qualityMap[productData.qty] ?? 'medium',
-      stock:      stockQty,
+      quality: qualityMap[productData.qty] ?? 'medium',
+      stock: stockQty,
       variants,
     },
   };
@@ -767,7 +776,7 @@ export const updateProductListing = async (listingId, productData) => {
 
   const stockQty = parseInt(productData.stock) || 0;
   const hasRealVariants =
-    (Array.isArray(productData.sizes)  && productData.sizes.filter(Boolean).length  > 0) ||
+    (Array.isArray(productData.sizes) && productData.sizes.filter(Boolean).length > 0) ||
     (Array.isArray(productData.colors) && productData.colors.filter(Boolean).length > 0);
 
   let variants = [];
@@ -776,19 +785,19 @@ export const updateProductListing = async (listingId, productData) => {
     if (Array.isArray(productData.variants) && productData.variants.length > 0) {
       productData.variants.forEach((v) => {
         if (!v.value?.trim()) return;
-        if (v.type === 'Size')  variants.push({ color: '',             size: v.value.trim(), stock: parseInt(v.stock) || 0 });
-        if (v.type === 'Color') variants.push({ color: v.value.trim(), size: '',             stock: parseInt(v.stock) || 0 });
+        if (v.type === 'Size') variants.push({ color: '', size: v.value.trim(), stock: parseInt(v.stock) || 0 });
+        if (v.type === 'Color') variants.push({ color: v.value.trim(), size: '', stock: parseInt(v.stock) || 0 });
       });
     }
 
-    const sizes  = Array.isArray(productData.sizes)  ? productData.sizes.filter(Boolean)  : [];
+    const sizes = Array.isArray(productData.sizes) ? productData.sizes.filter(Boolean) : [];
     const colors = Array.isArray(productData.colors) ? productData.colors.filter(Boolean) : [];
 
     if (variants.length === 0) {
       if (sizes.length > 0 && colors.length > 0) {
         sizes.forEach((size) => colors.forEach((color) => variants.push({ color, size, stock: stockQty })));
       } else if (sizes.length > 0) {
-        sizes.forEach((size)  => variants.push({ color: '', size, stock: stockQty }));
+        sizes.forEach((size) => variants.push({ color: '', size, stock: stockQty }));
       } else {
         colors.forEach((color) => variants.push({ color, size: '', stock: stockQty }));
       }
@@ -806,19 +815,19 @@ export const updateProductListing = async (listingId, productData) => {
       : { on_sale: false };
 
   const payload = {
-    listing_type:    'product',
-    title:           productData.title?.trim(),
-    description:     productData.description?.trim() || '',
-    status:          productData.is_published ? 'published' : 'draft',
-    price:           String(parseFloat(productData.price)),
-    price_unit:      'item',
+    listing_type: 'product',
+    title: productData.title?.trim(),
+    description: productData.description?.trim() || '',
+    status: productData.is_published ? 'published' : 'draft',
+    price: String(parseFloat(productData.price)),
+    price_unit: 'item',
     branch_location: productData.branch_location || localStorage.getItem('vendor_branch_location') || '',
-    sales_status:    salesStatus,
+    sales_status: salesStatus,
     detail: {
-      sku:        productData.sku?.trim() || '',
+      sku: productData.sku?.trim() || '',
       base_price: String(parseFloat(productData.price)),
-      quality:    qualityMap[productData.qty] ?? 'medium',
-      stock:      stockQty,
+      quality: qualityMap[productData.qty] ?? 'medium',
+      stock: stockQty,
       variants,
     },
   };
@@ -845,8 +854,7 @@ export const updateProductStock = async (listingId, stock) => {
   throw new Error('No default variant found to update stock');
 };
 
-export const deleteProductListing = (listingId) =>
-  api.delete(`/listings/${listingId}/`).then((r) => r.data);
+export const deleteProductListing = (listingId) => api.delete(`/listings/${listingId}/`).then((r) => r.data);
 
 export const updateListingStatus = (listingId, newStatus) =>
   api.patch(`/listings/${listingId}/status/`, { status: newStatus })
@@ -891,13 +899,8 @@ export const updateProductVariant = (listingId, variantId, data) =>
 export const deleteProductVariant = (listingId, variantId) =>
   api.delete(`/listings/${listingId}/variants/${variantId}/`).then((r) => r.data);
 
-export const passwordResetRequest = (email) =>
-  api.post('/accounts/reset-password/', { email });
-
-export const passwordResetConfirm = (data) =>
-  api.post('/accounts/confirm-password-reset/', data);
-
-export const changePassword = (data) =>
-  api.post('/accounts/change-password/', data);
+export const passwordResetRequest = (email) => api.post('/accounts/reset-password/', { email });
+export const passwordResetConfirm = (data) => api.post('/accounts/confirm-password-reset/', data);
+export const changePassword = (data) => api.post('/accounts/change-password/', data);
 
 export default api;
