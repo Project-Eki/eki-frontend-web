@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { VendorProvider } from '../context/vendorContext';
 import VendorSidebar from '../components/VendorSidebar';
 import Navbar4 from '../components/adminDashboard/Navbar4';
 import Footer from "../components/Vendormanagement/VendorFooter";
@@ -45,8 +46,8 @@ const menuItems = [
   },
 ];
 
-/* ── Main Settings Page ── */
-const SettingsPage = () => {
+/* ── Inner content — your original page, untouched ── */
+const SettingsContent = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const [hovered, setHovered] = useState(null);
@@ -121,6 +122,15 @@ const SettingsPage = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+/* ── Main export — wraps content in VendorProvider ── */
+const SettingsPage = () => {
+  return (
+    <VendorProvider>
+      <SettingsContent />
+    </VendorProvider>
   );
 };
 
