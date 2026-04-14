@@ -15,6 +15,8 @@ import {
 import { getCurrencySymbol } from '../utils/currency';
 import { VendorProvider } from '../context/vendorContext';
 
+const PAYMENTS_PER_PAGE = 10;
+
 const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
   <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
     <div className="flex items-start justify-between">
@@ -64,6 +66,7 @@ const PaymentSystemContent = () => {
   const [transactions,     setTransactions]     = useState([]);
   const [isFetching,       setIsFetching]       = useState(true);
   const [searchQuery,      setSearchQuery]      = useState('');
+  const [currentPage,      setCurrentPage]      = useState(1);
 
   useEffect(() => {
     const load = async () => {
@@ -103,6 +106,11 @@ const PaymentSystemContent = () => {
     load();
   }, []);
 
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   const filteredTx = transactions.filter((o) => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
@@ -111,6 +119,27 @@ const PaymentSystemContent = () => {
       String(o.status ?? '').toLowerCase().includes(q)
     );
   });
+
+  // Pagination calculations
+  const totalPages = Math.max(1, Math.ceil(filteredTx.length / PAYMENTS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * PAYMENTS_PER_PAGE;
+  const pagedTransactions = filteredTx.slice(startIndex, startIndex + PAYMENTS_PER_PAGE);
+
+  const goToPage = (page) => {
+    const p = Math.max(1, Math.min(page, totalPages));
+    setCurrentPage(p);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Page number buttons (show up to 5 around current page)
+  const pageNumbers = (() => {
+    const pages = [];
+    const start = Math.max(1, safePage - 2);
+    const end = Math.min(totalPages, start + 4);
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  })();
 
   return (
     <div className="flex min-h-screen bg-[#ecece7] font-sans text-slate-800 p-3 gap-3">
@@ -194,73 +223,113 @@ const PaymentSystemContent = () => {
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <table
-                className="w-full text-left text-[10px]"
-                style={{ fontFamily: "'Poppins', sans-serif" }}
-              >
-                <thead className="bg-slate-50 text-slate-400 font-bold uppercase text-[9px]">
-                  <tr>
-                    <th className="px-4 py-3">Order ID</th>
-                    <th className="px-4 py-3">Customer</th>
-                    <th className="px-4 py-3">Date</th>
-                    <th className="px-4 py-3">Amount</th>
-                    <th className="px-4 py-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredTx.map((order, i) => {
-                    const customerDisplay =
-                      typeof order.customer === 'object' && order.customer !== null
-                        ? order.customer.name || order.customer.email || '—'
-                        : order.customer ?? '—';
+            <>
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <table
+                  className="w-full text-left text-[10px]"
+                  style={{ fontFamily: "'Poppins', sans-serif" }}
+                >
+                  <thead className="bg-slate-50 text-slate-400 font-bold uppercase text-[9px]">
+                    <tr>
+                      <th className="px-4 py-3">Order ID</th>
+                      <th className="px-4 py-3">Customer</th>
+                      <th className="px-4 py-3">Date</th>
+                      <th className="px-4 py-3">Amount</th>
+                      <th className="px-4 py-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {pagedTransactions.map((order, i) => {
+                      const customerDisplay =
+                        typeof order.customer === 'object' && order.customer !== null
+                          ? order.customer.name || order.customer.email || '—'
+                          : order.customer ?? '—';
 
-                    const displayDate = order.date
-                      ? (() => {
-                          try { return new Date(order.date).toLocaleDateString(); }
-                          catch (_) { return order.date; }
-                        })()
-                      : '—';
+                      const displayDate = order.date
+                        ? (() => {
+                            try { return new Date(order.date).toLocaleDateString(); }
+                            catch (_) { return order.date; }
+                          })()
+                        : '—';
 
-                    const statusKey = String(order.status ?? '').toLowerCase();
-                    const badgeClass =
-                      statusKey === 'completed' || statusKey === 'delivered'
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : statusKey === 'pending'
-                        ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                        : statusKey === 'cancelled' || statusKey === 'canceled'
-                        ? 'bg-red-50 text-red-700 border border-red-200'
-                        : statusKey === 'confirmed'
-                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                        : statusKey === 'processing'
-                        ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                        : 'bg-slate-100 text-slate-500 border border-slate-200';
+                      const statusKey = String(order.status ?? '').toLowerCase();
+                      const badgeClass =
+                        statusKey === 'completed' || statusKey === 'delivered'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : statusKey === 'pending'
+                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                          : statusKey === 'cancelled' || statusKey === 'canceled'
+                          ? 'bg-red-50 text-red-700 border border-red-200'
+                          : statusKey === 'confirmed'
+                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                          : statusKey === 'processing'
+                          ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                          : 'bg-slate-100 text-slate-500 border border-slate-200';
 
-                    return (
-                      <tr key={order.id ?? i} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-2.5 font-black text-[#125852] tracking-wider font-mono">
-                          #{String(order.id ?? '').padStart(6, '0')}
-                        </td>
-                        <td className="px-4 py-2.5 text-slate-700 font-medium">
-                          {customerDisplay}
-                        </td>
-                        <td className="px-4 py-2.5 text-slate-500">{displayDate}</td>
-                        <td className="px-4 py-2.5 font-bold text-slate-800">
-                          {currencySymbol} {Number(order.total ?? 0).toLocaleString()}
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[8px] uppercase font-black tracking-wide ${badgeClass}`}
-                          >
-                            {order.status || '—'}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                      return (
+                        <tr key={order.id ?? i} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-2.5 font-black text-[#125852] tracking-wider font-mono">
+                            #{String(order.id ?? '').padStart(6, '0')}
+                          </td>
+                          <td className="px-4 py-2.5 text-slate-700 font-medium">
+                            {customerDisplay}
+                          </td>
+                          <td className="px-4 py-2.5 text-slate-500">{displayDate}</td>
+                          <td className="px-4 py-2.5 font-bold text-slate-800">
+                            {currencySymbol} {Number(order.total ?? 0).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[8px] uppercase font-black tracking-wide ${badgeClass}`}
+                            >
+                              {order.status || '—'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Footer */}
+              <div className="mt-4 p-3 bg-white rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                  Showing {filteredTx.length === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + PAYMENTS_PER_PAGE, filteredTx.length)} of {filteredTx.length} transactions
+                </p>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => goToPage(safePage - 1)}
+                    disabled={safePage === 1}
+                    className="px-2.5 py-1 text-[10px] font-bold border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Previous
+                  </button>
+
+                  {pageNumbers.map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => goToPage(page)}
+                      className={`w-7 h-7 text-[10px] font-bold rounded-md transition-colors ${
+                        page === safePage
+                          ? 'bg-[#125852] text-white shadow-sm'
+                          : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+
+                  <button
+                    onClick={() => goToPage(safePage + 1)}
+                    disabled={safePage === totalPages}
+                    className="px-2.5 py-1 text-[10px] font-bold border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </>
           )}
 
           {/* Footer */}
