@@ -17,6 +17,15 @@ import { VendorProvider } from '../context/vendorContext';
 
 const PAYMENTS_PER_PAGE = 10;
 
+// ─── Helper: format order ID exactly like OrderManagement page ───────────────
+const formatOrderId = (raw) => {
+  if (!raw && raw !== 0) return '—';
+  const str = String(raw).trim();
+  if (/^\d+$/.test(str)) return `#${str.padStart(6, '0')}`;
+  if (str.length > 12) return `#${str.slice(-8).toUpperCase()}`;
+  return `#${str.toUpperCase()}`;
+};
+
 const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
   <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
     <div className="flex items-start justify-between">
@@ -269,7 +278,7 @@ const PaymentSystemContent = () => {
                       return (
                         <tr key={order.id ?? i} className="hover:bg-slate-50 transition-colors">
                           <td className="px-4 py-2.5 font-black text-[#125852] tracking-wider font-mono">
-                            #{String(order.id ?? '').padStart(6, '0')}
+                            {formatOrderId(order.id)}
                           </td>
                           <td className="px-4 py-2.5 text-slate-700 font-medium">
                             {customerDisplay}
