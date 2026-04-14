@@ -5,7 +5,6 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// ─── PUBLIC ROUTES ────────────────────────────────────────────────────────────
 const PUBLIC_ROUTES = [
   '/accounts/login/',
   '/accounts/reset-password/',
@@ -17,7 +16,6 @@ const PUBLIC_ROUTES = [
   '/accounts/token-refresh/',
 ];
 
-// ─── TOKEN REFRESH STATE ──────────────────────────────────────────────────────
 let isRefreshing = false;
 let failedQueue  = [];
 
@@ -29,7 +27,6 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// ─── REQUEST INTERCEPTOR ──────────────────────────────────────────────────────
 api.interceptors.request.use(
   (config) => {
     const isPublic = PUBLIC_ROUTES.some((route) => config.url?.includes(route));
@@ -44,7 +41,6 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ─── RESPONSE INTERCEPTOR ────────────────────────────────────────────────────
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -117,13 +113,11 @@ api.interceptors.response.use(
   }
 );
 
-// ─── TOKEN HELPERS ────────────────────────────────────────────────────────────
 const saveTokens = ({ access, refresh }) => {
   if (access)  localStorage.setItem('access_token',  access);
   if (refresh) localStorage.setItem('refresh_token', refresh);
 };
 
-// ─── AUTHENTICATION ───────────────────────────────────────────────────────────
 export const SigninUser = async (credentials) => {
   const response = await api.post('/accounts/login/', {
     email:    credentials.email?.trim().toLowerCase(),
@@ -152,14 +146,12 @@ export const verifyOtp = (data) =>
 export const resendOtp = (email) =>
   api.post('/accounts/resend-code/', { email }).then((r) => r.data);
 
-// ─── BUYER PROFILE ────────────────────────────────────────────────────────────
 export const getBuyerProfile = () =>
   api.get('/accounts/buyer/profile/').then((r) => r.data?.data ?? r.data);
 
 export const updateBuyerProfile = (data) =>
   api.patch('/accounts/buyer/profile/', data).then((r) => r.data?.data ?? r.data);
 
-// ─── VENDOR PROFILE ───────────────────────────────────────────────────────────
 let _profileCache    = null;
 let _profileFetching = null;
 
@@ -181,7 +173,6 @@ export const getVendorProfile = async () => {
       if (data?.phone_number)     localStorage.setItem('vendor_phone_number',    data.phone_number);
       if (data?.business_country) localStorage.setItem('vendor_country',         data.business_country);
       else if (data?.country)     localStorage.setItem('vendor_country',         data.country);
-      // ── store branch_location from vendor onboarding ──
       if (data?.branch_location)  localStorage.setItem('vendor_branch_location', data.branch_location);
 
       _profileCache = data;
@@ -254,7 +245,6 @@ export const updateVendorProfile = async (changedFields) => {
   }
 };
 
-// ─── VENDOR NOTIFICATIONS (accounts — kept for backward compat) ───────────────
 const NOTIFICATIONS_ENDPOINT_READY = false;
 
 export const getVendorNotifications = async ({ limit = 15 } = {}) => {
@@ -295,7 +285,6 @@ export const markAllVendorNotificationsRead = async () => {
   }
 };
 
-// ─── ORDER NOTIFICATIONS (orders service — live) ──────────────────────────────
 export const getOrderNotifications = async ({ limit = 15, country = '', branch_location = '' } = {}) => {
   try {
     const params = new URLSearchParams({ limit });
@@ -332,40 +321,35 @@ export const markOrderNotificationRead = async (notifId) => {
   }
 };
 
-// ─── ORDER ITEM NORMALISER ────────────────────────────────────────────────────
-// Extracts a consistent items array from whatever shape the API returns
 const normalizeOrderItems = (o) => {
-  // Case 1: items is already a proper array of objects
   if (Array.isArray(o.items) && o.items.length > 0 && typeof o.items[0] === 'object') {
     return o.items.map((item) => ({
-      name:     item.name        ?? item.title        ?? item.product_name  ?? item.listing_title ?? `Item`,
-      qty:      item.qty         ?? item.quantity      ?? item.amount        ?? 1,
-      price:    item.price       ?? item.unit_price    ?? item.item_price    ?? 0,
-      total:    item.total       ?? item.subtotal      ?? item.line_total    ??
-                (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
-      variant:  item.variant     ?? item.variant_label ?? item.variant_name  ??
-                [item.size, item.color].filter(Boolean).join(' / ') ?? '',
-      image:    item.image       ?? item.product_image ?? item.listing_image ?? null,
-      sku:      item.sku         ?? item.product_sku   ?? '',
+      name:    item.name        ?? item.title        ?? item.product_name  ?? item.listing_title ?? `Item`,
+      qty:     item.qty         ?? item.quantity      ?? item.amount        ?? 1,
+      price:   item.price       ?? item.unit_price    ?? item.item_price    ?? 0,
+      total:   item.total       ?? item.subtotal      ?? item.line_total    ??
+               (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
+      variant: item.variant     ?? item.variant_label ?? item.variant_name  ??
+               [item.size, item.color].filter(Boolean).join(' / ') ?? '',
+      image:   item.image       ?? item.product_image ?? item.listing_image ?? null,
+      sku:     item.sku         ?? item.product_sku   ?? '',
     }));
   }
 
-  // Case 2: items stored under order_items key
   if (Array.isArray(o.order_items) && o.order_items.length > 0) {
     return o.order_items.map((item) => ({
-      name:     item.name        ?? item.title        ?? item.product_name  ?? item.listing_title ?? `Item`,
-      qty:      item.qty         ?? item.quantity      ?? 1,
-      price:    item.price       ?? item.unit_price    ?? item.item_price    ?? 0,
-      total:    item.total       ?? item.subtotal      ??
-                (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
-      variant:  item.variant     ?? item.variant_label ??
-                [item.size, item.color].filter(Boolean).join(' / ') ?? '',
-      image:    item.image       ?? item.product_image ?? null,
-      sku:      item.sku         ?? '',
+      name:    item.name        ?? item.title        ?? item.product_name  ?? item.listing_title ?? `Item`,
+      qty:     item.qty         ?? item.quantity      ?? 1,
+      price:   item.price       ?? item.unit_price    ?? item.item_price    ?? 0,
+      total:   item.total       ?? item.subtotal      ??
+               (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
+      variant: item.variant     ?? item.variant_label ??
+               [item.size, item.color].filter(Boolean).join(' / ') ?? '',
+      image:   item.image       ?? item.product_image ?? null,
+      sku:     item.sku         ?? '',
     }));
   }
 
-  // Case 3: items stored under products / cart_items / line_items
   const altKey = ['products', 'cart_items', 'line_items', 'listings'].find(
     (k) => Array.isArray(o[k]) && o[k].length > 0
   );
@@ -383,14 +367,10 @@ const normalizeOrderItems = (o) => {
     }));
   }
 
-  // Case 4: items is a count number — return empty so UI shows fallback
   return [];
 };
 
-// ─── CUSTOMER NORMALISER ──────────────────────────────────────────────────────
-// Extracts a consistent customer object from whatever shape the API returns
 const normalizeOrderCustomer = (o) => {
-  // If customer is already a rich object
   if (o.customer && typeof o.customer === 'object') {
     return {
       name:    o.customer.name    ?? o.customer.full_name ?? o.customer.username ??
@@ -401,7 +381,6 @@ const normalizeOrderCustomer = (o) => {
     };
   }
 
-  // Flatten from various top-level fields
   const name =
     (typeof o.customer === 'string' && o.customer) ||
     o.customer_name  ||
@@ -442,25 +421,15 @@ const normalizeOrderCustomer = (o) => {
   return { name, email, phone, address };
 };
 
-// ─── ORDER NORMALISER ─────────────────────────────────────────────────────────
 const normalizeOrder = (o) => {
   const customer = normalizeOrderCustomer(o);
   const items    = normalizeOrderItems(o);
 
   return {
-    // Spread original so nothing is lost
     ...o,
-
-    // ── Core identity ──
-    id: o.id ?? o.order_id ?? o.pk,
-
-    // ── Customer: always a rich object now ──
+    id:       o.id ?? o.order_id ?? o.pk,
     customer,
-
-    // ── Items: always a normalised array ──
     items,
-
-    // ── Financials ──
     total: Number(
       o.total        ??
       o.total_amount ??
@@ -472,25 +441,14 @@ const normalizeOrder = (o) => {
     subtotal: Number(o.subtotal ?? o.sub_total ?? o.subtotal_amount ?? 0) || null,
     shipping:  Number(o.shipping ?? o.shipping_fee ?? o.delivery_fee   ?? 0) || null,
     tax:       Number(o.tax      ?? o.tax_amount   ?? o.vat            ?? 0) || null,
-
-    // ── Status ──
-    status: o.status ?? o.order_status ?? 'pending',
-
-    // ── Date ──
-    date: o.date ?? o.created_at ?? o.order_date ?? '',
-
-    // ── Location ──
+    status:   o.status ?? o.order_status ?? 'pending',
+    date:     o.date ?? o.created_at ?? o.order_date ?? '',
     location: o.location ?? o.delivery_address ?? o.shipping_address ?? '',
-
-    // ── Notes ──
-    notes: o.notes ?? o.order_notes ?? o.special_instructions ?? '',
-
-    // ── Review (if attached) ──
-    review: o.review ?? o.customer_review ?? null,
+    notes:    o.notes ?? o.order_notes ?? o.special_instructions ?? '',
+    review:   o.review ?? o.customer_review ?? null,
   };
 };
 
-// ─── VENDOR ORDERS ────────────────────────────────────────────────────────────
 export const getVendorOrders = async ({ status = '', search = '' } = {}) => {
   try {
     const params = new URLSearchParams();
@@ -536,7 +494,28 @@ export const markOrderReadyForPickup = async (orderId) => {
   return r.data?.data ?? r.data;
 };
 
-// ─── VENDOR DASHBOARD ─────────────────────────────────────────────────────────
+// ─── VENDOR WALLET BALANCE ────────────────────────────────────────────────────
+export const getVendorWallet = async () => {
+  try {
+    const r = await api.get('/payments/wallet/vendor/');
+    return r.data?.data ?? r.data ?? {};
+  } catch (err) {
+    console.error('[getVendorWallet] Error:', err.response?.status);
+    return {};
+  }
+};
+
+// ─── VENDOR ESCROW SUMMARY ────────────────────────────────────────────────────
+export const getVendorEscrow = async () => {
+  try {
+    const r = await api.get('/orders/vendor/escrow-summary/');
+    return r.data?.data ?? r.data ?? {};
+  } catch (err) {
+    console.error('[getVendorEscrow] Error:', err.response?.status);
+    return {};
+  }
+};
+
 export const getVendorDashboard = async () => {
   let raw = {};
 
@@ -586,6 +565,21 @@ export const getVendorDashboard = async () => {
     ['pending', 'confirmed', 'processing'].includes(String(o.status).toLowerCase())
   ).length;
 
+  // ── Derive salesHistory from liveOrders if API doesn't provide it ──
+  let derivedSalesHistory = salesHistoryData;
+  if (derivedSalesHistory.length === 0 && liveOrders.length > 0) {
+    const byDate = {};
+    liveOrders.forEach((o) => {
+      const dateKey = o.date
+        ? (() => { try { return new Date(o.date).toLocaleDateString(); } catch (_) { return o.date; } })()
+        : 'Unknown';
+      byDate[dateKey] = (byDate[dateKey] || 0) + Number(o.total ?? 0);
+    });
+    derivedSalesHistory = Object.entries(byDate)
+      .map(([date, sales]) => ({ date, sales }))
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+  }
+
   return {
     storeName,
     vendorType,
@@ -608,14 +602,13 @@ export const getVendorDashboard = async () => {
       pendingPayouts: Number(metricsData.pendingPayouts ?? 0),
       activeListings: Number(metricsData.activeListings ?? 0),
     },
-    salesHistory:    salesHistoryData.map((item) => ({ date: item.date, sales: Number(item.sales ?? 0) })),
+    salesHistory:    derivedSalesHistory.map((item) => ({ date: item.date, sales: Number(item.sales ?? 0) })),
     recentOrders:    recentOrdersData.map(normalizeOrder),
     inventoryAlerts: inventoryAlertsData,
     reviews:         reviewsData,
   };
 };
 
-// ─── CATEGORIES ───────────────────────────────────────────────────────────────
 export const getCategories = (businessCategory = null) => {
   const params = businessCategory ? `?business_category=${businessCategory}` : '';
   return api
@@ -626,7 +619,6 @@ export const getCategories = (businessCategory = null) => {
     });
 };
 
-// ─── LISTING NORMALISER ───────────────────────────────────────────────────────
 const normalizeListing = (item) => {
   const qualityReverseMap = {
     high:   'High',  High:   'High',  HIGH:   'High',
@@ -642,13 +634,11 @@ const normalizeListing = (item) => {
 
   const normalizedQuality = qualityReverseMap[rawQuality] ?? 'Medium';
 
-  // ── normalise sales_status back to UI-friendly fields ──
   const salesStatus      = item.sales_status || item.detail?.sales_status || {};
   const discountEnabled  = salesStatus?.on_sale === true;
   const discountPct      = salesStatus?.discount_percentage ?? item.discount_percentage ?? 0;
   const discountedPrice  = salesStatus?.discounted_price    ?? item.discounted_price    ?? null;
 
-  // ── Resolve variant stock from all possible field names ──
   const normalizedVariants = (item.variants ?? item.detail?.variants ?? []).map((v) => ({
     ...v,
     stock:
@@ -666,7 +656,6 @@ const normalizeListing = (item) => {
     inventory_quality: normalizedQuality,
     qty:               normalizedQuality,
     sku:               item.detail?.sku   ?? item.sku   ?? '',
-    // ── stock: read from all possible field names ──
     stock:
       item.detail?.stock    ??
       item.stock            ??
@@ -681,7 +670,6 @@ const normalizeListing = (item) => {
   };
 };
 
-// ─── GET PRODUCTS ─────────────────────────────────────────────────────────────
 export const getProducts = async () => {
   const params = { listing_type: 'product' };
   const res    = await api.get('/listings/', { params });
@@ -696,7 +684,6 @@ export const getProducts = async () => {
   return normalized;
 };
 
-// ─── CREATE PRODUCT LISTING ───────────────────────────────────────────────────
 export const createProductListing = async (productData) => {
   const qualityMap = {
     High: 'high', Medium: 'medium', Low: 'low',
@@ -734,7 +721,6 @@ export const createProductListing = async (productData) => {
     }
   }
 
-  // ── sales_status replaces old discount fields ──
   const salesStatus = productData.sales_status
     ? productData.sales_status
     : productData.discount_enabled
@@ -772,7 +758,6 @@ export const createProductListing = async (productData) => {
   return normalizeListing(res.data?.data ?? res.data);
 };
 
-// ─── UPDATE PRODUCT LISTING ───────────────────────────────────────────────────
 export const updateProductListing = async (listingId, productData) => {
   const qualityMap = {
     High: 'high', Medium: 'medium', Low: 'low',
@@ -810,7 +795,6 @@ export const updateProductListing = async (listingId, productData) => {
     }
   }
 
-  // ── sales_status replaces old discount fields ──
   const salesStatus = productData.sales_status
     ? productData.sales_status
     : productData.discount_enabled
@@ -846,7 +830,6 @@ export const updateProductListing = async (listingId, productData) => {
   return normalizeListing(res.data?.data ?? res.data);
 };
 
-// ─── VARIANT STOCK HELPERS ────────────────────────────────────────────────────
 export const updateVariantStock = async (listingId, variantId, stock) => {
   const res = await api.patch(`/listings/${listingId}/variants/${variantId}/`, {
     stock: parseInt(stock) || 0,
@@ -869,7 +852,6 @@ export const updateListingStatus = (listingId, newStatus) =>
   api.patch(`/listings/${listingId}/status/`, { status: newStatus })
     .then((r) => r.data?.data ?? r.data);
 
-// ─── IMAGE UPLOAD HELPERS ─────────────────────────────────────────────────────
 export const uploadListingImage = async (listingId, imageFile) => {
   if (!(imageFile instanceof File)) {
     console.warn('[uploadListingImage] Skipping non-File value:', imageFile);
@@ -909,7 +891,6 @@ export const updateProductVariant = (listingId, variantId, data) =>
 export const deleteProductVariant = (listingId, variantId) =>
   api.delete(`/listings/${listingId}/variants/${variantId}/`).then((r) => r.data);
 
-// ─── PASSWORDS ────────────────────────────────────────────────────────────────
 export const passwordResetRequest = (email) =>
   api.post('/accounts/reset-password/', { email });
 

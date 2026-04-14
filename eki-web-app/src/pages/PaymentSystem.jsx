@@ -1,20 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import VendorSidebar from '../components/VendorSidebar';
 import Navbar4 from '../components/adminDashboard/Navbar4';
 import Footer from "../components/Vendormanagement/VendorFooter";
-import { 
-  Search, Download, History, DollarSign, Clock, CheckCircle,
-  CreditCard, Box, ListChecks, Package
+import {
+  Search, History, DollarSign, Clock, CheckCircle,
 } from 'lucide-react';
 
-import { getVendorDashboard } from '../services/authService';
+import {
+  getVendorDashboard,
+  getVendorWallet,
+  getVendorEscrow,
+  getVendorOrders,
+} from '../services/authService';
 import { getCurrencySymbol } from '../utils/currency';
-
-// ── Import VendorProvider so VendorSidebar's useVendor hook has its context ───
 import { VendorProvider } from '../context/vendorContext';
 
-// ─── Stat Card Component ───────────────────────────────────────────────────────
 const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
   <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
     <div className="flex items-start justify-between">
@@ -29,13 +29,12 @@ const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
   </div>
 );
 
-// --- Error Boundary ---
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
     this.state = { hasError: false };
   }
-  static getDerivedStateFromError(error) { return { hasError: true }; }
+  static getDerivedStateFromError() { return { hasError: true }; }
   render() {
     if (this.state.hasError) {
       return (
@@ -43,8 +42,8 @@ class ErrorBoundary extends React.Component {
           <div className="text-center p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
             <h2 className="text-lg font-bold text-slate-800 mb-1.5">Something went wrong</h2>
             <p className="text-gray-500 text-xs mb-4">We couldn't load the payment system.</p>
-            <button 
-              onClick={() => window.location.reload()} 
+            <button
+              onClick={() => window.location.reload()}
               className="bg-[#F5B841] text-white px-5 py-1.5 rounded-lg font-bold text-[11px]"
             >
               Reload System
@@ -58,19 +57,60 @@ class ErrorBoundary extends React.Component {
 }
 
 const PaymentSystemContent = () => {
-  const transactions = [];
-
-  const [currencySymbol, setCurrencySymbol] = useState('$');
+  const [currencySymbol,   setCurrencySymbol]   = useState('UGX');
+  const [balance,          setBalance]          = useState('0.00');
+  const [pendingEarnings,  setPendingEarnings]  = useState('0.00');
+  const [lastPayout,       setLastPayout]       = useState('0.00');
+  const [transactions,     setTransactions]     = useState([]);
+  const [isFetching,       setIsFetching]       = useState(true);
+  const [searchQuery,      setSearchQuery]      = useState('');
 
   useEffect(() => {
-    getVendorDashboard()
-      .then((data) => {
-        if (data?.country) {
-          setCurrencySymbol(getCurrencySymbol(data.country));
-        }
-      })
-      .catch(() => {});
+    const load = async () => {
+      setIsFetching(true);
+      try {
+        // ── Currency symbol ──
+        const dash = await getVendorDashboard();
+        if (dash?.country) setCurrencySymbol(getCurrencySymbol(dash.country));
+
+        // ── Current Balance  →  GET /api/v1/payments/wallet/vendor/ ──
+        const wallet = await getVendorWallet();
+        const bal = wallet?.balance ?? wallet?.current_balance ?? wallet?.amount ?? 0;
+        setBalance(
+          Number(bal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        );
+        const lp = wallet?.last_payout ?? wallet?.last_payout_amount ?? 0;
+        setLastPayout(
+          Number(lp).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        );
+
+        // ── Pending Earnings  →  GET /api/v1/orders/vendor/escrow-summary/ ──
+        const escrow = await getVendorEscrow();
+        const held = escrow?.held_amount ?? escrow?.escrow_amount ?? escrow?.pending ?? 0;
+        setPendingEarnings(
+          Number(held).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        );
+
+        // ── Transaction History  →  GET /api/v1/orders/vendor/order-list/ ──
+        const orders = await getVendorOrders();
+        setTransactions(Array.isArray(orders) ? orders : []);
+      } catch (e) {
+        console.error('[PaymentSystem] load error:', e);
+      } finally {
+        setIsFetching(false);
+      }
+    };
+    load();
   }, []);
+
+  const filteredTx = transactions.filter((o) => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      String(o.id ?? '').toLowerCase().includes(q) ||
+      String(o.status ?? '').toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="flex min-h-screen bg-[#ecece7] font-sans text-slate-800 p-3 gap-3">
@@ -83,15 +123,9 @@ const PaymentSystemContent = () => {
           <div className="flex justify-between items-start mb-5">
             <div>
               <h1 className="text-xl font-bold text-[#1A1A1A] tracking-tight">Payments & Financial</h1>
-              <p className="text-slate-400 text-[11px] mt-0.5">Streamline your earnings, payouts, and billing in one secure place.</p>
-            </div>
-            <div className="flex gap-2">
-              {/* <button className="bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-slate-50 transition shadow-sm font-bold text-[10px]">
-                <History size={12} /> History
-              </button> */}
-              {/* <button className="bg-[#F5B841] text-white px-3 py-1.5 rounded-lg hover:bg-[#E0A83B] transition shadow-sm font-bold text-[10px]">
-                Request Payout
-              </button> */}
+              <p className="text-slate-400 text-[11px] mt-0.5">
+                Streamline your earnings, payouts, and billing in one secure place.
+              </p>
             </div>
           </div>
 
@@ -99,21 +133,21 @@ const PaymentSystemContent = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
             <StatCard
               title="Current Balance"
-              number={`${currencySymbol} 0.00`}
+              number={isFetching ? '—' : `${currencySymbol} ${balance}`}
               icon={DollarSign}
               iconBgColor="bg-emerald-50"
               iconColor="text-emerald-600"
             />
             <StatCard
               title="Pending Earnings"
-              number={`${currencySymbol} 0.00`}
+              number={isFetching ? '—' : `${currencySymbol} ${pendingEarnings}`}
               icon={Clock}
               iconBgColor="bg-blue-50"
               iconColor="text-blue-600"
             />
             <StatCard
               title="Last Payout"
-              number={`${currencySymbol} 0.00`}
+              number={isFetching ? '—' : `${currencySymbol} ${lastPayout}`}
               icon={CheckCircle}
               iconBgColor="bg-orange-50"
               iconColor="text-orange-600"
@@ -123,40 +157,117 @@ const PaymentSystemContent = () => {
           {/* Table Controls */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex gap-6 text-xs font-bold">
-              <span className="text-[#125852] border-b-2 border-[#125852] pb-1.5 cursor-pointer">Transaction History</span>
-              <span className="text-slate-400 hover:text-slate-700 cursor-pointer transition">Payout Settings</span>
+              <span className="text-[#125852] border-b-2 border-[#125852] pb-1.5 cursor-pointer">
+                Transaction History
+              </span>
+              <span className="text-slate-400 hover:text-slate-700 cursor-pointer transition">
+                Payout Settings
+              </span>
             </div>
             <div className="flex gap-2">
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
-                <input 
-                  type="text" 
-                  placeholder="Filter by ID..." 
-                  className="pl-8 pr-3 py-1 border border-slate-200 rounded-lg text-[10px] outline-none focus:ring-1 focus:ring-[#F5B841] w-48" 
+                <input
+                  type="text"
+                  placeholder="Filter by ID..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 pr-3 py-1 border border-slate-200 rounded-lg text-[10px] outline-none focus:ring-1 focus:ring-[#F5B841] w-48"
                 />
               </div>
-              {/* <button className="flex items-center gap-1.5 px-3 py-1 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-700 hover:bg-slate-50">
-                <Download size={10} /> Export CSV
-              </button> */}
             </div>
           </div>
 
-          {/* Empty Table Placeholder */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[280px] flex flex-col items-center justify-center">
-            <div className="bg-slate-50 p-4 rounded-full mb-3">
-              <History size={24} className="text-slate-300" />
+          {/* Table / Empty / Loading */}
+          {isFetching ? (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[280px] flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#F5B841]" />
             </div>
-            <p className="font-bold text-xs text-slate-800">No transactions recorded</p>
-            <p className="text-[9px] text-slate-400 mt-0.5">Your financial activity will appear here once processed.</p>
-          </div>
+          ) : filteredTx.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[280px] flex flex-col items-center justify-center">
+              <div className="bg-slate-50 p-4 rounded-full mb-3">
+                <History size={24} className="text-slate-300" />
+              </div>
+              <p className="font-bold text-xs text-slate-800">No transactions recorded</p>
+              <p className="text-[9px] text-slate-400 mt-0.5">
+                Your financial activity will appear here once processed.
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <table
+                className="w-full text-left text-[10px]"
+                style={{ fontFamily: "'Poppins', sans-serif" }}
+              >
+                <thead className="bg-slate-50 text-slate-400 font-bold uppercase text-[9px]">
+                  <tr>
+                    <th className="px-4 py-3">Order ID</th>
+                    <th className="px-4 py-3">Customer</th>
+                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3">Amount</th>
+                    <th className="px-4 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredTx.map((order, i) => {
+                    const customerDisplay =
+                      typeof order.customer === 'object' && order.customer !== null
+                        ? order.customer.name || order.customer.email || '—'
+                        : order.customer ?? '—';
 
-          {/* Footer Pagination */}
+                    const displayDate = order.date
+                      ? (() => {
+                          try { return new Date(order.date).toLocaleDateString(); }
+                          catch (_) { return order.date; }
+                        })()
+                      : '—';
+
+                    const statusKey = String(order.status ?? '').toLowerCase();
+                    const badgeClass =
+                      statusKey === 'completed' || statusKey === 'delivered'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : statusKey === 'pending'
+                        ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                        : statusKey === 'cancelled' || statusKey === 'canceled'
+                        ? 'bg-red-50 text-red-700 border border-red-200'
+                        : statusKey === 'confirmed'
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                        : statusKey === 'processing'
+                        ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                        : 'bg-slate-100 text-slate-500 border border-slate-200';
+
+                    return (
+                      <tr key={order.id ?? i} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-2.5 font-black text-[#125852] tracking-wider font-mono">
+                          #{String(order.id ?? '').padStart(6, '0')}
+                        </td>
+                        <td className="px-4 py-2.5 text-slate-700 font-medium">
+                          {customerDisplay}
+                        </td>
+                        <td className="px-4 py-2.5 text-slate-500">{displayDate}</td>
+                        <td className="px-4 py-2.5 font-bold text-slate-800">
+                          {currencySymbol} {Number(order.total ?? 0).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[8px] uppercase font-black tracking-wide ${badgeClass}`}
+                          >
+                            {order.status || '—'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Footer */}
           <div className="mt-5 pt-4 border-t border-slate-100 flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-            <p>0 of 0 Results</p>
-            <div className="flex gap-1.5">
-              <button className="px-4 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition text-[10px]">Previous</button>
-              <button className="px-4 py-1.5 bg-[#F5B841] text-white rounded-lg hover:bg-[#E0A83B] transition text-[10px]">Next</button>
-            </div>
+            <p>
+              {filteredTx.length} Result{filteredTx.length !== 1 ? 's' : ''}
+            </p>
           </div>
         </main>
 
@@ -166,15 +277,12 @@ const PaymentSystemContent = () => {
   );
 };
 
-// Final Wrapped Component — VendorProvider added so VendorSidebar's useVendor hook works
-const PaymentSystem = () => {
-  return (
-    <ErrorBoundary>
-      <VendorProvider>
-        <PaymentSystemContent />
-      </VendorProvider>
-    </ErrorBoundary>
-  );
-};
+const PaymentSystem = () => (
+  <ErrorBoundary>
+    <VendorProvider>
+      <PaymentSystemContent />
+    </VendorProvider>
+  </ErrorBoundary>
+);
 
 export default PaymentSystem;
