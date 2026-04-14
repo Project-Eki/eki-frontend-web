@@ -144,7 +144,7 @@ const AccountBasics = () => {
               placeholder={getPlaceholder('first_name', 'First Name')}
               value={formData.first_name}
               onChange={(e) => handleChange('first_name', e.target.value)}
-              className={`w-full h-9 pl-9 pr-3 bg-white border rounded-xl focus:outline-none text-[13px] ${
+              className={`w-full h-8 pl-9 pr-3 bg-white border rounded-xl focus:outline-none text-[13px] ${
                 errors.first_name
                   ? 'placeholder:text-red-400 border-red-400'
                   : 'border-gray-200 placeholder:text-gray-400'
@@ -158,7 +158,7 @@ const AccountBasics = () => {
               placeholder={getPlaceholder('last_name', 'Last Name')}
               value={formData.last_name}
               onChange={(e) => handleChange('last_name', e.target.value)}
-              className={`w-full h-9 px-3 bg-white border rounded-xl focus:outline-none text-[13px] ${
+              className={`w-full h-8 px-3 bg-white border rounded-xl focus:outline-none text-[13px] ${
                 errors.last_name
                   ? 'placeholder:text-red-400 border-red-400'
                   : 'border-gray-200 placeholder:text-gray-400'
@@ -175,7 +175,7 @@ const AccountBasics = () => {
             placeholder="Email Address"
             value={formData.email}
             onChange={(e) => handleChange('email', e.target.value)}
-            className={`w-full h-9 pl-9 bg-white border rounded-xl focus:outline-none text-[13px] transition-all ${
+            className={`w-full h-8 pl-9 bg-white border rounded-xl focus:outline-none text-[13px] transition-all ${
               errors.email
                 ? 'pr-28 border-red-400 placeholder:text-gray-400'
                 : 'pr-3 border-gray-200 placeholder:text-gray-400'
@@ -194,7 +194,7 @@ const AccountBasics = () => {
               placeholder="Password"
               value={formData.password}
               onChange={(e) => handleChange('password', e.target.value)}
-              className={`w-full h-9 pl-9 bg-white border rounded-xl focus:outline-none text-[13px] transition-all ${
+              className={`w-full h-8 pl-9 bg-white border rounded-xl focus:outline-none text-[13px] transition-all ${
                 errors.password
                   ? 'pr-28 border-red-400 placeholder:text-gray-400'
                   : 'pr-10 border-gray-200 placeholder:text-gray-400'
@@ -219,7 +219,7 @@ const AccountBasics = () => {
               placeholder="Confirm Password"
               value={formData.confirmPassword || ''}
               onChange={(e) => handleChange('confirmPassword', e.target.value)}
-              className={`w-full h-9 pl-9 bg-white border rounded-xl focus:outline-none text-[13px] transition-all ${
+              className={`w-full h-8 pl-9 bg-white border rounded-xl focus:outline-none text-[13px] transition-all ${
                 errors.confirmPassword
                   ? 'pr-28 border-red-400 placeholder:text-gray-400'
                   : 'pr-10 border-gray-200 placeholder:text-gray-400'
@@ -239,7 +239,7 @@ const AccountBasics = () => {
 
         {/* Password Strength Indicator */}
         {formData.password?.length > 0 && (
-          <div className="px-1 space-y-1">
+          <div className=" space-y-1">
             <div className="flex gap-1">
               {[1, 2, 3].map((bar) => (
                 <div
@@ -283,7 +283,7 @@ const AccountBasics = () => {
         <button
           type="submit"
           disabled={isLoading || !isFormValid}
-          className={`w-full h-8 rounded-full text-white font-bold text-[13px] transition-all mt-2 ${
+          className={`w-full h-7 rounded-full text-white font-bold text-[12px] transition-all mt-2 ${
             isLoading || !isFormValid ? 'bg-gray-400' : 'bg-[#D99201] hover:bg-[#e0a630]'
           }`}
         >
@@ -291,7 +291,7 @@ const AccountBasics = () => {
         </button>
       </form>
 
-      <p className="text-center text-[12px] text-gray-500 mt-3">
+      <p className="text-center text-[11px] text-gray-500 mt-3">
         Already have an account?{' '}
         <Link to="/login" className="text-[#F2B53D] font-bold hover:underline">Login</Link>
       </p>

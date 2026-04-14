@@ -51,15 +51,15 @@ const VendorOnboarding = () => {
       <div className="flex flex-1 overflow-hidden">
         {/* SIDEBAR - Shows steps 1-6, Step 7 (Success) is NOT shown */}
         <aside
-          className="w-[240px] lg:w-[260px] p-2 lg:p-3 ml-3 lg:ml-2 my-2 rounded-[14px] flex flex-col shrink-0 shadow-xl border border-white/10"
+          className="w-[240px] lg:w-[260px] p-2 lg:p-3 ml-10 lg:ml-8 my-2 rounded-[14px] flex flex-col shrink-0 shadow-xl border border-white/10"
           style={{
             background: "linear-gradient(160deg, #125852 0%, #0e4440 40%, #0b3330 100%)",
             boxShadow: "0px 4px 9px rgba(23, 26, 31, 0.11), 0px 0px 2px rgba(23, 26, 31, 0.12)",
           }}
         >
-          <div className="relative w-full space-y-1.5 lg:space-y-2 mt-4 lg:mt-6">
+          <div className="relative w-full space-y-3 lg:space-y-4 mt-4 lg:mt-6">
             {/* Vertical connecting line */}
-            <div className="absolute left-[20px] lg:left-[22px] top-[22px] lg:top-[24px] bottom-[22px] lg:bottom-[24px] w-[1px] bg-white/20"></div>
+            <div className="absolute left-[18px] lg:left-[20px] top-[18px] lg:top-[20px] bottom-[18px] lg:bottom-[20px] w-[1px] bg-white/20"></div>
 
             <StepCard
               title="Account Basics"
@@ -327,7 +327,7 @@ const VendorOnboarding = () => {
 /* STEP CARD COMPONENT - Individual step item in sidebar */
 const StepCard = ({ title, subtitle, isActive, isCompleted }) => (
   <div
-    className={`flex items-center gap-2 px-2 lg:px-3 py-1.5 lg:py-2 rounded-[10px] lg:rounded-[12px] transition-all relative z-10 w-full ${
+    className={`flex items-center gap-1.5 px-1.5 lg:px-2.5 py-1 lg:py-1.5 rounded-[8px] lg:rounded-[10px] transition-all relative z-10 w-full ${
       isActive
         ? "bg-white shadow-lg"
         : "bg-white/40 backdrop-blur-md border border-white/40 shadow-md"
@@ -335,13 +335,13 @@ const StepCard = ({ title, subtitle, isActive, isCompleted }) => (
   >
     {/* Step circle with checkmark when completed */}
     <div
-      className={`w-4 h-4 lg:w-5 lg:h-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center ${
+      className={`w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0 rounded-full border-[1.5px] flex items-center justify-center ${
         isActive || isCompleted
           ? "border-[#235E5D] bg-white"
           : "border-white/40 bg-white/20 backdrop-blur-md"
       }`}
     >
-      {isCompleted && <HiCheck className="text-[#235E5D]" size={10} />}
+      {isCompleted && <HiCheck className="text-[#235E5D]" size={9} />}
     </div>
 
     {/* Step title and subtitle */}

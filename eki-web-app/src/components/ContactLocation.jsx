@@ -66,17 +66,17 @@ const ContactLocation = () => {
   return (
     <div className="w-full animate-fadeIn">
       {/* Header - Matching other steps */}
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-7 h-7 bg-[#FFF8ED] rounded-lg flex items-center justify-center shrink-0">
-          <HiOutlineLocationMarker className="text-[#F2B53D]" size={16} />
+      <div className="flex items-center gap-1.5 mb-2">
+        <div className="w-6 h-6 bg-[#FFF8ED] rounded-lg flex items-center justify-center shrink-0">
+          <HiOutlineLocationMarker className="text-[#F2B53D]" size={14} />
         </div>
         <div>
-          <h3 className="font-bold text-[13px] text-gray-800">Contact & Location</h3>
-          <p className="text-[10px] text-gray-500">How should customers reach you?</p>
+          <h3 className="font-bold text-[12px] text-gray-800">Contact & Location</h3>
+          <p className="text-[9px] text-gray-500">How should customers reach you?</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-2 gap-y-1.5">
         {/* Phone Number - Required */}
         <div className="flex flex-col">
           <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">Phone Number <span className="text-red-500">*</span></label>
@@ -201,7 +201,7 @@ const ContactLocation = () => {
         </div>
 
         {/* Operating Hours Section - Full width */}
-        <div className="flex flex-col md:col-span-2 mt-1">
+        <div className="flex flex-col md:col-span-2 mt-0">
           <div className="flex items-center gap-2 mb-1">
             <HiOutlineClock className="text-[#F2B53D]" size={14} />
             <label className="text-[10px] font-semibold text-gray-700">Operating Hours</label>
@@ -249,7 +249,7 @@ const ContactLocation = () => {
       </div>
 
       {/* Buttons - Matching other steps */}
-      <div className="w-full flex justify-center items-center gap-3 mt-4">
+      <div className="w-full flex justify-center items-center gap-2 mt-2">
         <button
           type="button"
           onClick={() => dispatch({ type: ACTIONS.PREV_STEP })}

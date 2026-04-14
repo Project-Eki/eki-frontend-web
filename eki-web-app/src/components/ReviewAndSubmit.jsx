@@ -47,41 +47,41 @@ const ReviewAndSubmit = ({ formData, onBack, onSubmitSuccess }) => {
   };
 
   const ReviewSection = ({ title, children }) => (
-    <div className="border-b border-gray-100 pb-2 last:border-0 pt-2 first:pt-0">
-      <p className="text-[8px] font-black text-[#F2B53D] uppercase tracking-wider mb-1.5">
+    <div className="border-b border-gray-100 pb-1.5 last:border-0 pt-1.5 first:pt-0">
+      <p className="text-[7px] font-black text-[#F2B53D] uppercase tracking-wider mb-1">
         {title}
       </p>
-      <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px]">{children}</div>
+      <div className="grid grid-cols-2 gap-x-1.5 gap-y-0.5 text-[10px]">{children}</div>
     </div>
   );
 
   const ReviewItem = ({ label, value, colSpan = false, children }) => (
     <div className={colSpan ? "col-span-2" : ""}>
-      <p className="text-gray-400 block text-[8px]">{label}</p>
+      <p className="text-gray-400 block text-[7px]">{label}</p>
       {children ? (
         children
       ) : (
-        <span className="font-medium text-gray-800 text-[10px] leading-tight block truncate">{value || "—"}</span>
+        <span className="font-medium text-gray-800 text-[9px] leading-tight block truncate">{value || "—"}</span>
       )}
     </div>
   );
 
   return (
     <div className="w-full">
-      {/* Header - Very compact */}
-      <div className="mb-2">
-        <h2 className="text-[16px] font-black text-gray-900">Review & Submit</h2>
-        <p className="text-gray-500 text-[10px]">Verify your details before submitting</p>
+      {/* Header -  */}
+      <div className="mb-1.5">
+        <h2 className="text-[14px] font-black text-gray-900">Review & Submit</h2>
+        <p className="text-gray-500 text-[9px]">Verify your details before submitting</p>
       </div>
 
       {/* Error Message */}
       {submitError && (
-        <div className="mb-2 p-1.5 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-red-600 text-[9px] font-medium">{submitError}</p>
+        <div className="mb-1.5 p-1 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-red-600 text-[8px] font-medium">{submitError}</p>
         </div>
       )}
 
-      {/* Review Sections - NO SCROLLING, all content fits */}
+      {/* Review Sections */}
       <div className="space-y-0">
         {/* Business Identity - 2 columns */}
         <ReviewSection title="BUSINESS IDENTITY">
@@ -91,7 +91,7 @@ const ReviewAndSubmit = ({ formData, onBack, onSubmitSuccess }) => {
           <ReviewItem label="Owner Name" value={formData.owner_full_name} />
           <ReviewItem label="Tax ID" value={formData.tax_id} />
           <ReviewItem label="Reg Number" value={formData.registration_number} />
-          <ReviewItem label="Description" value={formData.business_description?.substring(0, 50)} colSpan />
+          <ReviewItem label="Description" value={formData.business_description?.substring(0, 40)} colSpan />
         </ReviewSection>
 
         {/* Contact & Location - 2 columns */}
@@ -103,24 +103,24 @@ const ReviewAndSubmit = ({ formData, onBack, onSubmitSuccess }) => {
           <ReviewItem label="Landmark" value={formData.landmark || "—"} />
           <ReviewItem label="Zip Code" value={formData.zip_code || "—"} />
           <ReviewItem label="Country">
-            <div className="flex items-center gap-1 mt-0.5">
-              <Flag code={formData.country} className="w-3 h-2 rounded-sm object-cover shadow-sm" />
-              <span className="font-medium text-gray-800 text-[10px]">{countryName}</span>
+            <div className="flex items-center gap-0.5 mt-0.5">
+              <Flag code={formData.country} className="w-2.5 h-1.5 rounded-sm object-cover shadow-sm" />
+              <span className="font-medium text-gray-800 text-[9px]">{countryName}</span>
             </div>
           </ReviewItem>
           <ReviewItem label="Hours" value={`${formData.opening_time || "—"} - ${formData.closing_time || "—"}`} />
         </ReviewSection>
 
         {/* Documents - Single column full width */}
-        <div className="pt-2 pb-1">
-          <p className="text-[8px] font-black text-[#F2B53D] uppercase tracking-wider mb-1.5">DOCUMENTS</p>
-          <div className="flex flex-wrap gap-1">
+        <div className="pt-1.5 pb-0.5">
+          <p className="text-[7px] font-black text-[#F2B53D] uppercase tracking-wider mb-1">DOCUMENTS</p>
+          <div className="flex flex-wrap gap-0.5">
             {documents.length === 0 ? (
-              <span className="text-gray-400 text-[9px] italic">No documents uploaded</span>
+              <span className="text-gray-400 text-[8px] italic">No documents uploaded</span>
             ) : (
               documents.map(([key]) => (
-                <div key={key} className="flex items-center gap-1 bg-green-50 text-green-700 px-1.5 py-0.5 rounded border border-green-100 text-[8px] font-semibold">
-                  <HiCheckCircle size={8} /> {getDisplayName(key)}
+                <div key={key} className="flex items-center gap-0.5 bg-green-50 text-green-700 px-1 py-0.5 rounded border border-green-100 text-[7px] font-semibold">
+                  <HiCheckCircle size={6} /> {getDisplayName(key)}
                 </div>
               ))
             )}
@@ -128,28 +128,27 @@ const ReviewAndSubmit = ({ formData, onBack, onSubmitSuccess }) => {
         </div>
       </div>
 
-      {/* Buttons - Very compact */}
-      {/* Buttons - Submit button with reduced width */}
-<div className="flex justify-end items-center gap-2 mt-3">
-  <button
-    onClick={onBack}
-    disabled={isLoading}
-    className="px-3 h-6 rounded-full text-gray-500 font-semibold text-[9px] border border-gray-200 hover:bg-gray-50 transition-all flex items-center justify-center gap-0.5"
-  >
-    <HiOutlinePencil size={9} /> Edit
-  </button>
-  <button
-    onClick={handleSubmit}
-    disabled={isLoading}
-    className="px-4 h-6 rounded-full text-white font-bold text-[9px] transition-all bg-[#D99201] hover:bg-[#e0a630] flex items-center justify-center gap-1"
-  >
-    {isLoading ? (
-      <div className="w-2.5 h-2.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-    ) : (
-      "Submit"
-    )}
-  </button>
-</div>
+      {/* Buttons  */}
+      <div className="flex justify-end items-center gap-1.5 mt-2">
+        <button
+          onClick={onBack}
+          disabled={isLoading}
+          className="px-2.5 h-5 rounded-full text-gray-500 font-semibold text-[8px] border border-gray-200 hover:bg-gray-50 transition-all flex items-center justify-center gap-0.5"
+        >
+          <HiOutlinePencil size={7} /> Edit
+        </button>
+        <button
+          onClick={handleSubmit}
+          disabled={isLoading}
+          className="px-3 h-5 rounded-full text-white font-bold text-[8px] transition-all bg-[#D99201] hover:bg-[#e0a630] flex items-center justify-center gap-0.5"
+        >
+          {isLoading ? (
+            <div className="w-2 h-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            "Submit"
+          )}
+        </button>
+      </div>
     </div>
   );
 };

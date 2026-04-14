@@ -99,24 +99,24 @@ const OperationCompliance = () => {
     const hasExpiryError = showError(`${field}_expiry`) && errors[`${field}_expiry`];
 
     return (
-      <div className="border-t border-gray-100 pt-4 first:border-t-0 first:pt-0">
+      <div className="border-t border-gray-100 pt-2 first:border-t-0 first:pt-0">
         {/* Header */}
-        <div className="mb-2">
-          <label className="text-[12px] font-semibold text-gray-800">
+        <div className="mb-1.5">
+          <label className="text-[10px] font-semibold text-gray-800">
             {label} {required && <span className="text-red-500">*</span>}
           </label>
           {description && (
-            <p className="text-[10px] text-gray-500 mt-0.5">{description}</p>
+            <p className="text-[8px] text-gray-500 mt-0.5">{description}</p>
           )}
         </div>
 
         {/* Row with Upload Area and Expiry Date side by side */}
-        <div className="flex flex-col sm:flex-row gap-3 items-start">
+        <div className="flex flex-col sm:flex-row gap-2 items-start">
           {/* Upload Area - Takes remaining space */}
           <div className="flex-1">
             <div
               onClick={() => fileRefs[field]?.current?.click()}
-              className={`relative border-2 border-dashed rounded-xl cursor-pointer transition-all p-3 text-center
+              className={`relative border-2 border-dashed rounded-xl cursor-pointer transition-all p-2 text-center
                 ${isUploaded ? "border-green-500 bg-green-50" :
                   hasError ? "border-red-400 bg-red-50" : "border-gray-300 hover:border-[#F2B53D] bg-gray-50"}`}
             >
@@ -131,43 +131,43 @@ const OperationCompliance = () => {
               <div className="flex flex-col items-center justify-center">
                 {isUploaded ? (
                   <>
-                    <HiCheckCircle className="text-green-600" size={24} />
-                    <span className="text-[11px] font-medium text-green-600 mt-1">
-                      {file.name.length > 30 ? file.name.substring(0, 27) + "..." : file.name}
+                    <HiCheckCircle className="text-green-600" size={18} />
+                    <span className="text-[9px] font-medium text-green-600 mt-0.5">
+                      {file.name.length > 25 ? file.name.substring(0, 22) + "..." : file.name}
                     </span>
-                    <span className="text-[9px] text-gray-500 mt-0.5">Click to change</span>
+                    <span className="text-[7px] text-gray-500 mt-0.5">Click to change</span>
                   </>
                 ) : (
                   <>
-                    <HiOutlineCloudUpload className="text-[#F2B53D]" size={24} />
-                    <span className="text-[11px] font-medium text-gray-600 mt-1">Click to upload or drag and drop</span>
-                    <span className="text-[9px] text-gray-400 mt-0.5">PDF, PNG or JPG (max. 10MB)</span>
+                    <HiOutlineCloudUpload className="text-[#F2B53D]" size={18} />
+                    <span className="text-[9px] font-medium text-gray-600 mt-0.5">Click to upload</span>
+                    <span className="text-[7px] text-gray-400 mt-0.5">PDF, PNG or JPG</span>
                   </>
                 )}
               </div>
             </div>
             {hasError && !isUploaded && (
-              <p className="text-red-500 text-[9px] font-bold mt-1">{errors[field]}</p>
+              <p className="text-red-500 text-[7px] font-bold mt-0.5">{errors[field]}</p>
             )}
           </div>
 
-          {/* Expiry Date - On the right side for ALL documents that show expiry */}
+          {/* Expiry Date - On the right side */}
           {showExpiry && (
-            <div className="sm:w-[220px]">
-              <label className="text-[10px] font-semibold text-gray-700 mb-1 flex items-center gap-1">
-                <HiOutlineCalendar size={11} />
+            <div className="sm:w-[180px]">
+              <label className="text-[8px] font-semibold text-gray-700 mb-0.5 flex items-center gap-0.5">
+                <HiOutlineCalendar size={9} />
                 Expiry Date {required && <span className="text-red-500">*</span>}
               </label>
               <input
                 type="date"
                 value={expiryValue}
                 onChange={(e) => handleExpiryChange(`${field}_expiry`, e.target.value)}
-                className={`w-full h-8 px-3 bg-white border rounded-lg text-[11px] focus:border-[#F2B53D] outline-none ${
+                className={`w-full h-7 px-2 bg-white border rounded-lg text-[9px] focus:border-[#F2B53D] outline-none ${
                   hasExpiryError ? 'border-red-400' : 'border-gray-200'
                 }`}
               />
               {hasExpiryError && (
-                <span className="text-red-500 text-[8px] font-bold mt-0.5 block">{errors[`${field}_expiry`]}</span>
+                <span className="text-red-500 text-[7px] font-bold mt-0.5 block">{errors[`${field}_expiry`]}</span>
               )}
             </div>
           )}
@@ -178,45 +178,45 @@ const OperationCompliance = () => {
 
   return (
     <div className="w-full animate-fadeIn">
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-7 h-7 bg-[#FFF8ED] rounded-lg flex items-center justify-center shrink-0">
-          <HiOutlineCloudUpload className="text-[#F2B53D]" size={16} />
+      {/* Header - Reduced */}
+      <div className="flex items-center gap-1.5 mb-2">
+        <div className="w-6 h-6 bg-[#FFF8ED] rounded-lg flex items-center justify-center shrink-0">
+          <HiOutlineCloudUpload className="text-[#F2B53D]" size={14} />
         </div>
         <div>
-          <h3 className="font-bold text-[13px] text-gray-800">Operations & Compliance</h3>
-          <p className="text-[10px] text-gray-500">Upload supporting documents for faster verification. Documents must be current (not expired) and clearly legible.</p>
+          <h3 className="font-bold text-[12px] text-gray-800">Operations & Compliance</h3>
+          <p className="text-[8px] text-gray-500">Upload documents. Must be current & legible.</p>
         </div>
       </div>
 
       {/* Display submission error if any */}
       {submitError && (
-        <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-600 text-[10px] font-medium">{submitError}</p>
+        <div className="mb-2 p-1 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-red-600 text-[8px] font-medium">{submitError}</p>
         </div>
       )}
 
-      {/* Document Sections - Single Column */}
-      <div className="space-y-4 mb-4">
-        {/* 1. Government Issued ID - Required with expiry */}
+      {/* Document Sections - Reduced spacing */}
+      <div className="space-y-2 mb-3">
+        {/* 1. Government Issued ID */}
         <DocumentSection
           label="Government Issued ID"
           field="government_issued_id"
-          description="Passport, Driver's License, National ID, or State ID"
+          description="Passport, Driver's License, National ID"
           required={true}
           showExpiry={true}
         />
 
-        {/* 2. Professional Body Certification - Optional with expiry */}
+        {/* 2. Professional Body Certification */}
         <DocumentSection
-          label="Professional Body Certification"
+          label="Professional Certification"
           field="professional_certification"
-          description="Optional: PRC ID, CPA, Engineering, Medical, etc."
+          description="Optional: PRC, CPA, Engineering"
           required={false}
           showExpiry={true}
         />
 
-        {/* 3. Business License - Required with expiry */}
+        {/* 3. Business License */}
         <DocumentSection
           label="Business License"
           field="business_license"
@@ -225,36 +225,36 @@ const OperationCompliance = () => {
           showExpiry={true}
         />
 
-        {/* 4. Tax Certificate - Required with expiry */}
+        {/* 4. Tax Certificate */}
         <DocumentSection
           label="Tax Certificate"
           field="tax_certificate"
-          description="TIN certificate or VAT registration"
+          description="TIN or VAT registration"
           required={true}
           showExpiry={true}
         />
 
-        {/* 5. Incorporation Certificate - Required (No Expiry) */}
+        {/* 5. Incorporation Certificate */}
         <DocumentSection
           label="Incorporation Certificate"
           field="incorporation_cert"
-          description="Certificate of incorporation or registration"
+          description="Certificate of incorporation"
           required={true}
           showExpiry={false}
         />
       </div>
 
-      {/* Buttons */}
-      <div className="flex gap-3 mt-2">
+      {/* Buttons - Reduced */}
+      <div className="flex gap-2 mt-2">
         <button
           onClick={() => dispatch({ type: ACTIONS.PREV_STEP })}
-          className="flex-1 max-w-[100px] h-7 rounded-full text-gray-500 font-semibold text-[11px] border border-gray-200 hover:bg-gray-50 transition-all"
+          className="flex-1 max-w-[80px] h-6 rounded-full text-gray-500 font-semibold text-[9px] border border-gray-200 hover:bg-gray-50 transition-all"
         >
           Back
         </button>
         <button
           onClick={handleReviewClick}
-          className="flex-1 max-w-[120px] h-7 rounded-full text-white font-bold text-[11px] transition-all bg-[#D99201] hover:bg-[#e0a630]"
+          className="flex-1 max-w-[100px] h-6 rounded-full text-white font-bold text-[9px] transition-all bg-[#D99201] hover:bg-[#e0a630]"
         >
           Review All
         </button>
