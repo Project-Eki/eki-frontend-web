@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import VendorSidebar from '../components/VendorSidebar';
 import Navbar4 from '../components/adminDashboard/Navbar4';
 import Footer from "../components/Vendormanagement/VendorFooter";
@@ -21,11 +21,8 @@ const PAYMENTS_PER_PAGE = 10;
 const formatTransactionId = (raw) => {
   if (!raw && raw !== 0) return '—';
   const str = String(raw).trim();
-  // If it already looks like TX-XXXX keep it
   if (/^TX-/i.test(str)) return str.toUpperCase();
-  // If numeric, pad and prefix
   if (/^\d+$/.test(str)) return `TX-${str.padStart(4, '0')}`;
-  // Fallback: last 6 chars uppercased
   return `TX-${str.slice(-6).toUpperCase()}`;
 };
 
@@ -50,6 +47,50 @@ const formatDate = (raw) => {
   } catch (_) {
     return raw;
   }
+};
+
+// ─── Items Popup: shows first item + clickable "+N more" badge ───────────────
+const ItemsPopup = ({ items, first, rest }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    if (open) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div className="relative flex items-center gap-1.5" ref={ref}>
+      <span className="truncate" title={first}>{first}</span>
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        className="shrink-0 text-[8px] bg-slate-100 hover:bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded-full font-bold transition-colors cursor-pointer"
+      >
+        +{rest} more
+      </button>
+
+      {open && (
+        <div className="absolute z-50 top-full left-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg p-3 min-w-[180px] max-w-[260px]">
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+            All items in order
+          </p>
+          <ul className="space-y-0">
+            {items.map((it, idx) => (
+              <li
+                key={idx}
+                className="text-[10px] text-slate-700 py-1.5 border-b border-slate-100 last:border-b-0"
+              >
+                {it.name || 'Item'}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
 };
 
 const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
@@ -108,7 +149,7 @@ const PaymentSystemContent = () => {
     const load = async () => {
       setIsFetching(true);
       try {
-        // ── Currency symbol ──
+        // ── Currency symbol — resolved from vendor's country ──
         const dash = await getVendorDashboard();
         if (dash?.country) setCurrencySymbol(getCurrencySymbol(dash.country));
 
@@ -147,23 +188,25 @@ const PaymentSystemContent = () => {
     setCurrentPage(1);
   }, [searchQuery]);
 
-  // ── Filter by transaction ID or status ───────────────────────────────────
+  // ── Filter by transaction ID, customer name, status, or type ─────────────
   const filteredTx = transactions.filter((o) => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
     const txId = formatTransactionId(o.id).toLowerCase();
+    const customerName = String(o.customer?.name ?? '').toLowerCase();
     return (
       txId.includes(q) ||
       String(o.id ?? '').toLowerCase().includes(q) ||
       String(o.status ?? '').toLowerCase().includes(q) ||
-      deriveType(o).toLowerCase().includes(q)
+      deriveType(o).toLowerCase().includes(q) ||
+      customerName.includes(q)
     );
   });
 
   // Pagination calculations
-  const totalPages       = Math.max(1, Math.ceil(filteredTx.length / PAYMENTS_PER_PAGE));
-  const safePage         = Math.min(currentPage, totalPages);
-  const startIndex       = (safePage - 1) * PAYMENTS_PER_PAGE;
+  const totalPages        = Math.max(1, Math.ceil(filteredTx.length / PAYMENTS_PER_PAGE));
+  const safePage          = Math.min(currentPage, totalPages);
+  const startIndex        = (safePage - 1) * PAYMENTS_PER_PAGE;
   const pagedTransactions = filteredTx.slice(startIndex, startIndex + PAYMENTS_PER_PAGE);
 
   const goToPage = (page) => {
@@ -200,16 +243,9 @@ const PaymentSystemContent = () => {
   // ── Type icon ────────────────────────────────────────────────────────────
   const getTypeIcon = (type) => {
     const t = String(type ?? '').toLowerCase();
-    if (t === 'payout')  return '↗';
-    if (t === 'refund')  return '↙';
+    if (t === 'payout') return '↗';
+    if (t === 'refund') return '↙';
     return '↗'; // Sale
-  };
-
-  // ── Amount prefix ────────────────────────────────────────────────────────
-  const getAmountPrefix = (type) => {
-    const t = String(type ?? '').toLowerCase();
-    if (t === 'refund') return '';
-    return '+';
   };
 
   return (
@@ -270,7 +306,7 @@ const PaymentSystemContent = () => {
               >
                 Transaction History
               </span>
-              <span
+              {/* <span
                 onClick={() => setActiveTab('payout')}
                 className={`pb-1.5 cursor-pointer transition-colors ${
                   activeTab === 'payout'
@@ -279,7 +315,7 @@ const PaymentSystemContent = () => {
                 }`}
               >
                 Payout Settings
-              </span>
+              </span> */}
             </div>
 
             {/* Search */}
@@ -288,7 +324,7 @@ const PaymentSystemContent = () => {
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
                 <input
                   type="text"
-                  placeholder="Filter by ID or date..."
+                  placeholder="Filter by ID, customer..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8 pr-3 py-1 border border-slate-200 rounded-lg text-[10px] outline-none focus:ring-1 focus:ring-[#F5B841] w-48"
@@ -339,9 +375,10 @@ const PaymentSystemContent = () => {
                     >
                       <thead className="bg-slate-50 text-slate-400 font-bold uppercase text-[9px]">
                         <tr>
-                          {/* ✅ Columns match original design */}
                           <th className="px-4 py-3">Date</th>
                           <th className="px-4 py-3">Transaction ID</th>
+                          <th className="px-4 py-3">Customer</th>
+                          <th className="px-4 py-3">Items Paid For</th>
                           <th className="px-4 py-3">Type</th>
                           <th className="px-4 py-3">Status</th>
                           <th className="px-4 py-3 text-right">Amount</th>
@@ -356,20 +393,54 @@ const PaymentSystemContent = () => {
                           const amount    = Number(order.total ?? 0).toLocaleString(undefined, {
                             minimumFractionDigits: 2, maximumFractionDigits: 2,
                           });
-                          const prefix    = getAmountPrefix(txType);
                           const typeIcon  = getTypeIcon(txType);
+
+                          // ── Customer name ──────────────────────────────
+                          const customerName = order.customer?.name || '—';
+
+                          // ── Items summary ──────────────────────────────
+                          const items = Array.isArray(order.items) ? order.items : [];
+                          const itemsSummary = (() => {
+                            if (items.length === 0) return null;
+                            if (items.length === 1) return items[0].name || 'Item';
+                            return { first: items[0].name || 'Item', rest: items.length - 1 };
+                          })();
 
                           return (
                             <tr key={order.id ?? i} className="hover:bg-slate-50 transition-colors">
 
                               {/* Date */}
-                              <td className="px-4 py-2.5 text-slate-500 font-medium">
+                              <td className="px-4 py-2.5 text-slate-500 font-medium whitespace-nowrap">
                                 {txDate}
                               </td>
 
                               {/* Transaction ID */}
                               <td className="px-4 py-2.5 font-black text-[#125852] tracking-wider font-mono">
                                 {txId}
+                              </td>
+
+                              {/* Customer */}
+                              <td className="px-4 py-2.5 text-slate-700 font-semibold max-w-[120px]">
+                                <span className="truncate block" title={customerName}>
+                                  {customerName}
+                                </span>
+                              </td>
+
+                              {/* Items Paid For */}
+                              <td className="px-4 py-2.5 text-slate-500 max-w-[180px]">
+                                {itemsSummary === null ? (
+                                  <span className="text-slate-300">—</span>
+                                ) : typeof itemsSummary === 'string' ? (
+                                  <span className="truncate block" title={itemsSummary}>
+                                    {itemsSummary}
+                                  </span>
+                                ) : (
+                                  <ItemsPopup
+                                    items={items}
+                                    first={itemsSummary.first}
+                                    rest={itemsSummary.rest}
+                                  />
+                                )}
                               </td>
 
                               {/* Type */}
@@ -389,9 +460,9 @@ const PaymentSystemContent = () => {
                                 </span>
                               </td>
 
-                              {/* Amount */}
-                              <td className="px-4 py-2.5 font-bold text-slate-800 text-right">
-                                {prefix}{currencySymbol} {amount}
+                              {/* Amount — no + prefix */}
+                              <td className="px-4 py-2.5 font-bold text-slate-800 text-right whitespace-nowrap">
+                                {currencySymbol} {amount}
                               </td>
 
                             </tr>
