@@ -10,6 +10,7 @@ import {
   getCategories,
   createProductListing,
   uploadListingImages,
+  getProducts,
 } from "../services/authService";
 
 import { getCurrencySymbol } from "../utils/currency";
@@ -99,7 +100,6 @@ const VendorDashboard = () => {
   const [branchLocation, setBranchLocation] = useState("");
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-  //Handle redirects in useEffect, NOT during render
   useEffect(() => {
     if (!authLoading && !redirected) {
       if (!isAuthenticated) {
@@ -112,7 +112,6 @@ const VendorDashboard = () => {
     }
   }, [authLoading, isAuthenticated, user?.role, navigate, redirected]);
 
-  //Fetch dashboard data in useEffect
   useEffect(() => {
     if (isAuthenticated && user?.role === 'vendor') {
       fetchDashboardData();
@@ -122,8 +121,14 @@ const VendorDashboard = () => {
   const fetchDashboardData = async () => {
     setIsFetching(true);
     try {
-      const response = await getVendorDashboard();
+      // ── Fetch dashboard + real products in parallel ──
+      const [response, allProducts] = await Promise.all([
+        getVendorDashboard(),
+        getProducts().catch(() => []),
+      ]);
+
       console.log('[VendorDashboard] Full response:', response);
+      console.log('[VendorDashboard] Products:', allProducts);
 
       if (response) {
         const bc = response.businessCategory || "";
@@ -136,13 +141,8 @@ const VendorDashboard = () => {
                         localStorage.getItem('vendor_country') ||
                         "";
 
-        console.log('[VendorDashboard] Resolved country:', country);
-
         const resolvedCurrencySymbol = country ? getCurrencySymbol(country) : "";
 
-        console.log('[VendorDashboard] Currency symbol:', resolvedCurrencySymbol);
-
-        // ── pull branch_location from vendor dashboard response ──
         const resolvedBranchLocation =
           response.branchLocation ||
           localStorage.getItem('vendor_branch_location') ||
@@ -162,20 +162,56 @@ const VendorDashboard = () => {
         setCurrencySymbol(resolvedCurrencySymbol);
         setBranchLocation(resolvedBranchLocation);
 
-        setMetrics(
-          response.metrics || {
-            grossSales: 0,
-            openOrders: 0,
-            pendingPayouts: 0,
-            activeListings: 0,
-          }
-        );
+        // ── Compute accurate active listings from real product data ──
+        const products = Array.isArray(allProducts) ? allProducts : [];
+        const accurateActiveListings = products.filter(
+          (p) => p.is_published === true
+        ).length;
+
+        const apiMetrics = response.metrics || {};
+        setMetrics({
+          grossSales: apiMetrics.grossSales || 0,
+          openOrders: apiMetrics.openOrders || 0,
+          pendingPayouts: apiMetrics.pendingPayouts || 0,
+          // ── Use real product count, fall back to API value if products unavailable ──
+          activeListings: products.length > 0
+            ? accurateActiveListings
+            : (apiMetrics.activeListings || 0),
+        });
+
         setSalesHistory(response.salesHistory || []);
 
         const allOrders = response.recentOrders || [];
         setRecentOrders(allOrders.slice(0, 7));
 
-        setInventoryAlerts(response.inventoryAlerts || []);
+        // ── Inventory alerts: only show items with stock <= 5 ──
+        const rawAlerts = response.inventoryAlerts || [];
+
+        // Also derive low-stock alerts from real product data if API doesn't provide them
+        let computedAlerts = rawAlerts.filter(
+          (alert) => (alert.quantity ?? alert.stock ?? 0) <= 5
+        );
+
+        // If no alerts from API, build from products with stock <= 5
+        if (computedAlerts.length === 0 && products.length > 0) {
+          computedAlerts = products
+            .filter((p) => {
+              // Check product-level stock
+              const productStock = p.stock ?? p.detail?.stock ?? 0;
+              // Also check variants
+              const variantLowStock = Array.isArray(p.variants) && p.variants.some(
+                (v) => (v.stock ?? 0) <= 5
+              );
+              return productStock <= 5 || variantLowStock;
+            })
+            .map((p) => ({
+              title: p.title,
+              quantity: p.stock ?? p.detail?.stock ?? 0,
+            }));
+        }
+
+        setInventoryAlerts(computedAlerts);
+
         setReviews(response.reviews || []);
 
         try {
@@ -195,7 +231,6 @@ const VendorDashboard = () => {
     }
   };
 
-  // Show loading state while checking authentication
   if (authLoading) {
     return (
       <div className="flex min-h-screen bg-[#ecece7] items-center justify-center">
@@ -207,7 +242,6 @@ const VendorDashboard = () => {
     );
   }
 
-  //Return null while checking - useEffect handles redirect
   if (!isAuthenticated || user?.role !== 'vendor') {
     return null;
   }
@@ -224,16 +258,13 @@ const VendorDashboard = () => {
         await uploadListingImages(created.id, imageFiles);
       }
 
-      setMetrics((prev) => ({
-        ...prev,
-        activeListings: prev.activeListings + 1,
-      }));
       setIsModalOpen(false);
       setSuccessMsg(
         `${isServiceVendor ? "Service" : "Product"} created successfully!`
       );
       setTimeout(() => setSuccessMsg(""), 4000);
 
+      // ── Refetch everything so active listings count updates immediately ──
       await fetchDashboardData();
     } catch (err) {
       console.error("Failed to create listing:", err);
@@ -387,11 +418,15 @@ const VendorDashboard = () => {
                                 </span>
                               </span>
                             </td>
-                            <td className="px-4 py-2.5 text-slate-700 font-medium">{order.customer}</td>
+                            <td className="px-4 py-2.5 text-slate-700 font-medium">
+                              {typeof order.customer === 'object' && order.customer !== null
+                                ? (order.customer.name || order.customer.email || '—')
+                                : (order.customer || '—')}
+                            </td>
                             <td className="px-4 py-2.5 font-bold text-slate-800">
                               {displayCurrency}{" "}
                               {Number(order.total || 0).toLocaleString()}
-                             </td>
+                            </td>
                             <td className="px-4 py-2.5">
                               <span className={`px-2 py-0.5 rounded-full text-[8px] uppercase font-black tracking-wide ${
                                 (() => {
@@ -406,7 +441,7 @@ const VendorDashboard = () => {
                               }`}>
                                 {order.status || '—'}
                               </span>
-                             </td>
+                            </td>
                             <td className="px-4 py-2.5">
                               <button
                                 onClick={() => setSelectedOrder(order)}
@@ -414,7 +449,7 @@ const VendorDashboard = () => {
                               >
                                 View
                               </button>
-                             </td>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -428,7 +463,6 @@ const VendorDashboard = () => {
               </div>
             </div>
 
-            {/* Quick Actions, Payout, Inventory Alerts, Reviews sections remain the same */}
             <div className="space-y-5">
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                 <h3 className="font-bold text-xs mb-3 uppercase tracking-tighter">
@@ -473,6 +507,7 @@ const VendorDashboard = () => {
                 </div>
               </div>
 
+              {/* ── Inventory Alerts: only stock <= 5 ── */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                 <div className="flex items-center gap-1.5 mb-3 text-[#F5B841]">
                   <AlertCircle size={12} />
@@ -490,8 +525,8 @@ const VendorDashboard = () => {
                         <span className="font-bold text-slate-700">
                           {alert.title}
                         </span>
-                        <span className="text-[#F5B841] font-bold bg-yellow-50 px-1.5 py-0.5 rounded text-[9px]">
-                          {alert.quantity ?? 0} left
+                        <span className="text-red-500 font-bold bg-red-50 px-1.5 py-0.5 rounded text-[9px] border border-red-100">
+                          {alert.quantity ?? alert.stock ?? 0} left
                         </span>
                       </div>
                     ))
@@ -550,7 +585,7 @@ const VendorDashboard = () => {
         <Footer />
       </div>
 
-      {/* Order Summary Modal */}
+      {/* ── Order Summary Modal — full order details ── */}
       {selectedOrder && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden" style={{ fontFamily: "'Poppins', sans-serif" }}>
@@ -558,7 +593,9 @@ const VendorDashboard = () => {
               <div>
                 <h2 className="text-base font-bold text-slate-800">Order Summary</h2>
                 <p className="text-[10px] text-slate-500 mt-0.5 font-mono font-medium">
-                  {formatOrderId(selectedOrder.id)} · {selectedOrder.date || "Just now"}
+                  {formatOrderId(selectedOrder.id)} · {selectedOrder.date
+                    ? (() => { try { return new Date(selectedOrder.date).toLocaleString(); } catch (_) { return selectedOrder.date; } })()
+                    : "Just now"}
                 </p>
               </div>
               <button
@@ -569,7 +606,7 @@ const VendorDashboard = () => {
               </button>
             </div>
 
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-4 overflow-y-auto max-h-[70vh]">
               {/* Customer Details */}
               <div className="bg-slate-50 rounded-xl p-4">
                 <h3 className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-3">
@@ -579,63 +616,89 @@ const VendorDashboard = () => {
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] text-slate-500">Name</span>
                     <span className="text-[12px] font-bold text-slate-800">
-                      {selectedOrder.customer}
+                      {typeof selectedOrder.customer === 'object' && selectedOrder.customer !== null
+                        ? (selectedOrder.customer.name || '—')
+                        : (selectedOrder.customer || '—')}
                     </span>
                   </div>
-                  {selectedOrder.email && (
+                  {/* Email — handle both nested object and flat field */}
+                  {(selectedOrder.customer?.email || selectedOrder.email) && (
                     <div className="flex justify-between items-center">
                       <span className="text-[11px] text-slate-500">Email</span>
                       <span className="text-[11px] text-slate-600">
-                        {selectedOrder.email}
+                        {selectedOrder.customer?.email || selectedOrder.email}
                       </span>
                     </div>
                   )}
-                  {selectedOrder.phone && (
+                  {/* Phone — handle both nested object and flat field */}
+                  {(selectedOrder.customer?.phone || selectedOrder.phone) && (
                     <div className="flex justify-between items-center">
                       <span className="text-[11px] text-slate-500">Phone</span>
                       <span className="text-[11px] text-slate-600">
-                        {selectedOrder.phone}
+                        {selectedOrder.customer?.phone || selectedOrder.phone}
+                      </span>
+                    </div>
+                  )}
+                  {/* Delivery address if available */}
+                  {(selectedOrder.customer?.address || selectedOrder.address || selectedOrder.location) && (
+                    <div className="flex justify-between items-start">
+                      <span className="text-[11px] text-slate-500">Address</span>
+                      <span className="text-[11px] text-slate-600 text-right max-w-[60%]">
+                        {selectedOrder.customer?.address || selectedOrder.address || selectedOrder.location}
                       </span>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Order Items */}
+              {/* Order Items — show each item with name, qty, price */}
               <div className="bg-slate-50 rounded-xl p-4">
                 <h3 className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-3">
-                  Order Items
+                  Items Ordered
                 </h3>
-                {selectedOrder.items && selectedOrder.items.length > 0 ? (
+                {Array.isArray(selectedOrder.items) && selectedOrder.items.length > 0 ? (
                   <div className="space-y-2">
-                    {selectedOrder.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-center py-1.5 border-b border-slate-200 last:border-0">
-                        <div className="flex-1">
-                          <p className="text-[11px] font-bold text-slate-700">
-                            {item.name}
-                          </p>
-                          <p className="text-[9px] text-slate-400">
-                            Qty: {item.quantity} × {displayCurrency} {Number(item.price || 0).toLocaleString()}
-                          </p>
+                    {selectedOrder.items.map((item, idx) => {
+                      // Support varying field names from the API
+                      const itemName = item.name || item.title || item.product_name || `Item ${idx + 1}`;
+                      const itemQty  = item.qty ?? item.quantity ?? 1;
+                      const itemPrice = item.price ?? item.unit_price ?? 0;
+                      const itemTotal = item.total ?? item.subtotal ?? (Number(itemPrice) * Number(itemQty));
+                      const itemVariant = item.variant || item.variant_label || '';
+
+                      return (
+                        <div key={idx} className="flex justify-between items-start py-2 border-b border-slate-200 last:border-0">
+                          <div className="flex-1">
+                            <p className="text-[11px] font-bold text-slate-700">{itemName}</p>
+                            {itemVariant && (
+                              <p className="text-[9px] text-slate-400 mt-0.5">Variant: {itemVariant}</p>
+                            )}
+                            <p className="text-[9px] text-slate-400 mt-0.5">
+                              Qty: {itemQty} × {displayCurrency} {Number(itemPrice).toLocaleString()}
+                            </p>
+                          </div>
+                          <span className="text-[11px] font-bold text-slate-800 ml-3 flex-shrink-0">
+                            {displayCurrency} {Number(itemTotal).toLocaleString()}
+                          </span>
                         </div>
-                        <span className="text-[11px] font-bold text-slate-800">
-                          {displayCurrency} {Number(item.total || 0).toLocaleString()}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center py-1.5">
-                      <div className="flex-1">
-                        <p className="text-[11px] font-bold text-slate-700">
-                          Order {formatOrderId(selectedOrder.id)}
-                        </p>
-                      </div>
-                      <span className="text-[11px] font-bold text-slate-800">
-                        {displayCurrency} {Number(selectedOrder.total || 0).toLocaleString()}
-                      </span>
+                  // Fallback when items array is absent — show single order line
+                  <div className="flex justify-between items-center py-1.5">
+                    <div className="flex-1">
+                      <p className="text-[11px] font-bold text-slate-700">
+                        Order {formatOrderId(selectedOrder.id)}
+                      </p>
+                      {/* Show item count if available as a number */}
+                      {typeof selectedOrder.items === 'number' && selectedOrder.items > 0 && (
+                        <p className="text-[9px] text-slate-400 mt-0.5">{selectedOrder.items} item(s)</p>
+                      )}
                     </div>
+                    <span className="text-[11px] font-bold text-slate-800">
+                      {displayCurrency} {Number(selectedOrder.total || 0).toLocaleString()}
+                    </span>
                   </div>
                 )}
               </div>
@@ -703,7 +766,7 @@ const VendorDashboard = () => {
         </div>
       )}
 
-      {/* ── ProductListing modal — branchLocation from vendor profile ── */}
+      {/* ── ProductListing modal ── */}
       <ProductListing
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

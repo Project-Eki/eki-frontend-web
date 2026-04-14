@@ -127,22 +127,34 @@ const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => 
 
         {showVariants && hasMultipleVariants && (
           <div className="mt-2 space-y-1.5 max-h-40 overflow-y-auto">
-            {product.variants?.map((variant, idx) => (
-              <div key={variant.id || idx} className="bg-slate-50 rounded-lg p-2 text-[9px]">
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-slate-700">
-                    {variant.size && `Size: ${variant.size}`} {variant.color && `• ${variant.color}`}
-                  </span>
-                  <span className="font-bold text-[#125852]">
-                    {currencySymbol} {Number(variant.price || product.price || 0).toLocaleString()}
-                  </span>
+            {product.variants?.map((variant, idx) => {
+              // ── Read stock from all possible field names the API may return ──
+              const variantStock =
+                variant.stock ??
+                variant.quantity ??
+                variant.stock_quantity ??
+                variant.detail?.stock ??
+                null;
+
+              return (
+                <div key={variant.id || idx} className="bg-slate-50 rounded-lg p-2 text-[9px]">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-slate-700">
+                      {variant.size && `Size: ${variant.size}`}{variant.size && variant.color && ' '}{variant.color && `• ${variant.color}`}
+                    </span>
+                    <span className="font-bold text-[#125852]">
+                      {currencySymbol} {Number(variant.price || product.price || 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="text-slate-500">SKU: {variant.sku || product.sku || '—'}</span>
+                    <span className={`font-bold ${variantStock !== null && variantStock <= 5 ? 'text-red-500' : 'text-slate-500'}`}>
+                      Stock: {variantStock !== null ? variantStock : '—'}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center mt-1">
-                  <span className="text-slate-500">SKU: {variant.sku || product.sku}</span>
-                  <span className="text-slate-500">Stock: {variant.stock || 0}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -210,7 +222,10 @@ const ProductListItem = ({ product, currencySymbol, onEdit, onDelete }) => {
                 {currencySymbol} {Number(product.price || 0).toLocaleString()}
               </span>
             )}
-            <span className="text-[10px] text-slate-500">Stock: {product.stock || 0}</span>
+            {/* ── Product-level stock with correct field resolution ── */}
+            <span className="text-[10px] text-slate-500">
+              Stock: {product.stock ?? product.detail?.stock ?? product.stock_quantity ?? 0}
+            </span>
           </div>
 
           {variantCount > 1 && (
@@ -225,22 +240,34 @@ const ProductListItem = ({ product, currencySymbol, onEdit, onDelete }) => {
 
           {showVariants && variantCount > 1 && (
             <div className="mt-3 space-y-2 max-h-60 overflow-y-auto">
-              {product.variants?.map((variant, idx) => (
-                <div key={variant.id || idx} className="bg-slate-50 rounded-lg p-3 text-[10px]">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-slate-700">
-                      {variant.size && `Size: ${variant.size}`} {variant.color && `• ${variant.color}`}
-                    </span>
-                    <span className="font-bold text-[#125852]">
-                      {currencySymbol} {Number(variant.price || product.price || 0).toLocaleString()}
-                    </span>
+              {product.variants?.map((variant, idx) => {
+                // ── Read stock from all possible field names ──
+                const variantStock =
+                  variant.stock ??
+                  variant.quantity ??
+                  variant.stock_quantity ??
+                  variant.detail?.stock ??
+                  null;
+
+                return (
+                  <div key={variant.id || idx} className="bg-slate-50 rounded-lg p-3 text-[10px]">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-slate-700">
+                        {variant.size && `Size: ${variant.size}`}{variant.size && variant.color && ' '}{variant.color && `• ${variant.color}`}
+                      </span>
+                      <span className="font-bold text-[#125852]">
+                        {currencySymbol} {Number(variant.price || product.price || 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-slate-500">SKU: {variant.sku || product.sku || '—'}</span>
+                      <span className={`font-bold ${variantStock !== null && variantStock <= 5 ? 'text-red-500' : 'text-slate-500'}`}>
+                        Stock: {variantStock !== null ? variantStock : '—'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center mt-1">
-                    <span className="text-slate-500">SKU: {variant.sku || product.sku}</span>
-                    <span className="text-slate-500">Stock: {variant.stock || 0}</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -297,7 +324,6 @@ const ProductDashboard = () => {
           setCurrencySymbol(getCurrencySymbol(data.country));
         }
         if (data?.businessCategory) setBusinessCategory(data.businessCategory);
-        // ── pull branch_location from vendor dashboard ──
         if (data?.branchLocation) setBranchLocation(data.branchLocation);
         const serviceCategories = ['beauty', 'transport', 'tailoring', 'airlines', 'hotels', 'other'];
         const bc = data?.businessCategory || 'retail';
@@ -378,7 +404,6 @@ const ProductDashboard = () => {
         colors: payload.colors || [],
         is_published: payload.is_published === true,
         business_category: businessCategory,
-        // ── pass sales_status through directly ──
         sales_status: payload.sales_status,
       });
 
@@ -406,6 +431,26 @@ const ProductDashboard = () => {
     console.log('[handleEditProduct] product:', product);
     console.log('[handleEditProduct] listing ID:', product.id);
 
+    // ── Resolve stock from all possible API field names ──
+    const resolvedStock =
+      product.detail?.stock ??
+      product.stock ??
+      product.stock_quantity ??
+      product.quantity ??
+      0;
+
+    // ── Resolve variants with correct stock per variant ──
+    const resolvedVariants = (product.variants || []).map((v) => ({
+      ...v,
+      // Ensure each variant carries its actual stock, not 0
+      stock:
+        v.stock ??
+        v.quantity ??
+        v.stock_quantity ??
+        v.detail?.stock ??
+        0,
+    }));
+
     setSelectedProduct({
       id: product.id,
       title: product.title || '',
@@ -413,12 +458,12 @@ const ProductDashboard = () => {
       sku: product.sku || '',
       branch_location: product.branch_location || branchLocation || '',
       description: product.description || '',
-      stock: product.detail?.stock ?? product.stock ?? 0,
+      stock: resolvedStock,
       sizes: product.sizes || [],
       colors: product.colors || [],
       is_published: product.is_published === true || product.status === 'published',
       images: product.images || [],
-      variants: product.variants || [],
+      variants: resolvedVariants,
       discount_enabled: product.discount_enabled || false,
       discount_percentage: product.discount_percentage || 10,
       discounted_price: product.discounted_price || null,
@@ -652,7 +697,7 @@ const ProductDashboard = () => {
         <Footer />
       </div>
 
-      {/* ── Create modal — branchLocation passed from vendor profile ── */}
+      {/* ── Create modal ── */}
       <ProductListing
         key="create-product-modal"
         isOpen={isProductModalOpen}
@@ -666,7 +711,7 @@ const ProductDashboard = () => {
         submitLabel="Publish Product"
       />
 
-      {/* ── Edit modal — branchLocation passed from vendor profile ── */}
+      {/* ── Edit modal ── */}
       {selectedProduct && (
         <ProductListing
           key={`edit-${selectedProduct.id}`}

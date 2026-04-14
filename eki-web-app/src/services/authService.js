@@ -332,32 +332,163 @@ export const markOrderNotificationRead = async (notifId) => {
   }
 };
 
+// ─── ORDER ITEM NORMALISER ────────────────────────────────────────────────────
+// Extracts a consistent items array from whatever shape the API returns
+const normalizeOrderItems = (o) => {
+  // Case 1: items is already a proper array of objects
+  if (Array.isArray(o.items) && o.items.length > 0 && typeof o.items[0] === 'object') {
+    return o.items.map((item) => ({
+      name:     item.name        ?? item.title        ?? item.product_name  ?? item.listing_title ?? `Item`,
+      qty:      item.qty         ?? item.quantity      ?? item.amount        ?? 1,
+      price:    item.price       ?? item.unit_price    ?? item.item_price    ?? 0,
+      total:    item.total       ?? item.subtotal      ?? item.line_total    ??
+                (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
+      variant:  item.variant     ?? item.variant_label ?? item.variant_name  ??
+                [item.size, item.color].filter(Boolean).join(' / ') ?? '',
+      image:    item.image       ?? item.product_image ?? item.listing_image ?? null,
+      sku:      item.sku         ?? item.product_sku   ?? '',
+    }));
+  }
+
+  // Case 2: items stored under order_items key
+  if (Array.isArray(o.order_items) && o.order_items.length > 0) {
+    return o.order_items.map((item) => ({
+      name:     item.name        ?? item.title        ?? item.product_name  ?? item.listing_title ?? `Item`,
+      qty:      item.qty         ?? item.quantity      ?? 1,
+      price:    item.price       ?? item.unit_price    ?? item.item_price    ?? 0,
+      total:    item.total       ?? item.subtotal      ??
+                (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
+      variant:  item.variant     ?? item.variant_label ??
+                [item.size, item.color].filter(Boolean).join(' / ') ?? '',
+      image:    item.image       ?? item.product_image ?? null,
+      sku:      item.sku         ?? '',
+    }));
+  }
+
+  // Case 3: items stored under products / cart_items / line_items
+  const altKey = ['products', 'cart_items', 'line_items', 'listings'].find(
+    (k) => Array.isArray(o[k]) && o[k].length > 0
+  );
+  if (altKey) {
+    return o[altKey].map((item) => ({
+      name:    item.name    ?? item.title        ?? item.product_name ?? `Item`,
+      qty:     item.qty     ?? item.quantity     ?? 1,
+      price:   item.price   ?? item.unit_price   ?? 0,
+      total:   item.total   ?? item.subtotal     ??
+               (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
+      variant: item.variant ?? item.variant_label ??
+               [item.size, item.color].filter(Boolean).join(' / ') ?? '',
+      image:   item.image   ?? item.product_image ?? null,
+      sku:     item.sku     ?? '',
+    }));
+  }
+
+  // Case 4: items is a count number — return empty so UI shows fallback
+  return [];
+};
+
+// ─── CUSTOMER NORMALISER ──────────────────────────────────────────────────────
+// Extracts a consistent customer object from whatever shape the API returns
+const normalizeOrderCustomer = (o) => {
+  // If customer is already a rich object
+  if (o.customer && typeof o.customer === 'object') {
+    return {
+      name:    o.customer.name    ?? o.customer.full_name ?? o.customer.username ??
+               [o.customer.first_name, o.customer.last_name].filter(Boolean).join(' ') ?? '—',
+      email:   o.customer.email   ?? '',
+      phone:   o.customer.phone   ?? o.customer.phone_number ?? '',
+      address: o.customer.address ?? o.customer.delivery_address ?? o.customer.location ?? '',
+    };
+  }
+
+  // Flatten from various top-level fields
+  const name =
+    (typeof o.customer === 'string' && o.customer) ||
+    o.customer_name  ||
+    o.buyer_name     ||
+    o.buyer?.name    ||
+    o.buyer?.full_name ||
+    [o.buyer?.first_name, o.buyer?.last_name].filter(Boolean).join(' ') ||
+    o.user?.name     ||
+    o.user?.full_name  ||
+    [o.user?.first_name, o.user?.last_name].filter(Boolean).join(' ') ||
+    o.user?.username   ||
+    '—';
+
+  const email =
+    o.customer_email  ||
+    o.buyer?.email    ||
+    o.user?.email     ||
+    o.email           ||
+    '';
+
+  const phone =
+    o.customer_phone  ||
+    o.buyer?.phone    ||
+    o.buyer?.phone_number ||
+    o.user?.phone     ||
+    o.phone           ||
+    o.phone_number    ||
+    '';
+
+  const address =
+    o.delivery_address ||
+    o.shipping_address ||
+    o.customer_address ||
+    o.buyer?.address   ||
+    o.location         ||
+    '';
+
+  return { name, email, phone, address };
+};
+
 // ─── ORDER NORMALISER ─────────────────────────────────────────────────────────
-const normalizeOrder = (o) => ({
-  ...o,
-  id: o.id ?? o.order_id ?? o.pk,
-  customer:
-    o.customer       ??
-    o.customer_name  ??
-    o.buyer_name     ??
-    o.buyer?.name    ??
-    o.buyer?.full_name ??
-    o.user?.name     ??
-    o.user?.full_name  ??
-    o.user?.username   ??
-    '—',
-  total: Number(
-    o.total         ??
-    o.total_amount  ??
-    o.total_price   ??
-    o.amount        ??
-    o.grand_total   ??
-    0
-  ),
-  status: o.status ?? o.order_status ?? 'pending',
-  items:  o.items  ?? o.item_count   ?? o.quantity ?? null,
-  date:   o.date   ?? o.created_at   ?? o.order_date ?? '',
-});
+const normalizeOrder = (o) => {
+  const customer = normalizeOrderCustomer(o);
+  const items    = normalizeOrderItems(o);
+
+  return {
+    // Spread original so nothing is lost
+    ...o,
+
+    // ── Core identity ──
+    id: o.id ?? o.order_id ?? o.pk,
+
+    // ── Customer: always a rich object now ──
+    customer,
+
+    // ── Items: always a normalised array ──
+    items,
+
+    // ── Financials ──
+    total: Number(
+      o.total        ??
+      o.total_amount ??
+      o.total_price  ??
+      o.amount       ??
+      o.grand_total  ??
+      0
+    ),
+    subtotal: Number(o.subtotal ?? o.sub_total ?? o.subtotal_amount ?? 0) || null,
+    shipping:  Number(o.shipping ?? o.shipping_fee ?? o.delivery_fee   ?? 0) || null,
+    tax:       Number(o.tax      ?? o.tax_amount   ?? o.vat            ?? 0) || null,
+
+    // ── Status ──
+    status: o.status ?? o.order_status ?? 'pending',
+
+    // ── Date ──
+    date: o.date ?? o.created_at ?? o.order_date ?? '',
+
+    // ── Location ──
+    location: o.location ?? o.delivery_address ?? o.shipping_address ?? '',
+
+    // ── Notes ──
+    notes: o.notes ?? o.order_notes ?? o.special_instructions ?? '',
+
+    // ── Review (if attached) ──
+    review: o.review ?? o.customer_review ?? null,
+  };
+};
 
 // ─── VENDOR ORDERS ────────────────────────────────────────────────────────────
 export const getVendorOrders = async ({ status = '', search = '' } = {}) => {
@@ -436,7 +567,6 @@ export const getVendorDashboard = async () => {
     vendorType       = p.business_type || (isProductVendor ? 'Products' : 'Services');
     businessCategory = p.business_category || raw.business_category || 'retail';
     currencySymbol   = raw.currencySymbol || p.currencySymbol || 'UGX';
-    // ── pull branch_location from vendor profile ──
     branchLocation   = p.branch_location || localStorage.getItem('vendor_branch_location') || '';
   } catch (_) {}
 
@@ -518,6 +648,17 @@ const normalizeListing = (item) => {
   const discountPct      = salesStatus?.discount_percentage ?? item.discount_percentage ?? 0;
   const discountedPrice  = salesStatus?.discounted_price    ?? item.discounted_price    ?? null;
 
+  // ── Resolve variant stock from all possible field names ──
+  const normalizedVariants = (item.variants ?? item.detail?.variants ?? []).map((v) => ({
+    ...v,
+    stock:
+      v.stock         ??
+      v.quantity      ??
+      v.stock_quantity ??
+      v.detail?.stock ??
+      0,
+  }));
+
   return {
     ...item,
     id:                item.id,
@@ -525,11 +666,15 @@ const normalizeListing = (item) => {
     inventory_quality: normalizedQuality,
     qty:               normalizedQuality,
     sku:               item.detail?.sku   ?? item.sku   ?? '',
-    stock:             item.detail?.stock ?? item.stock ?? 0,
-    variants:          item.variants ?? item.detail?.variants ?? [],
-    // branch_location from vendor profile
+    // ── stock: read from all possible field names ──
+    stock:
+      item.detail?.stock    ??
+      item.stock            ??
+      item.stock_quantity   ??
+      item.quantity         ??
+      0,
+    variants:          normalizedVariants,
     branch_location:   item.branch_location ?? item.detail?.branch_location ?? '',
-    // normalised discount fields for ProductCard display
     discount_enabled:    discountEnabled,
     discount_percentage: discountPct,
     discounted_price:    discountedPrice,
@@ -547,7 +692,7 @@ export const getProducts = async () => {
   else if (Array.isArray(payload?.results)) raw = payload.results;
 
   const normalized = raw.map(normalizeListing);
-  console.log('[getProducts] normalized products:', normalized.map((p) => ({ id: p.id, title: p.title })));
+  console.log('[getProducts] normalized products:', normalized.map((p) => ({ id: p.id, title: p.title, stock: p.stock, variants: p.variants?.length })));
   return normalized;
 };
 
@@ -609,7 +754,6 @@ export const createProductListing = async (productData) => {
     availability:      'available',
     price:             String(parseFloat(productData.price)),
     price_unit:        'item',
-    // ── branch_location from vendor onboarding, not user-typed ──
     branch_location:   productData.branch_location || localStorage.getItem('vendor_branch_location') || '',
     sales_status:      salesStatus,
     detail: {
@@ -678,15 +822,14 @@ export const updateProductListing = async (listingId, productData) => {
       : { on_sale: false };
 
   const payload = {
-    listing_type:   'product',
-    title:          productData.title?.trim(),
-    description:    productData.description?.trim() || '',
-    status:         productData.is_published ? 'published' : 'draft',
-    price:          String(parseFloat(productData.price)),
-    price_unit:     'item',
-    // ── branch_location from vendor onboarding ──
+    listing_type:    'product',
+    title:           productData.title?.trim(),
+    description:     productData.description?.trim() || '',
+    status:          productData.is_published ? 'published' : 'draft',
+    price:           String(parseFloat(productData.price)),
+    price_unit:      'item',
     branch_location: productData.branch_location || localStorage.getItem('vendor_branch_location') || '',
-    sales_status:   salesStatus,
+    sales_status:    salesStatus,
     detail: {
       sku:        productData.sku?.trim() || '',
       base_price: String(parseFloat(productData.price)),
@@ -728,7 +871,6 @@ export const updateListingStatus = (listingId, newStatus) =>
 
 // ─── IMAGE UPLOAD HELPERS ─────────────────────────────────────────────────────
 export const uploadListingImage = async (listingId, imageFile) => {
-  // Guard: only process actual File objects
   if (!(imageFile instanceof File)) {
     console.warn('[uploadListingImage] Skipping non-File value:', imageFile);
     return null;
@@ -746,7 +888,6 @@ export const uploadListingImages = async (listingId, imageFiles) => {
   if (!Array.isArray(imageFiles) || imageFiles.length === 0) return [];
   const results = [];
   for (const file of imageFiles) {
-    // Each entry may be a raw File or a { file, preview } object from the form state
     const actualFile = file instanceof File ? file : file?.file;
     if (actualFile instanceof File) {
       const result = await uploadListingImage(listingId, actualFile);
