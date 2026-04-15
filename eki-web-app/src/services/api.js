@@ -7,13 +7,31 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// REQUEST INTERCEPTOR: Attach access token
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("access_token");
-  // Only attach if we have a token
-  if (token && token !== "undefined" && token !== "null") {
-    config.headers.Authorization = `Bearer ${token}`;
+  const publicEndpoints = [
+    { url: '/accounts/register-vendor/', method: 'post' }, // ONLY POST is public
+    { url: '/accounts/login/', method: 'post' },
+    { url: '/accounts/verify-email/', method: 'post' },
+    { url: '/accounts/resend-code/', method: 'post' },
+    { url: '/accounts/password/reset/', method: 'post' },
+    { url: '/accounts/password/reset/confirm/', method: 'post' },
+    { url: '/accounts/token/refresh/', method: 'post' }
+  ];
+
+  const isPublicEndpoint = publicEndpoints.some(
+    (endpoint) =>
+      config.url?.includes(endpoint.url) &&
+      config.method === endpoint.method
+  );
+
+  if (!isPublicEndpoint) {
+    const token = localStorage.getItem("access_token");
+
+    if (token && token !== "undefined" && token !== "null") {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
+
   return config;
 });
 
@@ -68,9 +86,10 @@ api.interceptors.response.use(
 
 export default api;
 
+
 /*  AUTH & REGISTRATION  */
 
-// Sign In (Your requirement: File name is "sign in")
+// Sign In
 export const SigninUser = async ({ email, password }) => {
   const response = await api.post("/accounts/login/", { email, password });
   return response.data;
@@ -164,66 +183,20 @@ export const changePassword = async ({
 };
 
 /*  VENDOR ONBOARDING & PROFILE  */
-export const completeVendorOnboarding = async (formData) => {
+
+// Helper function to prepare FormData for vendor onboarding
+const prepareVendorFormData = (formData, isFinalSubmission = false) => {
   const data = new FormData();
 
+  // Process main form fields (skip documents object)
   Object.keys(formData).forEach((key) => {
-    // 1. Skip documents and nulls
-    if (
-      key !== "documents" &&
-      formData[key] !== null &&
-      formData[key] !== undefined
-    ) {
+    if (key !== "documents" && formData[key] !== null && formData[key] !== undefined) {
       let value = formData[key];
 
-      //  Force business_category to lowercase
-      if (key === "business_category") {
-        value = String(value).toLowerCase();
+      // Skip incorporation_cert_expiry if it exists at root level
+      if (key === "incorporation_cert_expiry") {
+        return;
       }
-
-      // Ensure phone doesn't have spaces and has a +
-      if (key === "business_phone" && value) {
-        value = value.replace(/\s/g, "");
-        if (!value.startsWith("+")) value = `+${value}`;
-      }
-
-      //  Only append if the string isn't empty (avoids validation errors on optional fields)
-      if (value !== "") {
-        data.append(key, value);
-      }
-    }
-  });
-
-  // 2. Append documents
-  if (formData.documents) {
-    Object.keys(formData.documents).forEach((key) => {
-      if (formData.documents[key] instanceof File) {
-        data.append(key, formData.documents[key]);
-      }
-    });
-  }
-
-  // 3. IMPORTANT: Remove manual 'Content-Type'.
-  // Axios will set it automatically with the correct 'boundary' for files.
-  const response = await api.patch("/accounts/register-vendor/", data, {
-    headers: { "Content-Type": undefined },
-  });
-
-  return response.data;
-};
-
-// For final submission of vendor application (triggers UNDER_REVIEW email)
-export const submitVendorApplication = async (formData) => {
-  const data = new FormData();
-
-  Object.keys(formData).forEach((key) => {
-    // 1. Skip documents and nulls
-    if (
-      key !== "documents" &&
-      formData[key] !== null &&
-      formData[key] !== undefined
-    ) {
-      let value = formData[key];
 
       // Force business_category to lowercase
       if (key === "business_category") {
@@ -236,39 +209,104 @@ export const submitVendorApplication = async (formData) => {
         if (!value.startsWith("+")) value = `+${value}`;
       }
 
-      // Only append if the string isn't empty
-      if (value !== "") {
+      // Handle branch_locations - Convert array to JSON string
+      if (key === "branch_locations" && Array.isArray(value) && value.length > 0) {
+        data.append(key, JSON.stringify(value));
+      } 
+      // Only append if the value is not empty
+      else if (value !== "" && value !== null && value !== undefined) {
         data.append(key, value);
       }
     }
   });
 
-  // 2. Append documents
+  // Process documents
   if (formData.documents) {
-    Object.keys(formData.documents).forEach((key) => {
-      if (formData.documents[key] instanceof File) {
-        data.append(key, formData.documents[key]);
+    const documentFields = [
+      'government_issued_id',
+      'government_issued_id_expiry',
+      'professional_body_certification',
+      'professional_body_certification_expiry',
+      'business_license',
+      'business_license_expiry',
+      'tax_certificate',
+      'tax_certificate_expiry',
+      'incorporation_cert',
+      'incorporation_cert_expiry'
+    ];
+    
+    documentFields.forEach((field) => {
+      const value = formData.documents[field];
+      if (value instanceof File) {
+        // Handle file uploads
+        data.append(field, value);
+      } else if (value && typeof value === 'string' && value !== "") {
+        // Skip incorporation_cert_expiry for final submission if not needed
+        if (field === 'incorporation_cert_expiry' && !isFinalSubmission) {
+          return;
+        }
+        // Handle expiry dates and other string fields
+        data.append(field, value);
       }
     });
   }
 
-  // 3. IMPORTANT: Use PUT method (not PATCH) to trigger the UNDER_REVIEW email
-  const response = await api.put("/accounts/register-vendor/", data, {
-    headers: { "Content-Type": undefined },
+  return data;
+};
+
+// Save vendor profile incrementally (PATCH) - Steps 3, 4, 5
+export const completeVendorOnboarding = async (formData) => {
+  const data = prepareVendorFormData(formData, false);
+  
+  const response = await api.patch("/accounts/register-vendor/", data, {
+    headers: { "Content-Type": undefined }, // Let axios set multipart boundary
   });
 
   return response.data;
 };
 
-// export const getVendorProfile = async () => {
-//   const response = await api.get("/accounts/vendor/vendorprofile/");
-//   return response.data;
-// };
+// Final submission of vendor application (PUT) - Step 6, triggers UNDER_REVIEW email
+export const submitVendorApplication = async (formData) => {
+  const data = prepareVendorFormData(formData, true);
+  
+  // DEBUG: Log everything being sent
+  console.log("=== SUBMITTING VENDOR APPLICATION ===");
+  console.log("FormData contents:");
+  for (let pair of data.entries()) {
+    // Don't log file contents, just the filename
+    if (pair[1] instanceof File) {
+      console.log(`${pair[0]}: [FILE] ${pair[1].name} (${pair[1].size} bytes)`);
+    } else {
+      console.log(`${pair[0]}: ${pair[1]}`);
+    }
+  }
+  
+  try {
+    const response = await api.put("/accounts/register-vendor/", data, {
+      headers: { "Content-Type": undefined },
+    });
+    console.log("SUCCESS:", response.data);
+    return response.data;
+  } catch (error) {
+    // Log detailed error information
+    console.error("=== ERROR RESPONSE ===");
+    if (error.response) {
+      console.error("Status:", error.response.status);
+      console.error("Data:", error.response.data);
+      console.error("Headers:", error.response.headers);
+    } else if (error.request) {
+      console.error("No response received:", error.request);
+    } else {
+      console.error("Error:", error.message);
+    }
+    throw error;
+  }
+};
 
 export const logoutUser = async () => {
   const refresh_token = localStorage.getItem("refresh_token");
   localStorage.clear();
-  window.location.href = "/loginin";
+  window.location.href = "/login";
 
   if (refresh_token) {
     try {
@@ -284,9 +322,8 @@ export const validateSession = async () => {
   return response.data;
 };
 
-
 // BUSINESS SETTINGS PAGE
-// fetch the vendor's current profile data
+// Fetch the vendor's current profile data
 export const getVendorProfile = async () => {
   const response = await api.get("/accounts/register-vendor/");
   return response.data.data;
@@ -306,6 +343,8 @@ export const updateVendorProfile = async (changedFields) => {
       let phone = value.replace(/\s/g, "");
       if (!phone.startsWith("+")) phone = `+${phone}`;
       data.append(key, phone);
+    } else if (key === "branch_locations" && Array.isArray(value) && value.length > 0) {
+      data.append(key, JSON.stringify(value));
     } else {
       data.append(key, value); // File objects (logo) are appended as-is
     }
@@ -316,8 +355,6 @@ export const updateVendorProfile = async (changedFields) => {
   });
   return response.data;
 };
-
-
 
 // BUSINESS SETTINGS — dedicated endpoint
 // GET /api/v1/accounts/vendor/business-settings/
@@ -340,13 +377,15 @@ export const updateVendorBusinessSettings = async (changedFields) => {
       let phone = String(value).replace(/\s/g, "");
       if (!phone.startsWith("+")) phone = `+${phone}`;
       data.append(key, phone);
+    } else if (key === "branch_locations" && Array.isArray(value) && value.length > 0) {
+      data.append(key, JSON.stringify(value));
     } else {
       data.append(key, value); // Files (logo, docs) appended as-is
     }
   });
 
   const response = await api.patch("/accounts/vendor/business-settings/", data, {
-    headers: { "Content-Type": undefined }, // Let axios set multipart boundary
+    headers: { "Content-Type": undefined },
   });
   return response.data.data;
 };
@@ -388,17 +427,15 @@ export const uploadListingImage = async (listingId, imageFile) => {
   return response.data;
 };
 
+/*  ADMIN DASHBOARD ENDPOINTS  */
 
-// ADMIN DASHBOARD ENDPOINTS
-// ADDED: Single call that powers the entire admin dashboard.
-// Returns: overview stats, user_management, content_moderation,
-//          transaction_monitoring, verification_workflows, unread_notifications
+// Single call that powers the entire admin dashboard
 export const getAdminDashboard = async () => {
   const response = await api.get("/accounts/admin/dashboard/");
   return response.data;
 };
 
-// ADDED: Recent admin action logs — feeds the ActivityPanel
+// Recent admin action logs — feeds the ActivityPanel
 // Paginated: pass page number e.g. getAdminLogs(2)
 export const getAdminLogs = async (page = 1) => {
   const response = await api.get("/accounts/admin/logs/", {
@@ -407,9 +444,8 @@ export const getAdminLogs = async (page = 1) => {
   return response.data;
 };
 
-// ADDED: Flagged content for the moderation table
-// Optional filters: status = pending | reviewing | resolved
-//                   type   = listing | review | chat_message
+// Flagged content for the moderation table
+// Optional filters: status = pending | reviewing | resolved, type = listing | review | chat_message
 export const getAdminModeration = async (filters = {}) => {
   const response = await api.get("/accounts/admin/moderation/", {
     params: filters,
@@ -417,26 +453,25 @@ export const getAdminModeration = async (filters = {}) => {
   return response.data;
 };
 
-// ADDED: Platform-wide stats (total users, listings, etc.)
+// Platform-wide stats (total users, listings, etc.)
 export const getAdminStats = async () => {
   const response = await api.get("/accounts/admin/stats/");
   return response.data;
 };
 
-// ADDED: List all vendor verification applications
+// List all vendor verification applications
 export const getAdminVerifications = async () => {
   const response = await api.get("/accounts/admin/verifications/");
   return response.data;
 };
 
-// ADDED: Approve, reject, or suspend a vendor verification
-// status options: "approved" | "rejected" | "suspended"
-// rejection_reason is required when status is rejected or suspended
+// Approve or reject a vendor verification
+// status options: "approved" | "rejected"
+// rejection_reason is required when status is rejected
 export const updateVerificationStatus = async (vendorId, status, rejectionReason = "") => {
   const payload = { verification_status: status };
   if (rejectionReason) payload.rejection_reason = rejectionReason;
 
-  // This endpoint ONLY accepts 'approved' or 'rejected'
   const response = await api.patch(
     `/accounts/admin/verifications/${vendorId}/`,
     payload
@@ -445,15 +480,15 @@ export const updateVerificationStatus = async (vendorId, status, rejectionReason
 };
 
 // For suspending/terminating APPROVED vendors
+// status options: "suspended" | "terminated"
 export const updateVendorStatus = async (vendorId, status, reason = "") => {
   const payload = { verification_status: status };
   if (reason) payload.rejection_reason = reason;
-  // Use the vendor management endpoint
   const response = await api.patch(`/accounts/admin/vendors/${vendorId}/status/`, payload);
   return response.data;
 };
 
-// ADDED: Get admin notifications
+// Get admin notifications
 export const getAdminNotifications = async (filters = {}) => {
   const response = await api.get("/accounts/admin/notifications/", {
     params: filters,
@@ -461,7 +496,7 @@ export const getAdminNotifications = async (filters = {}) => {
   return response.data;
 };
 
-// ADDED: Mark a single notification as read
+// Mark a single notification as read
 export const markNotificationRead = async (notificationId) => {
   const response = await api.post(
     `/accounts/admin/notifications/${notificationId}/read/`

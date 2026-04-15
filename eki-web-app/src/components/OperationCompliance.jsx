@@ -1,7 +1,8 @@
 import React, { useRef, useState } from "react";
-import { HiOutlineCloudUpload, HiCheckCircle, HiExclamationCircle, HiOutlineCalendar } from "react-icons/hi";
+import { HiOutlineCloudUpload, HiCheckCircle, HiOutlineCalendar } from "react-icons/hi";
 import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
 import { validateOperationCompliance } from "../utils/onboardingValidation";
+import { completeVendorOnboarding } from "../services/api";  // ADD THIS IMPORT
 
 const OperationCompliance = () => {
   const { state, dispatch } = useOnboarding();
@@ -12,16 +13,17 @@ const OperationCompliance = () => {
   const [touched, setTouched] = useState({});
   const [submitError, setSubmitError] = useState("");
 
-  // File refs for 5 documents
+  // File refs for documents
   const govtIdRef = useRef(null);
   const professionalCertRef = useRef(null);
   const businessLicenseRef = useRef(null);
   const taxCertificateRef = useRef(null);
   const incCertificateRef = useRef(null);
 
+  // : Use correct field names that match backend
   const fileRefs = {
     government_issued_id: govtIdRef,
-    professional_certification: professionalCertRef,
+    professional_body_certification: professionalCertRef,
     business_license: businessLicenseRef,
     tax_certificate: taxCertificateRef,
     incorporation_cert: incCertificateRef,
@@ -29,10 +31,37 @@ const OperationCompliance = () => {
 
   const showError = (field) => touched[field] && errors[field];
 
-  const handleReviewClick = () => {
+  const handleReviewClick = async () => {  
+    console.log("=== OPERATIONS & COMPLIANCE: Review Click ===");
+    console.log("Documents in formData:", {
+      government_issued_id: !!formData.documents?.government_issued_id,
+      government_issued_id_expiry: formData.documents?.government_issued_id_expiry,
+      business_license: !!formData.documents?.business_license,
+      business_license_expiry: formData.documents?.business_license_expiry,
+      tax_certificate: !!formData.documents?.tax_certificate,
+      tax_certificate_expiry: formData.documents?.tax_certificate_expiry,
+      incorporation_cert: !!formData.documents?.incorporation_cert,
+    });
+
+    // FIRST: Save the documents to backend
+    setIsLoading(true);
+    try {
+      console.log("Saving documents to backend...");
+      await completeVendorOnboarding(formData);
+      console.log("Documents saved successfully!");
+    } catch (error) {
+      console.error("Failed to save documents:", error);
+      setSubmitError("Failed to save documents. Please try again.");
+      setIsLoading(false);
+      return;
+    }
+
+    // THEN: Validate and move to next step
     setTouched({
       government_issued_id: true,
       government_issued_id_expiry: true,
+      professional_body_certification: true,
+      professional_body_certification_expiry: true,
       business_license: true,
       business_license_expiry: true,
       tax_certificate: true,
@@ -40,23 +69,34 @@ const OperationCompliance = () => {
       incorporation_cert: true,
     });
 
+    // Merge formData with documents for validation
     const dataToValidate = {
       ...formData,
-      ...(formData.documents || {})
+      government_issued_id_expiry: formData.documents?.government_issued_id_expiry,
+      professional_body_certification_expiry: formData.documents?.professional_body_certification_expiry,
+      business_license_expiry: formData.documents?.business_license_expiry,
+      tax_certificate_expiry: formData.documents?.tax_certificate_expiry,
+      documents: formData.documents
     };
 
     const validationErrors = validateOperationCompliance(dataToValidate);
     setErrors(validationErrors);
 
     if (Object.keys(validationErrors).length === 0) {
-      // Go to Step 6 (Review & Submit)
+      console.log("Validation passed, moving to step 6");
       dispatch({ type: ACTIONS.SET_STEP, payload: 6 });
+    } else {
+      console.log("Validation failed:", validationErrors);
     }
+    
+    setIsLoading(false);
   };
 
   const handleFileChange = (field, e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    console.log(`File uploaded: ${field} = ${file.name}`);
 
     setErrors(prev => {
       const newErrors = { ...prev };
@@ -77,16 +117,22 @@ const OperationCompliance = () => {
   };
 
   const handleExpiryChange = (field, value) => {
+    console.log(`Expiry set: ${field}_expiry = ${value}`);
+    
     dispatch({
       type: ACTIONS.UPDATE_FORM,
-      payload: { [field]: value },
+      payload: {
+        documents: {
+          ...(formData.documents || {}),
+          [`${field}_expiry`]: value,
+        },
+      },
     });
-    setTouched(prev => ({ ...prev, [field]: true }));
+    setTouched(prev => ({ ...prev, [`${field}_expiry`]: true }));
     
-    // Clear error for this field
     setErrors(prev => {
       const newErrors = { ...prev };
-      delete newErrors[field];
+      delete newErrors[`${field}_expiry`];
       return newErrors;
     });
   };
@@ -95,12 +141,12 @@ const OperationCompliance = () => {
     const file = formData.documents?.[field];
     const isUploaded = !!file;
     const hasError = showError(field) && errors[field];
-    const expiryValue = formData[`${field}_expiry`] || "";
+    // Get expiry from documents object
+    const expiryValue = formData.documents?.[`${field}_expiry`] || "";
     const hasExpiryError = showError(`${field}_expiry`) && errors[`${field}_expiry`];
 
     return (
       <div className="border-t border-gray-100 pt-2 first:border-t-0 first:pt-0">
-        {/* Header */}
         <div className="mb-1.5">
           <label className="text-[10px] font-semibold text-gray-800">
             {label} {required && <span className="text-red-500">*</span>}
@@ -110,9 +156,7 @@ const OperationCompliance = () => {
           )}
         </div>
 
-        {/* Row with Upload Area and Expiry Date side by side */}
         <div className="flex flex-col sm:flex-row gap-2 items-start">
-          {/* Upload Area - Takes remaining space */}
           <div className="flex-1">
             <div
               onClick={() => fileRefs[field]?.current?.click()}
@@ -151,7 +195,6 @@ const OperationCompliance = () => {
             )}
           </div>
 
-          {/* Expiry Date - On the right side */}
           {showExpiry && (
             <div className="sm:w-[180px]">
               <label className="text-[8px] font-semibold text-gray-700 mb-0.5 flex items-center gap-0.5">
@@ -161,7 +204,7 @@ const OperationCompliance = () => {
               <input
                 type="date"
                 value={expiryValue}
-                onChange={(e) => handleExpiryChange(`${field}_expiry`, e.target.value)}
+                onChange={(e) => handleExpiryChange(field, e.target.value)}
                 className={`w-full h-7 px-2 bg-white border rounded-lg text-[9px] focus:border-[#F2B53D] outline-none ${
                   hasExpiryError ? 'border-red-400' : 'border-gray-200'
                 }`}
@@ -178,7 +221,6 @@ const OperationCompliance = () => {
 
   return (
     <div className="w-full animate-fadeIn">
-      {/* Header - Reduced */}
       <div className="flex items-center gap-1.5 mb-2">
         <div className="w-6 h-6 bg-[#FFF8ED] rounded-lg flex items-center justify-center shrink-0">
           <HiOutlineCloudUpload className="text-[#F2B53D]" size={14} />
@@ -189,16 +231,13 @@ const OperationCompliance = () => {
         </div>
       </div>
 
-      {/* Display submission error if any */}
       {submitError && (
         <div className="mb-2 p-1 bg-red-50 border border-red-200 rounded-md">
           <p className="text-red-600 text-[8px] font-medium">{submitError}</p>
         </div>
       )}
 
-      {/* Document Sections - Reduced spacing */}
       <div className="space-y-2 mb-3">
-        {/* 1. Government Issued ID */}
         <DocumentSection
           label="Government Issued ID"
           field="government_issued_id"
@@ -207,16 +246,14 @@ const OperationCompliance = () => {
           showExpiry={true}
         />
 
-        {/* 2. Professional Body Certification */}
         <DocumentSection
           label="Professional Certification"
-          field="professional_certification"
+          field="professional_body_certification"
           description="Optional: PRC, CPA, Engineering"
           required={false}
           showExpiry={true}
         />
 
-        {/* 3. Business License */}
         <DocumentSection
           label="Business License"
           field="business_license"
@@ -225,7 +262,6 @@ const OperationCompliance = () => {
           showExpiry={true}
         />
 
-        {/* 4. Tax Certificate */}
         <DocumentSection
           label="Tax Certificate"
           field="tax_certificate"
@@ -234,7 +270,6 @@ const OperationCompliance = () => {
           showExpiry={true}
         />
 
-        {/* 5. Incorporation Certificate */}
         <DocumentSection
           label="Incorporation Certificate"
           field="incorporation_cert"
@@ -244,7 +279,6 @@ const OperationCompliance = () => {
         />
       </div>
 
-      {/* Buttons - Reduced */}
       <div className="flex gap-2 mt-2">
         <button
           onClick={() => dispatch({ type: ACTIONS.PREV_STEP })}
@@ -254,9 +288,10 @@ const OperationCompliance = () => {
         </button>
         <button
           onClick={handleReviewClick}
-          className="flex-1 max-w-[100px] h-6 rounded-full text-white font-bold text-[9px] transition-all bg-[#D99201] hover:bg-[#e0a630]"
+          disabled={isLoading}
+          className="flex-1 max-w-[100px] h-6 rounded-full text-white font-bold text-[9px] transition-all bg-[#D99201] hover:bg-[#e0a630] disabled:opacity-50"
         >
-          Review All
+          {isLoading ? "Saving..." : "Review All"}
         </button>
       </div>
     </div>
