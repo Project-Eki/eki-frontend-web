@@ -17,6 +17,7 @@ import {
   deleteProductListing,
   uploadListingImages,
   getVendorDashboard,
+  getImageUrl,               // ← ADDED
 } from '../services/authService';
 import { getCurrencySymbol } from '../utils/currency';
 
@@ -57,7 +58,7 @@ const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => 
     <div className="bg-white rounded-xl border border-slate-100 overflow-hidden hover:shadow-md transition-all group">
       <div className="relative h-40 bg-slate-50 cursor-pointer" onClick={onClick}>
         {mainImage ? (
-          <img src={mainImage} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          <img src={getImageUrl(mainImage)} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <ShoppingBag size={32} className="text-slate-200" />
@@ -128,7 +129,6 @@ const ProductCard = ({ product, currencySymbol, onClick, onEdit, onDelete }) => 
         {showVariants && hasMultipleVariants && (
           <div className="mt-2 space-y-1.5 max-h-40 overflow-y-auto">
             {product.variants?.map((variant, idx) => {
-              // ── Read stock from all possible field names the API may return ──
               const variantStock =
                 variant.stock ??
                 variant.quantity ??
@@ -175,7 +175,7 @@ const ProductListItem = ({ product, currencySymbol, onEdit, onDelete }) => {
       <div className="flex items-start gap-4">
         <div className="w-20 h-20 rounded-lg bg-slate-50 overflow-hidden flex-shrink-0">
           {mainImage ? (
-            <img src={mainImage} alt={product.title} className="w-full h-full object-cover" />
+            <img src={getImageUrl(mainImage)} alt={product.title} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <ShoppingBag size={24} className="text-slate-200" />
@@ -222,7 +222,6 @@ const ProductListItem = ({ product, currencySymbol, onEdit, onDelete }) => {
                 {currencySymbol} {Number(product.price || 0).toLocaleString()}
               </span>
             )}
-            {/* ── Product-level stock with correct field resolution ── */}
             <span className="text-[10px] text-slate-500">
               Stock: {product.stock ?? product.detail?.stock ?? product.stock_quantity ?? 0}
             </span>
@@ -241,7 +240,6 @@ const ProductListItem = ({ product, currencySymbol, onEdit, onDelete }) => {
           {showVariants && variantCount > 1 && (
             <div className="mt-3 space-y-2 max-h-60 overflow-y-auto">
               {product.variants?.map((variant, idx) => {
-                // ── Read stock from all possible field names ──
                 const variantStock =
                   variant.stock ??
                   variant.quantity ??
@@ -431,7 +429,6 @@ const ProductDashboard = () => {
     console.log('[handleEditProduct] product:', product);
     console.log('[handleEditProduct] listing ID:', product.id);
 
-    // ── Resolve stock from all possible API field names ──
     const resolvedStock =
       product.detail?.stock ??
       product.stock ??
@@ -439,10 +436,8 @@ const ProductDashboard = () => {
       product.quantity ??
       0;
 
-    // ── Resolve variants with correct stock per variant ──
     const resolvedVariants = (product.variants || []).map((v) => ({
       ...v,
-      // Ensure each variant carries its actual stock, not 0
       stock:
         v.stock ??
         v.quantity ??

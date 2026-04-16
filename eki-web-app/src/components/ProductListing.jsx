@@ -3,6 +3,7 @@ import {
   X, ArrowRight, ArrowLeft, Eye, CheckCircle2, Palette, Ruler,
   ImagePlus, Trash2, ShoppingBag, ChevronDown, ChevronUp, Camera,
 } from 'lucide-react';
+import { getImageUrl } from '../services/authService';   // <-- ADDED
 
 // Constants
 const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'one_size'];
@@ -400,7 +401,7 @@ const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, 
       <div className="flex flex-wrap gap-1.5">
         {existingImages.map((img, i) => (
           <div key={img.id ?? i} className="w-16 h-16 rounded-lg border border-slate-200 overflow-hidden relative group flex-shrink-0">
-            <img src={img.image} alt={`Product ${i + 1}`} className="w-full h-full object-cover" />
+            <img src={getImageUrl(img.image)} alt={`Product ${i + 1}`} className="w-full h-full object-cover" />  {/* FIXED */}
             {i === 0 && (
               <span className="absolute bottom-0 left-0 right-0 bg-[#125852]/80 text-white text-[7px] font-black text-center py-0.5">MAIN</span>
             )}
@@ -708,7 +709,6 @@ const ProductListing = ({
   currencySymbol = 'UGX',
   initialData = null,
   submitLabel = 'Publish Product',
-  // ── NEW: branch_location passed in from vendor profile ──
   branchLocation = '',
 }) => {
   const [formStep, setFormStep] = useState(1);
@@ -905,7 +905,6 @@ const ProductListing = ({
       return;
     }
 
-    // ── CHANGED: discount now sends sales_status; branch_location comes from vendor profile ──
     const discountedPrice = formData.discountEnabled && formData.price
       ? parseFloat(formData.price) * (1 - formData.discountPercentage / 100)
       : null;
@@ -913,7 +912,6 @@ const ProductListing = ({
     const payload = {
       title: formData.title,
       description: formData.description,
-      // branch_location comes from vendor onboarding info, not typed by user
       branch_location: branchLocation || '',
       price: parseFloat(formData.price) || 0,
       sku: formData.sku,
@@ -922,7 +920,6 @@ const ProductListing = ({
       colors: formData.colors,
       is_published: isPublished,
       business_category: businessCategory,
-      // sales_status replaces the old discount_enabled / discount_percentage / discounted_price fields
       sales_status: formData.discountEnabled
         ? {
             on_sale: true,
@@ -981,7 +978,6 @@ const ProductListing = ({
             <div className="px-6 py-4 space-y-3 overflow-y-auto flex-1">
               <ErrorBanner msg={formErrors._server} />
 
-              {/* ── Branch Location display (read-only, from vendor profile) ── */}
               {branchLocation && (
                 <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
                   <span className="text-[10px] font-bold uppercase text-slate-400">Branch Location</span>
@@ -1001,7 +997,6 @@ const ProductListing = ({
                 {formErrors.title && <p className="text-red-500 text-[9px] font-bold">{formErrors.title}</p>}
               </div>
 
-              {/* ── Price & SKU row (sub-category field removed) ── */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold uppercase text-slate-500">Price ({currencySymbol}) *</label>
@@ -1037,7 +1032,6 @@ const ProductListing = ({
                 </p>
               </div>
 
-              {/* ── Discount → sales_status ── */}
               <div className="space-y-3 border border-slate-100 rounded-xl p-4 bg-slate-50/50">
                 <div className="flex items-center justify-between">
                   <label className="text-[11px] font-bold uppercase text-slate-600">Apply Discount</label>

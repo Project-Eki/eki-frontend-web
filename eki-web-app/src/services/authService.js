@@ -3,6 +3,16 @@ import axios from 'axios';
 // ─── Vite exposes env vars via import.meta.env (not process.env) ───────────
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://joineki.com/api/v1';
 
+// ─── Helper to convert relative image paths to absolute URLs ────────────────
+export const getImageUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  // Remove /api/v1 from base URL to get the root domain where media is served
+  const baseUrl = API_BASE_URL.replace(/\/api\/v1$/, '');
+  const normalizedPath = path.startsWith('/') ? path : '/' + path;
+  return `${baseUrl}${normalizedPath}`;
+};
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
@@ -643,8 +653,8 @@ export const createProductListing = async (productData) => {
 
   const salesStatus = productData.sales_status
     ? productData.sales_status
-    : productData.discount_enabled
-      ? { on_sale: true, discount_percentage: productData.discount_percentage ?? 0, discounted_price: productData.discounted_price ?? null }
+    : productData.discountEnabled
+      ? { on_sale: true, discount_percentage: productData.discountPercentage ?? 0, discounted_price: productData.discounted_price ?? null }
       : { on_sale: false };
 
   const payload = {
@@ -705,8 +715,8 @@ export const updateProductListing = async (listingId, productData) => {
 
   const salesStatus = productData.sales_status
     ? productData.sales_status
-    : productData.discount_enabled
-      ? { on_sale: true, discount_percentage: productData.discount_percentage ?? 0, discounted_price: productData.discounted_price ?? null }
+    : productData.discountEnabled
+      ? { on_sale: true, discount_percentage: productData.discountPercentage ?? 0, discounted_price: productData.discounted_price ?? null }
       : { on_sale: false };
 
   const payload = {
