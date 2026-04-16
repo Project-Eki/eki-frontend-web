@@ -1077,7 +1077,7 @@ const ProductListing = ({
                   Total units available. This decreases automatically as orders are placed. Skip if using size/color variants — set stock per variant instead.
                 </p> */}
                 {/* ── Stock fix: show a live "available stock" hint when editing ── */}
-                {isEditMode && (
+                {/* {isEditMode && (
                   <div className="flex items-center gap-2 mt-1 px-2 py-1.5 bg-blue-50 border border-blue-100 rounded-lg">
                     <span className="text-[9px] text-blue-600 font-bold">Current stock on record:</span>
                     <span className="text-[9px] font-black text-[#125852]">
@@ -1085,7 +1085,7 @@ const ProductListing = ({
                     </span>
                     <span className="text-[8px] text-blue-400 ml-auto italic">Updates after orders are fulfilled</span>
                   </div>
-                )}
+                )} */}
               </div>
 
               <div className="space-y-3 border border-slate-100 rounded-xl p-4 bg-slate-50/50">
