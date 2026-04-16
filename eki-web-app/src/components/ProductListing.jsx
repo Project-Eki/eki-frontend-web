@@ -1073,9 +1073,9 @@ const ProductListing = ({
                   placeholder="e.g. 10" min="0" step="1"
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
                 />
-                <p className="text-[9px] text-slate-400">
+                {/* <p className="text-[9px] text-slate-400">
                   Total units available. This decreases automatically as orders are placed. Skip if using size/color variants — set stock per variant instead.
-                </p>
+                </p> */}
                 {/* ── Stock fix: show a live "available stock" hint when editing ── */}
                 {isEditMode && (
                   <div className="flex items-center gap-2 mt-1 px-2 py-1.5 bg-blue-50 border border-blue-100 rounded-lg">
