@@ -1,9 +1,15 @@
 import axios from "axios";
 
-// Axios instance configured for Localhost development
+// Automatic
+const isProduction = window.location.hostname !== 'localhost' &&
+                     window.location.hostname !== '127.0.0.1';
+
+const baseURL = isProduction
+  ? '/api/v1'                        // on joineki.com.relative, HTTPS-safe
+  : 'http://127.0.0.1:8000/api/v1'; // on  my machine, hits Django directly
+
 const api = axios.create({
-  baseURL: "http://134.122.22.45/api/v1",
-  // baseURL: "http://127.0.0.1:8000/api/v1",
+  baseURL: baseURL,
   headers: { "Content-Type": "application/json" },
 });
 
