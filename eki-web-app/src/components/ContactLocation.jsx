@@ -1,13 +1,21 @@
 import React, { useState } from "react";
 import { HiOutlineLocationMarker, HiOutlinePhone } from "react-icons/hi";
-import { HiOutlineBuildingOffice, HiOutlineMapPin, HiOutlineHome, HiOutlineClock } from "react-icons/hi2";
+import {
+  HiOutlineBuildingOffice,
+  HiOutlineMapPin,
+  HiOutlineHome,
+  HiOutlineClock,
+  HiPlus,
+} from "react-icons/hi2";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 import { validateContactLocation } from "../utils/onboardingValidation";
 import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
 import SearchableCountrySelector from "./SearchableCountrySelector";
+import BranchModal from "./BranchModal";
+import BranchCard from "./BranchCard";
 
-// Reusable inline error tag
+// Inline error component
 const InlineError = ({ message }) => (
   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-bold text-red-500 bg-red-50 border border-red-200 rounded-md px-1.5 py-0.5 whitespace-nowrap pointer-events-none z-20">
     {message}
@@ -20,13 +28,22 @@ const ContactLocation = () => {
 
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
+  const [showBranchModal, setShowBranchModal] = useState(false);
+  const [editingBranchIndex, setEditingBranchIndex] = useState(null);
+  const [branchForm, setBranchForm] = useState({
+    address: "",
+    city: "",
+    phone: "",
+    hours: "",
+    landmark: "",
+  });
 
   const handleChange = (field, value) => {
     dispatch({
       type: ACTIONS.UPDATE_FORM,
       payload: { [field]: value },
     });
-    setTouched(prev => ({ ...prev, [field]: true }));
+    setTouched((prev) => ({ ...prev, [field]: true }));
     const validationErrors = validateContactLocation({
       ...formData,
       [field]: value,
@@ -35,13 +52,70 @@ const ContactLocation = () => {
   };
 
   const handleBlur = (field) => {
-    setTouched(prev => ({ ...prev, [field]: true }));
+    setTouched((prev) => ({ ...prev, [field]: true }));
     const validationErrors = validateContactLocation(formData);
     setErrors(validationErrors);
   };
 
+  // FIXED: Remove spaces from phone number immediately
   const handlePhoneChange = (value) => {
-    handleChange("business_phone", value || "");
+    // Remove ALL spaces from the phone number before saving to state
+    const cleanValue = value ? value.replace(/\s/g, "") : "";
+    handleChange("business_phone", cleanValue);
+  };
+
+  // Branch Locations Management
+  const handleAddBranch = () => {
+    const newBranch = {
+      address: branchForm.address,
+      city: branchForm.city,
+      phone: branchForm.phone || "",
+      hours: branchForm.hours || "",
+      landmark: branchForm.landmark || "",
+    };
+
+    let updatedBranches;
+    if (editingBranchIndex !== null) {
+      updatedBranches = [...(formData.branch_locations || [])];
+      updatedBranches[editingBranchIndex] = newBranch;
+    } else {
+      updatedBranches = [...(formData.branch_locations || []), newBranch];
+    }
+
+    handleChange("branch_locations", updatedBranches);
+    resetBranchForm();
+    setShowBranchModal(false);
+  };
+
+  const handleEditBranch = (index) => {
+    const branch = formData.branch_locations[index];
+    setBranchForm({
+      address: branch.address || "",
+      city: branch.city || "",
+      phone: branch.phone || "",
+      hours: branch.hours || "",
+      landmark: branch.landmark || "",
+    });
+    setEditingBranchIndex(index);
+    setShowBranchModal(true);
+  };
+
+  const handleRemoveBranch = (index) => {
+    const updatedBranches = formData.branch_locations.filter(
+      (_, i) => i !== index
+    );
+    handleChange("branch_locations", updatedBranches);
+  };
+
+  const resetBranchForm = () => {
+    setBranchForm({
+      address: "",
+      city: "",
+      phone: "",
+      hours: "",
+      landmark: "",
+    });
+    setEditingBranchIndex(null);
   };
 
   const showError = (field) => touched[field] && errors[field];
@@ -65,73 +139,95 @@ const ContactLocation = () => {
 
   return (
     <div className="w-full animate-fadeIn">
-      {/* Header - Matching other steps */}
+      {/* Header */}
       <div className="flex items-center gap-1.5 mb-2">
         <div className="w-6 h-6 bg-[#FFF8ED] rounded-lg flex items-center justify-center shrink-0">
           <HiOutlineLocationMarker className="text-[#F2B53D]" size={14} />
         </div>
         <div>
-          <h3 className="font-bold text-[12px] text-gray-800">Contact & Location</h3>
-          <p className="text-[9px] text-gray-500">How should customers reach you?</p>
+          <h3 className="font-bold text-[12px] text-gray-800">
+            Contact & Location
+          </h3>
+          <p className="text-[9px] text-gray-500">
+            How should customers reach you?
+          </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-2 gap-y-1.5">
-        {/* Phone Number - Required */}
+        {/* Phone Number */}
         <div className="flex flex-col">
-          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">Phone Number <span className="text-red-500">*</span></label>
+          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
+            Phone Number <span className="text-red-500">*</span>
+          </label>
           <div className="relative">
-            <HiOutlinePhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={12} />
+            <HiOutlinePhone
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"
+              size={12}
+            />
             <PhoneInput
               international
               defaultCountry="UG"
               value={formData.business_phone}
               onChange={handlePhoneChange}
-              onBlur={() => handleBlur('business_phone')}
+              onBlur={() => handleBlur("business_phone")}
               className={`w-full h-8 pl-9 pr-3 bg-white border rounded-xl text-[11px] focus:border-[#F2B53D] outline-none transition-all ${
-                showError('business_phone') ? 'border-red-400' : 'border-gray-200'
+                showError("business_phone") ? "border-red-400" : "border-gray-200"
               }`}
             />
-            {showError('business_phone') && <InlineError message={errors.business_phone} />}
+            {showError("business_phone") && (
+              <InlineError message={errors.business_phone} />
+            )}
           </div>
         </div>
 
-        {/* Country - Required - Using SearchableCountrySelector with inline error */}
+        {/* Country */}
         <div className="flex flex-col">
           <SearchableCountrySelector
             value={formData.country}
             onChange={(val) => handleChange("country", val)}
-            error={showError('country') ? errors.country : ""}
+            error={showError("country") ? errors.country : ""}
             showInlineError={true}
           />
         </div>
 
-        {/* City - Required */}
+        {/* City */}
         <div className="flex flex-col">
-          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">City <span className="text-red-500">*</span></label>
+          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
+            City <span className="text-red-500">*</span>
+          </label>
           <div className="relative">
-            <HiOutlineBuildingOffice className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={12} />
+            <HiOutlineBuildingOffice
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"
+              size={12}
+            />
             <input
               type="text"
               value={formData.city || ""}
               onChange={(e) => handleChange("city", e.target.value)}
-              onBlur={() => handleBlur('city')}
+              onBlur={() => handleBlur("city")}
               placeholder="e.g. Kampala"
               className={`w-full h-8 pl-9 pr-3 bg-white border rounded-xl focus:outline-none text-[11px] ${
-                showError('city')
-                  ? 'border-red-400 placeholder:text-gray-400'
-                  : 'border-gray-200 placeholder:text-gray-400'
+                showError("city")
+                  ? "border-red-400 placeholder:text-gray-400"
+                  : "border-gray-200 placeholder:text-gray-400"
               }`}
             />
-            {showError('city') && <InlineError message={errors.city} />}
+            {showError("city") && <InlineError message={errors.city} />}
           </div>
         </div>
 
-        {/* Street Address - Optional */}
+        {/* Street Address */}
         <div className="flex flex-col">
-          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">Street Address <span className="text-gray-400 text-[9px]">(Optional)</span></label>
+          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
+            Street Address{" "}
+            <span className="text-gray-400 text-[9px]">(Optional)</span>
+          </label>
           <div className="relative">
-            <HiOutlineHome className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={12} />
+            <HiOutlineHome
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"
+              size={12}
+            />
             <input
               type="text"
               value={formData.address || ""}
@@ -142,11 +238,17 @@ const ContactLocation = () => {
           </div>
         </div>
 
-        {/* Landmark - Optional */}
+        {/* Landmark */}
         <div className="flex flex-col">
-          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">Landmark <span className="text-gray-400 text-[9px]">(Optional)</span></label>
+          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
+            Landmark{" "}
+            <span className="text-gray-400 text-[9px]">(Optional)</span>
+          </label>
           <div className="relative">
-            <HiOutlineMapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={12} />
+            <HiOutlineMapPin
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"
+              size={12}
+            />
             <input
               type="text"
               value={formData.landmark || ""}
@@ -157,11 +259,17 @@ const ContactLocation = () => {
           </div>
         </div>
 
-        {/* Intersection - Optional */}
+        {/* Intersection */}
         <div className="flex flex-col">
-          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">Intersection <span className="text-gray-400 text-[9px]">(Optional)</span></label>
+          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
+            Intersection{" "}
+            <span className="text-gray-400 text-[9px]">(Optional)</span>
+          </label>
           <div className="relative">
-            <HiOutlineMapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={12} />
+            <HiOutlineMapPin
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"
+              size={12}
+            />
             <input
               type="text"
               value={formData.intersection || ""}
@@ -172,9 +280,12 @@ const ContactLocation = () => {
           </div>
         </div>
 
-        {/* Zip/Postal Code and Branch Location on same row */}
+        {/* Row with Zip Code and Branch Locations on same row */}
         <div className="flex flex-col">
-          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">Zip/Postal Code <span className="text-gray-400 text-[9px]">(Optional)</span></label>
+          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
+            Zip/Postal Code{" "}
+            <span className="text-gray-400 text-[9px]">(Optional)</span>
+          </label>
           <div className="relative">
             <input
               type="text"
@@ -186,70 +297,125 @@ const ContactLocation = () => {
           </div>
         </div>
 
+        {/* Branch Locations with Add Button - Same row as Zip Code */}
         <div className="flex flex-col">
-          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">Branch Location <span className="text-gray-400 text-[9px]">(Optional)</span></label>
+          <div className="flex items-center justify-between mb-0.5">
+            <label className="text-[10px] font-semibold text-gray-700 ml-1">
+              Branch Locations{" "}
+              <span className="text-gray-400 text-[9px]">(Optional)</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                resetBranchForm();
+                setShowBranchModal(true);
+              }}
+              className="flex items-center gap-1 px-2 py-0.5 bg-[#FFF8ED] text-[#F2B53D] rounded-md text-[8px] font-semibold hover:bg-[#F2B53D]/10 transition-all"
+            >
+              <HiPlus size={8} /> Add Branch
+            </button>
+          </div>
           <div className="relative">
-            <HiOutlineBuildingOffice className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={12} />
             <input
               type="text"
-              value={formData.branch_location || ""}
-              onChange={(e) => handleChange("branch_location", e.target.value)}
-              placeholder="e.g. Downtown, Mall"
-              className="w-full h-8 pl-9 pr-3 bg-white border border-gray-200 rounded-xl focus:outline-none text-[11px] focus:border-[#F2B53D] placeholder:text-gray-400"
+              value={
+                formData.branch_locations?.length > 0
+                  ? `${formData.branch_locations.length} branch(es) added`
+                  : ""
+              }
+              placeholder="No branches added"
+              readOnly
+              className="w-full h-8 pl-3 pr-3 bg-gray-50 border border-gray-200 rounded-xl text-[11px] text-gray-600 cursor-default"
             />
           </div>
         </div>
 
-        {/* Operating Hours Section - Full width */}
-        <div className="flex flex-col md:col-span-2 mt-0">
+        {/* Operating Hours - Full width */}
+        <div className="flex flex-col md:col-span-2 mt-2">
           <div className="flex items-center gap-2 mb-1">
             <HiOutlineClock className="text-[#F2B53D]" size={14} />
-            <label className="text-[10px] font-semibold text-gray-700">Operating Hours</label>
+            <label className="text-[10px] font-semibold text-gray-700">
+              Operating Hours
+            </label>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {/* Opening Time */}
             <div className="flex flex-col">
-              <label className="text-[9px] font-semibold text-gray-600 mb-0.5 ml-1">Opening Time <span className="text-red-500">*</span></label>
+              <label className="text-[9px] font-semibold text-gray-600 mb-0.5 ml-1">
+                Opening Time <span className="text-red-500">*</span>
+              </label>
               <div className="relative">
                 <input
                   type="time"
                   value={formData.opening_time || ""}
                   onChange={(e) => handleChange("opening_time", e.target.value)}
-                  onBlur={() => handleBlur('opening_time')}
+                  onBlur={() => handleBlur("opening_time")}
                   className={`w-full h-8 px-3 bg-white border rounded-xl focus:outline-none text-[11px] focus:border-[#F2B53D] ${
-                    showError('opening_time')
-                      ? 'border-red-400'
-                      : 'border-gray-200'
+                    showError("opening_time") ? "border-red-400" : "border-gray-200"
                   }`}
                 />
-                {showError('opening_time') && <InlineError message={errors.opening_time} />}
+                {showError("opening_time") && (
+                  <InlineError message={errors.opening_time} />
+                )}
               </div>
             </div>
-
-            {/* Closing Time */}
             <div className="flex flex-col">
-              <label className="text-[9px] font-semibold text-gray-600 mb-0.5 ml-1">Closing Time <span className="text-red-500">*</span></label>
+              <label className="text-[9px] font-semibold text-gray-600 mb-0.5 ml-1">
+                Closing Time <span className="text-red-500">*</span>
+              </label>
               <div className="relative">
                 <input
                   type="time"
                   value={formData.closing_time || ""}
                   onChange={(e) => handleChange("closing_time", e.target.value)}
-                  onBlur={() => handleBlur('closing_time')}
+                  onBlur={() => handleBlur("closing_time")}
                   className={`w-full h-8 px-3 bg-white border rounded-xl focus:outline-none text-[11px] focus:border-[#F2B53D] ${
-                    showError('closing_time')
-                      ? 'border-red-400'
-                      : 'border-gray-200'
+                    showError("closing_time") ? "border-red-400" : "border-gray-200"
                   }`}
                 />
-                {showError('closing_time') && <InlineError message={errors.closing_time} />}
+                {showError("closing_time") && (
+                  <InlineError message={errors.closing_time} />
+                )}
               </div>
             </div>
           </div>
         </div>
+
+        {/* Display existing branches - Full width */}
+        {formData.branch_locations && formData.branch_locations.length > 0 && (
+          <div className="flex flex-col md:col-span-2 mt-2">
+            <label className="text-[9px] font-semibold text-gray-600 mb-1 ml-1">
+              Added Branches ({formData.branch_locations.length})
+            </label>
+            <div className="space-y-2">
+              {formData.branch_locations.map((branch, index) => (
+                <BranchCard
+                  key={index}
+                  branch={branch}
+                  index={index}
+                  onEdit={handleEditBranch}
+                  onRemove={handleRemoveBranch}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Buttons - Matching other steps */}
-      <div className="w-full flex justify-center items-center gap-2 mt-2">
+      {/* Branch Modal */}
+      <BranchModal
+        isOpen={showBranchModal}
+        onClose={() => {
+          setShowBranchModal(false);
+          resetBranchForm();
+        }}
+        branchForm={branchForm}
+        setBranchForm={setBranchForm}
+        onSave={handleAddBranch}
+        isEditing={editingBranchIndex !== null}
+      />
+
+      {/* Buttons */}
+      <div className="w-full flex justify-center items-center gap-2 mt-4">
         <button
           type="button"
           onClick={() => dispatch({ type: ACTIONS.PREV_STEP })}

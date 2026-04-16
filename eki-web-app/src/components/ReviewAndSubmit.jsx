@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { HiCheckCircle, HiOutlinePencil } from "react-icons/hi";
+import { HiCheckCircle, HiOutlinePencil, HiOutlinePhone, HiXCircle } from "react-icons/hi";
+import { HiOutlineBuildingStorefront, HiOutlineMapPin } from "react-icons/hi2";
 import countries from "i18n-iso-countries";
 import enLocale from "i18n-iso-countries/langs/en.json";
 import Flag from "react-world-flags";
-import { completeVendorOnboarding, submitVendorApplication } from "../services/api";
+import { submitVendorApplication } from "../services/api";
 import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
 
 countries.registerLocale(enLocale);
@@ -11,6 +12,7 @@ countries.registerLocale(enLocale);
 const ReviewAndSubmit = ({ formData, onBack, onSubmitSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const { dispatch } = useOnboarding();
 
   const countryName = countries.getName(formData.country, "en") || formData.country;
@@ -21,30 +23,45 @@ const ReviewAndSubmit = ({ formData, onBack, onSubmitSuccess }) => {
   const getDisplayName = (key) => {
     const name = key.replace(/_/g, " ");
     if (name === "government issued id") return "Govt ID";
-    if (name === "professional certification") return "Prof. Cert";
+    if (name === "professional body certification") return "Professional Cert";
     if (name === "business license") return "License";
     if (name === "tax certificate") return "Tax Cert";
     if (name === "incorporation cert") return "Inc. Cert";
     return name;
   };
 
-  const handleSubmit = async () => {
-    setIsLoading(true);
-    setSubmitError("");
-    try {
-      await completeVendorOnboarding(formData);
-      await submitVendorApplication(formData);
-      dispatch({ type: ACTIONS.UPDATE_FORM, payload: { isSubmitted: true } });
-      onSubmitSuccess();
-    } catch (error) {
-      console.error("Submission Error:", error);
-      const apiData = error.response?.data || {};
-      const serverMessage = apiData.message || apiData.detail || apiData.error || error.message;
-      setSubmitError(serverMessage || "Something went wrong. Please try again.");
-    } finally {
-      setIsLoading(false);
+const handleSubmit = async () => {
+  setIsLoading(true);
+  setSubmitError("");
+  
+  // DEBUG: Check documents before submitting
+  console.log("=== FRONTEND DEBUG: Documents in formData ===");
+  console.log("government_issued_id:", formData.documents?.government_issued_id instanceof File ? formData.documents.government_issued_id.name : "No file");
+  console.log("government_issued_id_expiry:", formData.documents?.government_issued_id_expiry);
+  console.log("business_license:", formData.documents?.business_license instanceof File ? formData.documents.business_license.name : "No file");
+  console.log("business_license_expiry:", formData.documents?.business_license_expiry);
+  console.log("tax_certificate:", formData.documents?.tax_certificate instanceof File ? formData.documents.tax_certificate.name : "No file");
+  console.log("tax_certificate_expiry:", formData.documents?.tax_certificate_expiry);
+  console.log("incorporation_cert:", formData.documents?.incorporation_cert instanceof File ? formData.documents.incorporation_cert.name : "No file");
+  console.log("professional_body_certification:", formData.documents?.professional_body_certification instanceof File ? formData.documents.professional_body_certification.name : "No file");
+  
+  try {
+    const response = await submitVendorApplication(formData);
+    console.log("Submit response:", response);
+    dispatch({ type: ACTIONS.UPDATE_FORM, payload: { isSubmitted: true } });
+    onSubmitSuccess();
+  } catch (error) {
+    console.error("Submission Error:", error);
+    if (error.response) {
+      console.error("Error data:", error.response.data);
     }
-  };
+    const apiData = error.response?.data || {};
+    const serverMessage = apiData.message || apiData.detail || apiData.error || error.message;
+    setSubmitError(serverMessage || "Something went wrong. Please try again.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const ReviewSection = ({ title, children }) => (
     <div className="border-b border-gray-100 pb-1.5 last:border-0 pt-1.5 first:pt-0">
@@ -55,29 +72,60 @@ const ReviewAndSubmit = ({ formData, onBack, onSubmitSuccess }) => {
     </div>
   );
 
-  const ReviewItem = ({ label, value, colSpan = false, children }) => (
+  const ReviewItem = ({ label, value, colSpan = false, children, fieldName }) => (
     <div className={colSpan ? "col-span-2" : ""}>
       <p className="text-gray-400 block text-[7px]">{label}</p>
       {children ? (
         children
       ) : (
-        <span className="font-medium text-gray-800 text-[9px] leading-tight block truncate">{value || "—"}</span>
+        <>
+          <span className={`font-medium text-[9px] leading-tight block truncate ${
+            fieldErrors[fieldName] ? 'text-red-600' : 'text-gray-800'
+          }`}>
+            {value || "—"}
+          </span>
+          {fieldErrors[fieldName] && (
+            <p className="text-red-500 text-[7px] mt-0.5">
+              {Array.isArray(fieldErrors[fieldName]) ? fieldErrors[fieldName][0] : fieldErrors[fieldName]}
+            </p>
+          )}
+        </>
       )}
     </div>
   );
 
   return (
     <div className="w-full">
-      {/* Header -  */}
+      {/* Header */}
       <div className="mb-1.5">
         <h2 className="text-[14px] font-black text-gray-900">Review & Submit</h2>
         <p className="text-gray-500 text-[9px]">Verify your details before submitting</p>
       </div>
 
-      {/* Error Message */}
+      {/* Error Message Banner */}
       {submitError && (
-        <div className="mb-1.5 p-1 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-red-600 text-[8px] font-medium">{submitError}</p>
+        <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-md">
+          <div className="flex items-start gap-2">
+            <HiXCircle className="text-red-500 shrink-0 mt-0.5" size={14} />
+            <div>
+              <p className="text-red-600 text-[10px] font-medium">Submission Failed</p>
+              <p className="text-red-500 text-[9px] mt-0.5">{submitError}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Field Errors Summary */}
+      {Object.keys(fieldErrors).length > 0 && (
+        <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+          <p className="text-yellow-700 text-[9px] font-medium mb-1">Please fix these fields:</p>
+          <ul className="list-disc list-inside text-[8px] text-yellow-600">
+            {Object.entries(fieldErrors).map(([field, errors]) => (
+              <li key={field}>
+                <span className="font-medium">{field.replace(/_/g, ' ')}:</span> {Array.isArray(errors) ? errors.join(', ') : errors}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -85,31 +133,65 @@ const ReviewAndSubmit = ({ formData, onBack, onSubmitSuccess }) => {
       <div className="space-y-0">
         {/* Business Identity - 2 columns */}
         <ReviewSection title="BUSINESS IDENTITY">
-          <ReviewItem label="Business Name" value={formData.business_name} />
-          <ReviewItem label="Business Type" value={formData.business_type} />
-          <ReviewItem label="Category" value={formData.business_category} />
-          <ReviewItem label="Owner Name" value={formData.owner_full_name} />
-          <ReviewItem label="Tax ID" value={formData.tax_id} />
-          <ReviewItem label="Reg Number" value={formData.registration_number} />
-          <ReviewItem label="Description" value={formData.business_description?.substring(0, 40)} colSpan />
+          <ReviewItem label="Business Name" value={formData.business_name} fieldName="business_name" />
+          <ReviewItem label="Business Type" value={formData.business_type} fieldName="business_type" />
+          <ReviewItem label="Category" value={formData.business_category} fieldName="business_category" />
+          <ReviewItem label="Owner Name" value={formData.owner_full_name} fieldName="owner_full_name" />
+          <ReviewItem label="Tax ID" value={formData.tax_id} fieldName="tax_id" />
+          <ReviewItem label="Reg Number" value={formData.registration_number} fieldName="registration_number" />
+          <ReviewItem label="Description" value={formData.business_description?.substring(0, 40)} colSpan fieldName="business_description" />
         </ReviewSection>
 
         {/* Contact & Location - 2 columns */}
         <ReviewSection title="CONTACT & LOCATION">
-          <ReviewItem label="Phone" value={formData.business_phone} />
-          <ReviewItem label="Email" value={formData.email} />
-          <ReviewItem label="Address" value={formData.address || "—"} />
-          <ReviewItem label="City" value={formData.city} />
-          <ReviewItem label="Landmark" value={formData.landmark || "—"} />
-          <ReviewItem label="Zip Code" value={formData.zip_code || "—"} />
-          <ReviewItem label="Country">
+          <ReviewItem label="Phone" value={formData.business_phone} fieldName="business_phone" />
+          <ReviewItem label="Email" value={formData.email} fieldName="email" />
+          <ReviewItem label="Address" value={formData.address || "—"} fieldName="address" />
+          <ReviewItem label="City" value={formData.city} fieldName="city" />
+          <ReviewItem label="Landmark" value={formData.landmark || "—"} fieldName="landmark" />
+          <ReviewItem label="Zip Code" value={formData.zip_code || "—"} fieldName="zip_code" />
+          <ReviewItem label="Country" fieldName="country">
             <div className="flex items-center gap-0.5 mt-0.5">
               <Flag code={formData.country} className="w-2.5 h-1.5 rounded-sm object-cover shadow-sm" />
-              <span className="font-medium text-gray-800 text-[9px]">{countryName}</span>
+              <span className={`font-medium text-[9px] ${fieldErrors.country ? 'text-red-600' : 'text-gray-800'}`}>
+                {countryName}
+              </span>
+              {fieldErrors.country && (
+                <p className="text-red-500 text-[7px] mt-0.5">{fieldErrors.country}</p>
+              )}
             </div>
           </ReviewItem>
-          <ReviewItem label="Hours" value={`${formData.opening_time || "—"} - ${formData.closing_time || "—"}`} />
+          <ReviewItem label="Hours" value={`${formData.opening_time || "—"} - ${formData.closing_time || "—"}`} fieldName="opening_time" />
         </ReviewSection>
+
+        {/* Branch Locations - Show if any branches added */}
+        {formData.branch_locations && formData.branch_locations.length > 0 && (
+          <ReviewSection title="BRANCH LOCATIONS">
+            <div className="col-span-2 space-y-1">
+              {formData.branch_locations.map((branch, idx) => (
+                <div key={idx} className="text-[9px] text-gray-700 border-l-2 border-[#F2B53D] pl-2">
+                  <div className="flex items-center gap-1">
+                    <HiOutlineBuildingStorefront size={10} className="text-gray-500 shrink-0" />
+                    <span className="font-semibold">{branch.address}</span>
+                    {branch.city && <span>, {branch.city}</span>}
+                  </div>
+                  {branch.phone && (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <HiOutlinePhone size={8} className="text-gray-400" />
+                      <span className="text-gray-500">{branch.phone}</span>
+                    </div>
+                  )}
+                  {branch.landmark && (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <HiOutlineMapPin size={8} className="text-gray-400" />
+                      <span className="text-gray-500 text-[8px]">{branch.landmark}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </ReviewSection>
+        )}
 
         {/* Documents - Single column full width */}
         <div className="pt-1.5 pb-0.5">
@@ -128,8 +210,8 @@ const ReviewAndSubmit = ({ formData, onBack, onSubmitSuccess }) => {
         </div>
       </div>
 
-      {/* Buttons  */}
-      <div className="flex justify-end items-center gap-1.5 mt-2">
+      {/* Buttons */}
+      <div className="flex justify-end items-center gap-1.5 mt-4">
         <button
           onClick={onBack}
           disabled={isLoading}

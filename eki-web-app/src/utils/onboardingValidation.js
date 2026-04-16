@@ -128,11 +128,11 @@ export const validateContactLocation = (formData) => {
   return errors;
 };
 
-// Step 5: Operation & Compliance - ONLY ONE VERSION (KEEP THIS ONE)
+// Step 5: Operation & Compliance
 export const validateOperationCompliance = (formData) => {
   const errors = {};
 
-  // 1. Government Issued ID - Required with expiry
+  // 1. Government Issued ID
   if (!formData.documents?.government_issued_id) {
     errors.government_issued_id = "Required";
   }
@@ -140,12 +140,12 @@ export const validateOperationCompliance = (formData) => {
     errors.government_issued_id_expiry = "Expiry date required";
   }
 
-  // 2. Professional Body Certification - Optional, but if provided, expiry required
-  if (formData.documents?.professional_certification && !formData.professional_certification_expiry) {
-    errors.professional_certification_expiry = "Expiry date required for certification";
+  // 2. Professional Body Certification - FIXED field name
+  if (formData.documents?.professional_body_certification && !formData.professional_body_certification_expiry) {
+    errors.professional_body_certification_expiry = "Expiry date required for certification";
   }
 
-  // 3. Business License - Required with expiry
+  // 3. Business License
   if (!formData.documents?.business_license) {
     errors.business_license = "Required";
   }
@@ -153,7 +153,7 @@ export const validateOperationCompliance = (formData) => {
     errors.business_license_expiry = "Expiry date required";
   }
 
-  // 4. Tax Certificate - Required with expiry
+  // 4. Tax Certificate
   if (!formData.documents?.tax_certificate) {
     errors.tax_certificate = "Required";
   }
@@ -161,12 +161,10 @@ export const validateOperationCompliance = (formData) => {
     errors.tax_certificate_expiry = "Expiry date required";
   }
 
-  // 5. Incorporation Certificate - Required (no expiry)
+  // 5. Incorporation Certificate - Required, no expiry validation
   if (!formData.documents?.incorporation_cert) {
     errors.incorporation_cert = "Required";
   }
 
   return errors;
 };
-
-export default validateOperationCompliance;

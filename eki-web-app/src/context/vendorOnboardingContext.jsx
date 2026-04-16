@@ -1,6 +1,8 @@
 import { createContext, useReducer, useContext } from "react";
+
 // create context
 export const VendorOnboardingContext = createContext();
+
 // action types to avoid typos
 export const ACTIONS = {
   UPDATE_FORM: "UPDATE_FORM",
@@ -9,47 +11,71 @@ export const ACTIONS = {
   SET_STEP: "SET_STEP",
   SUBMIT_FORM: "SUBMIT_FORM"
 };
+
 // initializing state
 const initialState = {
   currentStep: 1,
   isSubmitted: false,
   formData: {
+    // Step 1: Account Basics
     first_name: "",
     last_name: "",
     email: "",
-    phone_number: "",
     password: "",
     confirmPassword: "",
     agreeToTerms: false,
 
+    // Step 3: Business Identity
     business_name: "",
     business_type: "",
+    business_category: "",  // ADDED - was missing
     owner_full_name: "",
     tax_id: "",
     registration_number: "",
     business_description: "",
 
-    business_email: "",
-    business_phone: "",
+    // Step 4: Contact & Location
+    business_phone: "",  // This is the correct field for vendor phone
     address: "",
     city: "",
     country: "",
+    landmark: "",
+    intersection: "",
+    zip_code: "",
+    branch_locations: [],  // Array of branch objects
 
+    // Operating Hours
     opening_time: "09:00",
     closing_time: "17:00",
 
+    // Step 5: Documents
     documents: {
-      national_id: null,
+      // Government ID
+      government_issued_id: null,
+      government_issued_id_expiry: null,
+      
+      // Professional Certification (Optional)
+      professional_body_certification: null,
+      professional_body_certification_expiry: null,
+      
+      // Business License
       business_license: null,
+      business_license_expiry: null,
+      
+      // Tax Certificate
       tax_certificate: null,
+      tax_certificate_expiry: null,
+      
+      // Incorporation Certificate (No expiry required in UI)
       incorporation_cert: null,
+      incorporation_cert_expiry: null,  // Kept but not used/validated
     },
   },
 };
+
 // Reducer
 const onboardingReducer = (state, action) => {
   switch (action.type) {
-
     case ACTIONS.UPDATE_FORM:
       return {
         ...state,
@@ -75,7 +101,6 @@ const onboardingReducer = (state, action) => {
       return {
         ...state,
         currentStep: action.payload,
-        // If jumping to 6, set isSubmitted to true; otherwise false so we can go back
         isSubmitted: action.payload === 6
       };
 
@@ -89,6 +114,7 @@ const onboardingReducer = (state, action) => {
       return state;
   }
 };
+
 // Provider
 export const VendorOnboardingProvider = ({ children }) => {
   const [state, dispatch] = useReducer(onboardingReducer, initialState);

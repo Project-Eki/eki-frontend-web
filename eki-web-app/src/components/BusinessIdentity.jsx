@@ -12,55 +12,38 @@ const InlineError = ({ message }) => (
   </span>
 );
 
-// Category options based on business type
+// Category options - MUST MATCH BACKEND BusinessCategory model EXACTLY
 const getCategoryOptions = (businessType) => {
-  const commonCategories = [
-    { value: "retail", label: "Retail" },
-    { value: "ecommerce", label: "E-commerce" },
-    { value: "wholesale", label: "Wholesale" },
-    { value: "other", label: "Other" }
-  ];
-
+  // Product categories (from backend)
   const productCategories = [
-    { value: "electronics", label: "Electronics" },
+    { value: "retail", label: "Retail" },
     { value: "fashion", label: "Fashion & Apparel" },
+    { value: "electronics", label: "Electronics" },
     { value: "food", label: "Food & Beverages" },
     { value: "beauty", label: "Beauty & Health" },
     { value: "home", label: "Home & Garden" },
     { value: "sports", label: "Sports & Outdoors" },
     { value: "automotive", label: "Automotive" },
-    { value: "toys", label: "Toys & Games" },
-    { value: "books", label: "Books & Media" },
-    { value: "jewelry", label: "Jewelry & Watches" },
-    { value: "pet", label: "Pet Supplies" },
-    { value: "office", label: "Office Supplies" },
-    { value: "medical", label: "Medical & Pharmacy" },
   ];
 
+  // Service categories (from backend)
   const serviceCategories = [
-    { value: "consulting", label: "Consulting" },
-    { value: "marketing", label: "Marketing & Advertising" },
-    { value: "it", label: "IT & Software" },
-    { value: "financial", label: "Financial Services" },
-    { value: "legal", label: "Legal Services" },
-    { value: "education", label: "Education & Training" },
-    { value: "healthcare", label: "Healthcare" },
-    { value: "hospitality", label: "Hospitality" },
-    { value: "transport", label: "Transport & Logistics" },
-    { value: "realestate", label: "Real Estate" },
-    { value: "construction", label: "Construction" },
-    { value: "cleaning", label: "Cleaning & Maintenance" },
-    { value: "beauty_service", label: "Beauty & Wellness" },
-    { value: "photography", label: "Photography" },
-    { value: "event", label: "Event Planning" },
+    { value: "transport", label: "Transport" },
+    { value: "tailoring", label: "Tailoring" },
+    { value: "airlines", label: "Airlines" },
+    { value: "hotels", label: "Hospitality" },
+    { value: "beauty", label: "Beauty & Health" },
+    { value: "other", label: "Other" },
   ];
 
   if (businessType === 'products') {
-    return [...productCategories, ...commonCategories];
+    return productCategories;
   } else if (businessType === 'services') {
-    return [...serviceCategories, ...commonCategories];
+    return serviceCategories;
   }
-  return commonCategories;
+  
+  // Return empty array until business type is selected
+  return [];
 };
 
 const BusinessIdentity = () => {
@@ -133,7 +116,7 @@ const BusinessIdentity = () => {
 
   return (
     <div className="w-full animate-fadeIn">
-      {/* Header - Reduced margin bottom */}
+      {/* Header */}
       <div className="flex items-center gap-2 mb-3">
         <div className="w-7 h-7 bg-[#FFF8ED] rounded-lg flex items-center justify-center shrink-0">
           <HiOutlineBriefcase className="text-[#F2B53D]" size={16} />
@@ -146,7 +129,6 @@ const BusinessIdentity = () => {
 
       {generalError && <MessageAlert message={generalError} type="error" className="mb-2" />}
 
-      {/* Reduced gap between fields */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-2">
         {/* Legal Business Name */}
         <div className="flex flex-col">
@@ -294,7 +276,7 @@ const BusinessIdentity = () => {
         </div>
       </div>
 
-      {/* Buttons - Reduced margin top */}
+      {/* Buttons */}
       <div className="w-full flex justify-center items-center gap-3 mt-3">
         <button
           type="button"
