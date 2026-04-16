@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://134.122.22.45/api/v1/',
+  baseURL: 'http://joineki.com',
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -90,7 +90,7 @@ api.interceptors.response.use(
 
       try {
         const res = await axios.post(
-          'http://134.122.22.45/api/v1/accounts/token-refresh/',
+          'http://joineki.com/api/v1/accounts/token-refresh/',
           { refresh: refreshToken }
         );
         const newAccess = res.data?.access || res.data?.data?.access;

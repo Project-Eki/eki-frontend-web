@@ -2,11 +2,27 @@ import React, { useState, useRef, useEffect } from 'react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import VendorSidebar from '../components/VendorSidebar';
-import { VendorProvider } from '../context/vendorContext'; 
+import { VendorProvider } from '../context/vendorContext';
 import Navbar3 from '../components/adminDashboard/Navbar4';
 import { validateAccountData } from '../utils/validationUtils';
 import { getVendorProfile, updateVendorProfile } from '../services/authService';
-import Footer from "../components/Vendormanagement/VendorFooter";
+import Footer from '../components/Vendormanagement/VendorFooter';
+
+const monthsBetween = (dateA, dateB) => {
+  return (
+    (dateB.getFullYear() - dateA.getFullYear()) * 12 +
+    (dateB.getMonth() - dateA.getMonth())
+  );
+};
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleDateString('en-UG', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+};
 
 function AccountSettingsPage() {
   const [userData, setUserData] = useState({
@@ -16,51 +32,56 @@ function AccountSettingsPage() {
     phone:            '',
     profileImage:     null,
     profileImageFile: null,
+    phoneSetDate:     null,
   });
+
+  const [tempPhone,      setTempPhone]      = useState('');
+  const [tempPhoneError, setTempPhoneError] = useState('');
 
   const [navbarProfileImage, setNavbarProfileImage] = useState(null);
   const [navbarName,         setNavbarName]         = useState('');
 
   const [isLoading,      setIsLoading]      = useState(false);
-  const [linkedSocials,  setLinkedSocials]  = useState([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [errors,         setErrors]         = useState({});
   const [saveSuccess,    setSaveSuccess]    = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
 
-  const [photoMenuOpen,   setPhotoMenuOpen]   = useState(false);
-  const [showCamera,      setShowCamera]      = useState(false);
-  const [cameraStream,    setCameraStream]    = useState(null);
-  const [cameraError,     setCameraError]     = useState('');
-
-  // Social link input state
-  const [linkingPlatform, setLinkingPlatform] = useState(null);
-  const [linkInputValue,  setLinkInputValue]  = useState('');
-  const [linkInputError,  setLinkInputError]  = useState('');
+  const [photoMenuOpen, setPhotoMenuOpen] = useState(false);
+  const [showCamera,    setShowCamera]    = useState(false);
+  const [cameraStream,  setCameraStream]  = useState(null);
+  const [cameraError,   setCameraError]   = useState('');
 
   const fileInputRef  = useRef(null);
   const videoRef      = useRef(null);
   const canvasRef     = useRef(null);
   const photoMenuRef  = useRef(null);
 
-  const availableSocials = [
-    { name: 'WhatsApp',    color: '#25D366', placeholder: 'e.g. https://wa.me/256700000000' },
-    { name: 'Instagram',   color: '#E4405F', placeholder: 'e.g. https://instagram.com/yourhandle' },
-    { name: 'Facebook',    color: '#1877F2', placeholder: 'e.g. https://facebook.com/yourpage' },
-    { name: 'Twitter / X', color: '#000000', placeholder: 'e.g. https://x.com/yourhandle' },
-    { name: 'TikTok',      color: '#010101', placeholder: 'e.g. https://tiktok.com/@yourhandle' },
-    { name: 'YouTube',     color: '#FF0000', placeholder: 'e.g. https://youtube.com/@yourchannel' },
-    { name: 'Telegram',    color: '#26A5E4', placeholder: 'e.g. https://t.me/yourusername' },
-  ];
+  const isPrimaryPhoneLocked = () => {
+    if (!userData.phoneSetDate) return false;
+    const setDate = new Date(userData.phoneSetDate);
+    const now     = new Date();
+    return monthsBetween(setDate, now) < 6;
+  };
 
-  // ── Load profile on mount ──────────────────────────────────────────────────
+  const primaryPhoneUnlockDate = () => {
+    if (!userData.phoneSetDate) return '';
+    const d = new Date(userData.phoneSetDate);
+    d.setMonth(d.getMonth() + 6);
+    return formatDate(d.toISOString());
+  };
+
   useEffect(() => {
     const loadProfile = async () => {
       setProfileLoading(true);
       try {
         const res = await getVendorProfile();
         const remoteImage = res.profile_picture || null;
-        const fullName = [res.first_name, res.last_name].filter(Boolean).join(' ').trim();
+        const fullName    = [res.first_name, res.last_name].filter(Boolean).join(' ').trim();
+
+        const storedPhoneSetDate =
+          localStorage.getItem('vendor_phone_set_date') ||
+          (res.business_phone || res.phone_number ? new Date().toISOString() : null);
 
         setUserData({
           firstName:        res.first_name     || '',
@@ -69,17 +90,13 @@ function AccountSettingsPage() {
           phone:            res.business_phone || res.phone_number || '',
           profileImage:     remoteImage,
           profileImageFile: null,
+          phoneSetDate:     storedPhoneSetDate,
         });
 
+        const savedTempPhone = localStorage.getItem('vendor_temp_phone') || '';
+        setTempPhone(savedTempPhone);
         setNavbarProfileImage(remoteImage);
         setNavbarName(fullName);
-
-        console.log('Loaded profile:', {
-          name: fullName,
-          email: res.email,
-          phone: res.business_phone,
-          profileImage: remoteImage
-        });
       } catch (err) {
         console.error('Failed to load profile:', err);
       } finally {
@@ -89,26 +106,23 @@ function AccountSettingsPage() {
     loadProfile();
   }, []);
 
-  // ── Close photo menu when clicking outside; clear camera error ─────────────
   useEffect(() => {
     const handleOutside = (e) => {
       if (photoMenuRef.current && !photoMenuRef.current.contains(e.target)) {
         setPhotoMenuOpen(false);
-        setCameraError(''); 
+        setCameraError('');
       }
     };
     document.addEventListener('mousedown', handleOutside);
     return () => document.removeEventListener('mousedown', handleOutside);
   }, []);
 
-  // ── Auto-dismiss cameraError after 5 seconds ──────────────────────────────
   useEffect(() => {
     if (!cameraError) return;
     const timer = setTimeout(() => setCameraError(''), 5000);
     return () => clearTimeout(timer);
   }, [cameraError]);
 
-  // ── Stop camera stream when camera modal closes ───────────────────────────
   useEffect(() => {
     if (!showCamera && cameraStream) {
       cameraStream.getTracks().forEach(t => t.stop());
@@ -116,69 +130,26 @@ function AccountSettingsPage() {
     }
   }, [showCamera]);
 
-  // ── Attach stream to video element ───────────────────────────────────────
   useEffect(() => {
     if (showCamera && cameraStream && videoRef.current) {
       videoRef.current.srcObject = cameraStream;
     }
   }, [showCamera, cameraStream]);
 
-  // ── Inject Poppins font ───────────────────────────────────────────────────
   useEffect(() => {
     const id = 'poppins-font-link';
     if (!document.getElementById(id)) {
-      const link = document.createElement('link');
-      link.id   = id;
-      link.rel  = 'stylesheet';
-      link.href = 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap';
+      const link  = document.createElement('link');
+      link.id     = id;
+      link.rel    = 'stylesheet';
+      link.href   = 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap';
       document.head.appendChild(link);
     }
   }, []);
 
-  // ── Social linking handlers ───────────────────────────────────────────────
-  const handleLinkSocial = (social) => {
-    if (linkedSocials.find(s => s.name === social.name)) {
-      setIsDropdownOpen(false);
-      return;
-    }
-    setLinkingPlatform(social);
-    setLinkInputValue('');
-    setLinkInputError('');
-    setIsDropdownOpen(false);
-  };
-
-  const handleConfirmLink = () => {
-    const url = linkInputValue.trim();
-    if (!url) {
-      setLinkInputError('Please enter a link before saving.');
-      return;
-    }
-    try {
-      new URL(url);
-    } catch {
-      setLinkInputError('Please enter a valid URL (e.g. https://instagram.com/yourhandle).');
-      return;
-    }
-    setLinkedSocials(prev => [...prev, { ...linkingPlatform, url }]);
-    setLinkingPlatform(null);
-    setLinkInputValue('');
-    setLinkInputError('');
-  };
-
-  const handleCancelLink = () => {
-    setLinkingPlatform(null);
-    setLinkInputValue('');
-    setLinkInputError('');
-  };
-
-  const handleUnlink = (name) => {
-    setLinkedSocials(linkedSocials.filter(s => s.name !== name));
-  };
-
-  // ── Photo menu ────────────────────────────────────────────────────────────
   const openPhotoMenu = () => {
     setPhotoMenuOpen(prev => {
-      if (prev) setCameraError(''); // clear error when closing menu
+      if (prev) setCameraError('');
       return !prev;
     });
   };
@@ -189,42 +160,27 @@ function AccountSettingsPage() {
     fileInputRef.current?.click();
   };
 
-  // ── Camera handler — production-safe for DigitalOcean / HTTPS ─────────────
   const handleOpenCamera = async () => {
     setPhotoMenuOpen(false);
     setCameraError('');
 
-    // Check browser support before attempting
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setCameraError(
-        'Camera not supported in this browser or a secure connection (HTTPS) is required. Please use "Choose from gallery" instead.'
-      );
+      setCameraError('Camera not supported. Please use "Choose from gallery" instead.');
       return;
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
       setCameraStream(stream);
       setShowCamera(true);
     } catch (err) {
-      console.error('Camera error:', err.name, err.message);
-
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setCameraError(
-          'Camera permission denied. Please allow camera access in your browser settings and try again.'
-        );
+        setCameraError('Camera permission denied. Allow camera access in your browser settings.');
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        setCameraError(
-          'No camera found on this device. Please use "Choose from gallery" instead.'
-        );
+        setCameraError('No camera found. Please use "Choose from gallery" instead.');
       } else if (err.name === 'NotReadableError') {
-        setCameraError(
-          'Camera is in use by another app. Please close other apps and try again.'
-        );
+        setCameraError('Camera is in use by another app. Close other apps and try again.');
       } else if (err.name === 'OverconstrainedError') {
-        // Retry without facingMode constraint
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true });
           setCameraStream(stream);
@@ -278,9 +234,13 @@ function AccountSettingsPage() {
     }));
   };
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (tempPhone && tempPhone.replace(/\D/g, '').length < 7) {
+      setTempPhoneError('Please enter a valid temporary phone number.');
+      return;
+    }
 
     const validationErrors = validateAccountData(userData);
     setErrors(validationErrors);
@@ -292,28 +252,36 @@ function AccountSettingsPage() {
     try {
       const changedFields = {};
 
-      if (userData.phone) {
+      if (!isPrimaryPhoneLocked() && userData.phone) {
         let phone = String(userData.phone).replace(/\s/g, '');
         if (!phone.startsWith('+')) phone = `+${phone}`;
         changedFields.business_phone = phone;
+
+        const now = new Date().toISOString();
+        localStorage.setItem('vendor_phone_set_date', now);
+        setUserData(prev => ({ ...prev, phoneSetDate: now }));
       }
 
       if (userData.profileImageFile instanceof File) {
         changedFields.profile_picture = userData.profileImageFile;
       }
 
-      console.log('[AccountSettings] Updating with:', changedFields);
+      if (tempPhone) {
+        localStorage.setItem('vendor_temp_phone', tempPhone);
+      } else {
+        localStorage.removeItem('vendor_temp_phone');
+      }
 
       await updateVendorProfile(changedFields);
 
       const refreshed = await getVendorProfile();
-      const fullName = [refreshed.first_name, refreshed.last_name].filter(Boolean).join(' ').trim();
+      const fullName   = [refreshed.first_name, refreshed.last_name].filter(Boolean).join(' ').trim();
 
       setUserData(prev => ({
         ...prev,
-        firstName:        refreshed.first_name    || prev.firstName,
-        lastName:         refreshed.last_name     || prev.lastName,
-        email:            refreshed.email         || prev.email,
+        firstName:        refreshed.first_name     || prev.firstName,
+        lastName:         refreshed.last_name      || prev.lastName,
+        email:            refreshed.email          || prev.email,
         phone:            refreshed.business_phone || refreshed.phone_number || prev.phone,
         profileImage:     refreshed.profile_picture || prev.profileImage,
         profileImageFile: null,
@@ -323,14 +291,15 @@ function AccountSettingsPage() {
       setNavbarName(fullName);
 
       setSaveSuccess(true);
+      setTempPhoneError('');
       setTimeout(() => setSaveSuccess(false), 3000);
 
     } catch (err) {
       console.error('Save error:', err.response?.data ?? err.message);
       const backendError =
-        err.response?.data?.detail ||
+        err.response?.data?.detail  ||
         err.response?.data?.message ||
-        err.response?.data?.error  ||
+        err.response?.data?.error   ||
         'Failed to save changes. Please try again.';
 
       alert(`Error: ${backendError}\n\nCheck console for details`);
@@ -340,6 +309,7 @@ function AccountSettingsPage() {
   };
 
   const handlePhoneChange = (value) => {
+    if (isPrimaryPhoneLocked()) return;
     setUserData(prev => ({ ...prev, phone: value }));
     if (errors.phone) setErrors(prev => ({ ...prev, phone: null }));
   };
@@ -352,6 +322,7 @@ function AccountSettingsPage() {
     }));
     setSaveSuccess(false);
     setErrors({});
+    setTempPhoneError('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -361,29 +332,31 @@ function AccountSettingsPage() {
     return (f + l).toUpperCase() || '?';
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    // ✅ FIX: Wrapped with VendorProvider so VendorSidebar's useVendor() hook has context
     <VendorProvider>
-      <div style={{ fontFamily: "'Poppins', sans-serif" }} className="flex min-h-screen bg-[#ecece7] text-slate-800 p-3 gap-3">
+      <div
+        style={{ fontFamily: "'Poppins', sans-serif" }}
+        className="flex min-h-screen bg-[#ecece7] text-slate-800 p-3 gap-3"
+      >
         <VendorSidebar activePage="settings" />
 
         <div className="flex-1 flex flex-col min-w-0">
-          <Navbar3
-            profileImage={navbarProfileImage}
-            userName={navbarName}
-          />
+          <Navbar3 profileImage={navbarProfileImage} userName={navbarName} />
 
           <main className="flex-1 p-5 max-w-[1400px] mx-auto w-full pb-16">
             <div className="max-w-4xl mx-auto">
-              <h1 className="text-xl font-bold text-[#1A1A1A] mb-6">Account Settings</h1>
+              <h1 className="text-xl font-bold text-[#1A1A1A] mb-6" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                Account Settings
+              </h1>
 
-              {/* ── Camera Modal ─────────────────────────────────────────────── */}
+              {/* ── Camera Modal ─────────────────────────────────────────── */}
               {showCamera && (
                 <div className="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-4">
                   <div className="bg-white rounded-2xl overflow-hidden shadow-2xl w-full max-w-md">
                     <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-                      <p className="text-sm font-bold text-slate-800">Take a Photo</p>
+                      <p className="text-sm font-bold text-slate-800" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                        Take a Photo
+                      </p>
                       <button
                         onClick={() => setShowCamera(false)}
                         className="text-slate-400 hover:text-slate-600 text-lg font-bold leading-none"
@@ -417,73 +390,23 @@ function AccountSettingsPage() {
                 </div>
               )}
 
-              {/* ── Social Link Input Modal ───────────────────────────────────── */}
-              {linkingPlatform && (
-                <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4">
-                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: linkingPlatform.color }} />
-                      <h3 className="text-sm font-bold text-slate-800">
-                        Add your {linkingPlatform.name} link
-                      </h3>
-                    </div>
-                    <p className="text-[11px] text-slate-400 mb-3">
-                      Buyers will see this link on your profile and tap it to visit your page.
-                    </p>
-                    <input
-                      type="url"
-                      value={linkInputValue}
-                      onChange={(e) => {
-                        setLinkInputValue(e.target.value);
-                        setLinkInputError('');
-                      }}
-                      placeholder={linkingPlatform.placeholder}
-                      className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none transition-all ${
-                        linkInputError ? 'border-red-400' : 'border-slate-200 focus:border-[#125852]'
-                      }`}
-                    />
-                    {linkInputError && (
-                      <p className="text-[11px] text-red-500 font-medium mt-1.5">{linkInputError}</p>
-                    )}
-                    <div className="flex gap-3 mt-4">
-                      <button
-                        type="button"
-                        onClick={handleCancelLink}
-                        className="flex-1 py-2 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 transition-colors"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleConfirmLink}
-                        className="flex-1 py-2 text-[11px] font-bold text-white rounded-lg transition-colors"
-                        style={{ backgroundColor: '#EFB034' }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#d4992a'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = '#EFB034'}
-                      >
-                        Save Link
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ── Loading Skeleton ──────────────────────────────────────────── */}
+              {/* ── Loading Skeleton ──────────────────────────────────────── */}
               {profileLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-6">
                     {[1, 2].map(i => (
                       <div key={i} className="bg-white border border-slate-200 rounded-xl p-6 animate-pulse">
-                        <div className="w-20 h-20 rounded-full bg-slate-200 mx-auto mb-3"/>
-                        <div className="h-3 bg-slate-200 rounded w-1/2 mx-auto mb-2"/>
-                        <div className="h-2 bg-slate-100 rounded w-1/3 mx-auto"/>
+                        <div className="w-20 h-20 rounded-full bg-slate-200 mx-auto mb-3" />
+                        <div className="h-3 bg-slate-200 rounded w-1/2 mx-auto mb-2" />
+                        <div className="h-2 bg-slate-100 rounded w-1/3 mx-auto" />
                       </div>
                     ))}
                   </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                  {/* ── LEFT COLUMN ──────────────────────────────────────────── */}
+
+                  {/* ── LEFT COLUMN ──────────────────────────────────────── */}
                   <div className="space-y-6">
 
                     {/* Profile Overview Card */}
@@ -529,6 +452,7 @@ function AccountSettingsPage() {
                               type="button"
                               onClick={handleChooseFile}
                               className="w-full flex items-center gap-3 px-4 py-3 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors border-b border-slate-100"
+                              style={{ fontFamily: "'Poppins', sans-serif" }}
                             >
                               <svg className="w-4 h-4 text-[#125852]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
@@ -540,6 +464,7 @@ function AccountSettingsPage() {
                               type="button"
                               onClick={handleOpenCamera}
                               className="w-full flex items-center gap-3 px-4 py-3 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                              style={{ fontFamily: "'Poppins', sans-serif" }}
                             >
                               <svg className="w-4 h-4 text-[#125852]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
@@ -552,43 +477,42 @@ function AccountSettingsPage() {
                         )}
                       </div>
 
-                      {/* ── Camera Error — auto-dismisses after 5s ────────────── */}
+                      {/* Camera Error */}
                       {cameraError && (
                         <div className="flex items-start gap-2 mt-2 mb-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg max-w-xs mx-auto text-left">
                           <svg className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
                           </svg>
-                          <p className="text-[10px] text-red-500 font-medium flex-1 leading-relaxed">{cameraError}</p>
+                          <p className="text-[10px] text-red-500 font-medium flex-1 leading-relaxed" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                            {cameraError}
+                          </p>
                           <button
                             type="button"
                             onClick={() => setCameraError('')}
-                            className="font-bold text-xs leading-none shrink-0 transition-colors"
-                            style={{ color: '#EFB034' }}
-                            onMouseEnter={e => e.currentTarget.style.color = '#d4992a'}
-                            onMouseLeave={e => e.currentTarget.style.color = '#EFB034'}
+                            className="font-bold text-xs leading-none shrink-0 text-slate-400 hover:text-slate-600 transition-colors"
                             title="Dismiss"
-                          >
-                            ×
-                          </button>
+                          >×</button>
                         </div>
                       )}
 
-                      <h2 className="text-lg font-bold text-slate-800 leading-tight">
+                      <h2 className="text-lg font-bold text-slate-800 leading-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>
                         {userData.firstName || userData.lastName
                           ? `${userData.firstName} ${userData.lastName}`.trim()
                           : 'Your Name'}
                       </h2>
-                      <p className="text-xs text-slate-400 font-medium mt-0.5">
+                      <p className="text-xs text-slate-400 font-medium mt-0.5" style={{ fontFamily: "'Poppins', sans-serif" }}>
                         {userData.email || 'email@example.com'}
                       </p>
                     </div>
 
                     {/* Account Details Form */}
                     <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-                      <h3 className="text-base font-bold text-slate-800 mb-5">Account Details</h3>
+                      <h3 className="text-base font-bold text-slate-800 mb-5" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                        Account Details
+                      </h3>
 
                       {saveSuccess && (
-                        <div className="mb-4 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-[11px] text-green-700 font-semibold flex items-center gap-2">
+                        <div className="mb-4 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-[11px] text-green-700 font-semibold flex items-center gap-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
                           <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
                           </svg>
@@ -598,9 +522,10 @@ function AccountSettingsPage() {
 
                       <form onSubmit={handleSubmit} noValidate className="space-y-4">
 
+                        {/* First / Last Name (read-only) */}
                         <div className="flex gap-4">
                           <div className="flex-1 space-y-1">
-                            <label className="text-[11px] font-bold uppercase text-slate-500 flex items-center gap-1">
+                            <label className="text-[11px] font-bold uppercase text-slate-500 flex items-center gap-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
                               First Name
                               <span className="text-[9px] text-slate-300 normal-case font-normal">(read‑only)</span>
                             </label>
@@ -610,10 +535,11 @@ function AccountSettingsPage() {
                               readOnly
                               tabIndex={-1}
                               className="w-full px-3 py-2 text-sm border border-slate-100 rounded-lg bg-slate-50 text-slate-400 cursor-not-allowed select-none"
+                              style={{ fontFamily: "'Poppins', sans-serif" }}
                             />
                           </div>
                           <div className="flex-1 space-y-1">
-                            <label className="text-[11px] font-bold uppercase text-slate-500 flex items-center gap-1">
+                            <label className="text-[11px] font-bold uppercase text-slate-500 flex items-center gap-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
                               Last Name
                               <span className="text-[9px] text-slate-300 normal-case font-normal">(read‑only)</span>
                             </label>
@@ -623,12 +549,14 @@ function AccountSettingsPage() {
                               readOnly
                               tabIndex={-1}
                               className="w-full px-3 py-2 text-sm border border-slate-100 rounded-lg bg-slate-50 text-slate-400 cursor-not-allowed select-none"
+                              style={{ fontFamily: "'Poppins', sans-serif" }}
                             />
                           </div>
                         </div>
 
+                        {/* Email (read-only) */}
                         <div className="space-y-1">
-                          <label className="text-[11px] font-bold uppercase text-slate-500 flex items-center gap-1">
+                          <label className="text-[11px] font-bold uppercase text-slate-500 flex items-center gap-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
                             Email Address
                             <span className="text-[9px] text-slate-300 normal-case font-normal">(read‑only)</span>
                           </label>
@@ -638,36 +566,114 @@ function AccountSettingsPage() {
                             readOnly
                             tabIndex={-1}
                             className="w-full px-3 py-2 text-sm border border-slate-100 rounded-lg bg-slate-50 text-slate-400 cursor-not-allowed select-none"
+                            style={{ fontFamily: "'Poppins', sans-serif" }}
                           />
                         </div>
 
+                        {/* ── Primary Phone Number ──────────────────────────── */}
                         <div className="space-y-1">
-                          <label className="text-[11px] font-bold uppercase text-slate-500">
+                          <label className="text-[11px] font-bold uppercase text-slate-500 flex items-center gap-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
                             Phone Number
+                            {isPrimaryPhoneLocked() && (
+                              <span className="text-[9px] text-slate-800 normal-case font-semibold flex items-center gap-0.5 ml-1">
+                                {/* Padlock icon — BLACK */}
+                                <svg className="w-2.5 h-2.5 text-slate-900" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
+                                </svg>
+                                locked until {primaryPhoneUnlockDate()}
+                              </span>
+                            )}
                           </label>
-                          <PhoneInput
-                            country={'ug'}
-                            value={userData.phone}
-                            onChange={handlePhoneChange}
-                            inputClass={`!w-full !px-12 !py-5 !text-sm !border !rounded-lg !bg-white !focus:outline-none !transition-all ${
-                              errors.phone ? '!border-red-500' : '!border-slate-200'
-                            }`}
-                            buttonClass={`!bg-white !border !rounded-l-lg ${
-                              errors.phone ? '!border-red-500' : '!border-slate-200'
-                            }`}
-                            containerClass="!w-full"
-                          />
+
+                          {isPrimaryPhoneLocked() ? (
+                            <div className="relative">
+                              <input
+                                type="text"
+                                value={userData.phone ? `+${userData.phone}` : ''}
+                                readOnly
+                                tabIndex={-1}
+                                className="w-full px-3 py-2 text-sm border border-slate-100 rounded-lg bg-slate-50 text-slate-400 cursor-not-allowed select-none"
+                                style={{ fontFamily: "'Poppins', sans-serif" }}
+                              />
+                              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                                {/* Lock icon in field — BLACK */}
+                                <svg className="w-3.5 h-3.5 text-slate-900" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
+                                </svg>
+                              </div>
+                            </div>
+                          ) : (
+                            <PhoneInput
+                              country={'ug'}
+                              value={userData.phone}
+                              onChange={handlePhoneChange}
+                              inputClass={`!w-full !px-12 !py-5 !text-sm !border !rounded-lg !bg-white !focus:outline-none !transition-all ${
+                                errors.phone ? '!border-red-500' : '!border-slate-200'
+                              }`}
+                              buttonClass={`!bg-white !border !rounded-l-lg ${
+                                errors.phone ? '!border-red-500' : '!border-slate-200'
+                              }`}
+                              containerClass="!w-full"
+                            />
+                          )}
+
                           {errors.phone && (
-                            <p className="text-[9px] text-red-500 font-medium">{errors.phone}</p>
+                            <p className="text-[9px] text-red-500 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                              {errors.phone}
+                            </p>
+                          )}
+
+                          {/* Compact locked notice */}
+                          {isPrimaryPhoneLocked() && (
+                            <p className="text-[10px] text-slate-400 leading-relaxed" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                              Locked for 6 months. Add a temporary contact below to receive communications.
+                            </p>
                           )}
                         </div>
 
+                        {/* ── Temporary / Backup Contact ──────────────────── */}
+                        <div className="space-y-1 pt-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <label className="text-[11px] font-bold uppercase text-slate-500" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                              Temporary Contact
+                            </label>
+                            <span className="bg-amber-50 border border-amber-200 text-amber-600 text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                              Optional
+                            </span>
+                          </div>
+                          {/* Removed long description — kept minimal */}
+                          <PhoneInput
+                            country={'ug'}
+                            value={tempPhone}
+                            onChange={(value) => {
+                              setTempPhone(value);
+                              setTempPhoneError('');
+                            }}
+                            inputClass={`!w-full !px-12 !py-5 !text-sm !border !rounded-lg !bg-white !focus:outline-none !transition-all ${
+                              tempPhoneError ? '!border-red-500' : '!border-slate-200'
+                            }`}
+                            buttonClass={`!bg-white !border !rounded-l-lg ${
+                              tempPhoneError ? '!border-red-500' : '!border-slate-200'
+                            }`}
+                            containerClass="!w-full"
+                            placeholder="Add backup number"
+                          />
+                          {tempPhoneError && (
+                            <p className="text-[9px] text-red-500 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                              {tempPhoneError}
+                            </p>
+                          )}
+                          {/* ✅ REMOVED: green success text when filling temp phone */}
+                        </div>
+
+                        {/* Action Buttons */}
                         <div className="flex justify-end gap-3 pt-4">
                           <button
                             type="button"
                             onClick={handleCancel}
                             disabled={isLoading}
                             className="px-6 py-2 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 disabled:opacity-50 transition-colors cursor-pointer"
+                            style={{ fontFamily: "'Poppins', sans-serif" }}
                           >
                             Cancel
                           </button>
@@ -675,7 +681,7 @@ function AccountSettingsPage() {
                             type="submit"
                             disabled={isLoading}
                             className="px-6 py-2 text-[11px] font-bold text-white rounded-lg shadow-sm disabled:opacity-50 transition-all cursor-pointer"
-                            style={{ backgroundColor: '#EFB034' }}
+                            style={{ backgroundColor: '#EFB034', fontFamily: "'Poppins', sans-serif" }}
                             onMouseEnter={e => { if (!isLoading) e.currentTarget.style.backgroundColor = '#d4992a'; }}
                             onMouseLeave={e => { if (!isLoading) e.currentTarget.style.backgroundColor = '#EFB034'; }}
                           >
@@ -694,12 +700,14 @@ function AccountSettingsPage() {
                     </div>
                   </div>
 
-                  {/* ── RIGHT COLUMN ─────────────────────────────────────────── */}
+                  {/* ── RIGHT COLUMN ─────────────────────────────────────── */}
                   <div className="space-y-6">
 
                     {/* Role Card */}
                     <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
-                      <h3 className="text-[10px] font-bold text-slate-800 mb-4 uppercase tracking-widest">Your Role</h3>
+                      <h3 className="text-[10px] font-bold text-slate-800 mb-4 uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                        Your Role
+                      </h3>
                       <div className="border border-[#125852] border-opacity-20 rounded-lg p-4 flex items-center justify-between bg-slate-50/30">
                         <div className="flex items-center gap-4">
                           <div className="p-2 bg-white rounded-md shadow-sm border border-slate-100">
@@ -708,8 +716,10 @@ function AccountSettingsPage() {
                             </svg>
                           </div>
                           <div>
-                            <h4 className="text-sm font-bold text-slate-800">Vendor</h4>
-                            <p className="text-[9px] text-slate-400 font-medium">List products and process payouts.</p>
+                            <h4 className="text-sm font-bold text-slate-800" style={{ fontFamily: "'Poppins', sans-serif" }}>Vendor</h4>
+                            <p className="text-[9px] text-slate-400 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                              List products and process payouts.
+                            </p>
                           </div>
                         </div>
                         <svg className="w-5 h-5 text-[#125852]" fill="currentColor" viewBox="0 0 20 20">
@@ -720,7 +730,9 @@ function AccountSettingsPage() {
 
                     {/* Identity Verification Card */}
                     <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
-                      <h3 className="text-[10px] font-bold text-slate-800 mb-4 uppercase tracking-widest">Identity Verification</h3>
+                      <h3 className="text-[10px] font-bold text-slate-800 mb-4 uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                        Identity Verification
+                      </h3>
                       <div className="flex items-start gap-4">
                         <div className="p-2 bg-green-50 rounded-full">
                           <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -729,81 +741,43 @@ function AccountSettingsPage() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <h4 className="text-sm font-bold text-slate-800">Identity Status:</h4>
-                            <span className="bg-[#125852] text-white text-[9px] font-bold px-2 py-0.5 rounded uppercase">Verified</span>
+                            <h4 className="text-sm font-bold text-slate-800" style={{ fontFamily: "'Poppins', sans-serif" }}>Identity Status:</h4>
+                            <span className="bg-[#125852] text-white text-[9px] font-bold px-2 py-0.5 rounded uppercase" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                              Verified
+                            </span>
                           </div>
-                          <p className="text-[9px] text-slate-400 font-medium italic">Your identity has been successfully verified.</p>
+                          <p className="text-[9px] text-slate-400 font-medium italic" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                            Your identity has been successfully verified.
+                          </p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Linked Accounts Card */}
+                    {/* ── Business Settings Card ── */}
                     <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
-                      <h3 className="text-[10px] font-bold text-slate-800 mb-4 uppercase tracking-widest">Linked Accounts</h3>
-                      <div className="space-y-3 mb-5">
-                        {linkedSocials.map((social, index) => (
-                          <div key={index} className="flex items-center justify-between bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: social.color }}/>
-                              <div className="min-w-0">
-                                <p className="text-[11px] text-slate-700 font-semibold">{social.name} Connected</p>
-                                <a
-                                  href={social.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-[10px] text-[#125852] hover:underline truncate block max-w-[160px]"
-                                  title={social.url}
-                                >
-                                  {social.url}
-                                </a>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleUnlink(social.name)}
-                              className="text-red-500 text-[9px] font-bold uppercase hover:underline cursor-pointer shrink-0 ml-2"
-                            >
-                              Unlink
-                            </button>
-                          </div>
-                        ))}
-                        {linkedSocials.length === 0 && (
-                          <p className="text-[10px] text-slate-400 text-center py-2">No accounts linked yet.</p>
-                        )}
-                      </div>
-
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                          className="w-full flex items-center justify-center gap-2 text-white py-2.5 rounded-lg text-[11px] font-bold shadow-sm transition-colors cursor-pointer"
-                          style={{ backgroundColor: '#EFB034' }}
-                          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#d4992a'}
-                          onMouseLeave={e => e.currentTarget.style.backgroundColor = '#EFB034'}
-                        >
-                          {isDropdownOpen ? '× Close Menu' : '+ Link New Account'}
-                        </button>
-                        {isDropdownOpen && (
-                          <div className="absolute top-full left-0 w-full bg-white mt-2 border border-slate-200 rounded-lg shadow-xl z-[70] overflow-hidden">
-                            {availableSocials
-                              .filter(s => !linkedSocials.find(l => l.name === s.name))
-                              .map((social) => (
-                                <button
-                                  type="button"
-                                  key={social.name}
-                                  onClick={() => handleLinkSocial(social)}
-                                  className="w-full text-left px-4 py-2.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3 border-b last:border-none transition-colors cursor-pointer"
-                                >
-                                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: social.color }}/>
-                                  {social.name}
-                                </button>
-                              ))}
-                            {availableSocials.filter(s => !linkedSocials.find(l => l.name === s.name)).length === 0 && (
-                              <p className="text-[10px] text-slate-400 text-center py-3">All platforms linked!</p>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                      <h3 className="text-[10px] font-bold text-slate-800 mb-1 uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                        Business
+                      </h3>
+                      <p className="text-[10px] text-slate-400 mb-4 leading-relaxed" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                        Manage your store, payout methods, and linked accounts.
+                      </p>
+                      {/* Business Settings button — GOLD */}
+                      <a
+                        href="/business-settings"
+                        className="w-full flex items-center justify-center gap-2 text-white py-2.5 rounded-lg text-[11px] font-bold shadow-sm transition-colors cursor-pointer no-underline"
+                        style={{ backgroundColor: '#EFB034', fontFamily: "'Poppins', sans-serif", display: 'flex' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#d4992a'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = '#EFB034'}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        Business Settings
+                        <svg className="w-3.5 h-3.5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                      </a>
                     </div>
 
                   </div>
