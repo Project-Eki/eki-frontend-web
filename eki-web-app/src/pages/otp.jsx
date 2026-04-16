@@ -48,7 +48,6 @@ const OTPVerify = () => {
     setIsLoading(true);
     setError("");
 
-    
     navigate("/reset-password", {
       state: {
         email: email,
@@ -70,7 +69,7 @@ const OTPVerify = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-white font-sans">
+    <div className="flex flex-col min-h-screen bg-[#ecece7] font-sans">
       <Navbar />
 
       <div className="flex-1 flex items-center justify-center py-12 px-4">
@@ -84,22 +83,28 @@ const OTPVerify = () => {
             </p>
           </div>
 
-          <div className="flex justify-center gap-3 mb-6">
+          <div className="flex justify-center items-center gap-3 mb-6">
             {otp.map((data, index) => (
-              <input
-                key={index}
-                type="text"
-                maxLength="1"
-                ref={(el) => (inputRefs.current[index] = el)}
-                value={data}
-                onChange={(e) => handleChange(e.target, index)}
-                onKeyDown={(e) => handleKeyDown(e, index)}
-                className={`w-12 h-12 text-center text-2xl font-bold border-2 rounded-lg outline-none transition-all ${
-                  error
-                    ? 'border-red-500 bg-red-50 focus:border-red-500'
-                    : 'border-[#EFB034] focus:border-[#EFB034] focus:ring-2 focus:ring-[#EFB034]/30'
-                }`}
-              />
+              <React.Fragment key={index}>
+                {index === 3 && (
+                  <span className="text-gray-400 text-xl font-bold mx-1">—</span>
+                )}
+                <input
+                  type="text"
+                  maxLength="1"
+                  ref={(el) => (inputRefs.current[index] = el)}
+                  value={data}
+                  onChange={(e) => handleChange(e.target, index)}
+                  onKeyDown={(e) => handleKeyDown(e, index)}
+                  className={`w-12 h-12 text-center text-2xl font-bold border-2 rounded-2xl outline-none transition-all ${
+                    error
+                      ? 'border-red-500 bg-red-50 focus:border-red-500'
+                      : data
+                      ? 'border-[#EFB034] bg-[#EFB034] text-white focus:ring-2 focus:ring-[#EFB034]/30'
+                      : 'border-gray-200 bg-gray-50 focus:border-[#EFB034] focus:bg-[#EFB034]/10 focus:ring-2 focus:ring-[#EFB034]/30'
+                  }`}
+                />
+              </React.Fragment>
             ))}
           </div>
 

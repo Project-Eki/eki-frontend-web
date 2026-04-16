@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   X, ArrowRight, ArrowLeft, Eye, CheckCircle2, Palette, Ruler,
-  ImagePlus, Trash2, ShoppingBag, ChevronDown, ChevronUp, Camera,
+  ImagePlus, Trash2, ShoppingBag, ChevronDown, ChevronUp, Camera, Save,
 } from 'lucide-react';
 import { getImageUrl } from '../services/authService';   // <-- ADDED
 
@@ -401,7 +401,7 @@ const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, 
       <div className="flex flex-wrap gap-1.5">
         {existingImages.map((img, i) => (
           <div key={img.id ?? i} className="w-16 h-16 rounded-lg border border-slate-200 overflow-hidden relative group flex-shrink-0">
-            <img src={getImageUrl(img.image)} alt={`Product ${i + 1}`} className="w-full h-full object-cover" />  {/* FIXED */}
+            <img src={getImageUrl(img.image)} alt={`Product ${i + 1}`} className="w-full h-full object-cover" />
             {i === 0 && (
               <span className="absolute bottom-0 left-0 right-0 bg-[#125852]/80 text-white text-[7px] font-black text-center py-0.5">MAIN</span>
             )}
@@ -698,6 +698,30 @@ const SummaryPill = ({ formData, currencySymbol, currentStep, onEdit }) => {
   );
 };
 
+// ─── Edit Mode Save Banner ─────────────────────────────────────────────────────
+// Shows a "Save Changes" button on every step when editing an existing product
+const EditSaveBanner = ({ onSave, isLoading, label = 'Save Changes' }) => (
+  <div className="px-6 py-2 bg-amber-50 border-b border-amber-100 flex items-center justify-between flex-shrink-0">
+    <p className="text-[10px] text-amber-700 font-medium flex items-center gap-1.5">
+      <Save size={11} />
+      Editing existing product — save at any step
+    </p>
+    <button
+      type="button"
+      onClick={onSave}
+      disabled={isLoading}
+      className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-sm transition-all active:scale-95 ${
+        isLoading
+          ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+          : 'bg-[#125852] text-white hover:bg-[#0e4340] cursor-pointer'
+      }`}
+    >
+      <Save size={11} />
+      {isLoading ? 'Saving…' : label}
+    </button>
+  </div>
+);
+
 // ─── Main Listing Form Component ──────────────────────────────────────────────
 const ProductListing = ({
   isOpen,
@@ -711,6 +735,8 @@ const ProductListing = ({
   submitLabel = 'Publish Product',
   branchLocation = '',
 }) => {
+  const isEditMode = !!initialData;
+
   const [formStep, setFormStep] = useState(1);
   const [formData, setFormData] = useState(blankForm());
   const [formErrors, setFormErrors] = useState({});
@@ -731,7 +757,8 @@ const ProductListing = ({
         price: initialData.price ? String(initialData.price) : '',
         sku: initialData.sku || '',
         description: initialData.description || '',
-        stock: initialData.stock || 0,
+        // ── Stock fix: use the resolved stock value from initialData ──
+        stock: initialData.stock ?? initialData.detail?.stock ?? initialData.stock_quantity ?? 0,
         imageFiles: [],
         sizes: initialData.sizes || [],
         colors: initialData.colors || [],
@@ -895,13 +922,15 @@ const ProductListing = ({
     return [...general, ...colored];
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // ── Unified submit used by both the final step and the edit-mode "Save" banner ──
+  const buildPayloadAndSubmit = async () => {
     const validationErrors = validateStep1();
     const descErrors = validateStep2();
     if (Object.keys(validationErrors).length > 0 || Object.keys(descErrors).length > 0) {
       setFormErrors({ ...validationErrors, ...descErrors });
-      setFormStep(1);
+      // Jump to the step that has the error
+      if (Object.keys(validationErrors).length > 0) setFormStep(1);
+      else setFormStep(2);
       return;
     }
 
@@ -915,6 +944,7 @@ const ProductListing = ({
       branch_location: branchLocation || '',
       price: parseFloat(formData.price) || 0,
       sku: formData.sku,
+      // ── Stock fix: always send the current (possibly reduced) stock value ──
       stock: parseInt(formData.stock) || 0,
       sizes: formData.sizes,
       colors: formData.colors,
@@ -936,6 +966,16 @@ const ProductListing = ({
     } catch (err) {
       setFormErrors({ _server: err.message || 'Something went wrong. Please try again.' });
     }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await buildPayloadAndSubmit();
+  };
+
+  // Called from the edit-mode save banner on any step
+  const handleEditSave = async () => {
+    await buildPayloadAndSubmit();
   };
 
   const ErrorBanner = ({ msg }) =>
@@ -975,6 +1015,12 @@ const ProductListing = ({
               <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <StepProgressBar currentStep={1} />
+
+            {/* Edit-mode save banner — visible on every step */}
+            {isEditMode && (
+              <EditSaveBanner onSave={handleEditSave} isLoading={isLoading} label={submitLabel} />
+            )}
+
             <div className="px-6 py-4 space-y-3 overflow-y-auto flex-1">
               <ErrorBanner msg={formErrors._server} />
 
@@ -1028,8 +1074,18 @@ const ProductListing = ({
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
                 />
                 <p className="text-[9px] text-slate-400">
-                  Total units available. Skip if using size/color variants — set stock per variant instead.
+                  Total units available. This decreases automatically as orders are placed. Skip if using size/color variants — set stock per variant instead.
                 </p>
+                {/* ── Stock fix: show a live "available stock" hint when editing ── */}
+                {isEditMode && (
+                  <div className="flex items-center gap-2 mt-1 px-2 py-1.5 bg-blue-50 border border-blue-100 rounded-lg">
+                    <span className="text-[9px] text-blue-600 font-bold">Current stock on record:</span>
+                    <span className="text-[9px] font-black text-[#125852]">
+                      {initialData?.stock ?? initialData?.detail?.stock ?? initialData?.stock_quantity ?? 0} units
+                    </span>
+                    <span className="text-[8px] text-blue-400 ml-auto italic">Updates after orders are fulfilled</span>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3 border border-slate-100 rounded-xl p-4 bg-slate-50/50">
@@ -1114,7 +1170,7 @@ const ProductListing = ({
                   step1Valid ? 'bg-[#F5B841] text-white hover:bg-[#E0A83B] cursor-pointer' : 'bg-slate-300 text-slate-500 cursor-not-allowed'
                 }`}
               >
-                Continue <ArrowRight size={13} />
+                {isEditMode ? 'Next' : 'Continue'} <ArrowRight size={13} />
               </button>
             </div>
           </div>
@@ -1132,6 +1188,11 @@ const ProductListing = ({
               <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <StepProgressBar currentStep={2} />
+
+            {isEditMode && (
+              <EditSaveBanner onSave={handleEditSave} isLoading={isLoading} label={submitLabel} />
+            )}
+
             <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
               <ErrorBanner msg={formErrors._server} />
               <SummaryPill formData={formData} currencySymbol={currencySymbol} currentStep={2} onEdit={setFormStep} />
@@ -1146,7 +1207,7 @@ const ProductListing = ({
                 <ArrowLeft size={13} /> Back
               </button>
               <button type="button" onClick={handleStep2Continue} className="px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 bg-[#F5B841] text-white hover:bg-[#E0A83B]">
-                Continue <ArrowRight size={13} />
+                {isEditMode ? 'Next' : 'Continue'} <ArrowRight size={13} />
               </button>
             </div>
           </div>
@@ -1164,6 +1225,11 @@ const ProductListing = ({
               <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <StepProgressBar currentStep={3} />
+
+            {isEditMode && (
+              <EditSaveBanner onSave={handleEditSave} isLoading={isLoading} label={submitLabel} />
+            )}
+
             <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
               <SummaryPill formData={formData} currencySymbol={currencySymbol} currentStep={3} onEdit={setFormStep} />
               <VariantSection
@@ -1177,7 +1243,7 @@ const ProductListing = ({
                 <ArrowLeft size={13} /> Back
               </button>
               <button type="button" onClick={handleStep3Continue} className="px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 bg-[#F5B841] text-white hover:bg-[#E0A83B]">
-                Continue <ArrowRight size={13} />
+                {isEditMode ? 'Next' : 'Continue'} <ArrowRight size={13} />
               </button>
             </div>
           </div>
@@ -1199,6 +1265,11 @@ const ProductListing = ({
               <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <StepProgressBar currentStep={4} />
+
+            {isEditMode && (
+              <EditSaveBanner onSave={handleEditSave} isLoading={isLoading} label={submitLabel} />
+            )}
+
             <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
               <ErrorBanner msg={formErrors._server} />
               <SummaryPill formData={formData} currencySymbol={currencySymbol} currentStep={4} onEdit={setFormStep} />
