@@ -1,8 +1,12 @@
 import axios from 'axios';
 
+// ─── Vite exposes env vars via import.meta.env (not process.env) ───────────
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://joineki.com/api/v1';
+
 const api = axios.create({
-  baseURL: 'https://joineki.com',
+  baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
+  timeout: 15000,
 });
 
 const PUBLIC_ROUTES = [
@@ -27,6 +31,7 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
+// ─── Request interceptor: attach Bearer token to protected routes ───────────
 api.interceptors.request.use(
   (config) => {
     const isPublic = PUBLIC_ROUTES.some((route) => config.url?.includes(route));
@@ -41,26 +46,12 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// ─── Response interceptor: handle 401 with token refresh + queue ────────────
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const status = error.response?.status;
     const originalRequest = error.config;
-
-    if (status === 400) {
-      console.error('━━ 400 Bad Request ━━━━━━━━━━━━━━━━━━━');
-      console.error('URL    :', error.config?.url);
-      try { console.error('Sent   :', JSON.parse(error.config?.data)); }
-      catch (_) { console.error('Sent   :', error.config?.data); }
-      console.error('Django :', error.response?.data);
-      const errs = error.response?.data?.errors ?? error.response?.data;
-      if (errs && typeof errs === 'object') {
-        Object.entries(errs).forEach(([f, m]) =>
-          console.error(`  ✗ ${f}:`, Array.isArray(m) ? m.join(', ') : m)
-        );
-      }
-      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    }
 
     if (status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
@@ -89,10 +80,8 @@ api.interceptors.response.use(
       }
 
       try {
-        const res = await axios.post(
-          'https://joineki.com/api/v1/accounts/token-refresh/',
-          { refresh: refreshToken }
-        );
+        // Use the api instance (not raw axios) so it respects the base URL from env
+        const res = await api.post('/accounts/token-refresh/', { refresh: refreshToken });
         const newAccess = res.data?.access || res.data?.data?.access;
         localStorage.setItem('access_token', newAccess);
         api.defaults.headers.common.Authorization = `Bearer ${newAccess}`;
@@ -113,11 +102,13 @@ api.interceptors.response.use(
   }
 );
 
+// ─── Token helpers ───────────────────────────────────────────────────────────
 const saveTokens = ({ access, refresh }) => {
   if (access) localStorage.setItem('access_token', access);
   if (refresh) localStorage.setItem('refresh_token', refresh);
 };
 
+// ─── Auth ────────────────────────────────────────────────────────────────────
 export const SigninUser = async (credentials) => {
   const response = await api.post('/accounts/login/', {
     email: credentials.email?.trim().toLowerCase(),
@@ -142,9 +133,17 @@ export const SignoutUser = () => {
 
 export const verifyOtp = (data) => api.post('/accounts/verify-email/', data).then((r) => r.data);
 export const resendOtp = (email) => api.post('/accounts/resend-code/', { email }).then((r) => r.data);
-export const getBuyerProfile = () => api.get('/accounts/buyer/profile/').then((r) => r.data?.data ?? r.data);
-export const updateBuyerProfile = (data) => api.patch('/accounts/buyer/profile/', data).then((r) => r.data?.data ?? r.data);
+export const passwordResetRequest = (email) => api.post('/accounts/reset-password/', { email });
+export const passwordResetConfirm = (data) => api.post('/accounts/confirm-password-reset/', data);
+export const changePassword = (data) => api.post('/accounts/change-password/', data);
 
+// ─── Buyer ───────────────────────────────────────────────────────────────────
+export const getBuyerProfile = () =>
+  api.get('/accounts/buyer/profile/').then((r) => r.data?.data ?? r.data);
+export const updateBuyerProfile = (data) =>
+  api.patch('/accounts/buyer/profile/', data).then((r) => r.data?.data ?? r.data);
+
+// ─── Vendor profile (with in-memory cache) ───────────────────────────────────
 let _profileCache = null;
 let _profileFetching = null;
 export const clearProfileCache = () => { _profileCache = null; };
@@ -211,32 +210,28 @@ export const updateVendorProfile = async (changedFields) => {
     }
   });
 
-  try {
-    const res = await api.patch('/accounts/vendor/profile/', formData, {
-      headers: { 'Content-Type': undefined },
-    });
+  const res = await api.patch('/accounts/vendor/profile/', formData, {
+    headers: { 'Content-Type': undefined },
+  });
 
-    clearProfileCache();
+  clearProfileCache();
 
-    const d = res.data?.data ?? res.data;
-    if (d) {
-      if (d.first_name) localStorage.setItem('vendor_first_name', d.first_name);
-      if (d.last_name) localStorage.setItem('vendor_last_name', d.last_name);
-      if (d.email) localStorage.setItem('vendor_email', d.email);
-      if (d.profile_picture) localStorage.setItem('vendor_profile_picture', d.profile_picture);
-      if (d.phone_number) localStorage.setItem('vendor_phone_number', d.phone_number);
-      if (d.business_country) localStorage.setItem('vendor_country', d.business_country);
-      else if (d.country) localStorage.setItem('vendor_country', d.country);
-      if (d.branch_location) localStorage.setItem('vendor_branch_location', d.branch_location);
-    }
-
-    return res.data?.data ?? res.data;
-  } catch (error) {
-    console.error('[updateVendorProfile] Error:', error.response?.status, error.response?.data);
-    throw error;
+  const d = res.data?.data ?? res.data;
+  if (d) {
+    if (d.first_name) localStorage.setItem('vendor_first_name', d.first_name);
+    if (d.last_name) localStorage.setItem('vendor_last_name', d.last_name);
+    if (d.email) localStorage.setItem('vendor_email', d.email);
+    if (d.profile_picture) localStorage.setItem('vendor_profile_picture', d.profile_picture);
+    if (d.phone_number) localStorage.setItem('vendor_phone_number', d.phone_number);
+    if (d.business_country) localStorage.setItem('vendor_country', d.business_country);
+    else if (d.country) localStorage.setItem('vendor_country', d.country);
+    if (d.branch_location) localStorage.setItem('vendor_branch_location', d.branch_location);
   }
+
+  return res.data?.data ?? res.data;
 };
 
+// ─── Vendor notifications (endpoint not live yet) ────────────────────────────
 const NOTIFICATIONS_ENDPOINT_READY = false;
 
 export const getVendorNotifications = async ({ limit = 15 } = {}) => {
@@ -276,6 +271,7 @@ export const markAllVendorNotificationsRead = async () => {
   }
 };
 
+// ─── Order notifications ─────────────────────────────────────────────────────
 export const getOrderNotifications = async ({ limit = 15, country = '', branch_location = '' } = {}) => {
   try {
     const params = new URLSearchParams({ limit });
@@ -311,21 +307,18 @@ export const markOrderNotificationRead = async (notifId) => {
   }
 };
 
-// ──────────────────────────────────────────────────────────────────────────
-// NEW: Helper to derive transaction type from order status
-// Used in normalizeOrder to add a `transaction_type` field
-// ──────────────────────────────────────────────────────────────────────────
+// ─── Order helpers ───────────────────────────────────────────────────────────
 const deriveTransactionType = (status) => {
   const s = String(status ?? '').toLowerCase();
   if (s === 'cancelled' || s === 'canceled') return 'Refund';
   if (s === 'payout' || s.includes('payout')) return 'Payout';
-  return 'Sale'; // completed, delivered, confirmed, processing, pending
+  return 'Sale';
 };
 
 const normalizeOrderItems = (o) => {
   if (Array.isArray(o.items) && o.items.length > 0 && typeof o.items[0] === 'object') {
     return o.items.map((item) => ({
-      name: item.name ?? item.title ?? item.product_name ?? item.listing_title ?? `Item`,
+      name: item.name ?? item.title ?? item.product_name ?? item.listing_title ?? 'Item',
       qty: item.qty ?? item.quantity ?? item.amount ?? 1,
       price: item.price ?? item.unit_price ?? item.item_price ?? 0,
       total: item.total ?? item.subtotal ?? item.line_total ??
@@ -339,7 +332,7 @@ const normalizeOrderItems = (o) => {
 
   if (Array.isArray(o.order_items) && o.order_items.length > 0) {
     return o.order_items.map((item) => ({
-      name: item.name ?? item.title ?? item.product_name ?? item.listing_title ?? `Item`,
+      name: item.name ?? item.title ?? item.product_name ?? item.listing_title ?? 'Item',
       qty: item.qty ?? item.quantity ?? 1,
       price: item.price ?? item.unit_price ?? item.item_price ?? 0,
       total: item.total ?? item.subtotal ??
@@ -356,7 +349,7 @@ const normalizeOrderItems = (o) => {
   );
   if (altKey) {
     return o[altKey].map((item) => ({
-      name: item.name ?? item.title ?? item.product_name ?? `Item`,
+      name: item.name ?? item.title ?? item.product_name ?? 'Item',
       qty: item.qty ?? item.quantity ?? 1,
       price: item.price ?? item.unit_price ?? 0,
       total: item.total ?? item.subtotal ??
@@ -395,37 +388,14 @@ const normalizeOrderCustomer = (o) => {
     o.user?.username ||
     '—';
 
-  const email =
-    o.customer_email ||
-    o.buyer?.email ||
-    o.user?.email ||
-    o.email ||
-    '';
-
-  const phone =
-    o.customer_phone ||
-    o.buyer?.phone ||
-    o.buyer?.phone_number ||
-    o.user?.phone ||
-    o.phone ||
-    o.phone_number ||
-    '';
-
-  const address =
-    o.delivery_address ||
-    o.shipping_address ||
-    o.customer_address ||
-    o.buyer?.address ||
-    o.location ||
-    '';
-
-  return { name, email, phone, address };
+  return {
+    name,
+    email: o.customer_email || o.buyer?.email || o.user?.email || o.email || '',
+    phone: o.customer_phone || o.buyer?.phone || o.buyer?.phone_number || o.user?.phone || o.phone || o.phone_number || '',
+    address: o.delivery_address || o.shipping_address || o.customer_address || o.buyer?.address || o.location || '',
+  };
 };
 
-// ──────────────────────────────────────────────────────────────────────────
-// MODIFIED: normalizeOrder now includes `transaction_type`
-// Also ensures `type` field is set for backward compatibility
-// ──────────────────────────────────────────────────────────────────────────
 const normalizeOrder = (o) => {
   const customer = normalizeOrderCustomer(o);
   const items = normalizeOrderItems(o);
@@ -436,14 +406,7 @@ const normalizeOrder = (o) => {
     id: o.id ?? o.order_id ?? o.pk,
     customer,
     items,
-    total: Number(
-      o.total ??
-      o.total_amount ??
-      o.total_price ??
-      o.amount ??
-      o.grand_total ??
-      0
-    ),
+    total: Number(o.total ?? o.total_amount ?? o.total_price ?? o.amount ?? o.grand_total ?? 0),
     subtotal: Number(o.subtotal ?? o.sub_total ?? o.subtotal_amount ?? 0) || null,
     shipping: Number(o.shipping ?? o.shipping_fee ?? o.delivery_fee ?? 0) || null,
     tax: Number(o.tax ?? o.tax_amount ?? o.vat ?? 0) || null,
@@ -452,24 +415,21 @@ const normalizeOrder = (o) => {
     location: o.location ?? o.delivery_address ?? o.shipping_address ?? '',
     notes: o.notes ?? o.order_notes ?? o.special_instructions ?? '',
     review: o.review ?? o.customer_review ?? null,
-    // NEW fields for payment page
     transaction_type: derivedType,
-    type: derivedType,           // alias for convenience
-    transaction_id: o.id ?? o.order_id ?? o.pk, // raw ID, component will format
+    type: derivedType,
+    transaction_id: o.id ?? o.order_id ?? o.pk,
   };
 };
 
+// ─── Orders ──────────────────────────────────────────────────────────────────
 export const getVendorOrders = async ({ status = '', search = '' } = {}) => {
   try {
     const params = new URLSearchParams();
     if (status) params.append('status', status);
     if (search) params.append('search', search);
     const query = params.toString() ? `?${params.toString()}` : '';
-
     const r = await api.get(`/orders/vendor/order-list/${query}`);
     const payload = r.data?.data ?? r.data;
-
-    console.log('[getVendorOrders] raw response:', payload);
 
     let list = [];
     if (Array.isArray(payload)) list = payload;
@@ -478,8 +438,7 @@ export const getVendorOrders = async ({ status = '', search = '' } = {}) => {
     else if (Array.isArray(payload?.data)) list = payload.data;
 
     return list.map(normalizeOrder);
-  } catch (err) {
-    console.error('[getVendorOrders] Error:', err.response?.status, err.response?.data);
+  } catch (_) {
     return [];
   }
 };
@@ -504,38 +463,29 @@ export const markOrderReadyForPickup = async (orderId) => {
   return r.data?.data ?? r.data;
 };
 
-// ─── VENDOR WALLET BALANCE ────────────────────────────────────────────────────
+// ─── Wallet & Escrow ─────────────────────────────────────────────────────────
 export const getVendorWallet = async () => {
   try {
     const r = await api.get('/payments/wallet/vendor/');
     return r.data?.data ?? r.data ?? {};
-  } catch (err) {
-    console.error('[getVendorWallet] Error:', err.response?.status);
-    return {};
-  }
+  } catch (_) { return {}; }
 };
 
-// ─── VENDOR ESCROW SUMMARY ────────────────────────────────────────────────────
 export const getVendorEscrow = async () => {
   try {
     const r = await api.get('/orders/vendor/escrow-summary/');
     return r.data?.data ?? r.data ?? {};
-  } catch (err) {
-    console.error('[getVendorEscrow] Error:', err.response?.status);
-    return {};
-  }
+  } catch (_) { return {}; }
 };
 
+// ─── Dashboard ───────────────────────────────────────────────────────────────
 export const getVendorDashboard = async () => {
   let raw = {};
 
   try {
     const dashRes = await api.get('/accounts/vendor/command-center/');
     raw = dashRes.data?.data ?? dashRes.data ?? {};
-    console.log('[getVendorDashboard] Raw API response:', raw);
-  } catch (dashErr) {
-    console.error('[getVendorDashboard] command-center failed:', dashErr);
-  }
+  } catch (_) {}
 
   let country = 'Uganda';
   let storeName = '';
@@ -544,10 +494,10 @@ export const getVendorDashboard = async () => {
   let currencySymbol = 'UGX';
   let branchLocation = '';
 
-  let isProductVendor = raw.is_product_vendor ?? true;
-  let isServiceVendor = raw.is_service_vendor ?? false;
-  let vendor_type = raw.vendor_type ?? (isProductVendor ? 'product' : 'service');
-  let allowedListingTypes = raw.allowed_listing_types ?? (isProductVendor ? ['product'] : ['service']);
+  const isProductVendor = raw.is_product_vendor ?? true;
+  const isServiceVendor = raw.is_service_vendor ?? false;
+  const vendor_type = raw.vendor_type ?? (isProductVendor ? 'product' : 'service');
+  const allowedListingTypes = raw.allowed_listing_types ?? (isProductVendor ? ['product'] : ['service']);
 
   try {
     const p = await getVendorProfile();
@@ -560,14 +510,10 @@ export const getVendorDashboard = async () => {
   } catch (_) {}
 
   let liveOrders = [];
-  try {
-    liveOrders = await getVendorOrders();
-  } catch (_) {}
+  try { liveOrders = await getVendorOrders(); } catch (_) {}
 
   const metricsData = raw.metrics || {};
   const salesHistoryData = raw.salesHistory || [];
-  const inventoryAlertsData = raw.inventoryAlerts || [];
-  const reviewsData = raw.reviews || [];
   const rawRecentOrders = raw.recentOrders || [];
   const recentOrdersData = rawRecentOrders.length > 0 ? rawRecentOrders : liveOrders.slice(0, 10);
 
@@ -613,11 +559,12 @@ export const getVendorDashboard = async () => {
     },
     salesHistory: derivedSalesHistory.map((item) => ({ date: item.date, sales: Number(item.sales ?? 0) })),
     recentOrders: recentOrdersData.map(normalizeOrder),
-    inventoryAlerts: inventoryAlertsData,
-    reviews: reviewsData,
+    inventoryAlerts: raw.inventoryAlerts || [],
+    reviews: raw.reviews || [],
   };
 };
 
+// ─── Categories ──────────────────────────────────────────────────────────────
 export const getCategories = (businessCategory = null) => {
   const params = businessCategory ? `?business_category=${businessCategory}` : '';
   return api
@@ -628,21 +575,8 @@ export const getCategories = (businessCategory = null) => {
     });
 };
 
+// ─── Listings ────────────────────────────────────────────────────────────────
 const normalizeListing = (item) => {
-  const qualityReverseMap = {
-    high: 'High', High: 'High', HIGH: 'High',
-    medium: 'Medium', Medium: 'Medium', MEDIUM: 'Medium',
-    low: 'Low', Low: 'Low', LOW: 'Low',
-  };
-
-  const rawQuality =
-    item.detail?.quality ||
-    item.inventory_quality ||
-    item.qty ||
-    'medium';
-
-  const normalizedQuality = qualityReverseMap[rawQuality] ?? 'Medium';
-
   const salesStatus = item.sales_status || item.detail?.sales_status || {};
   const discountEnabled = salesStatus?.on_sale === true;
   const discountPct = salesStatus?.discount_percentage ?? item.discount_percentage ?? 0;
@@ -650,27 +584,15 @@ const normalizeListing = (item) => {
 
   const normalizedVariants = (item.variants ?? item.detail?.variants ?? []).map((v) => ({
     ...v,
-    stock:
-      v.stock ??
-      v.quantity ??
-      v.stock_quantity ??
-      v.detail?.stock ??
-      0,
+    stock: v.stock ?? v.quantity ?? v.stock_quantity ?? v.detail?.stock ?? 0,
   }));
 
   return {
     ...item,
     id: item.id,
     is_published: item.is_published === true || item.status === 'published',
-    inventory_quality: normalizedQuality,
-    qty: normalizedQuality,
     sku: item.detail?.sku ?? item.sku ?? '',
-    stock:
-      item.detail?.stock ??
-      item.stock ??
-      item.stock_quantity ??
-      item.quantity ??
-      0,
+    stock: item.detail?.stock ?? item.stock ?? item.stock_quantity ?? item.quantity ?? 0,
     variants: normalizedVariants,
     branch_location: item.branch_location ?? item.detail?.branch_location ?? '',
     discount_enabled: discountEnabled,
@@ -680,26 +602,15 @@ const normalizeListing = (item) => {
 };
 
 export const getProducts = async () => {
-  const params = { listing_type: 'product' };
-  const res = await api.get('/listings/', { params });
+  const res = await api.get('/listings/', { params: { listing_type: 'product' } });
   const payload = res.data?.data ?? res.data;
-
   let raw = [];
   if (Array.isArray(payload)) raw = payload;
   else if (Array.isArray(payload?.results)) raw = payload.results;
-
-  const normalized = raw.map(normalizeListing);
-  console.log('[getProducts] normalized products:', normalized.map((p) => ({ id: p.id, title: p.title, stock: p.stock, variants: p.variants?.length })));
-  return normalized;
+  return raw.map(normalizeListing);
 };
 
 export const createProductListing = async (productData) => {
-  const qualityMap = {
-    High: 'high', Medium: 'medium', Low: 'low',
-    high: 'high', medium: 'medium', low: 'low',
-    HIGH: 'high', MEDIUM: 'medium', LOW: 'low',
-  };
-
   const stockQty = parseInt(productData.stock) || 0;
   const hasRealVariants =
     (Array.isArray(productData.sizes) && productData.sizes.filter(Boolean).length > 0) ||
@@ -733,11 +644,7 @@ export const createProductListing = async (productData) => {
   const salesStatus = productData.sales_status
     ? productData.sales_status
     : productData.discount_enabled
-      ? {
-          on_sale: true,
-          discount_percentage: productData.discount_percentage ?? 0,
-          discounted_price: productData.discounted_price ?? null,
-        }
+      ? { on_sale: true, discount_percentage: productData.discount_percentage ?? 0, discounted_price: productData.discounted_price ?? null }
       : { on_sale: false };
 
   const payload = {
@@ -754,7 +661,6 @@ export const createProductListing = async (productData) => {
     detail: {
       sku: productData.sku?.trim() || '',
       base_price: String(parseFloat(productData.price)),
-      quality: qualityMap[productData.qty] ?? 'medium',
       stock: stockQty,
       variants,
     },
@@ -762,18 +668,11 @@ export const createProductListing = async (productData) => {
 
   if (productData.category_id) payload.category_id = productData.category_id;
 
-  console.log('[listings] POST /listings/ →', JSON.stringify(payload, null, 2));
   const res = await api.post('/listings/', payload);
   return normalizeListing(res.data?.data ?? res.data);
 };
 
 export const updateProductListing = async (listingId, productData) => {
-  const qualityMap = {
-    High: 'high', Medium: 'medium', Low: 'low',
-    high: 'high', medium: 'medium', low: 'low',
-    HIGH: 'high', MEDIUM: 'medium', LOW: 'low',
-  };
-
   const stockQty = parseInt(productData.stock) || 0;
   const hasRealVariants =
     (Array.isArray(productData.sizes) && productData.sizes.filter(Boolean).length > 0) ||
@@ -807,11 +706,7 @@ export const updateProductListing = async (listingId, productData) => {
   const salesStatus = productData.sales_status
     ? productData.sales_status
     : productData.discount_enabled
-      ? {
-          on_sale: true,
-          discount_percentage: productData.discount_percentage ?? 0,
-          discounted_price: productData.discounted_price ?? null,
-        }
+      ? { on_sale: true, discount_percentage: productData.discount_percentage ?? 0, discounted_price: productData.discounted_price ?? null }
       : { on_sale: false };
 
   const payload = {
@@ -826,7 +721,6 @@ export const updateProductListing = async (listingId, productData) => {
     detail: {
       sku: productData.sku?.trim() || '',
       base_price: String(parseFloat(productData.price)),
-      quality: qualityMap[productData.qty] ?? 'medium',
       stock: stockQty,
       variants,
     },
@@ -834,7 +728,6 @@ export const updateProductListing = async (listingId, productData) => {
 
   if (productData.category_id) payload.category_id = productData.category_id;
 
-  console.log('[listings] PATCH /listings/', listingId, '→', JSON.stringify(payload, null, 2));
   const res = await api.patch(`/listings/${listingId}/`, payload);
   return normalizeListing(res.data?.data ?? res.data);
 };
@@ -854,17 +747,15 @@ export const updateProductStock = async (listingId, stock) => {
   throw new Error('No default variant found to update stock');
 };
 
-export const deleteProductListing = (listingId) => api.delete(`/listings/${listingId}/`).then((r) => r.data);
+export const deleteProductListing = (listingId) =>
+  api.delete(`/listings/${listingId}/`).then((r) => r.data);
 
 export const updateListingStatus = (listingId, newStatus) =>
   api.patch(`/listings/${listingId}/status/`, { status: newStatus })
     .then((r) => r.data?.data ?? r.data);
 
 export const uploadListingImage = async (listingId, imageFile) => {
-  if (!(imageFile instanceof File)) {
-    console.warn('[uploadListingImage] Skipping non-File value:', imageFile);
-    return null;
-  }
+  if (!(imageFile instanceof File)) return null;
   const form = new FormData();
   form.append('image', imageFile);
   return api
@@ -882,8 +773,6 @@ export const uploadListingImages = async (listingId, imageFiles) => {
     if (actualFile instanceof File) {
       const result = await uploadListingImage(listingId, actualFile);
       if (result) results.push(result);
-    } else {
-      console.warn('[uploadListingImages] Skipping invalid entry:', file);
     }
   }
   return results;
@@ -898,9 +787,5 @@ export const updateProductVariant = (listingId, variantId, data) =>
 
 export const deleteProductVariant = (listingId, variantId) =>
   api.delete(`/listings/${listingId}/variants/${variantId}/`).then((r) => r.data);
-
-export const passwordResetRequest = (email) => api.post('/accounts/reset-password/', { email });
-export const passwordResetConfirm = (data) => api.post('/accounts/confirm-password-reset/', data);
-export const changePassword = (data) => api.post('/accounts/change-password/', data);
 
 export default api;
