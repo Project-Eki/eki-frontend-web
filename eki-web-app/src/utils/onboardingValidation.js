@@ -140,7 +140,7 @@ export const validateOperationCompliance = (formData) => {
     errors.government_issued_id_expiry = "Expiry date required";
   }
 
-  // 2. Professional Body Certification - FIXED field name
+  // 2. Professional Body Certification - OPTIONAL
   if (formData.documents?.professional_body_certification && !formData.professional_body_certification_expiry) {
     errors.professional_body_certification_expiry = "Expiry date required for certification";
   }
@@ -161,10 +161,11 @@ export const validateOperationCompliance = (formData) => {
     errors.tax_certificate_expiry = "Expiry date required";
   }
 
-  // 5. Incorporation Certificate - Required, no expiry validation
+  // 5. Incorporation Certificate - Required, NO expiry validation
   if (!formData.documents?.incorporation_cert) {
     errors.incorporation_cert = "Required";
   }
+  // REASON: No validation for incorporation_cert_expiry because it doesn't expire
 
   return errors;
 };

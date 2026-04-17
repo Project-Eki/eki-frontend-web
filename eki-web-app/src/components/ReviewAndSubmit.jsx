@@ -33,17 +33,128 @@ const ReviewAndSubmit = ({ formData, onBack, onSubmitSuccess }) => {
 const handleSubmit = async () => {
   setIsLoading(true);
   setSubmitError("");
+  setFieldErrors({});
   
-  // DEBUG: Check documents before submitting
-  console.log("=== FRONTEND DEBUG: Documents in formData ===");
-  console.log("government_issued_id:", formData.documents?.government_issued_id instanceof File ? formData.documents.government_issued_id.name : "No file");
-  console.log("government_issued_id_expiry:", formData.documents?.government_issued_id_expiry);
-  console.log("business_license:", formData.documents?.business_license instanceof File ? formData.documents.business_license.name : "No file");
-  console.log("business_license_expiry:", formData.documents?.business_license_expiry);
-  console.log("tax_certificate:", formData.documents?.tax_certificate instanceof File ? formData.documents.tax_certificate.name : "No file");
-  console.log("tax_certificate_expiry:", formData.documents?.tax_certificate_expiry);
-  console.log("incorporation_cert:", formData.documents?.incorporation_cert instanceof File ? formData.documents.incorporation_cert.name : "No file");
-  console.log("professional_body_certification:", formData.documents?.professional_body_certification instanceof File ? formData.documents.professional_body_certification.name : "No file");
+  // ============================================================
+  // VALIDATION BASED ON ACTUAL FORM FIELDS
+  // ============================================================
+  
+  // STEP 3: Business Identity Fields (ALL required based on your validation)
+  const businessIdentityFields = [
+    'business_name',        // Required - has validation
+    'business_type',        // Required - has validation
+    'business_category',    // Required - has validation
+    'owner_full_name',      // Required - has validation
+    'registration_number',  // Required - has validation
+    'tax_id',              // Required - has validation
+    'business_description'  // Required in form (no validation but captured)
+  ];
+  
+  // STEP 4: Contact & Location Fields (required vs optional)
+  const requiredContactFields = [
+    'business_phone',  // Required - has validation
+    'country',         // Required - has validation
+    'city',           // Required - has validation
+    'opening_time',   // Required - has validation
+    'closing_time'    // Required - has validation
+  ];
+  
+  // Optional fields from Step 4 (don't validate these)
+  // - address (optional)
+  // - landmark (optional)
+  // - intersection (optional)
+  // - zip_code (optional)
+  // - branch_locations (optional)
+  
+  // Combine all required fields
+  const allRequiredFields = [...businessIdentityFields, ...requiredContactFields];
+  
+  // Check for missing required fields
+  const missingFields = allRequiredFields.filter(field => {
+    const value = formData[field];
+    return !value || (typeof value === 'string' && value.trim() === '');
+  });
+  
+  if (missingFields.length > 0) {
+    setSubmitError(`Missing required fields: ${missingFields.join(', ')}`);
+    setIsLoading(false);
+    return;
+  }
+  
+  // STEP 5: Document Validation (from OperationCompliance)
+  const requiredDocs = [
+    'government_issued_id',  // Required
+    'business_license',      // Required
+    'tax_certificate',       // Required
+    'incorporation_cert'     // Required
+  ];
+  
+  // Professional certification is OPTIONAL - don't validate
+  
+  const missingDocs = requiredDocs.filter(doc => {
+    const file = formData.documents?.[doc];
+    return !(file instanceof File);
+  });
+  
+  if (missingDocs.length > 0) {
+    setSubmitError(`Missing required documents: ${missingDocs.join(', ')}`);
+    setIsLoading(false);
+    return;
+  }
+  
+  // Check expiry dates for required documents (except incorporation_cert)
+  const requiredExpiryDates = [
+    'government_issued_id_expiry',
+    'business_license_expiry',
+    'tax_certificate_expiry'
+  ];
+  
+  const missingExpiries = requiredExpiryDates.filter(expiry => {
+    return !formData.documents?.[expiry];
+  });
+  
+  if (missingExpiries.length > 0) {
+    setSubmitError(`Missing expiry dates for: ${missingExpiries.join(', ')}`);
+    setIsLoading(false);
+    return;
+  }
+  
+  // ============================================================
+  // END OF VALIDATION
+  // ============================================================
+  
+  // DEBUG: Log all data being submitted
+  console.log("=== FRONTEND DEBUG: All Required Fields ===");
+  console.log("Business Fields:", {
+    business_name: formData.business_name,
+    business_type: formData.business_type,
+    business_category: formData.business_category,
+    owner_full_name: formData.owner_full_name,
+    registration_number: formData.registration_number,
+    tax_id: formData.tax_id,
+    business_description: formData.business_description
+  });
+  
+  console.log("Contact Fields:", {
+    business_phone: formData.business_phone,
+    country: formData.country,
+    city: formData.city,
+    opening_time: formData.opening_time,
+    closing_time: formData.closing_time,
+    address: formData.address || "(optional)",
+    landmark: formData.landmark || "(optional)"
+  });
+  
+  console.log("Documents:", {
+    government_issued_id: formData.documents?.government_issued_id instanceof File ? formData.documents.government_issued_id.name : "No file",
+    government_issued_id_expiry: formData.documents?.government_issued_id_expiry,
+    business_license: formData.documents?.business_license instanceof File ? formData.documents.business_license.name : "No file",
+    business_license_expiry: formData.documents?.business_license_expiry,
+    tax_certificate: formData.documents?.tax_certificate instanceof File ? formData.documents.tax_certificate.name : "No file",
+    tax_certificate_expiry: formData.documents?.tax_certificate_expiry,
+    incorporation_cert: formData.documents?.incorporation_cert instanceof File ? formData.documents.incorporation_cert.name : "No file",
+    professional_body_certification: formData.documents?.professional_body_certification instanceof File ? "Has file (optional)" : "Not provided (optional)"
+  });
   
   try {
     const response = await submitVendorApplication(formData);
