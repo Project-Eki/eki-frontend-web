@@ -653,7 +653,7 @@ const ColorImagePreviewModal = ({ color, images, onClose }) => {
   );
 };
 
-// ─── SummaryPill ──────────────────────────────────────────────────────────────
+// ─── SummaryPill 
 const SummaryPill = ({ formData, currencySymbol, currentStep, onEdit }) => {
   const displayPrice = formData.discountEnabled && formData.price
     ? Number(formData.price) * (1 - formData.discountPercentage / 100)
