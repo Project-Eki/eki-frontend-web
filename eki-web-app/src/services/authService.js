@@ -4,13 +4,28 @@ import axios from 'axios';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://joineki.com/api/v1';
 
 // ─── Helper to convert relative image paths to absolute URLs ────────────────
+// FIX: Much more robust URL resolution that handles all edge cases:
+//  1. Already-absolute URLs are returned as-is
+//  2. Protocol-relative URLs (//) are returned as-is
+//  3. Relative paths are resolved against the media root (domain without /api/v1)
+//  4. Paths that accidentally include the API prefix are cleaned up
 export const getImageUrl = (path) => {
   if (!path) return '';
+
+  // Already a full URL — return as-is
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
-  // Remove /api/v1 from base URL to get the root domain where media is served
-  const baseUrl = API_BASE_URL.replace(/\/api\/v1$/, '');
-  const normalizedPath = path.startsWith('/') ? path : '/' + path;
-  return `${baseUrl}${normalizedPath}`;
+
+  // Protocol-relative URL
+  if (path.startsWith('//')) return `https:${path}`;
+
+  // Strip /api/v1 (and any trailing variant like /api/v1/) from the base
+  // to get the root domain where Django serves media files
+  const mediaRoot = API_BASE_URL.replace(/\/api\/v\d+\/?$/, '').replace(/\/$/, '');
+
+  // Normalise the path: ensure it starts with a single /
+  const normalisedPath = '/' + path.replace(/^\/+/, '');
+
+  return `${mediaRoot}${normalisedPath}`;
 };
 
 const api = axios.create({
