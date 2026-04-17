@@ -314,8 +314,6 @@ const ProductDashboard = () => {
   const [vendorType, setVendorType] = useState('product');
   const filterRef = useRef(null);
 
-  // Keep a ref to selectedProduct so handleDeleteImage always has the latest
-  // listing ID even if the closure was created before selectedProduct was set.
   const selectedProductRef = useRef(null);
   useEffect(() => {
     selectedProductRef.current = selectedProduct;
@@ -430,8 +428,6 @@ const ProductDashboard = () => {
     }
   };
 
-  // ─── FIX: handleDeleteImage now receives (listingId, imageId) from
-  //     ProductListing, so the correct URL is always built.
   const handleDeleteImage = async (listingId, imageId) => {
     if (!listingId || !imageId) {
       console.error('[handleDeleteImage] Missing listingId or imageId:', { listingId, imageId });
@@ -439,7 +435,6 @@ const ProductDashboard = () => {
     }
     try {
       await deleteListingImage(listingId, imageId);
-      // Refresh the product list so the grid/list view stays in sync
       await loadProducts();
     } catch (err) {
       console.error('Failed to delete image', err);
@@ -465,6 +460,11 @@ const ProductDashboard = () => {
         0,
     }));
 
+    // ─── FIX: Try to get images from product.images, fallback to detail.images ───
+    const productImages = (product.images && product.images.length > 0)
+      ? product.images
+      : (product.detail?.images || []);
+
     setSelectedProduct({
       id: product.id,
       title: product.title || '',
@@ -476,7 +476,7 @@ const ProductDashboard = () => {
       sizes: product.sizes || [],
       colors: product.colors || [],
       is_published: product.is_published === true || product.status === 'published',
-      images: product.images || [],
+      images: productImages,
       variants: resolvedVariants,
       discount_enabled: product.discount_enabled || false,
       discount_percentage: product.discount_percentage || 10,
@@ -706,7 +706,7 @@ const ProductDashboard = () => {
         <Footer />
       </div>
 
-      {/* ── Create modal ── */}
+      {/* Create modal */}
       <ProductListing
         key="create-product-modal"
         isOpen={isProductModalOpen}
@@ -720,7 +720,7 @@ const ProductDashboard = () => {
         submitLabel="Publish Product"
       />
 
-      {/* ── Edit modal ── */}
+      {/* Edit modal */}
       {selectedProduct && (
         <ProductListing
           key={`edit-${selectedProduct.id}`}
@@ -732,7 +732,6 @@ const ProductDashboard = () => {
           onSubmit={async (payload, imageFiles) => {
             await handleUpdateProduct(selectedProduct.id, payload, imageFiles);
           }}
-          // FIX: pass listingId down so ProductListing can include it in the callback
           listingId={selectedProduct.id}
           onDeleteImage={handleDeleteImage}
           isLoading={isLoading}

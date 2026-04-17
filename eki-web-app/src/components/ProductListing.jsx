@@ -60,7 +60,6 @@ export const isStep1Valid = (data) =>
   Number(data.price) > 0;
 
 // ─── Resolve image ID from whatever shape the API returns ─────────────────────
-// Your API may return id, image_id, or pk — this handles all cases.
 const resolveImageId = (imgObj) => {
   if (!imgObj) return null;
   return imgObj.id ?? imgObj.image_id ?? imgObj.pk ?? null;
@@ -346,8 +345,6 @@ const VariantSection = ({ sizes, colors, onToggleChip }) => {
 };
 
 // ─── ImageGrid ────────────────────────────────────────────────────────────────
-// FIX: resolveImageId is used so img.id / img.image_id / img.pk all work.
-// A spinner shows on the thumbnail being deleted.
 const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, onRemovePending, onAdd, onCameraCapture }) => {
   const total = existingImages.length + pendingImages.length;
   const canAddMore = total < MAX_GENERAL_IMAGES;
@@ -364,7 +361,6 @@ const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, 
   }, []);
 
   const handleRemoveExisting = async (imgObj, index) => {
-    // FIX: resolve the real image ID from whatever field the API provides
     const imageId = resolveImageId(imgObj);
     const spinnerKey = imageId ?? index;
     setDeletingId(spinnerKey);
@@ -718,10 +714,7 @@ const ProductListing = ({
   initialData = null,
   submitLabel = 'Publish Product',
   branchLocation = '',
-  // listingId: the ID of the listing being edited — passed from ProductDashboard
-  // so we can include it in the onDeleteImage callback.
   listingId = null,
-  // onDeleteImage(listingId, imageId) => Promise<void>
   onDeleteImage,
 }) => {
   const isEditMode = !!initialData;
@@ -823,15 +816,10 @@ const ProductListing = ({
       imageFiles: prev.imageFiles.filter((_, i) => i !== index),
     }));
 
-  // FIX: pass both listingId AND imageId up to the parent (ProductDashboard)
-  // so it can call deleteListingImage(listingId, imageId) correctly.
   const handleRemoveExistingImage = async (imageId, index) => {
     if (onDeleteImage) {
-      // listingId comes from the prop passed by ProductDashboard
       await onDeleteImage(listingId, imageId);
     }
-    // Always remove from local state regardless (optimistic update already
-    // happened via the spinner in ImageGrid; this finalises it)
     setExistingImages((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -991,7 +979,7 @@ const ProductListing = ({
         />
       )}
 
-      {/* ── Step 1 ── */}
+      {/* Step 1 */}
       {formStep === 1 && (
         <div className={modalWrap}>
           <div className={modalBox} style={{ fontFamily: "'Poppins', sans-serif" }}>
@@ -1118,7 +1106,7 @@ const ProductListing = ({
         </div>
       )}
 
-      {/* ── Step 2 ── */}
+      {/* Step 2 */}
       {formStep === 2 && (
         <div className={modalWrap}>
           <div className={modalBox} style={{ fontFamily: "'Poppins', sans-serif" }}>
@@ -1148,7 +1136,7 @@ const ProductListing = ({
         </div>
       )}
 
-      {/* ── Step 3 ── */}
+      {/* Step 3 */}
       {formStep === 3 && (
         <div className={modalWrap}>
           <div className={modalBox} style={{ fontFamily: "'Poppins', sans-serif" }}>
@@ -1162,6 +1150,7 @@ const ProductListing = ({
             <StepProgressBar currentStep={3} />
             {isEditMode && <EditSaveBanner onSave={handleEditSave} isLoading={isLoading} label={submitLabel} />}
             <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
+              <ErrorBanner msg={formErrors._server} />
               <SummaryPill formData={formData} currencySymbol={currencySymbol} currentStep={3} onEdit={setFormStep} />
               <VariantSection sizes={formData.sizes} colors={formData.colors} onToggleChip={toggleChip} />
             </div>
@@ -1177,7 +1166,7 @@ const ProductListing = ({
         </div>
       )}
 
-      {/* ── Step 4 ── */}
+      {/* Step 4 */}
       {formStep === 4 && (
         <div className={modalWrap}>
           <form onSubmit={handleSubmit} className={modalBox} style={{ fontFamily: "'Poppins', sans-serif" }}>
