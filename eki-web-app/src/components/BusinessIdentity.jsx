@@ -12,7 +12,7 @@ const InlineError = ({ message }) => (
   </span>
 );
 
-// Category options - MUST MATCH BACKEND BusinessCategory model EXACTLY
+// Category options
 const getCategoryOptions = (businessType) => {
   // Product categories (from backend)
   const productCategories = [
@@ -36,10 +36,19 @@ const getCategoryOptions = (businessType) => {
     { value: "other", label: "Other" },
   ];
 
-  if (businessType === 'products') {
+  if (businessType === "products") {
     return productCategories;
-  } else if (businessType === 'services') {
+  } else if (businessType === "services") {
     return serviceCategories;
+  } else if (businessType === "both") {
+    // For "both" vendors, combine all categories
+    const allCategories = [...productCategories];
+    serviceCategories.forEach((cat) => {
+      if (!allCategories.some((c) => c.value === cat.value)) {
+        allCategories.push(cat);
+      }
+    });
+    return allCategories;
   }
   
   // Return empty array until business type is selected
@@ -164,10 +173,9 @@ const BusinessIdentity = () => {
                 showError('business_type') ? 'border-red-400' : 'border-gray-200'
               }`}
             >
-              <option value="">Select type</option>
               <option value="products">Products</option>
               <option value="services">Services</option>
-              <option value="other">Other</option>
+              <option value="both">Both</option>
             </select>
             {showError('business_type') && <InlineError message={errors.business_type} />}
           </div>
