@@ -4,32 +4,27 @@ import axios from 'axios';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://joineki.com/api/v1';
 
 // ─── Helper to convert relative image paths to absolute URLs ────────────────
-// FIX: Now handles bare filenames by assuming they live under /media/
 export const getImageUrl = (path) => {
   if (!path) return '';
 
-  // Already a full URL — return as-is
+  // Already absolute
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
-
-  // Protocol-relative URL
   if (path.startsWith('//')) return `https:${path}`;
 
-  // Strip /api/v1 (and any trailing variant like /api/v1/) from the base
-  // to get the root domain where Django serves media files
-  const mediaRoot = API_BASE_URL.replace(/\/api\/v\d+\/?$/, '').replace(/\/$/, '');
+  // Derive media root by stripping /api/v1 from the base URL
+  const mediaRoot = API_BASE_URL
+    .replace(/\/api\/v\d+\/?$/, '')
+    .replace(/\/$/, '');
 
-  let normalisedPath = path;
+  // Normalize: ensure path starts with /
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
 
-  // If path doesn't start with a slash and doesn't already include a media prefix,
-  // assume it's a bare filename served from /media/
-  if (!path.startsWith('/') && !path.startsWith('media/') && !path.startsWith('/media/')) {
-    normalisedPath = `/media/${path}`;
-  } else {
-    // Ensure path starts with a single slash
-    normalisedPath = '/' + path.replace(/^\/+/, '');
+  // Guard against double /media/media/ if backend already includes it
+  if (cleanPath.startsWith('/media/')) {
+    return `${mediaRoot}${cleanPath}`;
   }
 
-  return `${mediaRoot}${normalisedPath}`;
+  return `${mediaRoot}/media${cleanPath}`;
 };
 
 const api = axios.create({
@@ -60,7 +55,7 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// ─── Request interceptor: attach Bearer token to protected routes ───────────
+// ─── Request interceptor ─────────────────────────────────────────────────────
 api.interceptors.request.use(
   (config) => {
     const isPublic = PUBLIC_ROUTES.some((route) => config.url?.includes(route));
@@ -75,7 +70,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ─── Response interceptor: handle 401 with token refresh + queue ────────────
+// ─── Response interceptor (401 refresh) ──────────────────────────────────────
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -171,7 +166,7 @@ export const getBuyerProfile = () =>
 export const updateBuyerProfile = (data) =>
   api.patch('/accounts/buyer/profile/', data).then((r) => r.data?.data ?? r.data);
 
-// ─── Vendor profile (with in-memory cache) ───────────────────────────────────
+// ─── Vendor profile ──────────────────────────────────────────────────────────
 let _profileCache = null;
 let _profileFetching = null;
 export const clearProfileCache = () => { _profileCache = null; };
@@ -184,7 +179,6 @@ export const getVendorProfile = async () => {
     try {
       const r = await api.get('/accounts/vendor/profile/');
       const data = r.data?.data ?? r.data;
-
       if (data?.first_name) localStorage.setItem('vendor_first_name', data.first_name);
       if (data?.last_name) localStorage.setItem('vendor_last_name', data.last_name);
       if (data?.email) localStorage.setItem('vendor_email', data.email);
@@ -193,7 +187,6 @@ export const getVendorProfile = async () => {
       if (data?.business_country) localStorage.setItem('vendor_country', data.business_country);
       else if (data?.country) localStorage.setItem('vendor_country', data.country);
       if (data?.branch_location) localStorage.setItem('vendor_branch_location', data.branch_location);
-
       _profileCache = data;
       return data;
     } catch (err) {
@@ -216,17 +209,14 @@ export const getVendorProfile = async () => {
       _profileFetching = null;
     }
   })();
-
   return _profileFetching;
 };
 
 export const updateVendorProfile = async (changedFields) => {
   const formData = new FormData();
-
   Object.keys(changedFields).forEach((key) => {
     const value = changedFields[key];
     if (value === null || value === undefined || value === '') return;
-
     if (key === 'business_phone') {
       let phone = String(value).replace(/\s/g, '');
       if (!phone.startsWith('+')) phone = `+${phone}`;
@@ -237,13 +227,10 @@ export const updateVendorProfile = async (changedFields) => {
       formData.append(key, value);
     }
   });
-
   const res = await api.patch('/accounts/vendor/profile/', formData, {
     headers: { 'Content-Type': undefined },
   });
-
   clearProfileCache();
-
   const d = res.data?.data ?? res.data;
   if (d) {
     if (d.first_name) localStorage.setItem('vendor_first_name', d.first_name);
@@ -255,13 +242,11 @@ export const updateVendorProfile = async (changedFields) => {
     else if (d.country) localStorage.setItem('vendor_country', d.country);
     if (d.branch_location) localStorage.setItem('vendor_branch_location', d.branch_location);
   }
-
   return res.data?.data ?? res.data;
 };
 
-// ─── Vendor notifications (endpoint not live yet) ────────────────────────────
+// ─── Notifications (stubs) ───────────────────────────────────────────────────
 const NOTIFICATIONS_ENDPOINT_READY = false;
-
 export const getVendorNotifications = async ({ limit = 15 } = {}) => {
   if (!NOTIFICATIONS_ENDPOINT_READY) return { notifications: [] };
   try {
@@ -276,7 +261,6 @@ export const getVendorNotifications = async ({ limit = 15 } = {}) => {
     throw err;
   }
 };
-
 export const markVendorNotificationRead = async (notifId) => {
   if (!NOTIFICATIONS_ENDPOINT_READY) return null;
   try {
@@ -287,7 +271,6 @@ export const markVendorNotificationRead = async (notifId) => {
     throw err;
   }
 };
-
 export const markAllVendorNotificationsRead = async () => {
   if (!NOTIFICATIONS_ENDPOINT_READY) return null;
   try {
@@ -316,7 +299,6 @@ export const getOrderNotifications = async ({ limit = 15, country = '', branch_l
     throw err;
   }
 };
-
 export const getOrderNotificationsUnreadCount = async () => {
   try {
     const r = await api.get('/orders/vendor/notifications/unread-count/');
@@ -324,7 +306,6 @@ export const getOrderNotificationsUnreadCount = async () => {
     return Number(payload?.count ?? payload?.unread_count ?? 0);
   } catch (_) { return 0; }
 };
-
 export const markOrderNotificationRead = async (notifId) => {
   try {
     const r = await api.patch(`/orders/vendor/notifications/${notifId}/read/`);
@@ -335,7 +316,7 @@ export const markOrderNotificationRead = async (notifId) => {
   }
 };
 
-// ─── Order helpers ───────────────────────────────────────────────────────────
+// ─── Order helpers (normalization) ───────────────────────────────────────────
 const deriveTransactionType = (status) => {
   const s = String(status ?? '').toLowerCase();
   if (s === 'cancelled' || s === 'canceled') return 'Refund';
@@ -353,11 +334,10 @@ const normalizeOrderItems = (o) => {
         (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
       variant: item.variant ?? item.variant_label ?? item.variant_name ??
         [item.size, item.color].filter(Boolean).join(' / ') ?? '',
-      image: item.image ?? item.product_image ?? item.listing_image ?? null,
+      image: item.image ? getImageUrl(item.image) : item.product_image ? getImageUrl(item.product_image) : item.listing_image ? getImageUrl(item.listing_image) : null,
       sku: item.sku ?? item.product_sku ?? '',
     }));
   }
-
   if (Array.isArray(o.order_items) && o.order_items.length > 0) {
     return o.order_items.map((item) => ({
       name: item.name ?? item.title ?? item.product_name ?? item.listing_title ?? 'Item',
@@ -367,11 +347,10 @@ const normalizeOrderItems = (o) => {
         (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
       variant: item.variant ?? item.variant_label ??
         [item.size, item.color].filter(Boolean).join(' / ') ?? '',
-      image: item.image ?? item.product_image ?? null,
+      image: item.image ? getImageUrl(item.image) : item.product_image ? getImageUrl(item.product_image) : null,
       sku: item.sku ?? '',
     }));
   }
-
   const altKey = ['products', 'cart_items', 'line_items', 'listings'].find(
     (k) => Array.isArray(o[k]) && o[k].length > 0
   );
@@ -384,11 +363,10 @@ const normalizeOrderItems = (o) => {
         (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
       variant: item.variant ?? item.variant_label ??
         [item.size, item.color].filter(Boolean).join(' / ') ?? '',
-      image: item.image ?? item.product_image ?? null,
+      image: item.image ? getImageUrl(item.image) : item.product_image ? getImageUrl(item.product_image) : null,
       sku: item.sku ?? '',
     }));
   }
-
   return [];
 };
 
@@ -402,7 +380,6 @@ const normalizeOrderCustomer = (o) => {
       address: o.customer.address ?? o.customer.delivery_address ?? o.customer.location ?? '',
     };
   }
-
   const name =
     (typeof o.customer === 'string' && o.customer) ||
     o.customer_name ||
@@ -415,7 +392,6 @@ const normalizeOrderCustomer = (o) => {
     [o.user?.first_name, o.user?.last_name].filter(Boolean).join(' ') ||
     o.user?.username ||
     '—';
-
   return {
     name,
     email: o.customer_email || o.buyer?.email || o.user?.email || o.email || '',
@@ -428,7 +404,6 @@ const normalizeOrder = (o) => {
   const customer = normalizeOrderCustomer(o);
   const items = normalizeOrderItems(o);
   const derivedType = deriveTransactionType(o.status);
-
   return {
     ...o,
     id: o.id ?? o.order_id ?? o.pk,
@@ -458,13 +433,11 @@ export const getVendorOrders = async ({ status = '', search = '' } = {}) => {
     const query = params.toString() ? `?${params.toString()}` : '';
     const r = await api.get(`/orders/vendor/order-list/${query}`);
     const payload = r.data?.data ?? r.data;
-
     let list = [];
     if (Array.isArray(payload)) list = payload;
     else if (Array.isArray(payload?.results)) list = payload.results;
     else if (Array.isArray(payload?.orders)) list = payload.orders;
     else if (Array.isArray(payload?.data)) list = payload.data;
-
     return list.map(normalizeOrder);
   } catch (_) {
     return [];
@@ -491,6 +464,28 @@ export const markOrderReadyForPickup = async (orderId) => {
   return r.data?.data ?? r.data;
 };
 
+// ─── NEW: Order Confirmation & Pickup Code Verification (MOCK for UI testing) ─
+// TODO: Replace with real API calls once backend endpoints are ready.
+export const confirmVendorOrder = async (orderId) => {
+  console.log(`[MOCK] confirmVendorOrder called for order ${orderId}`);
+  await new Promise(resolve => setTimeout(resolve, 800));
+  return {
+    id: orderId,
+    status: 'confirmed',
+    pickup_code: Math.random().toString(36).substring(2, 10).toUpperCase(),
+  };
+};
+
+export const verifyPickupCode = async (orderId, code) => {
+  console.log(`[MOCK] verifyPickupCode called for order ${orderId} with code ${code}`);
+  await new Promise(resolve => setTimeout(resolve, 800));
+  return {
+    id: orderId,
+    status: 'completed',
+    verified: true,
+  };
+};
+
 // ─── Wallet & Escrow ─────────────────────────────────────────────────────────
 export const getVendorWallet = async () => {
   try {
@@ -509,7 +504,6 @@ export const getVendorEscrow = async () => {
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 export const getVendorDashboard = async () => {
   let raw = {};
-
   try {
     const dashRes = await api.get('/accounts/vendor/command-center/');
     raw = dashRes.data?.data ?? dashRes.data ?? {};
@@ -553,9 +547,7 @@ export const getVendorDashboard = async () => {
   if (derivedSalesHistory.length === 0 && liveOrders.length > 0) {
     const byDate = {};
     liveOrders.forEach((o) => {
-      const dateKey = o.date
-        ? (() => { try { return new Date(o.date).toLocaleDateString(); } catch (_) { return o.date; } })()
-        : 'Unknown';
+      const dateKey = o.date ? (() => { try { return new Date(o.date).toLocaleDateString(); } catch (_) { return o.date; } })() : 'Unknown';
       byDate[dateKey] = (byDate[dateKey] || 0) + Number(o.total ?? 0);
     });
     derivedSalesHistory = Object.entries(byDate)
@@ -595,21 +587,18 @@ export const getVendorDashboard = async () => {
 // ─── Categories ──────────────────────────────────────────────────────────────
 export const getCategories = (businessCategory = null) => {
   const params = businessCategory ? `?business_category=${businessCategory}` : '';
-  return api
-    .get(`/listings/categories/${params}`)
-    .then((r) => {
-      const payload = r.data?.data ?? r.data;
-      return Array.isArray(payload) ? payload : [];
-    });
+  return api.get(`/listings/categories/${params}`).then((r) => {
+    const payload = r.data?.data ?? r.data;
+    return Array.isArray(payload) ? payload : [];
+  });
 };
 
-// ─── Listings ────────────────────────────────────────────────────────────────
-// Helper to normalize image objects: ensure they have an 'image' property
+// ─── Listings (Products) ─────────────────────────────────────────────────────
 const normalizeImage = (img) => {
   if (!img) return null;
-  if (typeof img === 'string') return { image: img };
+  if (typeof img === 'string') return { image: getImageUrl(img) };
   const imageUrl = img.image ?? img.url ?? img.image_url ?? img.src ?? null;
-  return { ...img, image: imageUrl };
+  return { ...img, image: getImageUrl(imageUrl) };
 };
 
 const normalizeListing = (item) => {
@@ -623,7 +612,6 @@ const normalizeListing = (item) => {
     stock: v.stock ?? v.quantity ?? v.stock_quantity ?? v.detail?.stock ?? 0,
   }));
 
-  // ─── FIX: Extract images from multiple possible locations ─────────────────
   let imagesArray = [];
   if (Array.isArray(item.images)) imagesArray = item.images;
   else if (Array.isArray(item.detail?.images)) imagesArray = item.detail.images;
@@ -662,9 +650,7 @@ export const createProductListing = async (productData) => {
   const hasRealVariants =
     (Array.isArray(productData.sizes) && productData.sizes.filter(Boolean).length > 0) ||
     (Array.isArray(productData.colors) && productData.colors.filter(Boolean).length > 0);
-
   let variants = [];
-
   if (hasRealVariants) {
     if (Array.isArray(productData.variants) && productData.variants.length > 0) {
       productData.variants.forEach((v) => {
@@ -673,10 +659,8 @@ export const createProductListing = async (productData) => {
         if (v.type === 'Color') variants.push({ color: v.value.trim(), size: '', stock: parseInt(v.stock) || 0 });
       });
     }
-
     const sizes = Array.isArray(productData.sizes) ? productData.sizes.filter(Boolean) : [];
     const colors = Array.isArray(productData.colors) ? productData.colors.filter(Boolean) : [];
-
     if (variants.length === 0) {
       if (sizes.length > 0 && colors.length > 0) {
         sizes.forEach((size) => colors.forEach((color) => variants.push({ color, size, stock: 0 })));
@@ -687,13 +671,11 @@ export const createProductListing = async (productData) => {
       }
     }
   }
-
   const salesStatus = productData.sales_status
     ? productData.sales_status
     : productData.discountEnabled
       ? { on_sale: true, discount_percentage: productData.discountPercentage ?? 0, discounted_price: productData.discounted_price ?? null }
       : { on_sale: false };
-
   const payload = {
     listing_type: 'product',
     business_category: productData.business_category,
@@ -712,9 +694,7 @@ export const createProductListing = async (productData) => {
       variants,
     },
   };
-
   if (productData.category_id) payload.category_id = productData.category_id;
-
   const res = await api.post('/listings/', payload);
   return normalizeListing(res.data?.data ?? res.data);
 };
@@ -724,9 +704,7 @@ export const updateProductListing = async (listingId, productData) => {
   const hasRealVariants =
     (Array.isArray(productData.sizes) && productData.sizes.filter(Boolean).length > 0) ||
     (Array.isArray(productData.colors) && productData.colors.filter(Boolean).length > 0);
-
   let variants = [];
-
   if (hasRealVariants) {
     if (Array.isArray(productData.variants) && productData.variants.length > 0) {
       productData.variants.forEach((v) => {
@@ -735,10 +713,8 @@ export const updateProductListing = async (listingId, productData) => {
         if (v.type === 'Color') variants.push({ color: v.value.trim(), size: '', stock: parseInt(v.stock) || 0 });
       });
     }
-
     const sizes = Array.isArray(productData.sizes) ? productData.sizes.filter(Boolean) : [];
     const colors = Array.isArray(productData.colors) ? productData.colors.filter(Boolean) : [];
-
     if (variants.length === 0) {
       if (sizes.length > 0 && colors.length > 0) {
         sizes.forEach((size) => colors.forEach((color) => variants.push({ color, size, stock: stockQty })));
@@ -749,13 +725,11 @@ export const updateProductListing = async (listingId, productData) => {
       }
     }
   }
-
   const salesStatus = productData.sales_status
     ? productData.sales_status
     : productData.discountEnabled
       ? { on_sale: true, discount_percentage: productData.discountPercentage ?? 0, discounted_price: productData.discounted_price ?? null }
       : { on_sale: false };
-
   const payload = {
     listing_type: 'product',
     title: productData.title?.trim(),
@@ -772,9 +746,7 @@ export const updateProductListing = async (listingId, productData) => {
       variants,
     },
   };
-
   if (productData.category_id) payload.category_id = productData.category_id;
-
   const res = await api.patch(`/listings/${listingId}/`, payload);
   return normalizeListing(res.data?.data ?? res.data);
 };
@@ -805,11 +777,9 @@ export const uploadListingImage = async (listingId, imageFile) => {
   if (!(imageFile instanceof File)) return null;
   const form = new FormData();
   form.append('image', imageFile);
-  return api
-    .post(`/listings/${listingId}/images/`, form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-    .then((r) => r.data?.data ?? r.data);
+  return api.post(`/listings/${listingId}/images/`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then((r) => r.data?.data ?? r.data);
 };
 
 export const uploadListingImages = async (listingId, imageFiles) => {
