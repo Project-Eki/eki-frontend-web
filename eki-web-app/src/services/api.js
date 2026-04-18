@@ -199,9 +199,9 @@ const prepareVendorFormData = (formData, isFinalSubmission = false) => {
     if (key !== "documents" && formData[key] !== null && formData[key] !== undefined) {
       let value = formData[key];
 
-      // Skip incorporation_cert_expiry if it exists at root level
+      // REASON: incorporation_cert_expiry should never be sent - it doesn't expire
       if (key === "incorporation_cert_expiry") {
-        return;
+        return; // Skip this field entirely
       }
 
       // Force business_category to lowercase
@@ -215,12 +215,26 @@ const prepareVendorFormData = (formData, isFinalSubmission = false) => {
         if (!value.startsWith("+")) value = `+${value}`;
       }
 
-      // Handle branch_locations - Convert array to JSON string
-      if (key === "branch_locations" && Array.isArray(value) && value.length > 0) {
-        data.append(key, JSON.stringify(value));
-      } 
+      // Handle branch_locations - ONLY send if it has actual data
+      if (key === "branch_locations") {
+        if (Array.isArray(value)) {
+          const validBranches = value.filter(branch => 
+            branch && (
+              branch.address?.trim() || 
+              branch.city?.trim() || 
+              branch.phone?.trim()
+            )
+          );
+          
+          if (validBranches.length > 0) {
+            data.append(key, JSON.stringify(validBranches));
+          }
+        }
+        return;
+      }
+
       // Only append if the value is not empty
-      else if (value !== "" && value !== null && value !== undefined) {
+      if (value !== "" && value !== null && value !== undefined) {
         data.append(key, value);
       }
     }
@@ -238,7 +252,8 @@ const prepareVendorFormData = (formData, isFinalSubmission = false) => {
       'tax_certificate',
       'tax_certificate_expiry',
       'incorporation_cert',
-      'incorporation_cert_expiry'
+      // REASON: Remove 'incorporation_cert_expiry' from this list
+      // 'incorporation_cert_expiry', // <- DON'T include this
     ];
     
     documentFields.forEach((field) => {
@@ -247,10 +262,6 @@ const prepareVendorFormData = (formData, isFinalSubmission = false) => {
         // Handle file uploads
         data.append(field, value);
       } else if (value && typeof value === 'string' && value !== "") {
-        // Skip incorporation_cert_expiry for final submission if not needed
-        if (field === 'incorporation_cert_expiry' && !isFinalSubmission) {
-          return;
-        }
         // Handle expiry dates and other string fields
         data.append(field, value);
       }
@@ -260,53 +271,90 @@ const prepareVendorFormData = (formData, isFinalSubmission = false) => {
   return data;
 };
 
+
+
 // Save vendor profile incrementally (PATCH) - Steps 3, 4, 5
 export const completeVendorOnboarding = async (formData) => {
-  const data = prepareVendorFormData(formData, false);
-  
-  const response = await api.patch("/accounts/register-vendor/", data, {
-    headers: { "Content-Type": undefined }, // Let axios set multipart boundary
+  // First: send text fields as JSON to confirm they save
+  const textPayload = {
+    business_name: formData.business_name,
+    business_type: formData.business_type,
+    business_category: formData.business_category?.toLowerCase(),
+    owner_full_name: formData.owner_full_name,
+    registration_number: formData.registration_number,
+    tax_id: formData.tax_id,
+    business_description: formData.business_description,
+    business_phone: formData.business_phone,
+    address: formData.address,
+    city: formData.city,
+    country: formData.country,
+    landmark: formData.landmark,
+    opening_time: formData.opening_time,
+    closing_time: formData.closing_time,
+  };
+
+  // Remove null/undefined/empty
+  Object.keys(textPayload).forEach(k => {
+    if (!textPayload[k]) delete textPayload[k];
   });
 
-  return response.data;
+  const textResponse = await api.patch("/accounts/register-vendor/", textPayload, {
+    headers: { "Content-Type": "application/json" },
+  });
+  console.log("Text fields save response:", textResponse.data);
+
+  // Second: send documents as FormData
+  const docData = new FormData();
+  const docFields = [
+    'government_issued_id', 'business_license',
+    'tax_certificate', 'incorporation_cert',
+    'professional_body_certification'
+  ];
+  
+  docFields.forEach(field => {
+    const file = formData.documents?.[field];
+    if (file instanceof File) docData.append(field, file, file.name);
+  });
+
+  const expiryFields = [
+    'government_issued_id_expiry', 'business_license_expiry',
+    'tax_certificate_expiry', 'professional_body_certification_expiry'
+  ];
+  expiryFields.forEach(field => {
+    const val = formData.documents?.[field];
+    if (val) docData.append(field, val);
+  });
+
+  const docResponse = await api.patch("/accounts/register-vendor/", docData, {
+    headers: { "Content-Type": undefined },
+  });
+  console.log("Documents save response:", docResponse.data);
+
+  return docResponse.data;
 };
 
-// Final submission of vendor application (PUT) - Step 6, triggers UNDER_REVIEW email
+// Final submission of vendor application (PUT) - Step 6
 export const submitVendorApplication = async (formData) => {
   const data = prepareVendorFormData(formData, true);
   
-  // DEBUG: Log everything being sent
-  console.log("=== SUBMITTING VENDOR APPLICATION ===");
-  console.log("FormData contents:");
-  for (let pair of data.entries()) {
-    // Don't log file contents, just the filename
-    if (pair[1] instanceof File) {
-      console.log(`${pair[0]}: [FILE] ${pair[1].name} (${pair[1].size} bytes)`);
-    } else {
-      console.log(`${pair[0]}: ${pair[1]}`);
-    }
-  }
-  
-  try {
-    const response = await api.put("/accounts/register-vendor/", data, {
-      headers: { "Content-Type": undefined },
-    });
-    console.log("SUCCESS:", response.data);
-    return response.data;
-  } catch (error) {
-    // Log detailed error information
-    console.error("=== ERROR RESPONSE ===");
-    if (error.response) {
-      console.error("Status:", error.response.status);
-      console.error("Data:", error.response.data);
-      console.error("Headers:", error.response.headers);
-    } else if (error.request) {
-      console.error("No response received:", error.request);
-    } else {
-      console.error("Error:", error.message);
-    }
-    throw error;
-  }
+  // Use register-vendor endpoint for PUT
+  const response = await api.put("/accounts/register-vendor/", data, {
+    headers: { "Content-Type": undefined },
+  });
+  return response.data;
+};
+
+// Get vendor profile - USE THE CORRECT ENDPOINT
+// export const getVendorProfile = async () => {
+//   // Try register-vendor endpoint first (GET returns the profile)
+//   const response = await api.get("/accounts/register-vendor/");
+//   return response.data.data; 
+// };
+
+// Alternative: Use the dedicated vendor/profile endpoint
+export const getVendorProfileAlt = async () => {
+  const response = await api.get("/accounts/vendor/profile/");
+  return response.data.data;
 };
 
 export const logoutUser = async () => {

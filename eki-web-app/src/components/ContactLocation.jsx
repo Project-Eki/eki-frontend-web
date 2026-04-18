@@ -220,7 +220,7 @@ const ContactLocation = () => {
         {/* Street Address */}
         <div className="flex flex-col">
           <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
-            Street Address{" "}
+             Address{" "}
             <span className="text-gray-400 text-[9px]">(Optional)</span>
           </label>
           <div className="relative">
