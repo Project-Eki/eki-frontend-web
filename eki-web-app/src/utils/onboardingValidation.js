@@ -15,14 +15,20 @@ export const validateAccountBasics = (formData) => {
   if (!password) {
     errors.password = "Required";
   } else {
-    if (password.length < 8) errors.password = "Min 8 characters";
-    if (password.toLowerCase() === password || password.toUpperCase() === password)
-      errors.password = "Must use Up & Lowercase";
-    if (password === email) errors.password = "Cannot match email";
-    if (/^\d+$/.test(password)) errors.password = "Cannot be only numbers";
+    if (password.length < 8) {
+      errors.password = "Minimum 8 characters";
+    } else if (password.toLowerCase() === password || password.toUpperCase() === password) {
+      errors.password = "Use both uppercase & lowercase letters";
+    } else if (password === email) {
+      errors.password = "Password cannot match email";
+    } else if (/^\d+$/.test(password)) {
+      errors.password = "Password cannot be only numbers";
+    }
   }
 
-  if (confirmPassword && password !== confirmPassword) {
+  if (!confirmPassword) {
+    errors.confirmPassword = "Required";
+  } else if (password !== confirmPassword) {
     errors.confirmPassword = "Passwords do not match";
   }
 
@@ -91,6 +97,22 @@ export const validateBusinessIdentity = (formData) => {
     }
   }
 
+  // Business Description - Fixed with required validation
+  if (!formData.business_description?.trim()) {
+    errors.business_description = "Required";
+  } else {
+    const wordCount = formData.business_description
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean).length;
+
+    if (wordCount === 0) {
+      errors.business_description = "Required";
+    } else if (wordCount > 30) {
+      errors.business_description = "Maximum 30 words allowed";
+    }
+  }
+  
   return errors;
 };
 
@@ -103,6 +125,8 @@ export const validateContactLocation = (formData) => {
     errors.business_phone = "Required";
   } else if (formData.business_phone.trim().length < 8) {
     errors.business_phone = "Invalid number";
+  } else if (formData.business_phone.trim().length > 15) {
+    errors.business_phone = "Number too long";
   }
 
   // Country - Required
@@ -117,13 +141,18 @@ export const validateContactLocation = (formData) => {
 
   // Street Address - OPTIONAL (no validation)
 
-  // Operating Hours - Required
+  // Operating Hours - Required with logical validation
   if (!formData.opening_time) {
     errors.opening_time = "Required";
   }
   if (!formData.closing_time) {
     errors.closing_time = "Required";
   }
+  
+  // Optional: Check if times make sense (add if needed)
+  // if (formData.opening_time && formData.closing_time && formData.opening_time >= formData.closing_time) {
+  //   errors.closing_time = "Closing time must be after opening time";
+  // }
 
   return errors;
 };

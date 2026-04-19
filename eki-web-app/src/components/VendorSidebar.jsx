@@ -83,7 +83,7 @@ const VendorSidebar = ({ activePage }) => {
   // Show Services tab for service vendors OR both vendors
   if (vendorType === "service" || vendorType === "both") {
     menuItems.push({
-      to: "/servicemanagement",
+      to: "/services",
       icon: <Package size={16} />,
       label: "Services",
       key: "services",
