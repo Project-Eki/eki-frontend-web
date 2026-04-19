@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { HiOutlineBriefcase, HiOutlineBuildingOffice, HiOutlineUser, HiOutlineIdentification, HiOutlineDocumentText, HiOutlineClipboardDocumentList } from "react-icons/hi2";
 import { FaRegBuilding, FaRegFileAlt } from "react-icons/fa";
 import { MdWarning, MdError, MdCheckCircle, MdClose } from "react-icons/md";
@@ -14,7 +14,7 @@ const InlineError = ({ message }) => (
   </span>
 );
 
-// Toast notification component with React Icons
+// Toast notification component
 const Toast = ({ message, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 3000);
@@ -48,7 +48,6 @@ const getCategoryOptions = (businessType) => {
     { value: "automotive", label: "Automotive" },
   ];
 
-  // Service categories (from backend)
   const serviceCategories = [
     { value: "transport", label: "Transport" },
     { value: "tailoring", label: "Tailoring" },
@@ -58,12 +57,9 @@ const getCategoryOptions = (businessType) => {
     { value: "other", label: "Other" },
   ];
 
-  if (businessType === "products") {
-    return productCategories;
-  } else if (businessType === "services") {
-    return serviceCategories;
-  } else if (businessType === "both") {
-    // For "both" vendors, combine all categories
+  if (businessType === "products") return productCategories;
+  if (businessType === "services") return serviceCategories;
+  if (businessType === "both") {
     const allCategories = [...productCategories];
     serviceCategories.forEach((cat) => {
       if (!allCategories.some((c) => c.value === cat.value)) {
@@ -72,7 +68,6 @@ const getCategoryOptions = (businessType) => {
     });
     return allCategories;
   }
-  
   // Return empty array until business type is selected
   return [];
 };
@@ -90,8 +85,8 @@ const BusinessIdentity = () => {
     getCategoryOptions(formData.business_type), 
     [formData.business_type]
   );
+ // Memoized word count calculation for performance
 
-  // Memoized word count calculation for performance
   const wordCount = useMemo(() => {
     return (formData.business_description || "")
       .trim()
@@ -99,7 +94,7 @@ const BusinessIdentity = () => {
       .filter(Boolean).length;
   }, [formData.business_description]);
 
-  // Auto-populate owner_full_name from first_name and last_name
+  // Auto-populate owner_full_name
   useEffect(() => {
     if (!formData.owner_full_name && formData.first_name && formData.last_name) {
       dispatch({
@@ -111,40 +106,84 @@ const BusinessIdentity = () => {
     }
   }, [formData.first_name, formData.last_name, formData.owner_full_name, dispatch]);
 
-  // Reset business category if it becomes invalid when business type changes
+  // Convert business_category format when business type changes
   useEffect(() => {
-    if (formData.business_type && formData.business_category) {
-      const isValidCategory = categoryOptions.some(opt => opt.value === formData.business_category);
-      if (!isValidCategory) {
-        dispatch({
-          type: ACTIONS.UPDATE_FORM,
-          payload: { business_category: "" }
-        });
-      }
+    if (formData.business_type === "both" && !Array.isArray(formData.business_category)) {
+      // Convert string to array
+      const newValue = formData.business_category ? [formData.business_category] : [];
+      dispatch({
+        type: ACTIONS.UPDATE_FORM,
+        payload: { business_category: newValue }
+      });
+    } else if (formData.business_type !== "both" && Array.isArray(formData.business_category)) {
+      // Convert array to string (take first item)
+      const newValue = formData.business_category.length > 0 ? formData.business_category[0] : "";
+      dispatch({
+        type: ACTIONS.UPDATE_FORM,
+        payload: { business_category: newValue }
+      });
     }
-  }, [formData.business_type, formData.business_category, categoryOptions, dispatch]);
+  }, [formData.business_type, dispatch]);
 
-  // Enhanced handleChange with word limit enforcement
+  const handleCategoryChange = (value) => {
+    if (formData.business_type === "both") {
+      // Multi-select logic
+      const currentCategories = Array.isArray(formData.business_category) ? formData.business_category : [];
+      let newCategories;
+      
+      if (currentCategories.includes(value)) {
+        newCategories = currentCategories.filter(cat => cat !== value);
+      } else {
+        newCategories = [...currentCategories, value];
+      }
+      
+      dispatch({
+        type: ACTIONS.UPDATE_FORM,
+        payload: { business_category: newCategories }
+      });
+      setTouched(prev => ({ ...prev, business_category: true }));
+      
+      // Clear error if minimum 2 categories selected
+      if (newCategories.length >= 2 && errors.business_category) {
+        const newErrors = { ...errors };
+        delete newErrors.business_category;
+        setErrors(newErrors);
+      }
+    } else {
+      // Single-select logic
+      dispatch({
+        type: ACTIONS.UPDATE_FORM,
+        payload: { business_category: value }
+      });
+      setTouched(prev => ({ ...prev, business_category: true }));
+    }
+    
+    // Real-time validation
+    const validationErrors = validateBusinessIdentity({ ...formData, business_category: 
+      formData.business_type === "both" ? 
+        (Array.isArray(formData.business_category) ? 
+          (formData.business_category.includes(value) ? 
+            formData.business_category.filter(cat => cat !== value) : 
+            [...formData.business_category, value]) : 
+          [value]) : 
+        value
+    });
+    setErrors(validationErrors);
+  };
+
   const handleChange = (field, value) => {
-    // Special handling for business_description to enforce word limit
     if (field === 'business_description') {
       const words = value.trim().split(/\s+/).filter(Boolean);
-      
-      // Prevent exceeding 30 words
       if (words.length > 30) {
-        // Show toast notification instead of inline error
         setShowToast(true);
         return;
       }
-      
-      // Clear toast if it was shown
       if (showToast) setShowToast(false);
     }
     
     dispatch({ type: ACTIONS.UPDATE_FORM, payload: { [field]: value } });
     setTouched(prev => ({ ...prev, [field]: true }));
     
-    // Real-time validation
     const validationErrors = validateBusinessIdentity({ ...formData, [field]: value });
     setErrors(validationErrors);
   };
@@ -158,7 +197,6 @@ const BusinessIdentity = () => {
   const handleContinue = () => {
     setGeneralError("");
     
-    // Mark all fields as touched
     setTouched({
       business_name: true,
       business_category: true,
@@ -175,7 +213,7 @@ const BusinessIdentity = () => {
     if (Object.keys(validationErrors).length === 0) {
       dispatch({ type: ACTIONS.NEXT_STEP });
     } else {
-      // Scroll to first error
+      //  scroll to first error
       const firstErrorField = Object.keys(validationErrors)[0];
       const errorElement = document.querySelector(`[data-field="${firstErrorField}"]`);
       if (errorElement) {
@@ -185,16 +223,23 @@ const BusinessIdentity = () => {
   };
 
   const showError = (field) => touched[field] && errors[field];
+  
+  const hasMinimumCategories = () => {
+    if (formData.business_type === "both") {
+      const categories = Array.isArray(formData.business_category) ? formData.business_category : [];
+      return categories.length >= 2;
+    }
+    return true;
+  };
 
   return (
     <>
-      {/* Toast notification */}
+    {/* Toast notification*/}
       {showToast && (
         <Toast message="Business description cannot exceed 30 words" onClose={() => setShowToast(false)} />
       )}
 
       <div className="w-full animate-fadeIn">
-        {/* Header */}
         <div className="flex items-center gap-2 mb-3">
           <div className="w-7 h-7 bg-[#FFF8ED] rounded-lg flex items-center justify-center shrink-0">
             <HiOutlineBriefcase className="text-[#F2B53D]" size={16} />
@@ -256,30 +301,79 @@ const BusinessIdentity = () => {
           </div>
 
           {/* Business Category */}
-          <div className="flex flex-col" data-field="business_category">
+          <div className={`flex flex-col ${formData.business_type === "both" ? "md:col-span-2" : ""}`} data-field="business_category">
             <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
               Business Category <span className="text-red-500">*</span>
+              {formData.business_type === "both" && (
+                <span className="text-[8px] text-gray-500 ml-1">(Select at least 2 categories)</span>
+              )}
             </label>
-            <div className="relative">
-              <HiOutlineClipboardDocumentList className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={12} />
-              <select
-                value={formData.business_category || ""}
-                onChange={(e) => handleChange('business_category', e.target.value)}
-                onBlur={() => handleBlur('business_category')}
-                disabled={!formData.business_type}
-                className={`w-full h-8 pl-9 pr-8 border rounded-xl text-[11px] focus:border-[#F2B53D] outline-none cursor-pointer appearance-none transition-colors ${
+            
+            {formData.business_type === "both" ? (
+              <div className="relative">
+                <div className={`border rounded-xl p-2 max-h-32 overflow-y-auto ${
+                  showError('business_category') ? 'border-red-400' : 'border-gray-200'
+                }`}>
+                  {categoryOptions.map(option => {
+                    const isSelected = Array.isArray(formData.business_category) && 
+                                      formData.business_category.includes(option.value);
+                    return (
+                      <label key={option.value} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-50 px-2 rounded">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleCategoryChange(option.value)}
+                          className="w-3 h-3 rounded border-gray-300 text-[#F2B53D] focus:ring-[#F2B53D] accent-[#1D4D4C]"
+                        />
+                        <span className="text-[11px] text-gray-700">{option.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {showError('business_category') && <InlineError message={errors.business_category} />}
+                
+                {Array.isArray(formData.business_category) && (
+                  <div className="mt-1 flex justify-between items-center">
+                    <div className={`text-[9px] ${
+                      formData.business_category.length === 0 ? 'text-gray-400' :
+                      formData.business_category.length >= 2 ? 'text-green-600' : 'text-orange-500'
+                    }`}>
+                      Selected: {formData.business_category.length} category(ies)
+                      {formData.business_category.length < 2 && formData.business_category.length > 0 && (
+                        <span className="ml-1">(Need {2 - formData.business_category.length} more)</span>
+                      )}
+                    </div>
+                    {formData.business_category.length === 1 && (
+                      <div className="text-[8px] text-orange-500 flex items-center gap-1">
+                        <MdWarning size={10} />
+                        Select at least 1 more category
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="relative">
+                <HiOutlineClipboardDocumentList className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={12} />
+                <select
+                  value={formData.business_category || ""}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
+                  onBlur={() => handleBlur('business_category')}
+                  disabled={!formData.business_type}
+                  className={`w-full h-8 pl-9 pr-8 border rounded-xl text-[11px] focus:border-[#F2B53D]  outline-none cursor-pointer appearance-none transition-colors ${
                     !formData.business_type ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : 'bg-white'
                   } ${
                     showError('business_category') ? 'border-red-400' : 'border-gray-200'
                   }`}
-              >
-                <option value="">{!formData.business_type ? "Select business type first" : "Select category"}</option>
-                {categoryOptions.map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-              {showError('business_category') && <InlineError message={errors.business_category} />}
-            </div>
+                >
+                  <option value="">{!formData.business_type ? "Select business type first" : "Select category"}</option>
+                  {categoryOptions.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                {showError('business_category') && <InlineError message={errors.business_category} />}
+              </div>
+            )}
           </div>
 
           {/* Owner Full Name */}
@@ -351,7 +445,7 @@ const BusinessIdentity = () => {
             </div>
           </div>
 
-          {/* Business Description - Full width */}
+          {/* Business Description */}
           <div className="flex flex-col md:col-span-2" data-field="business_description">
             <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
               Business Description <span className="text-red-500">*</span>
@@ -368,18 +462,15 @@ const BusinessIdentity = () => {
                     ? 'border-red-400 focus:border-red-500'
                     : 'border-gray-200 focus:border-[#F2B53D]'
                 }`}
-                maxLength={500} // Safety limit to prevent extremely long inputs
+                maxLength={500}
               />
               {showError('business_description') && <InlineError message={errors.business_description} />}
               
-              {/* Word counter with visual feedback */}
+              {/* Word counter with visual feedback*/}
               <div className="flex justify-between items-center mt-1">
                 <div className="flex items-center gap-1">
                   {wordCount > 0 && wordCount <= 30 && (
-                    <MdCheckCircle 
-                      size={10} 
-                      className={wordCount > 20 ? "text-yellow-500" : "text-green-500"} 
-                    />
+                    <MdCheckCircle size={10} className={wordCount > 20 ? "text-yellow-500" : "text-green-500"} />
                   )}
                   <p className={`text-[9px] transition-colors ${
                     wordCount > 30 ? "text-red-500 font-medium" : 
@@ -392,9 +483,7 @@ const BusinessIdentity = () => {
                 {wordCount > 25 && wordCount <= 30 && (
                   <div className="flex items-center gap-1">
                     <IoWarningOutline size={10} className="text-yellow-600" />
-                    <p className="text-[8px] text-yellow-600">
-                      Getting close to limit
-                    </p>
+                    <p className="text-[8px] text-yellow-600">Getting close to limit</p>
                   </div>
                 )}
               </div>
@@ -402,23 +491,21 @@ const BusinessIdentity = () => {
               {wordCount > 30 && (
                 <div className="flex items-center gap-1 mt-0.5">
                   <MdError size={10} className="text-red-500" />
-                  <p className="text-red-500 text-[8px]">
-                    Cannot exceed 30 words. Please shorten your description.
-                  </p>
+                  <p className="text-red-500 text-[8px]">Cannot exceed 30 words. Please shorten your description.</p>
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Buttons - Only Continue button, centered */}
+        {/* Continue Button */}
         <div className="w-full flex justify-center mt-4">
           <button
             type="button"
             onClick={handleContinue}
-            disabled={wordCount > 30}
+            disabled={wordCount > 30 || (formData.business_type === "both" && !hasMinimumCategories())}
             className={`w-full max-w-[200px] h-7 rounded-full text-white font-bold text-[11px] transition-all ${
-              wordCount > 30
+              (wordCount > 30 || (formData.business_type === "both" && !hasMinimumCategories()))
                 ? 'bg-gray-400 cursor-not-allowed'
                 : 'bg-[#D99201] hover:bg-[#e0a630] active:bg-[#c68500]'
             }`}

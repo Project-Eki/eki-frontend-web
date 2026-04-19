@@ -36,8 +36,7 @@ export const validateAccountBasics = (formData) => {
 
   return errors;
 };
-
-// Step 3: Business Identity with Global Validation
+// Step 3: Business Identity with Multi-Category Support
 export const validateBusinessIdentity = (formData) => {
   const errors = {};
 
@@ -55,9 +54,21 @@ export const validateBusinessIdentity = (formData) => {
     errors.business_type = "Required";
   }
 
-  // Business Category
-  if (!formData.business_category) {
-    errors.business_category = "Required";
+  // Business Category - NEW validation for multi-select
+  if (formData.business_type === "both") {
+    // For "both", require at least 2 categories
+    if (!formData.business_category || !Array.isArray(formData.business_category) || formData.business_category.length === 0) {
+      errors.business_category = "Please select at least one category";
+    } else if (formData.business_category.length === 1) {
+      errors.business_category = "Please select at least 2 categories (you need both a product and service category)";
+    } else if (formData.business_category.length < 2) {
+      errors.business_category = `Please select ${2 - formData.business_category.length} more category/categories`;
+    }
+  } else if (formData.business_type === "products" || formData.business_type === "services") {
+    // For single selection, require 1 category
+    if (!formData.business_category || formData.business_category.trim() === "") {
+      errors.business_category = "Please select a category";
+    }
   }
 
   // Owner Full Name
@@ -69,7 +80,7 @@ export const validateBusinessIdentity = (formData) => {
     errors.owner_full_name = "Too short";
   }
 
-  // Tax ID - Global format validation
+  // Tax ID
   if (!formData.tax_id?.trim()) {
     errors.tax_id = "Required";
   } else {
@@ -83,7 +94,7 @@ export const validateBusinessIdentity = (formData) => {
     }
   }
 
-  // Registration Number - Global format validation
+  // Registration Number
   if (!formData.registration_number?.trim()) {
     errors.registration_number = "Required";
   } else {
@@ -97,7 +108,7 @@ export const validateBusinessIdentity = (formData) => {
     }
   }
 
-  // Business Description - Fixed with required validation
+  // Business Description
   if (!formData.business_description?.trim()) {
     errors.business_description = "Required";
   } else {

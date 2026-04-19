@@ -28,7 +28,7 @@ const initialState = {
     // Step 3: Business Identity
     business_name: "",
     business_type: "",
-    business_category: "",  
+    business_category: [],  // changed from "" to [] to support multiple selections
     owner_full_name: "",
     tax_id: "",
     registration_number: "",
