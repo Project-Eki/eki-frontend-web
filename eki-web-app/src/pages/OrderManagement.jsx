@@ -71,7 +71,7 @@ const StarRating = ({ rating = 0 }) => (
 
 // ─── Order Detail Modal ───────────────────────────────────────────────────────
 const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) => {
-  const [step, setStep] = useState('detail'); // 'detail' | 'pickup' | 'success' | 'failure'
+  const [step, setStep] = useState('detail');
   const [codeInput, setCodeInput] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -140,6 +140,7 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
   };
 
   // ── Step: pickup code entry ─────────────────────────────────────────────────
+  // CHANGED: sm:max-w-sm → sm:max-w-lg, padding and spacing increased throughout
   if (step === 'pickup') {
     return (
       <div
@@ -147,30 +148,39 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
         onClick={onClose}
       >
         <div
-          className="bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+          className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
           style={{ fontFamily: "'Poppins', sans-serif" }}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex justify-center pt-3 pb-1 sm:hidden">
             <div className="w-10 h-1 bg-slate-200 rounded-full" />
           </div>
-          <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
-            <h2 className="text-sm font-bold text-slate-800">Enter pickup code</h2>
+
+          {/* Header */}
+          <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
+            <div>
+              <h2 className="text-base font-bold text-slate-800">Enter pickup code</h2>
+              <p className="text-[10px] text-slate-400 mt-0.5">Order {formatOrderId(order.id)}</p>
+            </div>
             <button type="button" onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-700">
-              <X size={16} />
+              <X size={18} />
             </button>
           </div>
-          <div className="px-5 py-5 space-y-4">
-            <p className="text-[11px] text-slate-500 leading-relaxed">
-              Input the pickup code provided by the customer to complete this order.
+
+          {/* Body */}
+          <div className="px-8 py-8 space-y-6">
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Input the pickup code provided by the customer to complete this order. The code is in the format <span className="font-mono font-bold text-slate-700">ABC-XXXXXXXX</span>.
             </p>
+
             {errorMsg && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-[10px] font-medium px-3 py-2 rounded-lg">
+              <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-medium px-4 py-3 rounded-xl">
                 {errorMsg}
               </div>
             )}
-            <div>
-              <label className="block text-[9px] font-bold uppercase text-slate-400 mb-1.5">
+
+            <div className="space-y-2">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Pickup code
               </label>
               <input
@@ -178,28 +188,31 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
                 value={codeInput}
                 onChange={(e) => { setErrorMsg(''); setCodeInput(e.target.value.toUpperCase()); }}
                 placeholder="e.g. EKI-F22EU8"
-                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-mono font-bold uppercase tracking-widest text-center focus:ring-2 focus:ring-[#125852] outline-none"
+                className="w-full px-4 py-4 border-2 border-slate-200 rounded-xl text-lg font-mono font-bold uppercase tracking-widest text-center focus:border-[#125852] focus:ring-0 outline-none transition-colors"
                 autoComplete="off"
                 autoFocus
               />
-              <p className="text-[9px] text-slate-400 mt-1.5 text-center">Format: ABC-XXXXXXXX</p>
+              <p className="text-[10px] text-slate-400 text-center">Format: ABC-XXXXXXXX</p>
             </div>
-            <button
-              onClick={handleVerifyCode}
-              disabled={verifying || !codeInput.trim()}
-              className="w-full py-2.5 bg-[#125852] text-white rounded-xl text-[11px] font-bold flex items-center justify-center gap-2 hover:bg-[#0e4340] transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed"
-            >
-              {verifying
-                ? <><RefreshCw size={12} className="animate-spin" /> Verifying...</>
-                : <><CheckCircle size={12} /> Verify &amp; complete order</>
-              }
-            </button>
-            <button
-              onClick={() => { setStep('detail'); setErrorMsg(''); setCodeInput(''); }}
-              className="w-full py-2.5 border border-slate-200 rounded-xl text-[11px] font-bold text-slate-500 hover:bg-slate-50 transition-colors"
-            >
-              Back
-            </button>
+
+            <div className="space-y-3 pt-2">
+              <button
+                onClick={handleVerifyCode}
+                disabled={verifying || !codeInput.trim()}
+                className="w-full py-3.5 bg-[#125852] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-[#0e4340] transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed"
+              >
+                {verifying
+                  ? <><RefreshCw size={14} className="animate-spin" /> Verifying...</>
+                  : <><CheckCircle size={14} /> Verify &amp; complete order</>
+                }
+              </button>
+              <button
+                onClick={() => { setStep('detail'); setErrorMsg(''); setCodeInput(''); }}
+                className="w-full py-3.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors"
+              >
+                Back
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -297,7 +310,6 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
         style={{ fontFamily: "'Poppins', sans-serif" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Drag handle (mobile) */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden">
           <div className="w-10 h-1 bg-slate-200 rounded-full" />
         </div>
@@ -327,14 +339,12 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
         {/* Body */}
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
 
-          {/* Error message (e.g. confirm failed) */}
           {errorMsg && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-[10px] font-medium px-3 py-2 rounded-lg">
               {errorMsg}
             </div>
           )}
 
-          {/* ─── CONFIRM BUTTON (pending orders) ─── */}
           {statusKey === 'pending' && (
             <button
               onClick={handleConfirmOrder}
@@ -349,7 +359,6 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
             </button>
           )}
 
-          {/* ─── ENTER PICKUP CODE BUTTON (confirmed orders) ─── */}
           {statusKey === 'confirmed' && (
             <button
               onClick={() => setStep('pickup')}
@@ -650,13 +659,16 @@ const OrderManagement = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#ecece7] text-slate-800 p-3 gap-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    // CHANGED: removed p-3, added min-h-screen with flex-col to push footer down
+    <div className="flex min-h-screen bg-[#ecece7] text-slate-800 gap-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
       <VendorSidebar activePage="orders" />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* CHANGED: flex-col with flex-1 so footer is pushed to bottom and below fold */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         <Navbar3 />
 
-        <main className="p-5 max-w-[1400px] mx-auto w-full pb-16">
+        {/* CHANGED: flex-1 on main so it grows and pushes footer down naturally */}
+        <main className="flex-1 p-5 max-w-[1400px] mx-auto w-full pb-24">
           <div className="mb-5">
             <h1 className="text-xl font-bold text-[#1A1A1A] tracking-tight">Order Management</h1>
             <p className="text-slate-400 text-[11px] mt-0.5">View, confirm, and complete orders with pickup code verification.</p>
