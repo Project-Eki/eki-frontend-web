@@ -3,7 +3,7 @@ import {
   X, ArrowRight, ArrowLeft, Eye, CheckCircle2, Palette, Ruler,
   ImagePlus, Trash2, ShoppingBag, ChevronDown, ChevronUp, Camera, Save,
 } from 'lucide-react';
-import { getImageUrl } from '../services/authService';   // <-- ADDED
+import { getImageUrl } from '../services/authService';
 
 // Constants
 const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'one_size'];
@@ -31,7 +31,6 @@ const countWords = (text) => {
   return text.trim().split(/\s+/).filter(Boolean).length;
 };
 
-// Helper function to safely get category name
 const getCategoryName = (category) => {
   if (!category) return '';
   if (typeof category === 'object' && category !== null) {
@@ -60,6 +59,12 @@ export const isStep1Valid = (data) =>
   !isNaN(Number(data.price)) &&
   Number(data.price) > 0;
 
+// ─── Resolve image ID from whatever shape the API returns ─────────────────────
+const resolveImageId = (imgObj) => {
+  if (!imgObj) return null;
+  return imgObj.id ?? imgObj.image_id ?? imgObj.pk ?? null;
+};
+
 // ─── Camera Capture Component ─────────────────────────────────────────────────
 const CameraCapture = ({ onCapture, onClose }) => {
   const videoRef = useRef(null);
@@ -83,9 +88,7 @@ const CameraCapture = ({ onCapture, onClose }) => {
     }
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setError(
-        'Your browser does not support camera access. Please use file upload instead.'
-      );
+      setError('Your browser does not support camera access. Please use file upload instead.');
       return;
     }
 
@@ -118,20 +121,11 @@ const CameraCapture = ({ onCapture, onClose }) => {
     };
 
     startCamera();
-
-    return () => {
-      if (activeStream) {
-        activeStream.getTracks().forEach((track) => track.stop());
-      }
-    };
+    return () => { if (activeStream) activeStream.getTracks().forEach((t) => t.stop()); };
   }, []);
 
   useEffect(() => {
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
-    };
+    return () => { if (stream) stream.getTracks().forEach((t) => t.stop()); };
   }, [stream]);
 
   const handleCapture = () => {
@@ -154,18 +148,11 @@ const CameraCapture = ({ onCapture, onClose }) => {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[400] flex items-center justify-center bg-black/90 p-4"
-      style={{ fontFamily: "'Poppins', sans-serif" }}
-    >
+    <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/90 p-4" style={{ fontFamily: "'Poppins', sans-serif" }}>
       <div className="relative w-full max-w-lg">
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 z-10 p-2 bg-white/20 rounded-full text-white hover:bg-white/30 transition-colors"
-        >
+        <button onClick={onClose} className="absolute top-3 right-3 z-10 p-2 bg-white/20 rounded-full text-white hover:bg-white/30 transition-colors">
           <X size={20} />
         </button>
-
         {error ? (
           <div className="bg-white rounded-2xl p-8 text-center space-y-4">
             <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto">
@@ -173,38 +160,21 @@ const CameraCapture = ({ onCapture, onClose }) => {
             </div>
             <p className="text-sm font-bold text-slate-800">Camera unavailable</p>
             <p className="text-xs text-slate-500 leading-relaxed">{error}</p>
-            <button
-              onClick={onClose}
-              className="px-6 py-2.5 bg-[#F5B841] text-white rounded-xl text-sm font-bold hover:bg-[#E0A83B] transition-colors"
-            >
+            <button onClick={onClose} className="px-6 py-2.5 bg-[#F5B841] text-white rounded-xl text-sm font-bold hover:bg-[#E0A83B] transition-colors">
               Use file upload instead
             </button>
           </div>
         ) : (
           <div className="relative">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full rounded-2xl bg-black"
-              style={{ maxHeight: '70vh' }}
-            />
+            <video ref={videoRef} autoPlay playsInline muted className="w-full rounded-2xl bg-black" style={{ maxHeight: '70vh' }} />
             <canvas ref={canvasRef} className="hidden" />
-
             {!isReady && (
               <div className="absolute inset-0 flex items-center justify-center rounded-2xl">
                 <p className="text-white text-sm font-medium">Starting camera…</p>
               </div>
             )}
-
             <div className="absolute bottom-6 left-0 right-0 flex justify-center items-center gap-6">
-              <button
-                onClick={onClose}
-                className="px-5 py-2.5 bg-white/20 backdrop-blur-sm text-white rounded-full text-sm font-bold hover:bg-white/30 transition-colors"
-              >
-                Cancel
-              </button>
+              <button onClick={onClose} className="px-5 py-2.5 bg-white/20 backdrop-blur-sm text-white rounded-full text-sm font-bold hover:bg-white/30 transition-colors">Cancel</button>
               <button
                 onClick={handleCapture}
                 disabled={!isReady}
@@ -220,7 +190,7 @@ const CameraCapture = ({ onCapture, onClose }) => {
   );
 };
 
-// ─── StepProgressBar ─────────────────────────────────────────────────────────
+// ─── StepProgressBar ──────────────────────────────────────────────────────────
 const StepProgressBar = ({ currentStep, labels = ['Basic Info', 'Description', 'Variants', 'Images'] }) => (
   <div className="px-6 pt-3 pb-2 flex-shrink-0">
     <div className="flex items-center gap-1.5">
@@ -303,7 +273,6 @@ const VariantSection = ({ sizes, colors, onToggleChip }) => {
   return (
     <div className="space-y-4 border border-slate-100 rounded-xl p-4 bg-slate-50/50">
       <h4 className="text-[11px] font-bold uppercase text-slate-600 tracking-wider">Product Variants</h4>
-
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Ruler size={13} className="text-slate-400" />
@@ -315,9 +284,7 @@ const VariantSection = ({ sizes, colors, onToggleChip }) => {
               key={size} type="button"
               onClick={() => onToggleChip('sizes', size)}
               className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
-                sizes.includes(size)
-                  ? 'bg-[#125852] text-white border-[#125852]'
-                  : 'bg-white text-slate-500 border-slate-200 hover:border-[#125852] hover:text-[#125852]'
+                sizes.includes(size) ? 'bg-[#125852] text-white border-[#125852]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#125852] hover:text-[#125852]'
               }`}
             >
               {size === 'one_size' ? 'One Size' : size}
@@ -382,6 +349,7 @@ const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, 
   const total = existingImages.length + pendingImages.length;
   const canAddMore = total < MAX_GENERAL_IMAGES;
   const [showCameraOptions, setShowCameraOptions] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const optionsRef = useRef(null);
 
   useEffect(() => {
@@ -392,6 +360,17 @@ const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleRemoveExisting = async (imgObj, index) => {
+    const imageId = resolveImageId(imgObj);
+    const spinnerKey = imageId ?? index;
+    setDeletingId(spinnerKey);
+    try {
+      await onRemoveExisting(imageId, index);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
@@ -399,21 +378,38 @@ const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, 
         <span className="text-[9px] text-slate-400">{total}/{MAX_GENERAL_IMAGES}</span>
       </div>
       <div className="flex flex-wrap gap-1.5">
-        {existingImages.map((img, i) => (
-          <div key={img.id ?? i} className="w-16 h-16 rounded-lg border border-slate-200 overflow-hidden relative group flex-shrink-0">
-            <img src={getImageUrl(img.image)} alt={`Product ${i + 1}`} className="w-full h-full object-cover" />
-            {i === 0 && (
-              <span className="absolute bottom-0 left-0 right-0 bg-[#125852]/80 text-white text-[7px] font-black text-center py-0.5">MAIN</span>
-            )}
-            <button
-              type="button"
-              onClick={() => onRemoveExisting(img.id, i)}
-              className="absolute top-0.5 right-0.5 bg-white/90 p-0.5 rounded-full text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-            >
-              <Trash2 size={9} />
-            </button>
-          </div>
-        ))}
+        {existingImages.map((img, i) => {
+          const imageId = resolveImageId(img);
+          const spinnerKey = imageId ?? i;
+          const isDeleting = deletingId === spinnerKey;
+          return (
+            <div key={spinnerKey} className="w-16 h-16 rounded-lg border border-slate-200 overflow-hidden relative group flex-shrink-0">
+              {isDeleting ? (
+                <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+                  <svg className="animate-spin w-5 h-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                  </svg>
+                </div>
+              ) : (
+                <img src={getImageUrl(img.image)} alt={`Product ${i + 1}`} className="w-full h-full object-cover" />
+              )}
+              {i === 0 && !isDeleting && (
+                <span className="absolute bottom-0 left-0 right-0 bg-[#125852]/80 text-white text-[7px] font-black text-center py-0.5">MAIN</span>
+              )}
+              {!isDeleting && (
+                <button
+                  type="button"
+                  onClick={() => handleRemoveExisting(img, i)}
+                  className="absolute top-0.5 right-0.5 bg-white/90 p-0.5 rounded-full text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                  title="Delete this image"
+                >
+                  <Trash2 size={9} />
+                </button>
+              )}
+            </div>
+          );
+        })}
         {pendingImages.map((img, i) => (
           <div key={i} className="w-16 h-16 rounded-lg border border-dashed border-[#125852]/50 overflow-hidden relative group flex-shrink-0">
             <img src={img.preview} alt={`New ${i + 1}`} className="w-full h-full object-cover opacity-80" />
@@ -437,7 +433,6 @@ const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, 
               <ImagePlus size={16} className="text-slate-400" />
               <span className="text-[9px] font-bold text-slate-400 mt-1">ADD</span>
             </button>
-
             {showCameraOptions && (
               <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg p-1 min-w-[120px]">
                 <button
@@ -537,10 +532,7 @@ const ColorImageSection = ({
                 </div>
               ))}
               {canAdd && (
-                <div
-                  className="relative"
-                  ref={(el) => { optionsRefs.current[color] = el; }}
-                >
+                <div className="relative" ref={(el) => { optionsRefs.current[color] = el; }}>
                   <button
                     type="button"
                     onClick={() => setShowCameraForColor(showCameraForColor === color ? null : color)}
@@ -549,7 +541,6 @@ const ColorImageSection = ({
                     <ImagePlus size={13} className="text-slate-400" />
                     <span className="text-[8px] font-bold text-slate-400 mt-0.5">ADD</span>
                   </button>
-
                   {showCameraForColor === color && (
                     <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg p-1 min-w-[110px]">
                       <button
@@ -668,20 +659,12 @@ const SummaryPill = ({ formData, currencySymbol, currentStep, onEdit }) => {
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             {formData.discountEnabled && formData.price ? (
               <>
-                <span className="text-[10px] text-slate-400 line-through">
-                  {currencySymbol} {Number(formData.price).toLocaleString()}
-                </span>
-                <span className="text-[11px] text-[#125852] font-bold">
-                  {currencySymbol} {displayPrice.toLocaleString()}
-                </span>
-                <span className="text-[8px] bg-[#F5B841] text-white px-1.5 py-0.5 rounded-full font-bold">
-                  -{formData.discountPercentage}%
-                </span>
+                <span className="text-[10px] text-slate-400 line-through">{currencySymbol} {Number(formData.price).toLocaleString()}</span>
+                <span className="text-[11px] text-[#125852] font-bold">{currencySymbol} {displayPrice.toLocaleString()}</span>
+                <span className="text-[8px] bg-[#F5B841] text-white px-1.5 py-0.5 rounded-full font-bold">-{formData.discountPercentage}%</span>
               </>
             ) : (
-              <span className="text-[11px] text-[#125852] font-bold">
-                {currencySymbol} {Number(formData.price || 0).toLocaleString()}
-              </span>
+              <span className="text-[11px] text-[#125852] font-bold">{currencySymbol} {Number(formData.price || 0).toLocaleString()}</span>
             )}
             {formData.stock > 0 && <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full">Qty: {formData.stock}</span>}
             {formData.sizes?.length > 0 && <span className="text-[9px] bg-[#125852]/10 text-[#125852] px-1.5 py-0.5 rounded-full">{formData.sizes.length} size{formData.sizes.length !== 1 ? 's' : ''}</span>}
@@ -698,8 +681,7 @@ const SummaryPill = ({ formData, currencySymbol, currentStep, onEdit }) => {
   );
 };
 
-// ─── Edit Mode Save Banner ─────────────────────────────────────────────────────
-// Shows a "Save Changes" button on every step when editing an existing product
+// ─── Edit Mode Save Banner ────────────────────────────────────────────────────
 const EditSaveBanner = ({ onSave, isLoading, label = 'Save Changes' }) => (
   <div className="px-6 py-2 bg-amber-50 border-b border-amber-100 flex items-center justify-between flex-shrink-0">
     <p className="text-[10px] text-amber-700 font-medium flex items-center gap-1.5">
@@ -711,9 +693,7 @@ const EditSaveBanner = ({ onSave, isLoading, label = 'Save Changes' }) => (
       onClick={onSave}
       disabled={isLoading}
       className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-sm transition-all active:scale-95 ${
-        isLoading
-          ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-          : 'bg-[#125852] text-white hover:bg-[#0e4340] cursor-pointer'
+        isLoading ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#125852] text-white hover:bg-[#0e4340] cursor-pointer'
       }`}
     >
       <Save size={11} />
@@ -734,6 +714,8 @@ const ProductListing = ({
   initialData = null,
   submitLabel = 'Publish Product',
   branchLocation = '',
+  listingId = null,
+  onDeleteImage,
 }) => {
   const isEditMode = !!initialData;
 
@@ -741,6 +723,7 @@ const ProductListing = ({
   const [formData, setFormData] = useState(blankForm());
   const [formErrors, setFormErrors] = useState({});
   const [isPublished, setIsPublished] = useState(true);
+  const [existingImages, setExistingImages] = useState([]);
   const [colorPreviewModal, setColorPreviewModal] = useState(null);
   const [showCamera, setShowCamera] = useState(false);
   const [cameraTargetColor, setCameraTargetColor] = useState(null);
@@ -757,7 +740,6 @@ const ProductListing = ({
         price: initialData.price ? String(initialData.price) : '',
         sku: initialData.sku || '',
         description: initialData.description || '',
-        // ── Stock fix: use the resolved stock value from initialData ──
         stock: initialData.stock ?? initialData.detail?.stock ?? initialData.stock_quantity ?? 0,
         imageFiles: [],
         sizes: initialData.sizes || [],
@@ -766,12 +748,11 @@ const ProductListing = ({
         discountEnabled: initialData.discount_enabled || false,
         discountPercentage: initialData.discount_percentage || 10,
       });
+      setExistingImages(initialData.images || []);
       setIsPublished(initialData.is_published === true);
     } else {
-      setFormData({
-        ...blankForm(),
-        discountPercentage: 10,
-      });
+      setFormData({ ...blankForm(), discountPercentage: 10 });
+      setExistingImages([]);
       setIsPublished(true);
     }
     setFormStep(1);
@@ -792,7 +773,7 @@ const ProductListing = ({
   const handleFilesChange = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
-    const remaining = MAX_GENERAL_IMAGES - formData.imageFiles.length;
+    const remaining = MAX_GENERAL_IMAGES - existingImages.length - formData.imageFiles.length;
     files.slice(0, remaining).forEach((file) => {
       const reader = new FileReader();
       reader.onloadend = () =>
@@ -834,6 +815,13 @@ const ProductListing = ({
       ...prev,
       imageFiles: prev.imageFiles.filter((_, i) => i !== index),
     }));
+
+  const handleRemoveExistingImage = async (imageId, index) => {
+    if (onDeleteImage) {
+      await onDeleteImage(listingId, imageId);
+    }
+    setExistingImages((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleColorFilesChange = (color, e) => {
     const files = Array.from(e.target.files);
@@ -922,13 +910,11 @@ const ProductListing = ({
     return [...general, ...colored];
   };
 
-  // ── Unified submit used by both the final step and the edit-mode "Save" banner ──
   const buildPayloadAndSubmit = async () => {
     const validationErrors = validateStep1();
     const descErrors = validateStep2();
     if (Object.keys(validationErrors).length > 0 || Object.keys(descErrors).length > 0) {
       setFormErrors({ ...validationErrors, ...descErrors });
-      // Jump to the step that has the error
       if (Object.keys(validationErrors).length > 0) setFormStep(1);
       else setFormStep(2);
       return;
@@ -944,18 +930,13 @@ const ProductListing = ({
       branch_location: branchLocation || '',
       price: parseFloat(formData.price) || 0,
       sku: formData.sku,
-      // ── Stock fix: always send the current (possibly reduced) stock value ──
       stock: parseInt(formData.stock) || 0,
       sizes: formData.sizes,
       colors: formData.colors,
       is_published: isPublished,
       business_category: businessCategory,
       sales_status: formData.discountEnabled
-        ? {
-            on_sale: true,
-            discount_percentage: formData.discountPercentage,
-            discounted_price: discountedPrice,
-          }
+        ? { on_sale: true, discount_percentage: formData.discountPercentage, discounted_price: discountedPrice }
         : { on_sale: false },
     };
 
@@ -973,7 +954,6 @@ const ProductListing = ({
     await buildPayloadAndSubmit();
   };
 
-  // Called from the edit-mode save banner on any step
   const handleEditSave = async () => {
     await buildPayloadAndSubmit();
   };
@@ -995,42 +975,32 @@ const ProductListing = ({
       {showCamera && (
         <CameraCapture
           onCapture={handleCameraCapture}
-          onClose={() => {
-            setShowCamera(false);
-            setCameraTargetColor(null);
-          }}
+          onClose={() => { setShowCamera(false); setCameraTargetColor(null); }}
         />
       )}
 
+      {/* Step 1 */}
       {formStep === 1 && (
         <div className={modalWrap}>
           <div className={modalBox} style={{ fontFamily: "'Poppins', sans-serif" }}>
             <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
               <div>
                 <h2 className="text-lg font-bold">{initialData ? 'Edit' : 'Create New'} {isServiceVendor ? 'Service' : 'Product'}</h2>
-                <p className="text-[11px] text-slate-500">
-                  Step 1 of 4 · <span className="font-bold text-[#125852] capitalize">{businessCategory}</span>
-                </p>
+                <p className="text-[11px] text-slate-500">Step 1 of 4 · <span className="font-bold text-[#125852] capitalize">{businessCategory}</span></p>
               </div>
               <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <StepProgressBar currentStep={1} />
-
-            {/* Edit-mode save banner — visible on every step */}
-            {isEditMode && (
-              <EditSaveBanner onSave={handleEditSave} isLoading={isLoading} label={submitLabel} />
-            )}
+            {isEditMode && <EditSaveBanner onSave={handleEditSave} isLoading={isLoading} label={submitLabel} />}
 
             <div className="px-6 py-4 space-y-3 overflow-y-auto flex-1">
               <ErrorBanner msg={formErrors._server} />
-
               {branchLocation && (
                 <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
                   <span className="text-[10px] font-bold uppercase text-slate-400">Branch Location</span>
                   <span className="text-[11px] font-bold text-[#125852] ml-auto">{branchLocation}</span>
                 </div>
               )}
-
               <div className="space-y-1">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Title *</label>
                 <input
@@ -1042,7 +1012,6 @@ const ProductListing = ({
                 />
                 {formErrors.title && <p className="text-red-500 text-[9px] font-bold">{formErrors.title}</p>}
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold uppercase text-slate-500">Price ({currencySymbol}) *</label>
@@ -1064,7 +1033,6 @@ const ProductListing = ({
                   />
                 </div>
               </div>
-
               <div className="space-y-1">
                 <label className="text-[11px] font-bold uppercase text-slate-500">Stock Quantity</label>
                 <input
@@ -1073,19 +1041,6 @@ const ProductListing = ({
                   placeholder="e.g. 10" min="0" step="1"
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
                 />
-                {/* <p className="text-[9px] text-slate-400">
-                  Total units available. This decreases automatically as orders are placed. Skip if using size/color variants — set stock per variant instead.
-                </p> */}
-                {/* ── Stock fix: show a live "available stock" hint when editing ── */}
-                {/* {isEditMode && (
-                  <div className="flex items-center gap-2 mt-1 px-2 py-1.5 bg-blue-50 border border-blue-100 rounded-lg">
-                    <span className="text-[9px] text-blue-600 font-bold">Current stock on record:</span>
-                    <span className="text-[9px] font-black text-[#125852]">
-                      {initialData?.stock ?? initialData?.detail?.stock ?? initialData?.stock_quantity ?? 0} units
-                    </span>
-                    <span className="text-[8px] text-blue-400 ml-auto italic">Updates after orders are fulfilled</span>
-                  </div>
-                )} */}
               </div>
 
               <div className="space-y-3 border border-slate-100 rounded-xl p-4 bg-slate-50/50">
@@ -1093,59 +1048,35 @@ const ProductListing = ({
                   <label className="text-[11px] font-bold uppercase text-slate-600">Apply Discount</label>
                   <button
                     type="button"
-                    onClick={() => {
-                      setFormData(prev => ({
-                        ...prev,
-                        discountEnabled: !prev.discountEnabled
-                      }));
-                    }}
-                    className={`relative w-11 h-6 rounded-full transition-colors ${
-                      formData.discountEnabled ? 'bg-[#125852]' : 'bg-slate-300'
-                    }`}
+                    onClick={() => setFormData(prev => ({ ...prev, discountEnabled: !prev.discountEnabled }))}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${formData.discountEnabled ? 'bg-[#125852]' : 'bg-slate-300'}`}
                   >
-                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${
-                      formData.discountEnabled ? 'left-5' : 'left-0.5'
-                    }`} />
+                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${formData.discountEnabled ? 'left-5' : 'left-0.5'}`} />
                   </button>
                 </div>
-
                 {formData.discountEnabled && (
                   <div className="space-y-3 pt-2">
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-bold text-slate-500">
                         Discount: <span className="text-[#125852]">{formData.discountPercentage}% OFF</span>
                       </label>
-                      <span className="text-[10px] text-slate-400">
-                        {DISCOUNT_MIN}% – {DISCOUNT_MAX}%
-                      </span>
+                      <span className="text-[10px] text-slate-400">{DISCOUNT_MIN}% – {DISCOUNT_MAX}%</span>
                     </div>
-
                     <input
-                      type="range"
-                      min={DISCOUNT_MIN}
-                      max={DISCOUNT_MAX}
-                      step="1"
+                      type="range" min={DISCOUNT_MIN} max={DISCOUNT_MAX} step="1"
                       value={formData.discountPercentage}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        discountPercentage: parseInt(e.target.value)
-                      }))}
+                      onChange={(e) => setFormData(prev => ({ ...prev, discountPercentage: parseInt(e.target.value) }))}
                       className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#F5B841]"
                     />
-
                     {formData.price && !isNaN(Number(formData.price)) && Number(formData.price) > 0 && (
                       <div className="bg-white rounded-lg p-3 border border-slate-200">
                         <p className="text-[9px] font-bold uppercase text-slate-400 mb-1">Price Preview</p>
                         <div className="flex items-center gap-3">
-                          <span className="text-sm text-slate-400 line-through">
-                            {currencySymbol} {Number(formData.price).toLocaleString()}
-                          </span>
+                          <span className="text-sm text-slate-400 line-through">{currencySymbol} {Number(formData.price).toLocaleString()}</span>
                           <span className="text-lg font-black text-[#125852]">
                             {currencySymbol} {(Number(formData.price) * (1 - formData.discountPercentage / 100)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                           </span>
-                          <span className="text-[10px] font-bold text-white bg-[#F5B841] px-2 py-0.5 rounded-full">
-                            -{formData.discountPercentage}%
-                          </span>
+                          <span className="text-[10px] font-bold text-white bg-[#F5B841] px-2 py-0.5 rounded-full">-{formData.discountPercentage}%</span>
                         </div>
                         <p className="text-[9px] text-emerald-600 font-medium mt-1">
                           Customer saves {currencySymbol} {(Number(formData.price) * (formData.discountPercentage / 100)).toLocaleString()}
@@ -1154,16 +1085,14 @@ const ProductListing = ({
                     )}
                   </div>
                 )}
-
                 {!formData.discountEnabled && (
                   <p className="text-[10px] text-slate-400 italic">Toggle on to apply a discount to this product</p>
                 )}
               </div>
             </div>
+
             <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
-              <button type="button" onClick={onClose} className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50">
-                Cancel
-              </button>
+              <button type="button" onClick={onClose} className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50">Cancel</button>
               <button
                 type="button" onClick={handleStep1Continue}
                 className={`px-8 py-2.5 rounded-lg text-[11px] font-bold uppercase shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${
@@ -1177,6 +1106,7 @@ const ProductListing = ({
         </div>
       )}
 
+      {/* Step 2 */}
       {formStep === 2 && (
         <div className={modalWrap}>
           <div className={modalBox} style={{ fontFamily: "'Poppins', sans-serif" }}>
@@ -1188,19 +1118,11 @@ const ProductListing = ({
               <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <StepProgressBar currentStep={2} />
-
-            {isEditMode && (
-              <EditSaveBanner onSave={handleEditSave} isLoading={isLoading} label={submitLabel} />
-            )}
-
+            {isEditMode && <EditSaveBanner onSave={handleEditSave} isLoading={isLoading} label={submitLabel} />}
             <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
               <ErrorBanner msg={formErrors._server} />
               <SummaryPill formData={formData} currencySymbol={currencySymbol} currentStep={2} onEdit={setFormStep} />
-              <DescriptionField
-                value={formData.description}
-                onChange={handleDescriptionChange}
-                error={formErrors.description}
-              />
+              <DescriptionField value={formData.description} onChange={handleDescriptionChange} error={formErrors.description} />
             </div>
             <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
               <button type="button" onClick={() => setFormStep(1)} className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5">
@@ -1214,6 +1136,7 @@ const ProductListing = ({
         </div>
       )}
 
+      {/* Step 3 */}
       {formStep === 3 && (
         <div className={modalWrap}>
           <div className={modalBox} style={{ fontFamily: "'Poppins', sans-serif" }}>
@@ -1225,18 +1148,11 @@ const ProductListing = ({
               <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <StepProgressBar currentStep={3} />
-
-            {isEditMode && (
-              <EditSaveBanner onSave={handleEditSave} isLoading={isLoading} label={submitLabel} />
-            )}
-
+            {isEditMode && <EditSaveBanner onSave={handleEditSave} isLoading={isLoading} label={submitLabel} />}
             <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
+              <ErrorBanner msg={formErrors._server} />
               <SummaryPill formData={formData} currencySymbol={currencySymbol} currentStep={3} onEdit={setFormStep} />
-              <VariantSection
-                sizes={formData.sizes}
-                colors={formData.colors}
-                onToggleChip={toggleChip}
-              />
+              <VariantSection sizes={formData.sizes} colors={formData.colors} onToggleChip={toggleChip} />
             </div>
             <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
               <button type="button" onClick={() => setFormStep(2)} className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5">
@@ -1250,13 +1166,10 @@ const ProductListing = ({
         </div>
       )}
 
+      {/* Step 4 */}
       {formStep === 4 && (
         <div className={modalWrap}>
-          <form
-            onSubmit={handleSubmit}
-            className={modalBox}
-            style={{ fontFamily: "'Poppins', sans-serif" }}
-          >
+          <form onSubmit={handleSubmit} className={modalBox} style={{ fontFamily: "'Poppins', sans-serif" }}>
             <div className="px-6 py-4 border-b flex justify-between items-start flex-shrink-0">
               <div>
                 <h2 className="text-lg font-bold">Images & Publish</h2>
@@ -1265,27 +1178,19 @@ const ProductListing = ({
               <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <StepProgressBar currentStep={4} />
-
-            {isEditMode && (
-              <EditSaveBanner onSave={handleEditSave} isLoading={isLoading} label={submitLabel} />
-            )}
+            {isEditMode && <EditSaveBanner onSave={handleEditSave} isLoading={isLoading} label={submitLabel} />}
 
             <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
               <ErrorBanner msg={formErrors._server} />
               <SummaryPill formData={formData} currencySymbol={currencySymbol} currentStep={4} onEdit={setFormStep} />
 
               <ImageGrid
-                existingImages={initialData?.images || []}
+                existingImages={existingImages}
                 pendingImages={formData.imageFiles}
-                onRemoveExisting={(imageId) => {
-                  console.log('Remove existing image:', imageId);
-                }}
+                onRemoveExisting={handleRemoveExistingImage}
                 onRemovePending={removeCreateImage}
                 onAdd={() => fileInputRef.current?.click()}
-                onCameraCapture={() => {
-                  setCameraTargetColor(null);
-                  setShowCamera(true);
-                }}
+                onCameraCapture={() => { setCameraTargetColor(null); setShowCamera(true); }}
               />
               <input
                 ref={fileInputRef}
@@ -1305,10 +1210,7 @@ const ProductListing = ({
                   onChange={handleColorFilesChange}
                   onRemove={removeColorCreateImage}
                   onPreview={(color, images) => setColorPreviewModal({ color, images })}
-                  onCameraCapture={(color) => {
-                    setCameraTargetColor(color);
-                    setShowCamera(true);
-                  }}
+                  onCameraCapture={(color) => { setCameraTargetColor(color); setShowCamera(true); }}
                 />
               )}
 
@@ -1326,6 +1228,7 @@ const ProductListing = ({
                 </button>
               </div>
             </div>
+
             <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50/20 flex-shrink-0">
               <button type="button" onClick={() => setFormStep(3)} className="px-6 py-2.5 text-[11px] font-bold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 flex items-center gap-1.5">
                 <ArrowLeft size={13} /> Back

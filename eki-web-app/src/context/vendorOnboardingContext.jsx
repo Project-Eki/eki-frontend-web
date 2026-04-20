@@ -28,7 +28,7 @@ const initialState = {
     // Step 3: Business Identity
     business_name: "",
     business_type: "",
-    business_category: "",  // ADDED - was missing
+    business_category: "",  
     owner_full_name: "",
     tax_id: "",
     registration_number: "",

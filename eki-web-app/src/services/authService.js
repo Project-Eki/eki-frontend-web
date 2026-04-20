@@ -4,13 +4,32 @@ import axios from 'axios';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://joineki.com/api/v1';
 
 // ─── Helper to convert relative image paths to absolute URLs ────────────────
+// FIX: Now handles bare filenames by assuming they live under /media/
 export const getImageUrl = (path) => {
   if (!path) return '';
+
+  // Already a full URL — return as-is
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
-  // Remove /api/v1 from base URL to get the root domain where media is served
-  const baseUrl = API_BASE_URL.replace(/\/api\/v1$/, '');
-  const normalizedPath = path.startsWith('/') ? path : '/' + path;
-  return `${baseUrl}${normalizedPath}`;
+
+  // Protocol-relative URL
+  if (path.startsWith('//')) return `https:${path}`;
+
+  // Strip /api/v1 (and any trailing variant like /api/v1/) from the base
+  // to get the root domain where Django serves media files
+  const mediaRoot = API_BASE_URL.replace(/\/api\/v\d+\/?$/, '').replace(/\/$/, '');
+
+  let normalisedPath = path;
+
+  // If path doesn't start with a slash and doesn't already include a media prefix,
+  // assume it's a bare filename served from /media/
+  if (!path.startsWith('/') && !path.startsWith('media/') && !path.startsWith('/media/')) {
+    normalisedPath = `/media/${path}`;
+  } else {
+    // Ensure path starts with a single slash
+    normalisedPath = '/' + path.replace(/^\/+/, '');
+  }
+
+  return `${mediaRoot}${normalisedPath}`;
 };
 
 const api = axios.create({
@@ -90,7 +109,6 @@ api.interceptors.response.use(
       }
 
       try {
-        // Use the api instance (not raw axios) so it respects the base URL from env
         const res = await api.post('/accounts/token-refresh/', { refresh: refreshToken });
         const newAccess = res.data?.access || res.data?.data?.access;
         localStorage.setItem('access_token', newAccess);
@@ -586,6 +604,14 @@ export const getCategories = (businessCategory = null) => {
 };
 
 // ─── Listings ────────────────────────────────────────────────────────────────
+// Helper to normalize image objects: ensure they have an 'image' property
+const normalizeImage = (img) => {
+  if (!img) return null;
+  if (typeof img === 'string') return { image: img };
+  const imageUrl = img.image ?? img.url ?? img.image_url ?? img.src ?? null;
+  return { ...img, image: imageUrl };
+};
+
 const normalizeListing = (item) => {
   const salesStatus = item.sales_status || item.detail?.sales_status || {};
   const discountEnabled = salesStatus?.on_sale === true;
@@ -596,6 +622,16 @@ const normalizeListing = (item) => {
     ...v,
     stock: v.stock ?? v.quantity ?? v.stock_quantity ?? v.detail?.stock ?? 0,
   }));
+
+  // ─── FIX: Extract images from multiple possible locations ─────────────────
+  let imagesArray = [];
+  if (Array.isArray(item.images)) imagesArray = item.images;
+  else if (Array.isArray(item.detail?.images)) imagesArray = item.detail.images;
+  else if (Array.isArray(item.listing_images)) imagesArray = item.listing_images;
+  else if (Array.isArray(item.product_images)) imagesArray = item.product_images;
+  else if (item.image) imagesArray = [item.image];
+
+  const normalizedImages = imagesArray.map(normalizeImage).filter(Boolean);
 
   return {
     ...item,
@@ -608,6 +644,7 @@ const normalizeListing = (item) => {
     discount_enabled: discountEnabled,
     discount_percentage: discountPct,
     discounted_price: discountedPrice,
+    images: normalizedImages,
   };
 };
 

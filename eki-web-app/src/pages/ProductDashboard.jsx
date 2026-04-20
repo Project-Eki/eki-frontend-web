@@ -16,8 +16,9 @@ import {
   updateProductListing,
   deleteProductListing,
   uploadListingImages,
+  deleteListingImage,
   getVendorDashboard,
-  getImageUrl,               // ← ADDED
+  getImageUrl,
 } from '../services/authService';
 import { getCurrencySymbol } from '../utils/currency';
 
@@ -313,6 +314,11 @@ const ProductDashboard = () => {
   const [vendorType, setVendorType] = useState('product');
   const filterRef = useRef(null);
 
+  const selectedProductRef = useRef(null);
+  useEffect(() => {
+    selectedProductRef.current = selectedProduct;
+  }, [selectedProduct]);
+
   useEffect(() => {
     const loadVendorData = async () => {
       try {
@@ -347,7 +353,6 @@ const ProductDashboard = () => {
     setIsFetching(true);
     try {
       const data = await getProducts();
-      console.log('[loadProducts] raw:', data);
       setProducts(data || []);
     } catch (err) {
       console.error('Failed to load products', err);
@@ -389,8 +394,6 @@ const ProductDashboard = () => {
   const handleUpdateProduct = async (productId, payload, imageFiles) => {
     setIsLoading(true);
     try {
-      console.log('[handleUpdateProduct] Updating listing ID:', productId);
-
       await updateProductListing(productId, {
         title: payload.title,
         description: payload.description || '',
@@ -425,10 +428,21 @@ const ProductDashboard = () => {
     }
   };
 
-  const handleEditProduct = (product) => {
-    console.log('[handleEditProduct] product:', product);
-    console.log('[handleEditProduct] listing ID:', product.id);
+  const handleDeleteImage = async (listingId, imageId) => {
+    if (!listingId || !imageId) {
+      console.error('[handleDeleteImage] Missing listingId or imageId:', { listingId, imageId });
+      throw new Error('Could not delete image — missing ID information.');
+    }
+    try {
+      await deleteListingImage(listingId, imageId);
+      await loadProducts();
+    } catch (err) {
+      console.error('Failed to delete image', err);
+      throw err;
+    }
+  };
 
+  const handleEditProduct = (product) => {
     const resolvedStock =
       product.detail?.stock ??
       product.stock ??
@@ -446,6 +460,11 @@ const ProductDashboard = () => {
         0,
     }));
 
+    // ─── FIX: Try to get images from product.images, fallback to detail.images ───
+    const productImages = (product.images && product.images.length > 0)
+      ? product.images
+      : (product.detail?.images || []);
+
     setSelectedProduct({
       id: product.id,
       title: product.title || '',
@@ -457,7 +476,7 @@ const ProductDashboard = () => {
       sizes: product.sizes || [],
       colors: product.colors || [],
       is_published: product.is_published === true || product.status === 'published',
-      images: product.images || [],
+      images: productImages,
       variants: resolvedVariants,
       discount_enabled: product.discount_enabled || false,
       discount_percentage: product.discount_percentage || 10,
@@ -467,20 +486,15 @@ const ProductDashboard = () => {
   };
 
   const handleDeleteProduct = (product) => {
-    console.log('[handleDeleteProduct] product:', product);
-    console.log('[handleDeleteProduct] listing ID:', product.id);
     setSelectedProduct(product);
     setIsDeleteModalOpen(true);
   };
 
   const confirmDelete = async () => {
     if (!selectedProduct?.id) {
-      console.error('[confirmDelete] No product ID found:', selectedProduct);
       setIsDeleteModalOpen(false);
       return;
     }
-
-    console.log('[confirmDelete] Deleting listing ID:', selectedProduct.id);
 
     setIsDeleteModalOpen(false);
     setIsLoading(true);
@@ -692,7 +706,7 @@ const ProductDashboard = () => {
         <Footer />
       </div>
 
-      {/* ── Create modal ── */}
+      {/* Create modal */}
       <ProductListing
         key="create-product-modal"
         isOpen={isProductModalOpen}
@@ -706,7 +720,7 @@ const ProductDashboard = () => {
         submitLabel="Publish Product"
       />
 
-      {/* ── Edit modal ── */}
+      {/* Edit modal */}
       {selectedProduct && (
         <ProductListing
           key={`edit-${selectedProduct.id}`}
@@ -718,6 +732,8 @@ const ProductDashboard = () => {
           onSubmit={async (payload, imageFiles) => {
             await handleUpdateProduct(selectedProduct.id, payload, imageFiles);
           }}
+          listingId={selectedProduct.id}
+          onDeleteImage={handleDeleteImage}
           isLoading={isLoading}
           isServiceVendor={false}
           businessCategory={businessCategory}
