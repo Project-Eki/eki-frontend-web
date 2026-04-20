@@ -3,7 +3,7 @@ import React from "react";
 const Footer = () => {
   return (
     <footer className="bg-[#1D4D4C] text-white py-4 px-5 sm:px-10 flex flex-col sm:flex-row justify-between items-center gap-2 text-[11px] shrink-0">
-      <div className="hidden sm:block">Buy Smart. Sell Fast. Grow Together...</div>
+      <div className="hidden sm:block">Buy Smart. Sell Easy</div>
       <div>© 2026 Vendor Portal. All rights reserved.</div>
       <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
         <span className="relative inline-block cursor-pointer hover:underline">

@@ -6,7 +6,7 @@ import { LayoutDashboard, ShoppingBag, Briefcase, ClipboardList, CreditCard, Sta
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/vendordashboard"   },
   { icon: ShoppingBag,     label: "Products",  path: "/product-dashboard" },
-  { icon: Briefcase,       label: "Services",  path: "/servicemanagement" },
+  { icon: Briefcase,       label: "Services",  path: "/services" },
   { icon: ClipboardList,   label: "Orders",    path: "/order-management"  },
   { icon: CreditCard,      label: "Payments",  path: "/payments"          },
   { icon: Star,            label: "Reviews",   path: "/reviews"           },
