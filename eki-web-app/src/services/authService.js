@@ -1,25 +1,29 @@
 import axios from 'axios';
+// ─── Smart base URL: HTTP locally, HTTPS in production ───────────────────────
+// .env.local (not committed) can override for local dev
+// .env (not committed) is used for production builds
+const isProduction =
+  window.location.hostname !== 'localhost' &&
+  window.location.hostname !== '127.0.0.1';
 
-// ─── Vite exposes env vars via import.meta.env (not process.env) ───────────
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://joineki.com/api/v1';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ??
+  (isProduction
+    ? 'https://joineki.com/api/v1'
+    : 'http://127.0.0.1:8000/api/v1');
 
-// ─── Helper to convert relative image paths to absolute URLs ────────────────
+// ─── Helper to convert relative image paths to absolute URLs ─────────────────
 export const getImageUrl = (path) => {
   if (!path) return '';
-
-  // Already absolute
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
   if (path.startsWith('//')) return `https:${path}`;
 
-  // Derive media root by stripping /api/v1 from the base URL
   const mediaRoot = API_BASE_URL
     .replace(/\/api\/v\d+\/?$/, '')
     .replace(/\/$/, '');
 
-  // Normalize: ensure path starts with /
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
 
-  // Guard against double /media/media/ if backend already includes it
   if (cleanPath.startsWith('/media/')) {
     return `${mediaRoot}${cleanPath}`;
   }
