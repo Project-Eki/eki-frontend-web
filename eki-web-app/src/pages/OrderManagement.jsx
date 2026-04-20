@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import VendorSidebar from '../components/VendorSidebar';
 import Navbar3 from '../components/adminDashboard/Navbar4';
@@ -140,7 +140,6 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
   };
 
   // ── Step: pickup code entry ─────────────────────────────────────────────────
-  // CHANGED: sm:max-w-sm → sm:max-w-lg, padding and spacing increased throughout
   if (step === 'pickup') {
     return (
       <div
@@ -526,7 +525,7 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
 // ─── Main Component ───────────────────────────────────────────────────────────
 const OrderManagement = () => {
   const [orders,         setOrders]         = useState([]);
-  const [isFetching,     setIsFetching]     = useState(true);
+  const [isFetching,     setIsFetching]     = useState(false); // we'll manage this carefully
   const [activeTab,      setActiveTab]      = useState('All');
   const [searchQuery,    setSearchQuery]    = useState('');
   const [currencySymbol, setCurrencySymbol] = useState('UGX');
@@ -535,6 +534,11 @@ const OrderManagement = () => {
 
   const isMountedRef = useRef(true);
   const abortControllerRef = useRef(null);
+  const fetchingRef = useRef(false);            // prevent overlapping fetches
+  const loadingTimerRef = useRef(null);         // delay showing skeleton
+
+  // Deferred loading flag – only show skeletons if fetch takes > 200ms
+  const [showSkeleton, setShowSkeleton] = useState(false);
 
   const totalOrders  = orders.length;
   const activeOrders = orders.filter((o) =>
@@ -557,11 +561,24 @@ const OrderManagement = () => {
   }, []);
 
   const fetchOrders = useCallback(async () => {
+    // Prevent overlapping fetches
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+
+    // Cancel any pending request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
     const controller = new AbortController();
     abortControllerRef.current = controller;
+
+    // Only show loading indicator after a short delay (avoid flash for fast responses)
+    if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
+    loadingTimerRef.current = setTimeout(() => {
+      if (isMountedRef.current && fetchingRef.current) {
+        setShowSkeleton(true);
+      }
+    }, 200);
 
     setIsFetching(true);
     try {
@@ -575,8 +592,18 @@ const OrderManagement = () => {
         setOrders([]);
       }
     } finally {
-      if (isMountedRef.current) setIsFetching(false);
-      if (abortControllerRef.current === controller) abortControllerRef.current = null;
+      if (loadingTimerRef.current) {
+        clearTimeout(loadingTimerRef.current);
+        loadingTimerRef.current = null;
+      }
+      if (isMountedRef.current) {
+        setIsFetching(false);
+        setShowSkeleton(false);
+      }
+      fetchingRef.current = false;
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
     }
   }, []);
 
@@ -588,42 +615,51 @@ const OrderManagement = () => {
       isMountedRef.current = false;
       clearInterval(interval);
       if (abortControllerRef.current) abortControllerRef.current.abort();
+      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
     };
   }, [fetchOrders]);
 
   useEffect(() => {
-    setCurrentPage(1);
+    // Only reset page if it's not already 1 (avoid unnecessary re‑render)
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
   }, [activeTab, searchQuery]);
 
-  const filteredOrders = orders.filter((order) => {
-    let orderStatus = String(order.status ?? '').toLowerCase();
-    if (orderStatus === 'delivered') orderStatus = 'fulfilled';
+  // Memoize filtered orders to avoid re‑computation on every keystroke
+  const filteredOrders = useMemo(() => {
+    return orders.filter((order) => {
+      let orderStatus = String(order.status ?? '').toLowerCase();
+      if (orderStatus === 'delivered') orderStatus = 'fulfilled';
 
-    const matchesTab =
-      activeTab === 'All' ||
-      orderStatus === activeTab.toLowerCase();
+      const matchesTab =
+        activeTab === 'All' ||
+        orderStatus === activeTab.toLowerCase();
 
-    const q = searchQuery.toLowerCase().trim();
-    const customerStr =
-      typeof order.customer === 'object' && order.customer !== null
-        ? `${order.customer.name ?? ''} ${order.customer.email ?? ''}`
-        : String(order.customer ?? '');
+      const q = searchQuery.toLowerCase().trim();
+      const customerStr =
+        typeof order.customer === 'object' && order.customer !== null
+          ? `${order.customer.name ?? ''} ${order.customer.email ?? ''}`
+          : String(order.customer ?? '');
 
-    const matchesSearch =
-      !q ||
-      String(order.id ?? '').toLowerCase().includes(q) ||
-      formatOrderId(order.id).toLowerCase().includes(q) ||
-      customerStr.toLowerCase().includes(q) ||
-      orderStatus.includes(q) ||
-      String(order.total ?? '').includes(q);
+      const matchesSearch =
+        !q ||
+        String(order.id ?? '').toLowerCase().includes(q) ||
+        formatOrderId(order.id).toLowerCase().includes(q) ||
+        customerStr.toLowerCase().includes(q) ||
+        orderStatus.includes(q) ||
+        String(order.total ?? '').includes(q);
 
-    return matchesTab && matchesSearch;
-  });
+      return matchesTab && matchesSearch;
+    });
+  }, [orders, activeTab, searchQuery]);
 
   const totalPages   = Math.max(1, Math.ceil(filteredOrders.length / ORDERS_PER_PAGE));
   const safePage     = Math.min(currentPage, totalPages);
   const startIndex   = (safePage - 1) * ORDERS_PER_PAGE;
-  const pagedOrders  = filteredOrders.slice(startIndex, startIndex + ORDERS_PER_PAGE);
+  const pagedOrders  = useMemo(() => {
+    return filteredOrders.slice(startIndex, startIndex + ORDERS_PER_PAGE);
+  }, [filteredOrders, startIndex]);
 
   const goToPage = (page) => {
     const p = Math.max(1, Math.min(page, totalPages));
@@ -639,7 +675,7 @@ const OrderManagement = () => {
     return pages;
   })();
 
-  const countForTab = (tab) => {
+  const countForTab = useCallback((tab) => {
     if (tab === 'All') return orders.length;
     const tabLower = tab.toLowerCase();
     return orders.filter((o) => {
@@ -647,7 +683,7 @@ const OrderManagement = () => {
       if (status === 'delivered') status = 'fulfilled';
       return status === tabLower;
     }).length;
-  };
+  }, [orders]);
 
   const getDisplayStatus = (status) => {
     if (typeof status === 'string' && status.toLowerCase() === 'delivered') return 'Fulfilled';
@@ -659,15 +695,12 @@ const OrderManagement = () => {
   };
 
   return (
-    // CHANGED: removed p-3, added min-h-screen with flex-col to push footer down
     <div className="flex min-h-screen bg-[#ecece7] text-slate-800 gap-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
       <VendorSidebar activePage="orders" />
 
-      {/* CHANGED: flex-col with flex-1 so footer is pushed to bottom and below fold */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         <Navbar3 />
 
-        {/* CHANGED: flex-1 on main so it grows and pushes footer down naturally */}
         <main className="flex-1 p-5 max-w-[1400px] mx-auto w-full pb-24">
           <div className="mb-5">
             <h1 className="text-xl font-bold text-[#1A1A1A] tracking-tight">Order Management</h1>
@@ -676,9 +709,9 @@ const OrderManagement = () => {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-            <StatCard title="Total Orders" number={isFetching ? '—' : String(totalOrders)} icon={Package} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
-            <StatCard title="Active Orders" number={isFetching ? '—' : String(activeOrders)} icon={Clock} iconBgColor="bg-blue-50" iconColor="text-blue-600" />
-            <StatCard title="Revenue" number={isFetching ? '—' : `${currencySymbol} ${revenue.toLocaleString()}`} icon={CircleDollarSign} iconBgColor="bg-orange-50" iconColor="text-orange-600" />
+            <StatCard title="Total Orders" number={isFetching && showSkeleton ? '—' : String(totalOrders)} icon={Package} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
+            <StatCard title="Active Orders" number={isFetching && showSkeleton ? '—' : String(activeOrders)} icon={Clock} iconBgColor="bg-blue-50" iconColor="text-blue-600" />
+            <StatCard title="Revenue" number={isFetching && showSkeleton ? '—' : `${currencySymbol} ${revenue.toLocaleString()}`} icon={CircleDollarSign} iconBgColor="bg-orange-50" iconColor="text-orange-600" />
           </div>
 
           {/* Table Controls Row */}
@@ -741,7 +774,7 @@ const OrderManagement = () => {
                 </tr>
               </thead>
               <tbody>
-                {isFetching ? (
+                {isFetching && showSkeleton ? (
                   [...Array(4)].map((_, i) => (
                     <tr key={i} className="border-b border-slate-50">
                       <td colSpan="7" className="px-4 py-3"><div className="h-4 bg-slate-100 rounded animate-pulse w-full" /></td>
@@ -818,7 +851,7 @@ const OrderManagement = () => {
       </div>
 
       {selectedOrder && (
-        <OrderDetailModal
+        <OrderDetailModal 
           order={selectedOrder}
           currencySymbol={currencySymbol}
           onClose={() => setSelectedOrder(null)}
