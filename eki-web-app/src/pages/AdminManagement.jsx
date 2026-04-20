@@ -2,15 +2,14 @@ import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "../components/adminDashboard/Sidebar";
 import Navbar3 from "../components/adminDashboard/Navbar3";
 import VendorProfile from "../components/VendorProfile";
+import VendorList from "../components/VendorList"; 
 import {
   getAdminDashboard,
   updateVerificationStatus,
   updateVendorStatus,
 } from "../services/api";
 import {
-  Store, Clock, TrendingUp, X, ChevronLeft, ChevronRight,
-  FileText, ExternalLink, AlertTriangle, Loader2, RefreshCw,
-  Download, Search,
+  Store, Clock, TrendingUp, X, FileText, ExternalLink, AlertTriangle, Loader2, RefreshCw,
 } from "lucide-react";
 import api from "../services/api";
 
@@ -298,202 +297,6 @@ const ReinstateVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
   );
 };
 
-// VendorList with Filter + Export + Search + Pagination
-const STATUS_OPTIONS = ["All", "Pending", "Approved", "Rejected", "Suspended"];
-
-const VendorListWithFilters = ({ vendors, onSelect, selectedId, onRefresh }) => {
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [refreshing, setRefreshing] = useState(false);
-  const PER_PAGE = 4;
-
-  const filtered = vendors
-    .filter((v) => statusFilter === "All" || v.status === statusFilter)
-    .filter((v) => {
-      if (!search.trim()) return true;
-      const q = search.toLowerCase();
-      return (
-        v.name?.toLowerCase().includes(q) ||
-        v.email?.toLowerCase().includes(q) ||
-        v.businessName?.toLowerCase().includes(q) ||
-        v.businessCategory?.toLowerCase().includes(q) ||
-        v.businessType?.toLowerCase().includes(q)
-      );
-    });
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const safePage = Math.min(page, totalPages);
-  const slice = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
-
-  const handleExport = () => {
-    if (filtered.length === 0) return;
-    const headers = ["Name", "Email", "Business Name", "Type", "Category", "Status", "Docs", "Submitted"];
-    const rows = filtered.map((v) => [
-      `"${v.name || ""}"`,
-      `"${v.email || ""}"`,
-      `"${v.businessName || ""}"`,
-      `"${v.businessType || ""}"`,
-      `"${v.businessCategory || ""}"`,
-      `"${v.status || ""}"`,
-      `"${v.docsCount ?? 0}/5"`,
-      `"${v.submitted || ""}"`,
-    ].join(","));
-    const csv = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "vendors.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleRefreshClick = async () => {
-    if (!onRefresh) return;
-    setRefreshing(true);
-    await onRefresh();
-    setRefreshing(false);
-  };
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-xs text-gray-400 shrink-0">{filtered.length} vendor{filtered.length !== 1 ? "s" : ""}</p>
-          <div className="relative">
-            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search vendors…"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-amber-400 w-44"
-            />
-          </div>
-        </div>
-        <div className="flex gap-1.5 flex-wrap items-center">
-          {STATUS_OPTIONS.map((s) => (
-            <button
-              key={s}
-              onClick={() => { setStatusFilter(s); setPage(1); }}
-              className="px-2.5 py-1 text-[10px] font-bold rounded-full border transition-colors"
-              style={{
-                background: statusFilter === s ? GOLD : "white",
-                color: statusFilter === s ? "white" : "#6b7280",
-                borderColor: statusFilter === s ? GOLD : "#e5e7eb",
-              }}
-            >
-              {s}
-            </button>
-          ))}
-          <button onClick={handleExport}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold border rounded-lg transition-colors hover:opacity-90"
-            style={{ borderColor: GOLD, color: GOLD }}
-          >
-            <Download size={11} /> Export
-          </button>
-          <button onClick={handleRefreshClick} title="Refresh"
-            className="p-1.5 border rounded-lg transition-colors hover:opacity-90"
-            style={{ borderColor: GOLD, color: GOLD }}
-          >
-            <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
-          </button>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-[900px]">
-            <thead className="bg-gray-50 text-[10px] uppercase text-gray-500 font-bold border-b border-gray-100">
-              <tr>
-                <th className="px-4 py-3">Applicant</th>
-                <th className="px-4 py-3">Business Name</th>
-                <th className="px-4 py-3">Type</th>
-                <th className="px-4 py-3">Category</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Submitted</th>
-                <th className="px-4 py-3">Days</th>
-                <th className="px-4 py-3">Docs</th>
-                <th className="px-4 py-3">View</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {slice.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-sm text-gray-400">
-                    No vendors to display.
-                  </td>
-                </tr>
-              ) : (
-                slice.map((vendor) => (
-                  <tr key={vendor.id}
-                    className={`hover:bg-gray-50 transition-colors cursor-pointer ${selectedId === vendor.id ? "bg-teal-50/30" : ""}`}
-                  >
-                    <td className="px-4 py-3">
-                      <p className="text-xs font-semibold text-gray-800">{vendor.name}</p>
-                      <p className="text-[10px] text-gray-400">{vendor.email || "—"}</p>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{vendor.businessName || "—"}</td>
-                    <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap capitalize">{vendor.businessType || "—"}</td>
-                    <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap capitalize">{vendor.businessCategory || "—"}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase whitespace-nowrap ${
-                        vendor.status === "Approved" ? "bg-green-50 text-green-600" :
-                        vendor.status === "Pending" ? "bg-yellow-50 text-yellow-600" :
-                        vendor.status === "Rejected" ? "bg-rose-50 text-rose-500" :
-                        vendor.status === "Suspended" ? "bg-red-50 text-red-500" :
-                        "bg-gray-100 text-gray-500"
-                      }`}>
-                        {vendor.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{vendor.submitted || "—"}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-bold ${(vendor.daysPending ?? 0) > 2 ? "text-red-500" : "text-gray-600"}`}>
-                        {vendor.daysPending != null ? `${vendor.daysPending}d` : "—"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-bold ${(vendor.docsCount ?? 0) === 0 ? "text-red-400" : "text-green-600"}`}>
-                        {vendor.docsCount ?? 0}/5
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button onClick={(e) => { e.stopPropagation(); onSelect(vendor); }}
-                        className="p-1.5 rounded-lg transition-colors hover:opacity-70"
-                        style={{ color: GOLD }}
-                      >
-                        <ExternalLink size={13} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-2.5 text-xs text-gray-500">
-          <span>Page {safePage} of {totalPages}</span>
-          <div className="flex gap-1">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
-              className="p-1 rounded hover:bg-gray-100 disabled:opacity-30">
-              <ChevronLeft size={14} />
-            </button>
-            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
-              className="p-1 rounded hover:bg-gray-100 disabled:opacity-30">
-              <ChevronRight size={14} />
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 // Main Page
 const AdminManagement = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -502,6 +305,7 @@ const AdminManagement = () => {
   const [vendorDetail, setVendorDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [stats, setStats] = useState({ total: "—", pending: "—", approved: "—" });
   const [showDocReview, setShowDocReview] = useState(false);
@@ -539,7 +343,7 @@ const AdminManagement = () => {
         approved: approvedVendors || "—",
       });
 
-      // Map vendors with all fields
+      // Map vendors with all fields 
       setVendors(
         vendorArray.map((v) => ({
           id: v.id,
@@ -547,16 +351,6 @@ const AdminManagement = () => {
           email: v.user_email || v.business_email || "",
           status: normStatus(v.verification_status),
           submitted: v.created_at ? new Date(v.created_at).toLocaleDateString() : "—",
-          daysPending: v.created_at
-            ? Math.floor((Date.now() - new Date(v.created_at).getTime()) / 86400000)
-            : null,
-          docsCount: [
-            v.has_government_issued_id,
-            v.has_country_issued_id,
-            v.has_business_license,
-            v.has_tax_certificate,
-            v.has_incorporation_cert,
-          ].filter(Boolean).length,
           businessName: v.business_name || "—",
           businessType: v.business_type || "—",
           businessCategory: v.business_category || "—",
@@ -566,8 +360,17 @@ const AdminManagement = () => {
       console.error("AdminManagement load error:", err);
     } finally {
       setLoading(false);
+      // The refresh button shows a spinning animation and becomes disabled
+      setRefreshing(false);   
     }
   }, []);
+
+  
+  // Handle refresh button click
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+  };
 
   useEffect(() => {
     loadData();
@@ -603,9 +406,6 @@ const AdminManagement = () => {
         hasLicense: d.has_business_license || false,
         hasTaxCert: d.has_tax_certificate || false,
         hasIncCert: d.has_incorporation_cert || false,
-        daysPending: d.created_at
-          ? Math.floor((Date.now() - new Date(d.created_at).getTime()) / 86400000)
-          : null,
       });
     } catch (err) {
       console.error("Vendor detail load error:", err);
@@ -711,29 +511,31 @@ const AdminManagement = () => {
             <main className="px-4 py-4 sm:px-6 space-y-5">
               <div className="flex items-center justify-between">
                 <h1 className="text-lg font-bold text-gray-900">Vendor Management</h1>
-                <button onClick={loadData}
+                  
+                <button 
+                  onClick={handleRefresh}
+                  disabled={refreshing}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border rounded-lg transition-colors hover:opacity-90"
                   style={{ borderColor: GOLD, color: GOLD }}
                 >
-                  <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+                  <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />
                   Refresh
                 </button>
               </div>
-
+              {/* Stats cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <StatCard label="Total Vendors" value={stats.total} type="vendors" />
                 <StatCard label="Pending Verification" value={stats.pending} type="pending" />
                 <StatCard label="Vendors Approved" value={stats.approved} type="earners" />
               </div>
-
+                 {/* Vendor table */}
               {loading ? (
                 <div className="bg-gray-100 rounded-xl h-48 animate-pulse" />
               ) : (
-                <VendorListWithFilters
+                <VendorList
                   vendors={vendors}
                   onSelect={handleSelectVendor}
                   selectedId={selectedVendor?.id}
-                  onRefresh={loadData}
                 />
               )}
             </main>
