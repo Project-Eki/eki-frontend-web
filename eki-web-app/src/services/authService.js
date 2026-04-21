@@ -452,8 +452,12 @@ const vendorOrderAction = async (orderId, action, extraPayload = {}) => {
 };
 
 // ─── Order Actions (all via unified endpoint) ────────────────────────────────
-export const confirmVendorOrder = (orderId) =>
-  vendorOrderAction(orderId, 'confirm_onsite');
+// confirm_onsite requires confirmation_code (vendor's own code to verify buyer is present)
+export const confirmVendorOrder = (orderId, confirmationCode, notes = '') =>
+  vendorOrderAction(orderId, 'confirm_onsite', {
+    confirmation_code: confirmationCode,
+    ...(notes ? { notes } : {}),
+  });
 
 export const verifyPickupCode = async (orderId, code) => {
   const r = await vendorOrderAction(orderId, 'mark_fulfilled', { pickup_code: code });
