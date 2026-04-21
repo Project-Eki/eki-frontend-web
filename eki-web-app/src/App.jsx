@@ -24,6 +24,7 @@ import PaymentAndPayout from "./pages/PaymentAndPayout";
 import BusinessSettings from "./pages/BusinessSettings";
 import VendorReviews from "./pages/VendorReview";
 import Demo from "./pages/Demo";
+import VendorChat from "./pages/vendorchat";   
 
 // --- THE OTP IMPORT ---
 import OtpVerify from "./pages/otp";
@@ -93,6 +94,11 @@ function App() {
           <Route path="/order-management" element={
             <ProtectedRoute allowedRole="vendor">
               <VendorLayout><OrderManagement /></VendorLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/vendor-chat" element={
+            <ProtectedRoute allowedRole="vendor">
+              <VendorLayout><VendorChat /></VendorLayout>
             </ProtectedRoute>
           } />
 
