@@ -1,16 +1,7 @@
 import axios from 'axios';
-// ─── Smart base URL: HTTP locally, HTTPS in production ───────────────────────
-// .env.local (not committed) can override for local dev
-// .env (not committed) is used for production builds
-const isProduction =
-  window.location.hostname !== 'localhost' &&
-  window.location.hostname !== '127.0.0.1';
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ??
-  (isProduction
-    ? 'https://joineki.com/api/v1'
-    : 'http://127.0.0.1:8000/api/v1');
+  import.meta.env.VITE_API_BASE_URL ?? 'https://joineki.com/api/v1';
 
 // ─── Helper to convert relative image paths to absolute URLs ─────────────────
 export const getImageUrl = (path) => {
@@ -468,26 +459,23 @@ export const markOrderReadyForPickup = async (orderId) => {
   return r.data?.data ?? r.data;
 };
 
-// ─── NEW: Order Confirmation & Pickup Code Verification (MOCK for UI testing) ─
-// TODO: Replace with real API calls once backend endpoints are ready.
+// ─── Order Confirmation & Pickup Code Verification ────────────────────────────
+// POST /api/v1/orders/{order_id}/vendor-confirm-onsite/
 export const confirmVendorOrder = async (orderId) => {
-  console.log(`[MOCK] confirmVendorOrder called for order ${orderId}`);
-  await new Promise(resolve => setTimeout(resolve, 800));
-  return {
-    id: orderId,
-    status: 'confirmed',
-    pickup_code: Math.random().toString(36).substring(2, 10).toUpperCase(),
-  };
+  const r = await api.post(`/orders/${orderId}/vendor-confirm-onsite/`);
+  return r.data?.data ?? r.data;
 };
 
+// POST /api/v1/orders/{order_id}/fulfil/
 export const verifyPickupCode = async (orderId, code) => {
-  console.log(`[MOCK] verifyPickupCode called for order ${orderId} with code ${code}`);
-  await new Promise(resolve => setTimeout(resolve, 800));
-  return {
-    id: orderId,
-    status: 'completed',
-    verified: true,
-  };
+  const r = await api.post(`/orders/${orderId}/fulfil/`, { pickup_code: code });
+  return r.data?.data ?? r.data;
+};
+
+// POST /api/v1/orders/{order_id}/resend-code/
+export const resendPickupCode = async (orderId) => {
+  const r = await api.post(`/orders/${orderId}/resend-code/`);
+  return r.data?.data ?? r.data;
 };
 
 // ─── Wallet & Escrow ─────────────────────────────────────────────────────────
