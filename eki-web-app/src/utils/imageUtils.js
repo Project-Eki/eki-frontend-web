@@ -1,5 +1,5 @@
 // Production server URL - change this to your actual domain when you have one
-const PRODUCTION_API_URL = 'http://134.122.22.45';
+const PRODUCTION_API_URL = 'https://joineki.com';
 const DEVELOPMENT_API_URL = 'http://127.0.0.1:8000';
 
 // Detect if we're in production or development
