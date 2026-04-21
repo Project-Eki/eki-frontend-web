@@ -1,23 +1,7 @@
-/**
- * DataTable.jsx
- *
- * Changes:
- *  - Export button REMOVED
- *  - Refresh button REMOVED from table header
- *  - View column REMOVED entirely (no more eye icons)
- *  - Added "View All" link at top right (color #235E5D)
- *    Routing per tableType:
- *      verificationWorkflows → /admin-management
- *      userManagement        → /buyer-management
- *      transaction           → /admin-payments
- *      contentModeration     → /content-moderation
- *  - Search scoped per tableType
- *  - Status filter pills (gold when active), 4 rows per page pagination
- *  - "Under Review" normalised → "Pending"
- */
+// DataTable.jsx - Updated version with dropdown filter
 
 import React, { useState, useMemo, useEffect } from "react";
-import { Search, ExternalLink } from "lucide-react";
+import { Search, ExternalLink, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const GOLD = "#EFB034";
@@ -57,6 +41,39 @@ const VIEW_ALL_ROUTES = {
   transaction: "/admin-payments",
   contentModeration: "/content-moderation",
   default: "#",
+};
+
+// NEW: Status Filter Dropdown Component
+const StatusFilterDropdown = ({ options, currentFilter, onFilterChange }) => {
+  return (
+    <div className="relative">
+      <select
+        value={currentFilter}
+        onChange={(e) => onFilterChange(e.target.value)}
+        className={`px-3 py-1.5 text-[11px] font-semibold rounded-lg appearance-none cursor-pointer transition-all outline-none focus:outline-none focus:ring-0 focus:border-transparent ${
+          currentFilter !== "All"
+            ? "bg-[#EFB034] text-white"
+            : "bg-white text-gray-600 border border-gray-200 hover:border-amber-400"
+        }`}
+        style={{ 
+          paddingRight: "1.75rem",
+          border: currentFilter !== "All" ? "none" : "1px solid #e5e7eb"
+        }}
+      >
+        {options.map((option) => (
+          <option key={option} value={option} className="text-gray-700 bg-white">
+            {option}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        size={12}
+        className={`absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none ${
+          currentFilter !== "All" ? "text-white" : "text-gray-400"
+        }`}
+      />
+    </div>
+  );
 };
 
 const DataTable = ({
@@ -171,27 +188,16 @@ const DataTable = ({
             />
           </div>
 
-          {/* Status filter pills */}
+          {/* NEW: Status Filter Dropdown - replaces buttons */}
           {statusOptions.length > 1 && (
-            <div className="flex gap-1 flex-wrap">
-              {statusOptions.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => handleFilter(s)}
-                  className="px-2 py-1 text-[10px] font-semibold rounded-full border transition-colors"
-                  style={{
-                    background: statusFilter === s ? GOLD : "white",
-                    color: statusFilter === s ? "white" : "#6b7280",
-                    borderColor: statusFilter === s ? GOLD : "#e5e7eb",
-                  }}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
+            <StatusFilterDropdown
+              options={statusOptions}
+              currentFilter={statusFilter}
+              onFilterChange={handleFilter}
+            />
           )}
 
-          {/* View All link - LAST item */}
+          {/* View All link */}
           <button
             onClick={handleViewAll}
             className="text-[11px] font-semibold hover:opacity-80 transition-opacity flex items-center gap-1"
@@ -270,7 +276,7 @@ const DataTable = ({
               disabled={safePage === 1}
               className="px-2.5 py-1 text-[11px] border border-gray-200 rounded-lg disabled:opacity-30 hover:border-amber-400 transition-colors"
             >
-             &lsaquo;  Prev
+              &lsaquo; Prev
             </button>
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}

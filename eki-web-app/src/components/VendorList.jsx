@@ -1,14 +1,46 @@
 import React, { useState } from 'react';
-import { Download, Search, ChevronLeft, ChevronRight, ExternalLink, RefreshCw } from 'lucide-react';
+import { Download, Search, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 
 const STATUS_OPTIONS = ["All", "Pending", "Approved", "Rejected", "Suspended"];
 const GOLD = "#EFB034";
 
-const VendorList = ({ vendors, onSelect, selectedId, onRefresh }) => {
+// Status Filter Dropdown Component
+const StatusFilterDropdown = ({ options, currentFilter, onFilterChange }) => {
+  return (
+    <div className="relative">
+      <select
+        value={currentFilter}
+        onChange={(e) => onFilterChange(e.target.value)}
+        className={`px-3 py-1.5 text-[11px] font-semibold rounded-lg appearance-none cursor-pointer transition-all outline-none focus:outline-none focus:ring-0 ${
+          currentFilter !== "All"
+            ? "bg-[#EFB034] text-white"
+            : "bg-white text-gray-600 border border-gray-200 hover:border-amber-400"
+        }`}
+        style={{ 
+          paddingRight: "1.75rem",
+          border: currentFilter !== "All" ? "none" : "1px solid #e5e7eb"
+        }}
+      >
+        {options.map((option) => (
+          <option key={option} value={option} className="text-gray-700 bg-white">
+            {option}
+          </option>
+        ))}
+      </select>
+      <ChevronLeft
+        size={12}
+        className={`absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none rotate-[-90deg] ${
+          currentFilter !== "All" ? "text-white" : "text-gray-400"
+        }`}
+      />
+    </div>
+  );
+};
+
+const VendorList = ({ vendors, onSelect, selectedId }) => {
   const [statusFilter, setStatusFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [refreshing, setRefreshing] = useState(false);
   const PER_PAGE = 4;
 
   // Filter vendors based on status and search
@@ -41,17 +73,10 @@ const VendorList = ({ vendors, onSelect, selectedId, onRefresh }) => {
     setPage(1);
   };
 
-  const handleRefreshClick = async () => {
-    if (!onRefresh) return;
-    setRefreshing(true);
-    await onRefresh();
-    setRefreshing(false);
-  };
-
   // Export current filtered list as CSV
   const handleExport = () => {
     if (filtered.length === 0) return;
-    const headers = ["Name", "Email", "Business Name", "Type", "Category", "Status", "Docs", "Submitted"];
+    const headers = ["Name", "Email", "Business Name", "Type", "Category", "Status", "Submitted"];
     const rows = filtered.map((v) => [
       `"${v.name || ""}"`,
       `"${v.email || ""}"`,
@@ -59,7 +84,6 @@ const VendorList = ({ vendors, onSelect, selectedId, onRefresh }) => {
       `"${v.businessType || ""}"`,
       `"${v.businessCategory || ""}"`,
       `"${v.status || ""}"`,
-      `"${v.docsCount ?? 0}/5"`,
       `"${v.submitted || ""}"`,
     ].join(","));
     const csv = [headers.join(","), ...rows].join("\n");
@@ -74,37 +98,20 @@ const VendorList = ({ vendors, onSelect, selectedId, onRefresh }) => {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-      {/* Header with filters */}
-      <div className="p-4 border-b border-gray-100">
-        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-          <div>
-            <h3 className="font-bold text-gray-800">Registered Vendors</h3>
-            <p className="text-xs text-gray-500">Monitor and manage seller accounts and verification states.</p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleRefreshClick}
-              title="Refresh"
-              className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium hover:bg-gray-50 text-gray-600"
-            >
-              <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
-              Refresh
-            </button>
-            <button
-              onClick={handleExport}
-              className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium hover:bg-gray-50 text-gray-600"
-            >
-              <Download size={14} /> Export
-            </button>
-          </div>
-        </div>
-
-        {/* Filter bar */}
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-xs text-gray-400 shrink-0">
+      {/* Header with title, count, search, export, and status dropdown */}
+      <div className="px-4 py-3 border-b border-gray-100">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          {/* Left side - Title and count */}
+          <div className="flex items-center gap-3">
+            <h3 className="text-sm font-semibold text-gray-900">Vendor Records</h3>
+            <span className="text-[11px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
               {filtered.length} vendor{filtered.length !== 1 ? "s" : ""}
-            </p>
+            </span>
+          </div>
+
+          {/* Right side - Search, Export, Status dropdown */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Search input */}
             <div className="relative">
               <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -112,50 +119,47 @@ const VendorList = ({ vendors, onSelect, selectedId, onRefresh }) => {
                 placeholder="Search vendors…"
                 value={search}
                 onChange={handleSearch}
-                className="pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-amber-400 w-44"
+                className="pl-7 pr-3 py-1.5 text-[11px] border border-gray-200 rounded-lg outline-none focus:border-amber-400 w-44"
               />
             </div>
-          </div>
 
-          <div className="flex gap-1.5 flex-wrap items-center">
-            {STATUS_OPTIONS.map((s) => (
-              <button
-                key={s}
-                onClick={() => handleFilter(s)}
-                className="px-2.5 py-1 text-[10px] font-bold rounded-full border transition-colors"
-                style={{
-                  background: statusFilter === s ? GOLD : "white",
-                  color: statusFilter === s ? "white" : "#6b7280",
-                  borderColor: statusFilter === s ? GOLD : "#e5e7eb",
-                }}
-              >
-                {s}
-              </button>
-            ))}
+            {/* Export button */}
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold border rounded-lg transition-colors hover:opacity-90"
+              style={{ borderColor: GOLD, color: GOLD }}
+            >
+              <Download size={12} /> Export
+            </button>
+
+            {/* Status dropdown - replaces buttons */}
+            <StatusFilterDropdown
+              options={STATUS_OPTIONS}
+              currentFilter={statusFilter}
+              onFilterChange={handleFilter}
+            />
           </div>
         </div>
       </div>
 
       {/* Vendor table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-left min-w-[900px]">
+        <table className="w-full text-left min-w-[800px]">
           <thead className="bg-gray-50 text-[10px] uppercase text-gray-500 font-bold border-b border-gray-100">
             <tr>
-              <th className="px-5 py-3">Applicant</th>
-              <th className="px-5 py-3">Business Name</th>
-              <th className="px-5 py-3">Business Type</th>
-              <th className="px-5 py-3">Category</th>
-              <th className="px-5 py-3">Status</th>
-              <th className="px-5 py-3">Submitted</th>
-              <th className="px-5 py-3">Days Pending</th>
-              <th className="px-5 py-3">Docs</th>
-              <th className="px-5 py-3">View</th>
+              <th className="px-4 py-3">Applicant</th>
+              <th className="px-4 py-3">Business Name</th>
+              <th className="px-4 py-3">Type</th>
+              <th className="px-4 py-3">Category</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Submitted</th>
+              <th className="px-4 py-3">View</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {slice.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-5 py-10 text-center text-sm text-gray-400">
+                <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">
                   {search.trim() || statusFilter !== "All"
                     ? "No vendors match your search."
                     : "No vendors to display."}
@@ -168,27 +172,31 @@ const VendorList = ({ vendors, onSelect, selectedId, onRefresh }) => {
                   onClick={() => onSelect(vendor)}
                   className={`hover:bg-gray-50 transition-colors cursor-pointer ${selectedId === vendor.id ? "bg-teal-50/40" : ""}`}
                 >
-                  {/* Applicant name */}
-                  <td className="px-5 py-3.5">
+                  {/* Applicant name and email */}
+                  <td className="px-4 py-3">
                     <div>
                       <p className="text-xs font-semibold text-gray-800">{vendor.name}</p>
                       <p className="text-[10px] text-gray-400">{vendor.email || "—"}</p>
                     </div>
                   </td>
+                  
                   {/* Business name */}
-                  <td className="px-5 py-3.5 text-xs text-gray-600 whitespace-nowrap">
+                  <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
                     {vendor.businessName || "—"}
                   </td>
+                  
                   {/* Business type */}
-                  <td className="px-5 py-3.5 text-xs text-gray-600 whitespace-nowrap capitalize">
+                  <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap capitalize">
                     {vendor.businessType || "—"}
                   </td>
+                  
                   {/* Business category */}
-                  <td className="px-5 py-3.5 text-xs text-gray-600 whitespace-nowrap capitalize">
+                  <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap capitalize">
                     {vendor.businessCategory || "—"}
                   </td>
+                  
                   {/* Status badge */}
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase whitespace-nowrap ${
                       vendor.status === "Approved" ? "bg-green-50 text-green-600" :
                       vendor.status === "Pending" ? "bg-yellow-50 text-yellow-600" :
@@ -199,24 +207,14 @@ const VendorList = ({ vendors, onSelect, selectedId, onRefresh }) => {
                       {vendor.status}
                     </span>
                   </td>
+                  
                   {/* Submitted date */}
-                  <td className="px-5 py-3.5 text-xs text-gray-600 whitespace-nowrap">
+                  <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
                     {vendor.submitted || "—"}
                   </td>
-                  {/* Days pending */}
-                  <td className="px-5 py-3.5">
-                    <span className={`text-xs font-bold ${(vendor.daysPending ?? 0) > 2 ? "text-red-500" : "text-gray-600"}`}>
-                      {vendor.daysPending != null ? `${vendor.daysPending}d` : "—"}
-                    </span>
-                  </td>
-                  {/* Document count */}
-                  <td className="px-5 py-3.5">
-                    <span className={`text-xs font-bold ${(vendor.docsCount ?? 0) === 0 ? "text-red-400" : "text-green-600"}`}>
-                      {vendor.docsCount ?? 0}/5
-                    </span>
-                  </td>
+                  
                   {/* View button */}
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 py-3">
                     <button
                       onClick={(e) => { e.stopPropagation(); onSelect(vendor); }}
                       className="p-1.5 rounded-lg transition-colors hover:opacity-70"
@@ -234,7 +232,7 @@ const VendorList = ({ vendors, onSelect, selectedId, onRefresh }) => {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
+        <div className="px-4 py-2.5 border-t border-gray-100 flex items-center justify-between">
           <span className="text-[11px] text-gray-400">
             Page {safePage} of {totalPages}
           </span>

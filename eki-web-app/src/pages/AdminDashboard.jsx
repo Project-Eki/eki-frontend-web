@@ -166,8 +166,6 @@ const AdminDashboard = () => {
     { key: "id",        header: "Ref ID"    },
     { key: "applicant", header: "Applicant" },
     { key: "type",      header: "Type"      },
-    { key: "docs",      header: "Docs"      },
-    { key: "days",      header: "Pending"   },
     { key: "status",    header: "Status", render: (v) => <StatusBadge status={v} /> },
     { key: "submitted", header: "Submitted" },
   ];
@@ -293,7 +291,7 @@ const AdminDashboard = () => {
             </main>
 
             <footer className="bg-[#1D4D4C] text-white py-3 px-5 sm:px-10 flex flex-col sm:flex-row justify-between items-center gap-2 text-[10px] shrink-0 mx-3 mb-3 rounded-xl">
-              <div className="hidden sm:block">Buy Smart. Sell Fast. Grow Together...</div>
+              <div className="hidden sm:block">Buy Smart. SellEasy.</div>
               <div>© 2026 Vendor Portal. All rights reserved.</div>
               <div className="flex flex-wrap justify-center gap-3">
                 <span className="relative inline-block cursor-pointer hover:underline">
