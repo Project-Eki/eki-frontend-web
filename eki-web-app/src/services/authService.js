@@ -444,11 +444,24 @@ export const getVendorOrders = async ({ status = '', search = '' } = {}) => {
 // Handles: ready_for_pickup, start_service, complete_service,
 //          confirm_onsite, resend_code, update_tracking, mark_fulfilled, update_status
 const vendorOrderAction = async (orderId, action, extraPayload = {}) => {
-  const r = await api.post(`/orders/vendor/action/${orderId}/`, {
-    action,
-    ...extraPayload,
-  });
-  return r.data?.data ?? r.data;
+  const payload = { action, ...extraPayload };
+
+  // ── DEBUG: log exactly what we send and what the server returns ─────────────
+  console.group(`[vendorOrderAction] ${action} on order ${orderId}`);
+  console.log('REQUEST payload:', JSON.stringify(payload, null, 2));
+
+  try {
+    const r = await api.post(`/orders/vendor/action/${orderId}/`, payload);
+    console.log('RESPONSE status:', r.status);
+    console.log('RESPONSE data:', JSON.stringify(r.data, null, 2));
+    console.groupEnd();
+    return r.data?.data ?? r.data;
+  } catch (err) {
+    console.error('ERROR status   :', err.response?.status);
+    console.error('ERROR data     :', JSON.stringify(err.response?.data, null, 2));
+    console.groupEnd();
+    throw err;
+  }
 };
 
 // ─── Order Actions (all via unified endpoint) ────────────────────────────────

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import VendorSidebar from '../components/VendorSidebar';
 import Navbar3 from '../components/adminDashboard/Navbar4';
 import Footer from '../components/Vendormanagement/VendorFooter';
@@ -24,8 +24,10 @@ import {
 const formatOrderId = (raw) => {
   if (!raw && raw !== 0) return '—';
   const str = String(raw).trim();
+  // Numeric IDs: zero-pad to 6 digits
   if (/^\d+$/.test(str)) return `#${str.padStart(6, '0')}`;
-  if (str.length > 12) return `#${str.slice(-8).toUpperCase()}`;
+  // UUID or long alphanumeric: show last 12 chars uppercased (matches notification display)
+  if (str.length > 12) return `#${str.slice(-12).toUpperCase()}`;
   return `#${str.toUpperCase()}`;
 };
 
@@ -500,6 +502,24 @@ const OrderManagement = () => {
   const fetchingRef   = useRef(false);
   // Keep a stable copy of orders so background polls never blank the UI
   const ordersRef     = useRef([]);
+
+  const location = useLocation();
+  const navigate  = useNavigate();
+
+  // ── Auto-open order modal when navigated from a notification ─────────────────
+  // Navbar passes: navigate('/order-management', { state: { openOrderId: '...' } })
+  useEffect(() => {
+    const openOrderId = location.state?.openOrderId;
+    if (!openOrderId || ordersRef.current.length === 0) return;
+    const target = ordersRef.current.find(
+      (o) => String(o.id) === String(openOrderId)
+    );
+    if (target) {
+      setSelectedOrder(target);
+      // Clear state so back-navigation doesn't re-open the modal
+      navigate('/order-management', { replace: true, state: {} });
+    }
+  }, [location.state, orders, navigate]); // re-run when orders load
 
   // ── Derived stats ───────────────────────────────────────────────────────────
   const totalOrders  = orders.length;

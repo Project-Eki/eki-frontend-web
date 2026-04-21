@@ -24,6 +24,12 @@ const NOTIF_TYPE_STYLE = {
   profile_suspended: { label: "Account suspended",   dot: "bg-red-500"    },
 };
 
+// Order-related notification types that should link to order management
+const ORDER_NOTIF_TYPES = new Set([
+  'new_order', 'order_cancelled', 'order_completed',
+  'payment_received', 'payment_failed', 'payment_reversed',
+]);
+
 const Navbar3 = ({ userName = '', onMenuClick, profileImage = null }) => {
   const [notifications,  setNotifications]  = useState([]);
   const [unreadCount,    setUnreadCount]    = useState(0);
@@ -61,14 +67,12 @@ const Navbar3 = ({ userName = '', onMenuClick, profileImage = null }) => {
           setAvatarUrl(data.profile_picture);
           setAvatarError(false);
         }
-      } catch (_) {
-        // Non-fatal: 500 = backend issue. Avatar falls back to initials or icon.
-      }
+      } catch (_) {}
     };
     fetchProfile();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Load order notifications filtered by vendor's location ──────────────────
+  // ─── Load order notifications ─────────────────────────────────────────────────
   const loadNotifications = async () => {
     try {
       const country         = localStorage.getItem('vendor_country')         || '';
@@ -77,9 +81,7 @@ const Navbar3 = ({ userName = '', onMenuClick, profileImage = null }) => {
       const items = data?.notifications ?? [];
       setNotifications(items);
       setUnreadCount(items.filter(n => !n.is_read).length);
-    } catch (_) {
-      // Only reaches here for unexpected errors (401 etc) — safe to ignore in UI
-    }
+    } catch (_) {}
   };
 
   useEffect(() => {
@@ -110,12 +112,39 @@ const Navbar3 = ({ userName = '', onMenuClick, profileImage = null }) => {
 
   const handleMarkAllRead = async () => {
     try {
-      // Mark each unread notification as read via the PATCH endpoint
       const unread = notifications.filter(n => !n.is_read);
       await Promise.all(unread.map(n => markOrderNotificationRead(n.id)));
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       setUnreadCount(0);
     } catch (_) {}
+  };
+
+  // ─── Handle notification click — mark read + navigate to order if relevant ───
+  const handleNotifClick = async (notif) => {
+    // Mark as read first (non-blocking)
+    if (!notif.is_read) {
+      handleMarkRead(notif.id);
+    }
+
+    // Resolve the order ID from the notification
+    // API may return it as: order_id, order, object_id, or inside metadata/data
+    const orderId =
+      notif.order_id   ||
+      notif.order      ||
+      notif.object_id  ||
+      notif.data?.order_id ||
+      notif.metadata?.order_id ||
+      null;
+
+    if (orderId && ORDER_NOTIF_TYPES.has(notif.notification_type)) {
+      // Close the panel first
+      setShowNotifPanel(false);
+      // Navigate to order management and pass the order ID via location state
+      // OrderManagement.jsx reads location.state.openOrderId to auto-open the modal
+      navigate('/order-management', {
+        state: { openOrderId: String(orderId) },
+      });
+    }
   };
 
   // ─── Avatar: photo → initials → icon ─────────────────────────────────────────
@@ -212,10 +241,16 @@ const Navbar3 = ({ userName = '', onMenuClick, profileImage = null }) => {
                         label: notif.type_display,
                         dot:   'bg-slate-400',
                       };
+                      // Does this notification link to an order?
+                      const hasOrderLink =
+                        ORDER_NOTIF_TYPES.has(notif.notification_type) &&
+                        (notif.order_id || notif.order || notif.object_id ||
+                         notif.data?.order_id || notif.metadata?.order_id);
+
                       return (
                         <div
                           key={notif.id}
-                          onClick={() => !notif.is_read && handleMarkRead(notif.id)}
+                          onClick={() => handleNotifClick(notif)}
                           className={`flex items-start gap-2.5 px-3 py-2.5 border-b border-slate-50 cursor-pointer transition-colors ${
                             !notif.is_read
                               ? 'bg-[#E0F2F1]/30 hover:bg-[#E0F2F1]/50'
@@ -226,7 +261,14 @@ const Navbar3 = ({ userName = '', onMenuClick, profileImage = null }) => {
                           <div className="flex-1 min-w-0">
                             <p className="text-[11px] font-bold text-slate-800 leading-tight">{notif.title}</p>
                             <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-2">{notif.message}</p>
-                            <p className="text-[9px] text-slate-400 mt-0.5">{notif.time_ago}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <p className="text-[9px] text-slate-400">{notif.time_ago}</p>
+                              {hasOrderLink && (
+                                <span className="text-[8px] font-bold text-[#125852] bg-[#E0F2F1] px-1.5 py-0.5 rounded-full">
+                                  View order →
+                                </span>
+                              )}
+                            </div>
                           </div>
                           {!notif.is_read && (
                             <div className="w-1 h-1 bg-[#125852] rounded-full shrink-0 mt-1" />
