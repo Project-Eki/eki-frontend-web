@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import VendorSidebar from '../components/VendorSidebar';
 import Navbar3 from '../components/adminDashboard/Navbar4';
@@ -20,7 +20,6 @@ import {
   CheckCircle, Copy, RefreshCw,
 } from 'lucide-react';
 
-// ─── Helper: format order ID professionally ───────────────────────────────────
 const formatOrderId = (raw) => {
   if (!raw && raw !== 0) return '—';
   const str = String(raw).trim();
@@ -29,7 +28,6 @@ const formatOrderId = (raw) => {
   return `#${str.toUpperCase()}`;
 };
 
-// ─── Status badge — no background, plain black text ──────────────────────────
 const STATUS_STYLES = {
   pending:    'text-black',
   confirmed:  'text-black',
@@ -43,7 +41,6 @@ const STATUS_STYLES = {
 const TAB_FILTERS = ['All', 'Pending', 'Confirmed', 'Processing', 'Completed', 'Cancelled', 'Fulfilled'];
 const ORDERS_PER_PAGE = 10;
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
 const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
   <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
     <div className="flex items-start justify-between">
@@ -58,7 +55,6 @@ const StatCard = ({ title, number, icon: Icon, iconBgColor, iconColor }) => (
   </div>
 );
 
-// ─── Star Rating (gold) ───────────────────────────────────────────────────────
 const StarRating = ({ rating = 0 }) => (
   <div className="flex items-center gap-0.5">
     {[...Array(5)].map((_, idx) => (
@@ -73,18 +69,17 @@ const StarRating = ({ rating = 0 }) => (
   </div>
 );
 
-// ─── Order Detail Modal (with Confirm & Verify actions) ───────────────────────
+// ─── Order Detail Modal ───────────────────────────────────────────────────────
 const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) => {
+  const [step, setStep] = useState('detail');
   const [codeInput, setCodeInput] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
-  const [pickupCode, setPickupCode] = useState(order?.pickup_code || '');
+  const [buyerName, setBuyerName] = useState('');
 
   if (!order) return null;
 
-  // Normalize status: if it's 'delivered', display as 'Fulfilled'
   let displayStatus = order.status;
   if (typeof displayStatus === 'string' && displayStatus.toLowerCase() === 'delivered') {
     displayStatus = 'Fulfilled';
@@ -111,18 +106,10 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
   const handleConfirmOrder = async () => {
     setConfirming(true);
     setErrorMsg('');
-    setSuccessMsg('');
     try {
-      const updated = await confirmVendorOrder(order.id);
-      // The backend should return the updated order with pickup_code
-      if (updated?.pickup_code) setPickupCode(updated.pickup_code);
-      setSuccessMsg('Order confirmed! Pickup code generated.');
-      if (onOrderUpdated) onOrderUpdated(updated);
-      // Refresh the order list after 1 second
-      setTimeout(() => {
-        onOrderUpdated?.();
-        onClose(); // optionally close modal after confirm
-      }, 1200);
+      await confirmVendorOrder(order.id);
+      if (onOrderUpdated) onOrderUpdated();
+      setStep('pickup');
     } catch (err) {
       console.error('Confirm error:', err);
       setErrorMsg(err.response?.data?.message || 'Failed to confirm order.');
@@ -138,31 +125,180 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
     }
     setVerifying(true);
     setErrorMsg('');
-    setSuccessMsg('');
     try {
       const result = await verifyPickupCode(order.id, codeInput.trim());
-      setSuccessMsg('Pickup verified! Order completed.');
-      if (onOrderUpdated) onOrderUpdated(result);
-      setTimeout(() => {
-        onOrderUpdated?.();
-        onClose();
-      }, 1200);
+      const name = result?.customer?.name || result?.buyer_name || customerName;
+      setBuyerName(name);
+      if (onOrderUpdated) onOrderUpdated();
+      setStep('success');
     } catch (err) {
       console.error('Verification error:', err);
-      setErrorMsg(err.response?.data?.message || 'Invalid code. Please try again.');
+      setStep('failure');
     } finally {
       setVerifying(false);
     }
   };
 
-  const copyPickupCode = () => {
-    if (pickupCode) {
-      navigator.clipboard.writeText(pickupCode);
-      setSuccessMsg('Code copied to clipboard!');
-      setTimeout(() => setSuccessMsg(''), 2000);
-    }
-  };
+  // ── Step: pickup code entry ─────────────────────────────────────────────────
+  if (step === 'pickup') {
+    return (
+      <div
+        className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4"
+        onClick={onClose}
+      >
+        <div
+          className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+          style={{ fontFamily: "'Poppins', sans-serif" }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex justify-center pt-3 pb-1 sm:hidden">
+            <div className="w-10 h-1 bg-slate-200 rounded-full" />
+          </div>
 
+          {/* Header */}
+          <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
+            <div>
+              <h2 className="text-base font-bold text-slate-800">Enter pickup code</h2>
+              <p className="text-[10px] text-slate-400 mt-0.5">Order {formatOrderId(order.id)}</p>
+            </div>
+            <button type="button" onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-700">
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="px-8 py-8 space-y-6">
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Input the pickup code provided by the customer to complete this order. The code is in the format <span className="font-mono font-bold text-slate-700">ABC-XXXXXXXX</span>.
+            </p>
+
+            {errorMsg && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-medium px-4 py-3 rounded-xl">
+                {errorMsg}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Pickup code
+              </label>
+              <input
+                type="text"
+                value={codeInput}
+                onChange={(e) => { setErrorMsg(''); setCodeInput(e.target.value.toUpperCase()); }}
+                placeholder="e.g. EKI-F22EU8"
+                className="w-full px-4 py-4 border-2 border-slate-200 rounded-xl text-lg font-mono font-bold uppercase tracking-widest text-center focus:border-[#125852] focus:ring-0 outline-none transition-colors"
+                autoComplete="off"
+                autoFocus
+              />
+              <p className="text-[10px] text-slate-400 text-center">Format: ABC-XXXXXXXX</p>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <button
+                onClick={handleVerifyCode}
+                disabled={verifying || !codeInput.trim()}
+                className="w-full py-3.5 bg-[#125852] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-[#0e4340] transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed"
+              >
+                {verifying
+                  ? <><RefreshCw size={14} className="animate-spin" /> Verifying...</>
+                  : <><CheckCircle size={14} /> Verify &amp; complete order</>
+                }
+              </button>
+              <button
+                onClick={() => { setStep('detail'); setErrorMsg(''); setCodeInput(''); }}
+                className="w-full py-3.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors"
+              >
+                Back
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Step: success ───────────────────────────────────────────────────────────
+  if (step === 'success') {
+    return (
+      <div
+        className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4"
+        onClick={onClose}
+      >
+        <div
+          className="bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
+          style={{ fontFamily: "'Poppins', sans-serif" }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex justify-center pt-3 pb-1 sm:hidden">
+            <div className="w-10 h-1 bg-slate-200 rounded-full" />
+          </div>
+          <div className="px-5 py-10 flex flex-col items-center text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center">
+              <CheckCircle size={32} className="text-emerald-500" />
+            </div>
+            <div>
+              <p className="text-base font-black text-slate-800">Congratulations!</p>
+              <p className="text-[12px] text-slate-500 mt-2 leading-relaxed">
+                <span className="font-bold text-slate-700">{buyerName || customerName}</span>, your order is successful.
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="mt-2 w-full py-2.5 bg-[#125852] text-white rounded-xl text-[11px] font-bold hover:bg-[#0e4340] transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Step: failure ───────────────────────────────────────────────────────────
+  if (step === 'failure') {
+    return (
+      <div
+        className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4"
+        onClick={onClose}
+      >
+        <div
+          className="bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
+          style={{ fontFamily: "'Poppins', sans-serif" }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex justify-center pt-3 pb-1 sm:hidden">
+            <div className="w-10 h-1 bg-slate-200 rounded-full" />
+          </div>
+          <div className="px-5 py-10 flex flex-col items-center text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
+              <X size={32} className="text-red-400" />
+            </div>
+            <div>
+              <p className="text-base font-black text-slate-800">Order not completed</p>
+              <p className="text-[12px] text-slate-500 mt-2 leading-relaxed">
+                The pickup code was invalid or could not be verified. Please ask the customer for the correct code and try again.
+              </p>
+            </div>
+            <button
+              onClick={() => { setStep('pickup'); setCodeInput(''); }}
+              className="w-full py-2.5 bg-[#125852] text-white rounded-xl text-[11px] font-bold hover:bg-[#0e4340] transition-colors"
+            >
+              Try again
+            </button>
+            <button
+              onClick={onClose}
+              className="w-full py-2.5 border border-slate-200 rounded-xl text-[11px] font-bold text-slate-500 hover:bg-slate-50 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Step: detail (default) ──────────────────────────────────────────────────
   return (
     <div
       className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4"
@@ -173,7 +309,6 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
         style={{ fontFamily: "'Poppins', sans-serif" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Drag handle (mobile) */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden">
           <div className="w-10 h-1 bg-slate-200 rounded-full" />
         </div>
@@ -203,39 +338,12 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
         {/* Body */}
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
 
-          {/* Success/Error messages */}
-          {successMsg && (
-            <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-medium px-3 py-2 rounded-lg flex items-center gap-2">
-              <CheckCircle size={12} /> {successMsg}
-            </div>
-          )}
           {errorMsg && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-[10px] font-medium px-3 py-2 rounded-lg">
               {errorMsg}
             </div>
           )}
 
-          {/* ─── PICKUP CODE DISPLAY (if confirmed) ─── */}
-          {pickupCode && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center space-y-2">
-              <p className="text-[9px] font-bold uppercase text-amber-600">Pickup Code</p>
-              <div className="flex items-center justify-center gap-2">
-                <code className="text-xl font-mono font-black text-amber-800 tracking-wider bg-white px-3 py-1 rounded-lg border border-amber-200">
-                  {pickupCode}
-                </code>
-                <button
-                  onClick={copyPickupCode}
-                  className="p-1.5 bg-white rounded-full shadow-sm hover:bg-amber-100 transition-colors"
-                  title="Copy code"
-                >
-                  <Copy size={14} className="text-amber-600" />
-                </button>
-              </div>
-              <p className="text-[9px] text-amber-600">Share this code with the customer for pickup verification.</p>
-            </div>
-          )}
-
-          {/* ─── CONFIRM BUTTON (pending orders) ─── */}
           {statusKey === 'pending' && (
             <button
               onClick={handleConfirmOrder}
@@ -245,36 +353,18 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
               {confirming ? (
                 <><RefreshCw size={12} className="animate-spin" /> Confirming...</>
               ) : (
-                <><CheckCircle size={12} /> Confirm Order & Generate Pickup Code</>
+                <><CheckCircle size={12} /> Confirm order</>
               )}
             </button>
           )}
 
-          {/* ─── VERIFICATION SECTION (confirmed orders) ─── */}
           {statusKey === 'confirmed' && (
-            <div className="border border-[#F5B841] rounded-xl p-3 bg-amber-50/30 space-y-2">
-              <p className="text-[10px] font-bold uppercase text-amber-700 flex items-center gap-1">
-                <CheckCircle size={12} /> Verify Pickup Code
-              </p>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={codeInput}
-                  onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
-                  placeholder="Enter customer's pickup code"
-                  className="flex-1 px-3 py-2 border border-amber-200 rounded-lg text-xs uppercase font-mono font-bold focus:ring-2 focus:ring-[#F5B841] outline-none"
-                  autoComplete="off"
-                />
-                <button
-                  onClick={handleVerifyCode}
-                  disabled={verifying || !codeInput.trim()}
-                  className="px-4 py-2 bg-[#F5B841] text-white rounded-lg text-[10px] font-bold hover:bg-[#E0A83B] transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed"
-                >
-                  {verifying ? <RefreshCw size={12} className="animate-spin" /> : 'Verify'}
-                </button>
-              </div>
-              <p className="text-[9px] text-amber-600">Enter the code shown by the customer to mark order as completed.</p>
-            </div>
+            <button
+              onClick={() => setStep('pickup')}
+              className="w-full py-2.5 bg-[#F5B841] text-white rounded-xl text-[11px] font-bold flex items-center justify-center gap-2 hover:bg-[#E0A83B] transition-colors"
+            >
+              <CheckCircle size={12} /> Enter pickup code
+            </button>
           )}
 
           {/* Customer Info */}
@@ -435,7 +525,7 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
 // ─── Main Component ───────────────────────────────────────────────────────────
 const OrderManagement = () => {
   const [orders,         setOrders]         = useState([]);
-  const [isFetching,     setIsFetching]     = useState(true);
+  const [isFetching,     setIsFetching]     = useState(false); // we'll manage this carefully
   const [activeTab,      setActiveTab]      = useState('All');
   const [searchQuery,    setSearchQuery]    = useState('');
   const [currencySymbol, setCurrencySymbol] = useState('UGX');
@@ -444,15 +534,18 @@ const OrderManagement = () => {
 
   const isMountedRef = useRef(true);
   const abortControllerRef = useRef(null);
+  const fetchingRef = useRef(false);            // prevent overlapping fetches
+  const loadingTimerRef = useRef(null);         // delay showing skeleton
 
-  // ── Derived stats ──────────────────────────────────────────────────────────
+  // Deferred loading flag – only show skeletons if fetch takes > 200ms
+  const [showSkeleton, setShowSkeleton] = useState(false);
+
   const totalOrders  = orders.length;
   const activeOrders = orders.filter((o) =>
     ['pending', 'confirmed', 'processing'].includes(String(o.status ?? '').toLowerCase())
   ).length;
   const revenue = orders.reduce((sum, o) => sum + Number(o.total ?? 0), 0);
 
-  // ── Fetch currency ─────────────────────────────────────────────────────────
   useEffect(() => {
     getVendorDashboard()
       .then((data) => {
@@ -467,13 +560,25 @@ const OrderManagement = () => {
       .catch(() => {});
   }, []);
 
-  // ── Fetch orders ──────────────────────────────────────────────────────────
   const fetchOrders = useCallback(async () => {
+    // Prevent overlapping fetches
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+
+    // Cancel any pending request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
     const controller = new AbortController();
     abortControllerRef.current = controller;
+
+    // Only show loading indicator after a short delay (avoid flash for fast responses)
+    if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
+    loadingTimerRef.current = setTimeout(() => {
+      if (isMountedRef.current && fetchingRef.current) {
+        setShowSkeleton(true);
+      }
+    }, 200);
 
     setIsFetching(true);
     try {
@@ -487,8 +592,18 @@ const OrderManagement = () => {
         setOrders([]);
       }
     } finally {
-      if (isMountedRef.current) setIsFetching(false);
-      if (abortControllerRef.current === controller) abortControllerRef.current = null;
+      if (loadingTimerRef.current) {
+        clearTimeout(loadingTimerRef.current);
+        loadingTimerRef.current = null;
+      }
+      if (isMountedRef.current) {
+        setIsFetching(false);
+        setShowSkeleton(false);
+      }
+      fetchingRef.current = false;
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
     }
   }, []);
 
@@ -500,43 +615,51 @@ const OrderManagement = () => {
       isMountedRef.current = false;
       clearInterval(interval);
       if (abortControllerRef.current) abortControllerRef.current.abort();
+      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
     };
   }, [fetchOrders]);
 
   useEffect(() => {
-    setCurrentPage(1);
+    // Only reset page if it's not already 1 (avoid unnecessary re‑render)
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
   }, [activeTab, searchQuery]);
 
-  // ── Filter + Search ────────────────────────────────────────────────────────
-  const filteredOrders = orders.filter((order) => {
-    let orderStatus = String(order.status ?? '').toLowerCase();
-    if (orderStatus === 'delivered') orderStatus = 'fulfilled';
+  // Memoize filtered orders to avoid re‑computation on every keystroke
+  const filteredOrders = useMemo(() => {
+    return orders.filter((order) => {
+      let orderStatus = String(order.status ?? '').toLowerCase();
+      if (orderStatus === 'delivered') orderStatus = 'fulfilled';
 
-    const matchesTab =
-      activeTab === 'All' ||
-      orderStatus === activeTab.toLowerCase();
+      const matchesTab =
+        activeTab === 'All' ||
+        orderStatus === activeTab.toLowerCase();
 
-    const q = searchQuery.toLowerCase().trim();
-    const customerStr =
-      typeof order.customer === 'object' && order.customer !== null
-        ? `${order.customer.name ?? ''} ${order.customer.email ?? ''}`
-        : String(order.customer ?? '');
+      const q = searchQuery.toLowerCase().trim();
+      const customerStr =
+        typeof order.customer === 'object' && order.customer !== null
+          ? `${order.customer.name ?? ''} ${order.customer.email ?? ''}`
+          : String(order.customer ?? '');
 
-    const matchesSearch =
-      !q ||
-      String(order.id ?? '').toLowerCase().includes(q) ||
-      formatOrderId(order.id).toLowerCase().includes(q) ||
-      customerStr.toLowerCase().includes(q) ||
-      orderStatus.includes(q) ||
-      String(order.total ?? '').includes(q);
+      const matchesSearch =
+        !q ||
+        String(order.id ?? '').toLowerCase().includes(q) ||
+        formatOrderId(order.id).toLowerCase().includes(q) ||
+        customerStr.toLowerCase().includes(q) ||
+        orderStatus.includes(q) ||
+        String(order.total ?? '').includes(q);
 
-    return matchesTab && matchesSearch;
-  });
+      return matchesTab && matchesSearch;
+    });
+  }, [orders, activeTab, searchQuery]);
 
   const totalPages   = Math.max(1, Math.ceil(filteredOrders.length / ORDERS_PER_PAGE));
   const safePage     = Math.min(currentPage, totalPages);
   const startIndex   = (safePage - 1) * ORDERS_PER_PAGE;
-  const pagedOrders  = filteredOrders.slice(startIndex, startIndex + ORDERS_PER_PAGE);
+  const pagedOrders  = useMemo(() => {
+    return filteredOrders.slice(startIndex, startIndex + ORDERS_PER_PAGE);
+  }, [filteredOrders, startIndex]);
 
   const goToPage = (page) => {
     const p = Math.max(1, Math.min(page, totalPages));
@@ -552,7 +675,7 @@ const OrderManagement = () => {
     return pages;
   })();
 
-  const countForTab = (tab) => {
+  const countForTab = useCallback((tab) => {
     if (tab === 'All') return orders.length;
     const tabLower = tab.toLowerCase();
     return orders.filter((o) => {
@@ -560,7 +683,7 @@ const OrderManagement = () => {
       if (status === 'delivered') status = 'fulfilled';
       return status === tabLower;
     }).length;
-  };
+  }, [orders]);
 
   const getDisplayStatus = (status) => {
     if (typeof status === 'string' && status.toLowerCase() === 'delivered') return 'Fulfilled';
@@ -572,13 +695,13 @@ const OrderManagement = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#ecece7] text-slate-800 p-3 gap-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="flex min-h-screen bg-[#ecece7] text-slate-800 gap-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
       <VendorSidebar activePage="orders" />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         <Navbar3 />
 
-        <main className="p-5 max-w-[1400px] mx-auto w-full pb-16">
+        <main className="flex-1 p-5 max-w-[1400px] mx-auto w-full pb-24">
           <div className="mb-5">
             <h1 className="text-xl font-bold text-[#1A1A1A] tracking-tight">Order Management</h1>
             <p className="text-slate-400 text-[11px] mt-0.5">View, confirm, and complete orders with pickup code verification.</p>
@@ -586,33 +709,14 @@ const OrderManagement = () => {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-            <StatCard title="Total Orders" number={isFetching ? '—' : String(totalOrders)} icon={Package} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
-            <StatCard title="Active Orders" number={isFetching ? '—' : String(activeOrders)} icon={Clock} iconBgColor="bg-blue-50" iconColor="text-blue-600" />
-            <StatCard title="Revenue" number={isFetching ? '—' : `${currencySymbol} ${revenue.toLocaleString()}`} icon={CircleDollarSign} iconBgColor="bg-orange-50" iconColor="text-orange-600" />
+            <StatCard title="Total Orders" number={isFetching && showSkeleton ? '—' : String(totalOrders)} icon={Package} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
+            <StatCard title="Active Orders" number={isFetching && showSkeleton ? '—' : String(activeOrders)} icon={Clock} iconBgColor="bg-blue-50" iconColor="text-blue-600" />
+            <StatCard title="Revenue" number={isFetching && showSkeleton ? '—' : `${currencySymbol} ${revenue.toLocaleString()}`} icon={CircleDollarSign} iconBgColor="bg-orange-50" iconColor="text-orange-600" />
           </div>
 
-          {/* Search Bar */}
-          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm mb-3">
-            <div className="relative w-full max-w-lg">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by Order ID, customer name, status or amount…"
-                className="w-full pl-9 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-[#F5B841] focus:border-transparent transition font-medium text-slate-700 placeholder-slate-400"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                  <X size={13} />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Tab Filters */}
-          <div className="bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm mb-5 overflow-x-auto">
-            <div className="flex gap-1 min-w-max">
+          {/* Table Controls Row */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex gap-1 overflow-x-auto">
               {TAB_FILTERS.map((tab) => {
                 const count = countForTab(tab);
                 const isActive = activeTab === tab;
@@ -634,18 +738,31 @@ const OrderManagement = () => {
                 );
               })}
             </div>
+
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Filter by ID, customer..."
+                className="pl-8 pr-8 py-1 border border-slate-200 rounded-lg text-[10px] outline-none focus:ring-1 focus:ring-[#F5B841] w-48"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
           </div>
 
-          {searchQuery && (
-            <p className="text-[10px] text-slate-400 font-medium mb-3 px-1">
-              {filteredOrders.length === 0 ? `No results for "${searchQuery}"` : `${filteredOrders.length} result${filteredOrders.length !== 1 ? 's' : ''} for "${searchQuery}"`}
-            </p>
-          )}
-
           {/* Orders Table */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <table className="w-full text-left">
-              <thead className="bg-slate-50/50 text-[9px] font-black text-slate-400 uppercase tracking-[0.1em] border-b border-slate-100">
+              <thead className="bg-slate-50 text-slate-400 font-bold uppercase text-[9px]">
                 <tr>
                   <th className="px-4 py-3 w-10"><input type="checkbox" className="rounded border-slate-300 w-3 h-3" /></th>
                   <th className="px-4 py-3">Order ID</th>
@@ -657,7 +774,7 @@ const OrderManagement = () => {
                 </tr>
               </thead>
               <tbody>
-                {isFetching ? (
+                {isFetching && showSkeleton ? (
                   [...Array(4)].map((_, i) => (
                     <tr key={i} className="border-b border-slate-50">
                       <td colSpan="7" className="px-4 py-3"><div className="h-4 bg-slate-100 rounded animate-pulse w-full" /></td>
@@ -708,20 +825,25 @@ const OrderManagement = () => {
                 )}
               </tbody>
             </table>
+          </div>
 
-            {/* Pagination */}
-            <div className="p-3 border-t border-slate-100 flex justify-between items-center bg-white">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                Showing {filteredOrders.length === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + ORDERS_PER_PAGE, filteredOrders.length)} of {filteredOrders.length} orders
-              </p>
-              <div className="flex items-center gap-1">
-                <button onClick={() => goToPage(safePage - 1)} disabled={safePage === 1} className="px-2.5 py-1 text-[10px] font-bold border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed">Previous</button>
-                {pageNumbers.map((page) => (
-                  <button key={page} onClick={() => goToPage(page)} className={`w-7 h-7 text-[10px] font-bold rounded-md transition-colors ${page === safePage ? 'bg-[#125852] text-white shadow-sm' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{page}</button>
-                ))}
-                <button onClick={() => goToPage(safePage + 1)} disabled={safePage === totalPages} className="px-2.5 py-1 text-[10px] font-bold border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed">Next</button>
-              </div>
+          {/* Pagination */}
+          <div className="mt-4 p-3 bg-white rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+              Showing {filteredOrders.length === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + ORDERS_PER_PAGE, filteredOrders.length)} of {filteredOrders.length} orders
+            </p>
+            <div className="flex items-center gap-1">
+              <button onClick={() => goToPage(safePage - 1)} disabled={safePage === 1} className="px-2.5 py-1 text-[10px] font-bold border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed">Previous</button>
+              {pageNumbers.map((page) => (
+                <button key={page} onClick={() => goToPage(page)} className={`w-7 h-7 text-[10px] font-bold rounded-md transition-colors ${page === safePage ? 'bg-[#125852] text-white shadow-sm' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{page}</button>
+              ))}
+              <button onClick={() => goToPage(safePage + 1)} disabled={safePage === totalPages} className="px-2.5 py-1 text-[10px] font-bold border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed">Next</button>
             </div>
+          </div>
+
+          {/* Results count */}
+          <div className="mt-5 pt-4 border-t border-slate-100 flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+            <p>{filteredOrders.length} Result{filteredOrders.length !== 1 ? 's' : ''}</p>
           </div>
         </main>
 
@@ -729,7 +851,7 @@ const OrderManagement = () => {
       </div>
 
       {selectedOrder && (
-        <OrderDetailModal
+        <OrderDetailModal 
           order={selectedOrder}
           currencySymbol={currencySymbol}
           onClose={() => setSelectedOrder(null)}
