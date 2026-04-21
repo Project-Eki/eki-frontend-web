@@ -591,3 +591,95 @@ export const markNotificationRead = async (notificationId) => {
   );
   return response.data;
 };
+
+
+
+/*  PAYMENTS & TRANSACTIONS  */
+
+// Get payment transactions with filters and pagination
+export const getPaymentTransactions = async (filters = {}) => {
+  const {
+    status = '',
+    date_from = '',
+    date_to = '',
+    reference = '',
+    order_reference = '',
+    customer_email = '',
+    limit = 50,
+    offset = 0
+  } = filters;
+
+  const params = {};
+  if (status) params.status = status;
+  if (date_from) params.date_from = date_from;
+  if (date_to) params.date_to = date_to;
+  if (reference) params.reference = reference;
+  if (order_reference) params.order_reference = order_reference;
+  if (customer_email) params.customer_email = customer_email;
+  params.limit = limit;
+  params.offset = offset;
+
+  const response = await api.get("/payments/payments/", { params });
+  return response.data;
+};
+
+// Get transaction summary for dashboard
+export const getTransactionSummary = async (days = 30) => {
+  const response = await api.get("/payments/summary/", { params: { days } });
+  return response.data;
+};
+
+// Get wallet transactions (admin only)
+export const getWalletTransactions = async (filters = {}) => {
+  const {
+    type = '',
+    vendor_id = '',
+    date_from = '',
+    date_to = '',
+    limit = 50,
+    offset = 0
+  } = filters;
+
+  const params = {};
+  if (type) params.type = type;
+  if (vendor_id) params.vendor_id = vendor_id;
+  if (date_from) params.date_from = date_from;
+  if (date_to) params.date_to = date_to;
+  params.limit = limit;
+  params.offset = offset;
+
+  const response = await api.get("/payments/wallet-transactions/", { params });
+  return response.data;
+};
+
+// Get withdrawal requests (admin only)
+export const getWithdrawalRequests = async (filters = {}) => {
+  const {
+    status = '',
+    vendor_id = '',
+    date_from = '',
+    date_to = '',
+    limit = 50,
+    offset = 0
+  } = filters;
+
+  const params = {};
+  if (status) params.status = status;
+  if (vendor_id) params.vendor_id = vendor_id;
+  if (date_from) params.date_from = date_from;
+  if (date_to) params.date_to = date_to;
+  params.limit = limit;
+  params.offset = offset;
+
+  const response = await api.get("/payments/withdrawals/", { params });
+  return response.data;
+};
+
+// Process withdrawal (approve/reject)
+export const processWithdrawal = async (withdrawalId, action, rejectionReason = "") => {
+  const response = await api.post(`/payments/withdrawals/${withdrawalId}/process/`, {
+    action,
+    rejection_reason: rejectionReason
+  });
+  return response.data;
+};
