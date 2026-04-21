@@ -72,13 +72,13 @@ const StarRating = ({ rating = 0 }) => (
 
 // ─── Order Detail Modal ───────────────────────────────────────────────────────
 const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) => {
-  const [step, setStep]         = useState('detail');
+  const [step, setStep]           = useState('detail');
   const [codeInput, setCodeInput] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [resending, setResending]   = useState(false);
-  const [errorMsg, setErrorMsg]   = useState('');
-  const [buyerName, setBuyerName] = useState('');
+  const [errorMsg, setErrorMsg]     = useState('');
+  const [buyerName, setBuyerName]   = useState('');
 
   if (!order) return null;
 
@@ -101,20 +101,23 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
     ? (() => { try { return new Date(order.date).toLocaleString(); } catch (_) { return order.date; } })()
     : '—';
 
+  // ── Confirm order — uses unified action endpoint: confirm_onsite ────────────
   const handleConfirmOrder = async () => {
     setConfirming(true);
     setErrorMsg('');
     try {
       await confirmVendorOrder(order.id);
+      // Refresh orders in background without closing modal — avoid flicker
       onOrderUpdated?.();
       setStep('pickup');
     } catch (err) {
-      setErrorMsg(err.response?.data?.message || 'Failed to confirm order. Please try again.');
+      setErrorMsg(err.response?.data?.message || err.response?.data?.detail || 'Failed to confirm order. Please try again.');
     } finally {
       setConfirming(false);
     }
   };
 
+  // ── Verify pickup code — uses unified action endpoint: mark_fulfilled ───────
   const handleVerifyCode = async () => {
     if (!codeInput.trim()) { setErrorMsg('Please enter the pickup code.'); return; }
     setVerifying(true);
@@ -125,17 +128,13 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
       onOrderUpdated?.();
       setStep('success');
     } catch (err) {
-      const msg = err.response?.data?.message || '';
-      if (msg.toLowerCase().includes('invalid') || msg.toLowerCase().includes('incorrect')) {
-        setStep('failure');
-      } else {
-        setStep('failure');
-      }
+      setStep('failure');
     } finally {
       setVerifying(false);
     }
   };
 
+  // ── Resend code — uses unified action endpoint: resend_code ─────────────────
   const handleResendCode = async () => {
     setResending(true);
     try {
@@ -425,17 +424,17 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
 // ─── Main Component ───────────────────────────────────────────────────────────
 const OrderManagement = () => {
   const [orders,         setOrders]         = useState([]);
-  const [isFetching,     setIsFetching]     = useState(false);
-  const [showSkeleton,   setShowSkeleton]   = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);  // only true on first load
   const [activeTab,      setActiveTab]      = useState('All');
   const [searchQuery,    setSearchQuery]    = useState('');
   const [currencySymbol, setCurrencySymbol] = useState('UGX');
   const [selectedOrder,  setSelectedOrder]  = useState(null);
   const [currentPage,    setCurrentPage]    = useState(1);
 
-  const isMountedRef       = useRef(true);
-  const fetchingRef        = useRef(false);
-  const skeletonTimerRef   = useRef(null);
+  const isMountedRef  = useRef(true);
+  const fetchingRef   = useRef(false);
+  // Keep a stable copy of orders so background polls never blank the UI
+  const ordersRef     = useRef([]);
 
   // ── Derived stats ───────────────────────────────────────────────────────────
   const totalOrders  = orders.length;
@@ -444,7 +443,7 @@ const OrderManagement = () => {
   ).length;
   const revenue = orders.reduce((sum, o) => sum + Number(o.total ?? 0), 0);
 
-  // ── Load currency from dashboard ────────────────────────────────────────────
+  // ── Load currency from dashboard (once, no flicker) ─────────────────────────
   useEffect(() => {
     getVendorDashboard()
       .then((data) => {
@@ -455,41 +454,49 @@ const OrderManagement = () => {
       .catch(() => {});
   }, []);
 
-  // ── Fetch orders ─────────────────────────────────────────────────────────────
-  const fetchOrders = useCallback(async () => {
+  // ── Fetch orders — ANTI-FLICKER design ───────────────────────────────────────
+  // • On first load: show skeleton until data arrives, then render.
+  // • On subsequent polls: update state ONLY when data actually changes,
+  //   so React skips re-renders that would cause visible flicker.
+  const fetchOrders = useCallback(async (isInitial = false) => {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
 
-    // Show skeleton only if fetch takes > 200 ms
-    if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current);
-    skeletonTimerRef.current = setTimeout(() => {
-      if (isMountedRef.current && fetchingRef.current) setShowSkeleton(true);
-    }, 200);
-
-    setIsFetching(true);
     try {
       const data = await getVendorOrders();
-      if (isMountedRef.current) setOrders(Array.isArray(data) ? data : []);
+      if (!isMountedRef.current) return;
+
+      const incoming = Array.isArray(data) ? data : [];
+
+      // Shallow-compare by stringifying IDs + statuses to avoid unnecessary re-renders
+      const currentSignature = ordersRef.current
+        .map((o) => `${o.id}:${o.status}`).join(',');
+      const incomingSignature = incoming
+        .map((o) => `${o.id}:${o.status}`).join(',');
+
+      if (isInitial || currentSignature !== incomingSignature) {
+        ordersRef.current = incoming;
+        setOrders(incoming);
+      }
     } catch (err) {
       if (isMountedRef.current) {
         console.error('[OrderManagement] fetch error:', err);
-        setOrders([]);
+        // On initial load failure set empty; on poll failure keep existing data
+        if (isInitial) setOrders([]);
       }
     } finally {
-      if (skeletonTimerRef.current) { clearTimeout(skeletonTimerRef.current); skeletonTimerRef.current = null; }
-      if (isMountedRef.current) { setIsFetching(false); setShowSkeleton(false); }
       fetchingRef.current = false;
+      if (isInitial && isMountedRef.current) setInitialLoading(false);
     }
   }, []);
 
   useEffect(() => {
     isMountedRef.current = true;
-    fetchOrders();
-    const interval = setInterval(fetchOrders, 30_000);
+    fetchOrders(true); // initial load — shows skeleton
+    const interval = setInterval(() => fetchOrders(false), 30_000); // silent polls
     return () => {
       isMountedRef.current = false;
       clearInterval(interval);
-      if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current);
     };
   }, [fetchOrders]);
 
@@ -544,6 +551,12 @@ const OrderManagement = () => {
     return orders.filter((o) => normalizeStatus(o.status) === tab.toLowerCase()).length;
   }, [orders]);
 
+  // ── onOrderUpdated: silently refresh without blanking UI ────────────────────
+  const handleOrderUpdated = useCallback(() => {
+    fetchOrders(false);
+    setSelectedOrder(null);
+  }, [fetchOrders]);
+
   return (
     <div className="flex min-h-screen bg-[#ecece7] text-slate-800" style={{ fontFamily: "'Poppins', sans-serif" }}>
       <VendorSidebar activePage="orders" />
@@ -560,9 +573,9 @@ const OrderManagement = () => {
 
           {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 mb-5 sm:mb-6">
-            <StatCard title="Total Orders"  value={showSkeleton ? '—' : String(totalOrders)}  icon={Package}          iconBg="bg-emerald-50" iconColor="text-emerald-600" />
-            <StatCard title="Active Orders" value={showSkeleton ? '—' : String(activeOrders)} icon={Clock}            iconBg="bg-blue-50"    iconColor="text-blue-600"    />
-            <StatCard title="Revenue"       value={showSkeleton ? '—' : `${currencySymbol} ${revenue.toLocaleString()}`} icon={CircleDollarSign} iconBg="bg-orange-50" iconColor="text-orange-600" />
+            <StatCard title="Total Orders"  value={initialLoading ? '—' : String(totalOrders)}  icon={Package}          iconBg="bg-emerald-50" iconColor="text-emerald-600" />
+            <StatCard title="Active Orders" value={initialLoading ? '—' : String(activeOrders)} icon={Clock}            iconBg="bg-blue-50"    iconColor="text-blue-600"    />
+            <StatCard title="Revenue"       value={initialLoading ? '—' : `${currencySymbol} ${revenue.toLocaleString()}`} icon={CircleDollarSign} iconBg="bg-orange-50" iconColor="text-orange-600" />
           </div>
 
           {/* Tab filters + search */}
@@ -622,7 +635,7 @@ const OrderManagement = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {showSkeleton ? (
+                  {initialLoading ? (
                     [...Array(4)].map((_, i) => (
                       <tr key={i} className="border-b border-slate-50">
                         <td colSpan={6} className="px-4 py-3">
@@ -680,7 +693,7 @@ const OrderManagement = () => {
 
             {/* Mobile card list */}
             <div className="sm:hidden divide-y divide-slate-50">
-              {showSkeleton ? (
+              {initialLoading ? (
                 [...Array(3)].map((_, i) => (
                   <div key={i} className="p-4 space-y-2">
                     <div className="h-3 bg-slate-100 rounded animate-pulse w-1/3" />
@@ -759,7 +772,7 @@ const OrderManagement = () => {
           order={selectedOrder}
           currencySymbol={currencySymbol}
           onClose={() => setSelectedOrder(null)}
-          onOrderUpdated={() => { fetchOrders(); setSelectedOrder(null); }}
+          onOrderUpdated={handleOrderUpdated}
         />
       )}
     </div>

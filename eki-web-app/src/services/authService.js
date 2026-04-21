@@ -439,44 +439,44 @@ export const getVendorOrders = async ({ status = '', search = '' } = {}) => {
   }
 };
 
-export const updateVendorOrderStatus = async (orderId, status) => {
-  const r = await api.patch(`/orders/vendor/orders-status/${orderId}/`, { status });
+// ─── Unified Vendor Action Endpoint ──────────────────────────────────────────
+// POST /api/v1/orders/vendor/action/{order_id}/
+// Handles: ready_for_pickup, start_service, complete_service,
+//          confirm_onsite, resend_code, update_tracking, mark_fulfilled, update_status
+const vendorOrderAction = async (orderId, action, extraPayload = {}) => {
+  const r = await api.post(`/orders/vendor/action/${orderId}/`, {
+    action,
+    ...extraPayload,
+  });
   return r.data?.data ?? r.data;
 };
 
-export const startServiceOrder = async (orderId) => {
-  const r = await api.post(`/orders/start-service/${orderId}/`);
-  return r.data?.data ?? r.data;
-};
+// ─── Order Actions (all via unified endpoint) ────────────────────────────────
+export const confirmVendorOrder = (orderId) =>
+  vendorOrderAction(orderId, 'confirm_onsite');
 
-export const completeServiceOrder = async (orderId) => {
-  const r = await api.post(`/orders/complete-service/${orderId}/`);
-  return r.data?.data ?? r.data;
-};
-
-export const markOrderReadyForPickup = async (orderId) => {
-  const r = await api.post(`/orders/ready-for-pickup/${orderId}/`);
-  return r.data?.data ?? r.data;
-};
-
-// ─── Order Confirmation & Pickup Code Verification ────────────────────────────
-// POST /api/v1/orders/{order_id}/vendor-confirm-onsite/
-export const confirmVendorOrder = async (orderId) => {
-  const r = await api.post(`/orders/${orderId}/vendor-confirm-onsite/`);
-  return r.data?.data ?? r.data;
-};
-
-// POST /api/v1/orders/{order_id}/fulfil/
 export const verifyPickupCode = async (orderId, code) => {
-  const r = await api.post(`/orders/${orderId}/fulfil/`, { pickup_code: code });
-  return r.data?.data ?? r.data;
+  const r = await vendorOrderAction(orderId, 'mark_fulfilled', { pickup_code: code });
+  return r;
 };
 
-// POST /api/v1/orders/{order_id}/resend-code/
-export const resendPickupCode = async (orderId) => {
-  const r = await api.post(`/orders/${orderId}/resend-code/`);
-  return r.data?.data ?? r.data;
-};
+export const resendPickupCode = (orderId) =>
+  vendorOrderAction(orderId, 'resend_code');
+
+export const updateVendorOrderStatus = (orderId, status) =>
+  vendorOrderAction(orderId, 'update_status', { status });
+
+export const startServiceOrder = (orderId) =>
+  vendorOrderAction(orderId, 'start_service');
+
+export const completeServiceOrder = (orderId) =>
+  vendorOrderAction(orderId, 'complete_service');
+
+export const markOrderReadyForPickup = (orderId) =>
+  vendorOrderAction(orderId, 'ready_for_pickup');
+
+export const updateOrderTracking = (orderId, trackingData) =>
+  vendorOrderAction(orderId, 'update_tracking', trackingData);
 
 // ─── Wallet & Escrow ─────────────────────────────────────────────────────────
 export const getVendorWallet = async () => {
