@@ -149,7 +149,7 @@ const VendorOnboarding = () => {
                     >
                       <div className="mb-5">
                         <h2 className="text-[22px] font-black text-gray-900 leading-tight">
-                          Join to enjoy faster Sales
+                          Enjoy easy Sales
                         </h2>
                         <p className="text-gray-500 text-[13px] mt-1">
                           Let's start with the basics to get your account ready.

@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
-import { HiOutlineCloudUpload, HiCheckCircle, HiOutlineCalendar } from "react-icons/hi";
+import { HiOutlineCloudUpload, HiCheckCircle, HiOutlineCalendar, HiCheck } from "react-icons/hi";
 import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
 import { validateOperationCompliance } from "../utils/onboardingValidation";
 import { completeVendorOnboarding, getVendorProfile } from "../services/api";
@@ -13,6 +13,9 @@ const OperationCompliance = () => {
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [submitError, setSubmitError] = useState("");
+  
+  // Ref for scrolling to error message
+  const errorMessageRef = useRef(null);
 
   // File refs for documents
   const govtIdRef = useRef(null);
@@ -58,6 +61,17 @@ const OperationCompliance = () => {
     } catch (err) {
       console.error("Failed to check saved data:", err);
       return null;
+    }
+  };
+
+  // Function to scroll to error message
+  const scrollToError = () => {
+    if (errorMessageRef.current) {
+      errorMessageRef.current.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start',
+        inline: 'nearest'
+      });
     }
   };
 
@@ -115,6 +129,7 @@ const OperationCompliance = () => {
         tax_certificate: true,
         incorporation_cert: true,
       });
+      scrollToError(); // Scroll to error message
       return;
     }
     
@@ -129,6 +144,7 @@ const OperationCompliance = () => {
     
     if (missingExpiries.length > 0) {
       setSubmitError(`Please provide expiry dates for: ${missingExpiries.join(', ')}`);
+      scrollToError(); // Scroll to error message
       return;
     }
 
@@ -189,6 +205,7 @@ const OperationCompliance = () => {
       } else {
         console.log("Validation failed:", validationErrors);
         setSubmitError("Please fix the validation errors before continuing.");
+        scrollToError(); // Scroll to error message
       }
     } catch (error) {
       console.error("Failed to save profile:", error);
@@ -205,6 +222,7 @@ const OperationCompliance = () => {
       }
       
       setSubmitError(errorMessage);
+      scrollToError(); // Scroll to error message
     } finally {
       setIsLoading(false);
     }
@@ -286,8 +304,9 @@ const OperationCompliance = () => {
           )}
           {/* Add helper text for incorporation certificate */}
           {field === 'incorporation_cert' && (
-            <p className="text-[7px] text-blue-500 mt-0.5">
-              ✓ Incorporation certificates do not expire
+            <p className="text-[7px] text-[#F2B53D] mt-0.5 flex items-center gap-1">
+              <HiCheck />
+                Incorporation certificates do not expire
             </p>
           )}
         </div>
@@ -358,7 +377,9 @@ const OperationCompliance = () => {
           {field === 'incorporation_cert' && (
             <div className="sm:w-[180px]">
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-1.5 text-center">
-                <span className="text-[8px] font-medium text-gray-600">✓ No Expiry Date</span>
+                <span className="text-[8px] font-medium text-gray-600 flex items-center gap-1"> 
+                  <HiCheck />
+                   No Expiry Date</span>
               </div>
             </div>
           )}
@@ -379,8 +400,12 @@ const OperationCompliance = () => {
         </div>
       </div>
 
+      {/* Error message with ref for scrolling */}
       {submitError && (
-        <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded-md">
+        <div 
+          ref={errorMessageRef}
+          className="mb-2 p-2 bg-red-50 border border-red-200 rounded-md"
+        >
           <p className="text-red-600 text-[8px] font-medium">{submitError}</p>
         </div>
       )}
@@ -395,11 +420,11 @@ const OperationCompliance = () => {
         />
 
         <DocumentSection
-          label="Professional Certification"
-          field="professional_body_certification"
-          description="Optional: PRC, CPA, Engineering"
-          required={false}
-          showExpiry={true}
+          label="Incorporation Certificate"
+          field="incorporation_cert"
+          description="Certificate of incorporation"
+          required={true}
+          showExpiry={false}
         />
 
         <DocumentSection
@@ -419,11 +444,11 @@ const OperationCompliance = () => {
         />
 
         <DocumentSection
-          label="Incorporation Certificate"
-          field="incorporation_cert"
-          description="Certificate of incorporation"
-          required={true}
-          showExpiry={false}
+          label="Professional Certification"
+          field="professional_body_certification"
+          description="Optional: PRC, CPA, Engineering"
+          required={false}
+          showExpiry={true}
         />
       </div>
 
@@ -439,7 +464,7 @@ const OperationCompliance = () => {
           disabled={isLoading}
           className="flex-1 max-w-[100px] h-6 rounded-full text-white font-bold text-[9px] transition-all bg-[#D99201] hover:bg-[#e0a630] disabled:opacity-50"
         >
-          {isLoading ? "Saving..." : "Review All"}
+          {isLoading ? "Saving..." : "Review And Submit"}
         </button>
       </div>
     </div>

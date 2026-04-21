@@ -102,7 +102,7 @@ function App() {
             </ProtectedRoute>
           } />
 
-          <Route path="/servicemanagement" element={
+          <Route path="/services" element={
             <ProtectedRoute allowedRole="vendor">
               <VendorLayout><ServiceManagement /></VendorLayout>
             </ProtectedRoute>

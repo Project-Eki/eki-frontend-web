@@ -176,7 +176,7 @@ const VerifyEmail = () => {
         </p>
       )}
 
-      {/* Action Buttons - More compact */}
+      {/* Action Buttons - More compact, Back button removed */}
       <div className="w-full flex flex-col items-center gap-2 mt-2">
         <p className="text-gray-500 text-[11px] sm:text-xs">
           Didn't receive the email?{" "}
@@ -189,13 +189,6 @@ const VerifyEmail = () => {
             {isResending ? "Sending..." : "Resend Code"}
           </button>
         </p>
-
-        <button
-          onClick={() => dispatch({ type: ACTIONS.PREV_STEP })}
-          className="text-xs font-bold text-gray-400 hover:text-gray-600 transition-all cursor-pointer"
-        >
-          Back
-        </button>
       </div>
     </div>
   );

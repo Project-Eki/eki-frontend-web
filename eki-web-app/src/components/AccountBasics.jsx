@@ -76,12 +76,6 @@ const AccountBasics = () => {
     }
   };
 
-  const getPlaceholder = (field, defaultPlaceholder) => {
-    const fieldsWithInlineErrors = ['email', 'password', 'confirmPassword'];
-    if (fieldsWithInlineErrors.includes(field)) return defaultPlaceholder;
-    return errors[field] ? errors[field] : defaultPlaceholder;
-  };
-
   const handleContinue = async (e) => {
     if (e) e.preventDefault();
 
@@ -130,40 +124,43 @@ const AccountBasics = () => {
   };
 
   return (
-    // REMOVED: max-w-[580px] mx-auto from this div
     <div className="w-full animate-slideUp">
       <form className="space-y-2.5" onSubmit={handleContinue}>
         {errors.general && <MessageAlert message={errors.general} type="error" />}
 
         {/* Name Fields */}
         <div className="account-basics-grid grid grid-cols-2 gap-3">
+          {/* First Name */}
           <div className="relative">
             <FaRegUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={12} />
             <input
               type="text"
-              placeholder={getPlaceholder('first_name', 'First Name')}
+              placeholder="First Name"
               value={formData.first_name}
               onChange={(e) => handleChange('first_name', e.target.value)}
-              className={`w-full h-8 pl-9 pr-3 bg-white border rounded-xl focus:outline-none text-[13px] ${
+              className={`w-full h-8 pl-9 pr-3 bg-white border rounded-xl focus:outline-none text-[11px] transition-colors ${
                 errors.first_name
-                  ? 'placeholder:text-red-400 border-red-400'
-                  : 'border-gray-200 placeholder:text-gray-400'
+                  ? 'border-red-400 focus:border-red-500'
+                  : 'border-gray-200 focus:border-[#F2B53D]'
               }`}
             />
+            {errors.first_name && <InlineError message={errors.first_name} />}
           </div>
 
+          {/* Last Name */}
           <div className="relative">
             <input
               type="text"
-              placeholder={getPlaceholder('last_name', 'Last Name')}
+              placeholder="Last Name"
               value={formData.last_name}
               onChange={(e) => handleChange('last_name', e.target.value)}
-              className={`w-full h-8 px-3 bg-white border rounded-xl focus:outline-none text-[13px] ${
+              className={`w-full h-8 px-3 bg-white border rounded-xl focus:outline-none text-[11px] transition-colors ${
                 errors.last_name
-                  ? 'placeholder:text-red-400 border-red-400'
-                  : 'border-gray-200 placeholder:text-gray-400'
+                  ? 'border-red-400 focus:border-red-500'
+                  : 'border-gray-200 focus:border-[#F2B53D]'
               }`}
             />
+            {errors.last_name && <InlineError message={errors.last_name} />}
           </div>
         </div>
 
@@ -175,10 +172,10 @@ const AccountBasics = () => {
             placeholder="Email Address"
             value={formData.email}
             onChange={(e) => handleChange('email', e.target.value)}
-            className={`w-full h-8 pl-9 bg-white border rounded-xl focus:outline-none text-[13px] transition-all ${
+            className={`w-full h-8 pl-9 bg-white border rounded-xl focus:outline-none text-[11px] transition-colors ${
               errors.email
-                ? 'pr-28 border-red-400 placeholder:text-gray-400'
-                : 'pr-3 border-gray-200 placeholder:text-gray-400'
+                ? 'pr-28 border-red-400 focus:border-red-500'
+                : 'pr-3 border-gray-200 focus:border-[#F2B53D]'
             }`}
           />
           {errors.email && <InlineError message={errors.email} />}
@@ -194,13 +191,13 @@ const AccountBasics = () => {
               placeholder="Password"
               value={formData.password}
               onChange={(e) => handleChange('password', e.target.value)}
-              className={`w-full h-8 pl-9 bg-white border rounded-xl focus:outline-none text-[13px] transition-all ${
+              className={`w-full h-8 pl-9 bg-white border rounded-xl focus:outline-none text-[11px] transition-colors ${
                 errors.password
-                  ? 'pr-28 border-red-400 placeholder:text-gray-400'
-                  : 'pr-10 border-gray-200 placeholder:text-gray-400'
+                  ? 'pr-28 border-red-400 focus:border-red-500'
+                  : 'pr-10 border-gray-200 focus:border-[#F2B53D]'
               }`}
             />
-            {!errors.password && (
+            {!errors.password && formData.password && (
               <div
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer p-0.5 z-10"
@@ -219,13 +216,13 @@ const AccountBasics = () => {
               placeholder="Confirm Password"
               value={formData.confirmPassword || ''}
               onChange={(e) => handleChange('confirmPassword', e.target.value)}
-              className={`w-full h-8 pl-9 bg-white border rounded-xl focus:outline-none text-[13px] transition-all ${
+              className={`w-full h-8 pl-9 bg-white border rounded-xl focus:outline-none text-[11px] transition-colors ${
                 errors.confirmPassword
-                  ? 'pr-28 border-red-400 placeholder:text-gray-400'
-                  : 'pr-10 border-gray-200 placeholder:text-gray-400'
+                  ? 'pr-28 border-red-400 focus:border-red-500'
+                  : 'pr-10 border-gray-200 focus:border-[#F2B53D]'
               }`}
             />
-            {!errors.confirmPassword && (
+            {!errors.confirmPassword && formData.confirmPassword && (
               <div
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer p-0.5 z-10"
@@ -239,7 +236,7 @@ const AccountBasics = () => {
 
         {/* Password Strength Indicator */}
         {formData.password?.length > 0 && (
-          <div className=" space-y-1">
+          <div className="space-y-1">
             <div className="flex gap-1">
               {[1, 2, 3].map((bar) => (
                 <div
@@ -258,8 +255,9 @@ const AccountBasics = () => {
           </div>
         )}
 
-        <p className="text-[10px] text-gray-500 leading-relaxed px-1">
-          At least 8 chars, upper/lower case, unique from email, and non-numeric.
+        <p className="text-[9px] text-gray-500 leading-relaxed px-1">
+          Password must be at least 8 characters, contain uppercase & lowercase letters, 
+          not match your email, and not be only numbers.
         </p>
 
         <div className="flex flex-col gap-0.5 pt-0.5">
@@ -283,8 +281,8 @@ const AccountBasics = () => {
         <button
           type="submit"
           disabled={isLoading || !isFormValid}
-          className={`w-full h-7 rounded-full text-white font-bold text-[12px] transition-all mt-2 ${
-            isLoading || !isFormValid ? 'bg-gray-400' : 'bg-[#D99201] hover:bg-[#e0a630]'
+          className={`w-full h-8 rounded-full text-white font-bold text-[11px] transition-all mt-2 ${
+            isLoading || !isFormValid ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#D99201] hover:bg-[#e0a630]'
           }`}
         >
           {isLoading ? "Creating Account..." : "Continue"}

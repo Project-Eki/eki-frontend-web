@@ -27,11 +27,16 @@ const VendorSidebar = ({ activePage }) => {
       <aside
         className="w-56 flex flex-col sticky top-3 h-[calc(100vh-1.5rem)] shadow-sm rounded-2xl font-popins"
         style={{
-          background: "linear-gradient(160deg, #125852 0%, #0e4440 40%, #0b3330 100%)",
+          background:
+            "linear-gradient(160deg, #125852 0%, #0e4440 40%, #0b3330 100%)",
         }}
       >
         <div className="p-4 pt-5 pb-4">
-          <img src={logo} alt="Eki" className="h-14 w-auto object-contain mx-auto" />
+          <img
+            src={logo}
+            alt="Eki"
+            className="h-14 w-auto object-contain mx-auto"
+          />
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-white/60 text-sm">
@@ -65,8 +70,8 @@ const VendorSidebar = ({ activePage }) => {
     },
   ];
 
-  // Only show Products tab for product vendors
-  if (vendorType === "product") {
+  // Show Products tab for product vendors OR both vendors
+  if (vendorType === "product" || vendorType === "both") {
     menuItems.push({
       to: "/product-dashboard",
       icon: <ShoppingBag size={16} />,
@@ -75,10 +80,10 @@ const VendorSidebar = ({ activePage }) => {
     });
   }
 
-  // Only show Services tab for service vendors
-  if (vendorType === "service") {
+  // Show Services tab for service vendors OR both vendors
+  if (vendorType === "service" || vendorType === "both") {
     menuItems.push({
-      to: "/servicemanagement",
+      to: "/services",
       icon: <Package size={16} />,
       label: "Services",
       key: "services",
@@ -169,6 +174,6 @@ const VendorSidebar = ({ activePage }) => {
       />
     </>
   );
-};
+};;
 
 export default VendorSidebar;
