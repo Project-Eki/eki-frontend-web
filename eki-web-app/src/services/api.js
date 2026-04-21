@@ -204,9 +204,16 @@ const prepareVendorFormData = (formData, isFinalSubmission = false) => {
         return; // Skip this field entirely
       }
 
-      // Force business_category to lowercase
+      // Handle business_category - don't stringify arrays
       if (key === "business_category") {
-        value = String(value).toLowerCase();
+        if (Array.isArray(value)) {
+          // For FormData, we need to send as JSON string because FormData doesn't support nested arrays
+          // But for the PATCH request we're using JSON, not FormData
+          data.append(key, JSON.stringify(value));
+        } else {
+          data.append(key, String(value).toLowerCase());
+        }
+        return;
       }
 
       // Ensure phone doesn't have spaces and has a +
@@ -273,13 +280,40 @@ const prepareVendorFormData = (formData, isFinalSubmission = false) => {
 
 
 
-// Save vendor profile incrementally (PATCH) - Steps 3, 4, 5
 export const completeVendorOnboarding = async (formData) => {
-  // First: send text fields as JSON to confirm they save
+  // Get the business category value
+  let businessCategoryValue = formData.business_category;
+  
+  // If it's an array, send as JSON string (FormData doesn't support arrays)
+  if (Array.isArray(businessCategoryValue)) {
+    console.log("Sending array as JSON string:", businessCategoryValue);
+    businessCategoryValue = JSON.stringify(businessCategoryValue);
+  } else if (typeof businessCategoryValue === 'string') {
+    businessCategoryValue = businessCategoryValue.toLowerCase();
+  }
+  // // If it's an array, keep it as array (don't convert)
+  // // If it's a string, handle appropriately
+  // if (Array.isArray(businessCategoryValue)) {
+  //   // Keep as array - it will be JSON.stringify'd by axios automatically
+  //   console.log("Sending array:", businessCategoryValue);
+  // } else if (typeof businessCategoryValue === 'string') {
+  //   // Check if it's a stringified array
+  //   if (businessCategoryValue.startsWith('[') && businessCategoryValue.endsWith(']')) {
+  //     try {
+  //       businessCategoryValue = JSON.parse(businessCategoryValue);
+  //       console.log("Parsed string to array:", businessCategoryValue);
+  //     } catch (e) {
+  //       businessCategoryValue = businessCategoryValue.toLowerCase();
+  //     }
+  //   } else {
+  //     businessCategoryValue = businessCategoryValue.toLowerCase();
+  //   }
+  // }
+  
   const textPayload = {
     business_name: formData.business_name,
     business_type: formData.business_type,
-    business_category: formData.business_category?.toLowerCase(),
+    business_category: businessCategoryValue,  // Use the processed value
     owner_full_name: formData.owner_full_name,
     registration_number: formData.registration_number,
     tax_id: formData.tax_id,
