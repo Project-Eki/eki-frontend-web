@@ -9,7 +9,7 @@ const Footer = () => {
         
         {/* Tagline */}
         <div className="font-normal tracking-tight">
-          Buy Smart. Sell Fast. Grow Together...
+          Buy Smart. Sell easy
         </div>
 
         {/* Right Section: Navigation & Copyright */}

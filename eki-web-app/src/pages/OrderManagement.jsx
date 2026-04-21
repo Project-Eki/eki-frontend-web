@@ -17,16 +17,14 @@ import { getCurrencySymbol } from '../utils/currency';
 import {
   Search, List, CircleDollarSign, Clock, Package,
   X, Hash, User, Calendar, MapPin, ShoppingBag, Tag, Star,
-  CheckCircle, RefreshCw, Send,
+  CheckCircle, RefreshCw, Send, AlertTriangle,
 } from 'lucide-react';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatOrderId = (raw) => {
   if (!raw && raw !== 0) return '—';
   const str = String(raw).trim();
-  // Numeric IDs: zero-pad to 6 digits
   if (/^\d+$/.test(str)) return `#${str.padStart(6, '0')}`;
-  // UUID or long alphanumeric: show last 12 chars uppercased (matches notification display)
   if (str.length > 12) return `#${str.slice(-12).toUpperCase()}`;
   return `#${str.toUpperCase()}`;
 };
@@ -34,6 +32,20 @@ const formatOrderId = (raw) => {
 const normalizeStatus = (status) => {
   const s = String(status ?? '').toLowerCase();
   return s === 'delivered' ? 'fulfilled' : s;
+};
+
+// ── Extract the best human-readable message from an axios error ───────────────
+const extractErrorMessage = (err) => {
+  const data = err?.response?.data;
+  if (!data) return null;
+  if (typeof data === 'string' && data.length < 300) return data;
+  return (
+    data?.message ||
+    data?.detail ||
+    data?.error ||
+    data?.non_field_errors?.[0] ||
+    null
+  );
 };
 
 const STATUS_BADGE = {
@@ -72,22 +84,34 @@ const StarRating = ({ rating = 0 }) => (
   </div>
 );
 
+// ─── Friendly inline error banner ─────────────────────────────────────────────
+const ErrorBanner = ({ message, size = 'normal' }) => {
+  if (!message) return null;
+  return (
+    <div className={`flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl px-3.5 py-3 ${size === 'small' ? 'text-[10px]' : 'text-[11px]'}`}>
+      <AlertTriangle size={13} className="text-red-500 shrink-0 mt-0.5" />
+      <p className="text-red-700 font-medium leading-snug">{message}</p>
+    </div>
+  );
+};
+
 // ─── Order Detail Modal ───────────────────────────────────────────────────────
 const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) => {
   const [step, setStep]               = useState('detail');
   const [codeInput, setCodeInput]     = useState('');
-  const [confirmCode, setConfirmCode] = useState(''); // vendor confirmation_code for confirm_onsite
+  const [confirmCode, setConfirmCode] = useState('');
   const [verifying, setVerifying]     = useState(false);
   const [confirming, setConfirming]   = useState(false);
   const [resending, setResending]     = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
   const [errorMsg, setErrorMsg]       = useState('');
   const [buyerName, setBuyerName]     = useState('');
 
   if (!order) return null;
 
-  const statusKey    = normalizeStatus(order.status);
-  const badgeClass   = STATUS_BADGE[statusKey] ?? 'bg-gray-50 text-gray-600 border border-gray-200';
-  const statusLabel  = statusKey === 'fulfilled' ? 'Fulfilled'
+  const statusKey   = normalizeStatus(order.status);
+  const badgeClass  = STATUS_BADGE[statusKey] ?? 'bg-gray-50 text-gray-600 border border-gray-200';
+  const statusLabel = statusKey === 'fulfilled' ? 'Fulfilled'
     : (typeof order.status === 'object' ? order.status?.label ?? '—' : order.status ?? '—');
 
   const customerName =
@@ -104,10 +128,12 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
     ? (() => { try { return new Date(order.date).toLocaleString(); } catch (_) { return order.date; } })()
     : '—';
 
-  // ── Confirm order — uses unified action endpoint: confirm_onsite ────────────
-  // Backend requires confirmation_code — collected in the 'confirm' step
+  // ── Confirm order ─────────────────────────────────────────────────────────────
   const handleConfirmOrder = async () => {
-    if (!confirmCode.trim()) { setErrorMsg('Please enter your confirmation code.'); return; }
+    if (!confirmCode.trim()) {
+      setErrorMsg('Please enter your confirmation code before proceeding.');
+      return;
+    }
     setConfirming(true);
     setErrorMsg('');
     try {
@@ -115,28 +141,36 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
       onOrderUpdated?.();
       setStep('pickup');
     } catch (err) {
-      // Surface the exact backend message so the vendor knows what went wrong
-      const serverMsg =
-        err.response?.data?.message ||
-        err.response?.data?.detail ||
-        err.response?.data?.error ||
-        (typeof err.response?.data === 'string' ? err.response.data : null);
+      const status = err?.response?.status;
+      const serverMsg = extractErrorMessage(err);
 
-      if (serverMsg) {
+      // Map server messages / status codes to friendly copy
+      if (serverMsg && !serverMsg.includes('Traceback') && !serverMsg.includes('Exception')) {
+        // Clean server message — show it directly
         setErrorMsg(serverMsg);
-      } else if (err.response?.status === 500) {
-        setErrorMsg('Server error — please check that the escrow is in "held" status and you have not already confirmed this order. Contact support if this persists.');
+      } else if (status === 400) {
+        setErrorMsg('Invalid confirmation code. Please double-check and try again.');
+      } else if (status === 403) {
+        setErrorMsg('You are not authorised to confirm this order.');
+      } else if (status === 404) {
+        setErrorMsg('Order not found. It may have been removed or already processed.');
+      } else if (status === 409) {
+        setErrorMsg('This order has already been confirmed. Please proceed to enter the pickup code.');
       } else {
-        setErrorMsg('Failed to confirm order. Check your confirmation code and try again.');
+        // 500 or network error — backend still being fixed, show friendly copy
+        setErrorMsg('Unable to confirm the order right now. Please check your confirmation code and try again. If this keeps happening, contact support.');
       }
     } finally {
       setConfirming(false);
     }
   };
 
-  // ── Verify pickup code — uses unified action endpoint: mark_fulfilled ───────
+  // ── Verify pickup code ────────────────────────────────────────────────────────
   const handleVerifyCode = async () => {
-    if (!codeInput.trim()) { setErrorMsg('Please enter the pickup code.'); return; }
+    if (!codeInput.trim()) {
+      setErrorMsg('Please enter the pickup code provided by the customer.');
+      return;
+    }
     setVerifying(true);
     setErrorMsg('');
     try {
@@ -145,22 +179,42 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
       onOrderUpdated?.();
       setStep('success');
     } catch (err) {
-      setStep('failure');
+      const status = err?.response?.status;
+      const serverMsg = extractErrorMessage(err);
+
+      if (serverMsg && !serverMsg.includes('Traceback') && !serverMsg.includes('Exception')) {
+        setErrorMsg(serverMsg);
+      } else if (status === 400) {
+        setErrorMsg('The pickup code you entered is incorrect. Please ask the customer for the correct code.');
+      } else if (status === 404) {
+        setErrorMsg('Order not found. Please refresh the page and try again.');
+      } else if (status === 409) {
+        setErrorMsg('This order has already been fulfilled.');
+      } else {
+        // Navigate to failure screen for any unexpected error
+        setStep('failure');
+      }
     } finally {
       setVerifying(false);
     }
   };
 
-  // ── Resend code — uses unified action endpoint: resend_code ─────────────────
+  // ── Resend pickup code ────────────────────────────────────────────────────────
   const handleResendCode = async () => {
     setResending(true);
+    setResendSuccess(false);
     try {
       await resendPickupCode(order.id);
-    } catch (_) { /* silent — code resend is best-effort */ }
-    finally { setResending(false); }
+      setResendSuccess(true);
+      setTimeout(() => setResendSuccess(false), 4000);
+    } catch (_) {
+      // Best-effort — silent fail
+    } finally {
+      setResending(false);
+    }
   };
 
-  // Shared overlay wrapper
+  // ─── Shared overlay wrapper ───────────────────────────────────────────────────
   const Overlay = ({ children, maxW = 'sm:max-w-md' }) => (
     <div
       className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4"
@@ -171,7 +225,6 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
         style={{ fontFamily: "'Poppins', sans-serif" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Mobile drag handle */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden">
           <div className="w-10 h-1 bg-slate-200 rounded-full" />
         </div>
@@ -180,26 +233,25 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
     </div>
   );
 
-  // ── Confirm order — vendor enters their confirmation_code ──────────────────
+  // ── Step: vendor enters confirmation code ─────────────────────────────────────
   if (step === 'confirm') return (
     <Overlay maxW="sm:max-w-lg">
       <div className="px-6 sm:px-8 py-4 border-b border-slate-100 flex justify-between items-center">
         <div>
-          <h2 className="text-sm sm:text-base font-bold text-slate-800">Confirm order</h2>
+          <h2 className="text-sm sm:text-base font-bold text-slate-800">Confirm Order</h2>
           <p className="text-[10px] text-slate-400 mt-0.5">Order {formatOrderId(order.id)}</p>
         </div>
         <button onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
           <X size={18} />
         </button>
       </div>
+
       <div className="px-6 sm:px-8 py-6 space-y-5">
         <p className="text-xs text-slate-500 leading-relaxed">
-          Enter your <span className="font-bold text-slate-700">vendor confirmation code</span> to verify the buyer is present onsite.
+          Enter your <span className="font-bold text-slate-700">vendor confirmation code</span> to verify the buyer is present onsite and proceed to pickup.
         </p>
 
-        {errorMsg && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-medium px-4 py-3 rounded-xl">{errorMsg}</div>
-        )}
+        <ErrorBanner message={errorMsg} />
 
         <div className="space-y-1.5">
           <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Your confirmation code</label>
@@ -215,12 +267,19 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
         </div>
 
         <div className="space-y-2.5 pt-1">
-          <button onClick={handleConfirmOrder} disabled={confirming || !confirmCode.trim()}
-            className="w-full py-3.5 bg-[#125852] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-[#0e4340] transition-colors disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed">
-            {confirming ? <><RefreshCw size={14} className="animate-spin" /> Confirming…</> : <><CheckCircle size={14} /> Confirm order</>}
+          <button
+            onClick={handleConfirmOrder}
+            disabled={confirming || !confirmCode.trim()}
+            className="w-full py-3.5 bg-[#125852] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-[#0e4340] transition-colors disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
+          >
+            {confirming
+              ? <><RefreshCw size={14} className="animate-spin" /> Confirming…</>
+              : <><CheckCircle size={14} /> Confirm Order</>}
           </button>
-          <button onClick={() => { setStep('detail'); setErrorMsg(''); setConfirmCode(''); }}
-            className="w-full py-3 border border-slate-200 rounded-xl text-[11px] font-bold text-slate-500 hover:bg-slate-50 transition-colors">
+          <button
+            onClick={() => { setStep('detail'); setErrorMsg(''); setConfirmCode(''); }}
+            className="w-full py-3 border border-slate-200 rounded-xl text-[11px] font-bold text-slate-500 hover:bg-slate-50 transition-colors"
+          >
             Back
           </button>
         </div>
@@ -228,30 +287,36 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
     </Overlay>
   );
 
-  // ── Pickup code entry ───────────────────────────────────────────────────────
+  // ── Step: buyer enters pickup code ────────────────────────────────────────────
   if (step === 'pickup') return (
     <Overlay maxW="sm:max-w-lg">
       <div className="px-6 sm:px-8 py-4 border-b border-slate-100 flex justify-between items-center">
         <div>
-          <h2 className="text-sm sm:text-base font-bold text-slate-800">Enter pickup code</h2>
+          <h2 className="text-sm sm:text-base font-bold text-slate-800">Enter Pickup Code</h2>
           <p className="text-[10px] text-slate-400 mt-0.5">Order {formatOrderId(order.id)}</p>
         </div>
         <button onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
           <X size={18} />
         </button>
       </div>
+
       <div className="px-6 sm:px-8 py-6 space-y-5">
         <p className="text-xs text-slate-500 leading-relaxed">
-          Enter the pickup code provided by the customer. Format:{' '}
-          <span className="font-mono font-bold text-slate-700">ABC-XXXXXXXX</span>
+          Ask the customer for their pickup code and enter it below to complete this order.{' '}
+          <span className="font-mono font-bold text-slate-700">Format: ABC-XXXXXXXX</span>
         </p>
 
-        {errorMsg && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-medium px-4 py-3 rounded-xl">{errorMsg}</div>
+        <ErrorBanner message={errorMsg} />
+
+        {resendSuccess && (
+          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-3">
+            <CheckCircle size={13} className="text-emerald-500 shrink-0" />
+            <p className="text-[11px] text-emerald-700 font-medium">Pickup code resent to the customer successfully.</p>
+          </div>
         )}
 
         <div className="space-y-1.5">
-          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Pickup code</label>
+          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Customer's pickup code</label>
           <input
             type="text"
             value={codeInput}
@@ -265,18 +330,29 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
         </div>
 
         <div className="space-y-2.5 pt-1">
-          <button onClick={handleVerifyCode} disabled={verifying || !codeInput.trim()}
-            className="w-full py-3.5 bg-[#125852] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-[#0e4340] transition-colors disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed">
-            {verifying ? <><RefreshCw size={14} className="animate-spin" /> Verifying…</> : <><CheckCircle size={14} /> Verify &amp; complete order</>}
+          <button
+            onClick={handleVerifyCode}
+            disabled={verifying || !codeInput.trim()}
+            className="w-full py-3.5 bg-[#125852] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-[#0e4340] transition-colors disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
+          >
+            {verifying
+              ? <><RefreshCw size={14} className="animate-spin" /> Verifying…</>
+              : <><CheckCircle size={14} /> Verify &amp; Complete Order</>}
           </button>
+
           <div className="flex gap-2">
-            <button onClick={handleResendCode} disabled={resending}
-              className="flex-1 py-3 border border-slate-200 rounded-xl text-[11px] font-bold text-slate-500 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50">
+            <button
+              onClick={handleResendCode}
+              disabled={resending}
+              className="flex-1 py-3 border border-slate-200 rounded-xl text-[11px] font-bold text-slate-500 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+            >
               {resending ? <RefreshCw size={12} className="animate-spin" /> : <Send size={12} />}
-              Resend code
+              Resend Code
             </button>
-            <button onClick={() => { setStep('detail'); setErrorMsg(''); setCodeInput(''); }}
-              className="flex-1 py-3 border border-slate-200 rounded-xl text-[11px] font-bold text-slate-500 hover:bg-slate-50 transition-colors">
+            <button
+              onClick={() => { setStep('detail'); setErrorMsg(''); setCodeInput(''); }}
+              className="flex-1 py-3 border border-slate-200 rounded-xl text-[11px] font-bold text-slate-500 hover:bg-slate-50 transition-colors"
+            >
               Back
             </button>
           </div>
@@ -285,50 +361,62 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
     </Overlay>
   );
 
-  // ── Success ─────────────────────────────────────────────────────────────────
+  // ── Step: success ─────────────────────────────────────────────────────────────
   if (step === 'success') return (
     <Overlay maxW="sm:max-w-sm">
       <div className="px-5 py-10 flex flex-col items-center text-center space-y-4">
-        <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center">
-          <CheckCircle size={32} className="text-emerald-500" />
+        <div className="w-20 h-20 rounded-full bg-emerald-50 flex items-center justify-center">
+          <CheckCircle size={40} className="text-emerald-500" />
         </div>
-        <div>
-          <p className="text-base font-black text-slate-800">Order Complete!</p>
-          <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-            <span className="font-bold text-slate-700">{buyerName || customerName}</span>'s order has been fulfilled successfully.
+        <div className="space-y-1.5">
+          <p className="text-base font-black text-slate-800">🎉 Order Complete!</p>
+          <p className="text-sm font-bold text-emerald-600">Congratulations!</p>
+          <p className="text-xs text-slate-500 leading-relaxed mt-1">
+            <span className="font-bold text-slate-700">{buyerName || customerName}</span>'s order has been
+            fulfilled successfully. Payment will be released to your wallet shortly.
           </p>
         </div>
-        <button onClick={onClose} className="w-full py-2.5 bg-[#125852] text-white rounded-xl text-xs font-bold hover:bg-[#0e4340] transition-colors">
+        <button
+          onClick={onClose}
+          className="w-full py-3 bg-[#125852] text-white rounded-xl text-xs font-bold hover:bg-[#0e4340] transition-colors"
+        >
           Done
         </button>
       </div>
     </Overlay>
   );
 
-  // ── Failure ─────────────────────────────────────────────────────────────────
+  // ── Step: failure (invalid pickup code) ───────────────────────────────────────
   if (step === 'failure') return (
     <Overlay maxW="sm:max-w-sm">
       <div className="px-5 py-10 flex flex-col items-center text-center space-y-4">
-        <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
-          <X size={32} className="text-red-400" />
+        <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center">
+          <X size={40} className="text-red-400" />
         </div>
-        <div>
-          <p className="text-base font-black text-slate-800">Invalid Code</p>
-          <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-            The pickup code could not be verified. Please ask the customer for the correct code.
+        <div className="space-y-1.5">
+          <p className="text-base font-black text-slate-800">Invalid Pickup Code</p>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            The code entered does not match. Please ask the customer to check their
+            confirmation email or SMS and provide the correct pickup code.
           </p>
         </div>
-        <button onClick={() => { setStep('pickup'); setCodeInput(''); }} className="w-full py-2.5 bg-[#125852] text-white rounded-xl text-xs font-bold hover:bg-[#0e4340] transition-colors">
-          Try again
+        <button
+          onClick={() => { setStep('pickup'); setCodeInput(''); setErrorMsg(''); }}
+          className="w-full py-3 bg-[#125852] text-white rounded-xl text-xs font-bold hover:bg-[#0e4340] transition-colors"
+        >
+          Try Again
         </button>
-        <button onClick={onClose} className="w-full py-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">
+        <button
+          onClick={onClose}
+          className="w-full py-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors"
+        >
           Close
         </button>
       </div>
     </Overlay>
   );
 
-  // ── Order detail (default) ──────────────────────────────────────────────────
+  // ── Step: order detail (default) ──────────────────────────────────────────────
   return (
     <Overlay>
       {/* Header */}
@@ -349,9 +437,6 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
 
       {/* Body */}
       <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
-        {errorMsg && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-[10px] font-medium px-3 py-2 rounded-lg">{errorMsg}</div>
-        )}
 
         {/* Customer */}
         <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
@@ -457,29 +542,34 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
         </div>
       </div>
 
-      {/* Footer */}
+      {/* Footer — smart action button */}
       <div className="px-5 py-4 border-t border-slate-100 flex gap-2 bg-slate-50/30 flex-shrink-0">
-        <button onClick={onClose}
-          className="flex-1 py-2.5 text-xs font-bold border border-slate-200 rounded-xl bg-white hover:bg-slate-50 transition-colors">
+        <button
+          onClick={onClose}
+          className="flex-1 py-2.5 text-xs font-bold border border-slate-200 rounded-xl bg-white hover:bg-slate-50 transition-colors"
+        >
           Close
         </button>
 
-        {/* Smart action button — label & behaviour change with order status */}
         {statusKey === 'pending' ? (
           <button
             onClick={() => { setErrorMsg(''); setConfirmCode(''); setStep('confirm'); }}
-            className="flex-1 py-2.5 text-xs font-bold bg-[#125852] text-white rounded-xl hover:bg-[#0e4340] transition-colors flex items-center justify-center gap-1.5">
+            className="flex-1 py-2.5 text-xs font-bold bg-[#125852] text-white rounded-xl hover:bg-[#0e4340] transition-colors flex items-center justify-center gap-1.5"
+          >
             <CheckCircle size={13} /> Confirm Order
           </button>
         ) : statusKey === 'confirmed' ? (
           <button
             onClick={() => { setErrorMsg(''); setCodeInput(''); setStep('pickup'); }}
-            className="flex-1 py-2.5 text-xs font-bold bg-[#F5B841] text-white rounded-xl hover:bg-[#E0A83B] transition-colors flex items-center justify-center gap-1.5">
+            className="flex-1 py-2.5 text-xs font-bold bg-[#F5B841] text-white rounded-xl hover:bg-[#E0A83B] transition-colors flex items-center justify-center gap-1.5"
+          >
             <CheckCircle size={13} /> Enter Pickup Code
           </button>
         ) : (
-          <Link to={`/order-management/${order.id}`}
-            className="flex-1 py-2.5 text-xs font-bold bg-[#F5B841] text-white rounded-xl hover:bg-[#E0A83B] transition-colors text-center flex items-center justify-center">
+          <Link
+            to={`/order-management/${order.id}`}
+            className="flex-1 py-2.5 text-xs font-bold bg-[#F5B841] text-white rounded-xl hover:bg-[#E0A83B] transition-colors text-center flex items-center justify-center"
+          >
             View Full Order
           </Link>
         )}
@@ -491,35 +581,19 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
 // ─── Main Component ───────────────────────────────────────────────────────────
 const OrderManagement = () => {
   const [orders,         setOrders]         = useState([]);
-  const [initialLoading, setInitialLoading] = useState(true);  // only true on first load
+  const [initialLoading, setInitialLoading] = useState(true);
   const [activeTab,      setActiveTab]      = useState('All');
   const [searchQuery,    setSearchQuery]    = useState('');
   const [currencySymbol, setCurrencySymbol] = useState('UGX');
   const [selectedOrder,  setSelectedOrder]  = useState(null);
   const [currentPage,    setCurrentPage]    = useState(1);
 
-  const isMountedRef  = useRef(true);
-  const fetchingRef   = useRef(false);
-  // Keep a stable copy of orders so background polls never blank the UI
-  const ordersRef     = useRef([]);
+  const isMountedRef = useRef(true);
+  const fetchingRef  = useRef(false);
+  const ordersRef    = useRef([]);
 
   const location = useLocation();
   const navigate  = useNavigate();
-
-  // ── Auto-open order modal when navigated from a notification ─────────────────
-  // Navbar passes: navigate('/order-management', { state: { openOrderId: '...' } })
-  useEffect(() => {
-    const openOrderId = location.state?.openOrderId;
-    if (!openOrderId || ordersRef.current.length === 0) return;
-    const target = ordersRef.current.find(
-      (o) => String(o.id) === String(openOrderId)
-    );
-    if (target) {
-      setSelectedOrder(target);
-      // Clear state so back-navigation doesn't re-open the modal
-      navigate('/order-management', { replace: true, state: {} });
-    }
-  }, [location.state, orders, navigate]); // re-run when orders load
 
   // ── Derived stats ───────────────────────────────────────────────────────────
   const totalOrders  = orders.length;
@@ -528,7 +602,7 @@ const OrderManagement = () => {
   ).length;
   const revenue = orders.reduce((sum, o) => sum + Number(o.total ?? 0), 0);
 
-  // ── Load currency from dashboard (once, no flicker) ─────────────────────────
+  // ── Currency ────────────────────────────────────────────────────────────────
   useEffect(() => {
     getVendorDashboard()
       .then((data) => {
@@ -539,36 +613,22 @@ const OrderManagement = () => {
       .catch(() => {});
   }, []);
 
-  // ── Fetch orders — ANTI-FLICKER design ───────────────────────────────────────
-  // • On first load: show skeleton until data arrives, then render.
-  // • On subsequent polls: update state ONLY when data actually changes,
-  //   so React skips re-renders that would cause visible flicker.
+  // ── Fetch orders (anti-flicker) ─────────────────────────────────────────────
   const fetchOrders = useCallback(async (isInitial = false) => {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
-
     try {
       const data = await getVendorOrders();
       if (!isMountedRef.current) return;
-
       const incoming = Array.isArray(data) ? data : [];
-
-      // Shallow-compare by stringifying IDs + statuses to avoid unnecessary re-renders
-      const currentSignature = ordersRef.current
-        .map((o) => `${o.id}:${o.status}`).join(',');
-      const incomingSignature = incoming
-        .map((o) => `${o.id}:${o.status}`).join(',');
-
-      if (isInitial || currentSignature !== incomingSignature) {
+      const currentSig = ordersRef.current.map((o) => `${o.id}:${o.status}`).join(',');
+      const incomingSig = incoming.map((o) => `${o.id}:${o.status}`).join(',');
+      if (isInitial || currentSig !== incomingSig) {
         ordersRef.current = incoming;
         setOrders(incoming);
       }
     } catch (err) {
-      if (isMountedRef.current) {
-        console.error('[OrderManagement] fetch error:', err);
-        // On initial load failure set empty; on poll failure keep existing data
-        if (isInitial) setOrders([]);
-      }
+      if (isMountedRef.current && isInitial) setOrders([]);
     } finally {
       fetchingRef.current = false;
       if (isInitial && isMountedRef.current) setInitialLoading(false);
@@ -577,28 +637,37 @@ const OrderManagement = () => {
 
   useEffect(() => {
     isMountedRef.current = true;
-    fetchOrders(true); // initial load — shows skeleton
-    const interval = setInterval(() => fetchOrders(false), 30_000); // silent polls
+    fetchOrders(true);
+    const interval = setInterval(() => fetchOrders(false), 30_000);
     return () => {
       isMountedRef.current = false;
       clearInterval(interval);
     };
   }, [fetchOrders]);
 
-  // Reset page on filter/search change
+  // ── Auto-open order from notification ───────────────────────────────────────
+  useEffect(() => {
+    const openOrderId = location.state?.openOrderId;
+    if (!openOrderId || ordersRef.current.length === 0) return;
+    const target = ordersRef.current.find((o) => String(o.id) === String(openOrderId));
+    if (target) {
+      setSelectedOrder(target);
+      navigate('/order-management', { replace: true, state: {} });
+    }
+  }, [location.state, orders, navigate]);
+
+  // ── Reset page on filter/search change ──────────────────────────────────────
   useEffect(() => { setCurrentPage(1); }, [activeTab, searchQuery]);
 
-  // ── Filtering ─────────────────────────────────────────────────────────────
+  // ── Filtering & pagination ───────────────────────────────────────────────────
   const filteredOrders = useMemo(() => orders.filter((order) => {
     const status = normalizeStatus(order.status);
     const matchesTab = activeTab === 'All' || status === activeTab.toLowerCase();
-
     const q = searchQuery.toLowerCase().trim();
     const customerStr =
       typeof order.customer === 'object' && order.customer !== null
         ? `${order.customer.name ?? ''} ${order.customer.email ?? ''}`
         : String(order.customer ?? '');
-
     const matchesSearch =
       !q ||
       String(order.id ?? '').toLowerCase().includes(q) ||
@@ -606,7 +675,6 @@ const OrderManagement = () => {
       customerStr.toLowerCase().includes(q) ||
       status.includes(q) ||
       String(order.total ?? '').includes(q);
-
     return matchesTab && matchesSearch;
   }), [orders, activeTab, searchQuery]);
 
@@ -636,7 +704,6 @@ const OrderManagement = () => {
     return orders.filter((o) => normalizeStatus(o.status) === tab.toLowerCase()).length;
   }, [orders]);
 
-  // ── onOrderUpdated: silently refresh without blanking UI ────────────────────
   const handleOrderUpdated = useCallback(() => {
     fetchOrders(false);
     setSelectedOrder(null);
@@ -663,9 +730,8 @@ const OrderManagement = () => {
             <StatCard title="Revenue"       value={initialLoading ? '—' : `${currencySymbol} ${revenue.toLocaleString()}`} icon={CircleDollarSign} iconBg="bg-orange-50" iconColor="text-orange-600" />
           </div>
 
-          {/* Tab filters + search */}
+          {/* Tabs + search */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0 sm:justify-between mb-3 sm:mb-4">
-            {/* Tabs — horizontally scrollable on mobile */}
             <div className="flex gap-1 overflow-x-auto pb-0.5 sm:pb-0 scrollbar-none">
               {TAB_FILTERS.map((tab) => {
                 const count    = countForTab(tab);
@@ -686,7 +752,6 @@ const OrderManagement = () => {
               })}
             </div>
 
-            {/* Search */}
             <div className="relative w-full sm:w-auto">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
               <input
@@ -706,7 +771,7 @@ const OrderManagement = () => {
 
           {/* Orders Table */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            {/* Desktop table */}
+            {/* Desktop */}
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-left">
                 <thead className="bg-slate-50 text-slate-400 font-bold uppercase text-[9px]">
@@ -776,7 +841,7 @@ const OrderManagement = () => {
               </table>
             </div>
 
-            {/* Mobile card list */}
+            {/* Mobile */}
             <div className="sm:hidden divide-y divide-slate-50">
               {initialLoading ? (
                 [...Array(3)].map((_, i) => (
