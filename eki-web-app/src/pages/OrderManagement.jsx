@@ -72,13 +72,14 @@ const StarRating = ({ rating = 0 }) => (
 
 // ─── Order Detail Modal ───────────────────────────────────────────────────────
 const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) => {
-  const [step, setStep]           = useState('detail');
-  const [codeInput, setCodeInput] = useState('');
-  const [verifying, setVerifying] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [resending, setResending]   = useState(false);
-  const [errorMsg, setErrorMsg]     = useState('');
-  const [buyerName, setBuyerName]   = useState('');
+  const [step, setStep]               = useState('detail');
+  const [codeInput, setCodeInput]     = useState('');
+  const [confirmCode, setConfirmCode] = useState(''); // vendor confirmation_code for confirm_onsite
+  const [verifying, setVerifying]     = useState(false);
+  const [confirming, setConfirming]   = useState(false);
+  const [resending, setResending]     = useState(false);
+  const [errorMsg, setErrorMsg]       = useState('');
+  const [buyerName, setBuyerName]     = useState('');
 
   if (!order) return null;
 
@@ -102,16 +103,30 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
     : '—';
 
   // ── Confirm order — uses unified action endpoint: confirm_onsite ────────────
+  // Backend requires confirmation_code — collected in the 'confirm' step
   const handleConfirmOrder = async () => {
+    if (!confirmCode.trim()) { setErrorMsg('Please enter your confirmation code.'); return; }
     setConfirming(true);
     setErrorMsg('');
     try {
-      await confirmVendorOrder(order.id);
-      // Refresh orders in background without closing modal — avoid flicker
+      await confirmVendorOrder(order.id, confirmCode.trim());
       onOrderUpdated?.();
       setStep('pickup');
     } catch (err) {
-      setErrorMsg(err.response?.data?.message || err.response?.data?.detail || 'Failed to confirm order. Please try again.');
+      // Surface the exact backend message so the vendor knows what went wrong
+      const serverMsg =
+        err.response?.data?.message ||
+        err.response?.data?.detail ||
+        err.response?.data?.error ||
+        (typeof err.response?.data === 'string' ? err.response.data : null);
+
+      if (serverMsg) {
+        setErrorMsg(serverMsg);
+      } else if (err.response?.status === 500) {
+        setErrorMsg('Server error — please check that the escrow is in "held" status and you have not already confirmed this order. Contact support if this persists.');
+      } else {
+        setErrorMsg('Failed to confirm order. Check your confirmation code and try again.');
+      }
     } finally {
       setConfirming(false);
     }
@@ -161,6 +176,54 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
         {children}
       </div>
     </div>
+  );
+
+  // ── Confirm order — vendor enters their confirmation_code ──────────────────
+  if (step === 'confirm') return (
+    <Overlay maxW="sm:max-w-lg">
+      <div className="px-6 sm:px-8 py-4 border-b border-slate-100 flex justify-between items-center">
+        <div>
+          <h2 className="text-sm sm:text-base font-bold text-slate-800">Confirm order</h2>
+          <p className="text-[10px] text-slate-400 mt-0.5">Order {formatOrderId(order.id)}</p>
+        </div>
+        <button onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
+          <X size={18} />
+        </button>
+      </div>
+      <div className="px-6 sm:px-8 py-6 space-y-5">
+        <p className="text-xs text-slate-500 leading-relaxed">
+          Enter your <span className="font-bold text-slate-700">vendor confirmation code</span> to verify the buyer is present onsite.
+        </p>
+
+        {errorMsg && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] font-medium px-4 py-3 rounded-xl">{errorMsg}</div>
+        )}
+
+        <div className="space-y-1.5">
+          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Your confirmation code</label>
+          <input
+            type="text"
+            value={confirmCode}
+            onChange={(e) => { setErrorMsg(''); setConfirmCode(e.target.value.toUpperCase()); }}
+            placeholder="Enter confirmation code"
+            className="w-full px-4 py-4 border-2 border-slate-200 rounded-xl text-lg font-mono font-bold uppercase tracking-widest text-center focus:border-[#125852] outline-none transition-colors"
+            autoComplete="off"
+            autoFocus
+          />
+        </div>
+
+        <div className="space-y-2.5 pt-1">
+          <button onClick={handleConfirmOrder} disabled={confirming || !confirmCode.trim()}
+            className="w-full py-3.5 bg-[#125852] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-[#0e4340] transition-colors disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed">
+            {confirming ? <><RefreshCw size={14} className="animate-spin" /> Confirming…</> : <><CheckCircle size={14} /> Confirm order</>}
+          </button>
+          <button onClick={() => { setStep('detail'); setErrorMsg(''); setConfirmCode(''); }}
+            className="w-full py-3 border border-slate-200 rounded-xl text-[11px] font-bold text-slate-500 hover:bg-slate-50 transition-colors">
+            Back
+          </button>
+        </div>
+      </div>
+    </Overlay>
   );
 
   // ── Pickup code entry ───────────────────────────────────────────────────────
@@ -288,20 +351,6 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
           <div className="bg-red-50 border border-red-200 text-red-700 text-[10px] font-medium px-3 py-2 rounded-lg">{errorMsg}</div>
         )}
 
-        {/* Action buttons */}
-        {statusKey === 'pending' && (
-          <button onClick={handleConfirmOrder} disabled={confirming}
-            className="w-full py-2.5 bg-[#125852] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-[#0e4340] transition-colors disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed">
-            {confirming ? <><RefreshCw size={12} className="animate-spin" /> Confirming…</> : <><CheckCircle size={12} /> Confirm order</>}
-          </button>
-        )}
-        {statusKey === 'confirmed' && (
-          <button onClick={() => setStep('pickup')}
-            className="w-full py-2.5 bg-[#F5B841] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-[#E0A83B] transition-colors">
-            <CheckCircle size={12} /> Enter pickup code
-          </button>
-        )}
-
         {/* Customer */}
         <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
           <div className="p-2 bg-white rounded-lg shadow-sm border border-slate-100 flex-shrink-0">
@@ -412,10 +461,26 @@ const OrderDetailModal = ({ order, currencySymbol, onClose, onOrderUpdated }) =>
           className="flex-1 py-2.5 text-xs font-bold border border-slate-200 rounded-xl bg-white hover:bg-slate-50 transition-colors">
           Close
         </button>
-        <Link to={`/order-management/${order.id}`}
-          className="flex-1 py-2.5 text-xs font-bold bg-[#F5B841] text-white rounded-xl hover:bg-[#E0A83B] transition-colors text-center">
-          View Full Order
-        </Link>
+
+        {/* Smart action button — label & behaviour change with order status */}
+        {statusKey === 'pending' ? (
+          <button
+            onClick={() => { setErrorMsg(''); setConfirmCode(''); setStep('confirm'); }}
+            className="flex-1 py-2.5 text-xs font-bold bg-[#125852] text-white rounded-xl hover:bg-[#0e4340] transition-colors flex items-center justify-center gap-1.5">
+            <CheckCircle size={13} /> Confirm Order
+          </button>
+        ) : statusKey === 'confirmed' ? (
+          <button
+            onClick={() => { setErrorMsg(''); setCodeInput(''); setStep('pickup'); }}
+            className="flex-1 py-2.5 text-xs font-bold bg-[#F5B841] text-white rounded-xl hover:bg-[#E0A83B] transition-colors flex items-center justify-center gap-1.5">
+            <CheckCircle size={13} /> Enter Pickup Code
+          </button>
+        ) : (
+          <Link to={`/order-management/${order.id}`}
+            className="flex-1 py-2.5 text-xs font-bold bg-[#F5B841] text-white rounded-xl hover:bg-[#E0A83B] transition-colors text-center flex items-center justify-center">
+            View Full Order
+          </Link>
+        )}
       </div>
     </Overlay>
   );
