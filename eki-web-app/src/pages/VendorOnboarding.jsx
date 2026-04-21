@@ -49,21 +49,51 @@ const VendorOnboarding = () => {
   ];
 
   return (
-    <div className="vendor-onboarding-root min-h-screen w-full flex flex-col bg-[#ecece7] font-sans">
+    <div className="h-screen w-full overflow-hidden flex flex-col bg-[#ecece7] font-sans">
 
-      <div className="flex flex-1">
+      {/* MOBILE TOP PROGRESS BAR */}
+      <div className="md:hidden w-full bg-[#125852] px-4 py-3 shadow-lg flex flex-col gap-2 shrink-0">
+        <div className="flex items-center justify-between">
+          <img src={ekiLogo} alt="Eki Logo" className="h-8 w-auto object-contain" />
+          <button
+            onClick={() => navigate("/")}
+            className="flex items-center gap-1.5 text-white/70 hover:text-white text-[11px] font-semibold transition-colors"
+          >
+            <HiArrowLeft size={12} />
+            Home
+          </button>
+        </div>
+        <div className="flex gap-1.5 items-center">
+          {steps.map((_, i) => (
+            <div
+              key={i}
+              className={`h-1 rounded-full transition-all duration-300 ${
+                i + 1 < currentStep
+                  ? "bg-[#EFB034] flex-[2]"
+                  : i + 1 === currentStep
+                  ? "bg-white flex-[3]"
+                  : "bg-white/25 flex-1"
+              }`}
+            />
+          ))}
+        </div>
+        <p className="text-white/70 text-[10px] font-medium">
+          Step {currentStep} of 6 —{" "}
+          <span className="text-white font-semibold">{steps[currentStep - 1]?.title}</span>
+        </p>
+      </div>
 
-        {/* ── SIDEBAR ── */}
+      {/* BODY ROW: sidebar + main */}
+      <div className="flex flex-1 min-h-0 p-3 gap-3">
+
+        {/* SIDEBAR - Increased width */}
         <aside
           className="
-            /* Mobile: hidden by default, shown as top bar */
             hidden
-            /* md: narrow fixed sidebar */
             md:flex md:flex-col
-            md:w-[220px] lg:w-[250px] xl:w-[270px]
-            md:min-h-screen md:sticky md:top-0
-            md:m-3 md:rounded-[16px]
-            p-3 shrink-0 shadow-xl border border-white/10
+            md:w-[260px] lg:w-[300px]
+            shrink-0 rounded-[16px]
+            overflow-hidden
           "
           style={{
             background: "linear-gradient(160deg, #125852 0%, #0e4440 40%, #0b3330 100%)",
@@ -71,70 +101,45 @@ const VendorOnboarding = () => {
           }}
         >
           {/* Logo */}
-          <div className="flex justify-center items-center pt-4 pb-5 px-2">
+          <div className="flex justify-center items-center pt-6 pb-5 px-4 shrink-0">
             <img
               src={ekiLogo}
               alt="Eki Logo"
-              className="h-16 lg:h-18 xl:h-20 w-auto object-contain"
+              className="h-14 lg:h-16 w-auto object-contain"
             />
           </div>
 
-          {/* Subtle separator */}
-          <div className="mx-3 mb-4 border-t border-white/15" />
-
-          {/* Steps */}
-          <div className="relative flex flex-col gap-2 lg:gap-2.5 flex-1">
-            {/* Vertical connector line */}
-            <div className="absolute left-[17px] lg:left-[19px] top-[20px] bottom-[20px] w-[1px] bg-white/20 z-0" />
-
-            {steps.map((step, i) => (
-              <StepCard
-                key={step.title}
-                title={step.title}
-                subtitle={step.subtitle}
-                isActive={currentStep === i + 1}
-                isCompleted={currentStep > i + 1}
-              />
-            ))}
+          {/* Steps container */}
+          <div className="relative flex flex-col flex-1 overflow-y-auto px-4 pb-6">
+            {/* Connector line - properly aligned from first to last circle center */}
+            <div
+              className="absolute w-px bg-white/30 z-0"
+              style={{ 
+                left: "28px", // Center of circle (px-4 = 16px + half of w-6 circle = 12px = 28px)
+                top: "60px",  // Adjusted for smaller card height
+                bottom: "60px" // Adjusted for smaller card height
+              }}
+            />
+            
+            {/* Added gap-4 between steps */}
+            <div className="flex flex-col gap-4">
+              {steps.map((step, i) => (
+                <StepCard
+                  key={step.title}
+                  title={step.title}
+                  subtitle={step.subtitle}
+                  isActive={currentStep === i + 1}
+                  isCompleted={currentStep > i + 1}
+                  isFirst={i === 0}
+                  isLast={i === steps.length - 1}
+                />
+              ))}
+            </div>
           </div>
-
         </aside>
 
-        {/* ── MOBILE TOP PROGRESS BAR (shown below md) ── */}
-        <div className="md:hidden w-full fixed top-0 left-0 z-30 bg-[#125852] px-4 py-3 shadow-lg flex flex-col gap-2">
-          {/* Logo row */}
-          <div className="flex items-center justify-between">
-            <img src={ekiLogo} alt="Eki Logo" className="h-8 w-auto object-contain" />
-            <button
-              onClick={() => navigate("/")}
-              className="flex items-center gap-1.5 text-white/70 hover:text-white text-[11px] font-semibold transition-colors"
-            >
-              <HiArrowLeft size={12} />
-              Home
-            </button>
-          </div>
-          {/* Progress dots */}
-          <div className="flex gap-1.5 items-center">
-            {steps.map((_, i) => (
-              <div
-                key={i}
-                className={`h-1 rounded-full transition-all duration-300 ${
-                  i + 1 < currentStep
-                    ? "bg-[#EFB034] flex-[2]"
-                    : i + 1 === currentStep
-                    ? "bg-white flex-[3]"
-                    : "bg-white/25 flex-1"
-                }`}
-              />
-            ))}
-          </div>
-          <p className="text-white/70 text-[10px] font-medium">
-            Step {currentStep} of 6 — <span className="text-white font-semibold">{steps[currentStep - 1]?.title}</span>
-          </p>
-        </div>
-
-        {/* ── MAIN CONTENT ── */}
-        <main className="flex-1 flex flex-col items-center px-4 md:px-6 lg:px-10 pt-28 md:pt-4 pb-6 overflow-y-auto">
+        {/* MAIN CONTENT */}
+        <main className="flex-1 min-h-0 flex flex-col items-center overflow-y-auto px-2 md:px-4 lg:px-8 py-2">
           <div
             className={`w-full transition-all duration-300 ${
               currentStep >= 3 ? "max-w-[900px]" : "max-w-[600px]"
@@ -160,7 +165,6 @@ const VendorOnboarding = () => {
                     backdropFilter: "blur(16px)",
                   }}
                 >
-                  {/* Step headings only for step 1 */}
                   {currentStep === 1 && (
                     <div className="mb-5">
                       <div className="flex items-start justify-between gap-3">
@@ -234,9 +238,9 @@ const VendorOnboarding = () => {
         </main>
       </div>
 
+      {/* Footer */}
       <Footer />
 
-      {/* Dev tools */}
       {process.env.NODE_ENV === "development" && (
         <div className="fixed bottom-4 right-4 bg-black/80 p-4 rounded-2xl flex gap-2 z-50">
           <p className="text-white text-xs self-center mr-2">Dev:</p>
@@ -255,36 +259,36 @@ const VendorOnboarding = () => {
   );
 };
 
-/* ── STEP CARD ── */
-const StepCard = ({ title, subtitle, isActive, isCompleted }) => (
+/* STEP CARD - Reduced height with better spacing */
+const StepCard = ({ title, subtitle, isActive, isCompleted, isFirst, isLast }) => (
   <div
     className={`
-      flex items-center gap-2 px-2 py-1.5 rounded-[10px] transition-all relative z-10 w-full
+      flex items-center gap-3 px-3 py-2 rounded-[10px] transition-all relative z-10 w-full
       ${isActive
         ? "bg-white shadow-lg"
         : "bg-white/40 backdrop-blur-md border border-white/40 shadow-md"
       }
     `}
   >
-    {/* Circle */}
+    {/* Smaller circle for reduced height */}
     <div
       className={`
-        w-4 h-4 shrink-0 rounded-full border-[1.5px] flex items-center justify-center
+        w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center
         ${isActive || isCompleted
           ? "border-[#235E5D] bg-white"
           : "border-white/40 bg-white/20 backdrop-blur-md"
         }
       `}
     >
-      {isCompleted && <HiCheck className="text-[#235E5D]" size={9} />}
+      {isCompleted && <HiCheck className="text-[#235E5D]" size={10} />}
     </div>
 
-    {/* Text */}
+    {/* Compact text area */}
     <div className="flex-1 min-w-0">
-      <p className={`font-semibold text-[11px] lg:text-[12px] truncate ${isActive || isCompleted ? "text-gray-800" : "text-gray-700"}`}>
+      <p className={`font-semibold text-[11px] lg:text-[12px] truncate leading-tight ${isActive || isCompleted ? "text-gray-800" : "text-gray-700"}`}>
         {title}
       </p>
-      <p className={`text-[9px] lg:text-[10px] truncate ${isActive || isCompleted ? "text-gray-600" : "text-gray-600/80"}`}>
+      <p className={`text-[9px] lg:text-[10px] truncate leading-tight ${isActive || isCompleted ? "text-gray-600" : "text-gray-600/80"}`}>
         {subtitle}
       </p>
     </div>
