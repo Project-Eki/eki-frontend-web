@@ -1247,19 +1247,14 @@ const ServiceForm = ({ onClose, editingListing }) => {
 
   return (
     <div className="flex flex-col h-full bg-white rounded-2xl overflow-hidden">
-      {/* Header - Updated to match product form style */}
+     
       <div className="px-6 pt-4 pb-2 border-b border-gray-100 flex justify-between items-start shrink-0">
         <div>
           <h2 className="text-lg font-bold text-gray-900">
             {isEditing ? "Edit Service" : "Add New Service"}
           </h2>
           <p className="text-[11px] text-gray-500 mt-0.5">
-            {step === 1 && (
-              <>Step 1 of 4 · {categoryDisplay?.label || "Select Category"}</>
-            )}
-            {step === 2 && <>Step 2 of 4 · Configure Service</>}
-            {step === 3 && <>Step 3 of 4 · Description</>}
-            {step === 4 && <>Step 4 of 4 · Images & Publish</>}
+            Step {step} of 4 : {categoryDisplay?.label || "Select Category"}
           </p>
         </div>
         <button
@@ -1288,36 +1283,7 @@ const ServiceForm = ({ onClose, editingListing }) => {
       <div className="flex-1 overflow-y-auto px-6 pb-4">
         {step === 1 && (
           <div className="space-y-4 px-1">
-            {/* Category badge - like product form */}
-            {selectedCategory && (
-              <div className="flex items-center gap-2 mb-2">
-                <div 
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${categoryDisplay.color} bg-opacity-10`} 
-                  style={{ backgroundColor: `${categoryDisplay.color.replace('text-', '')}10` }}
-                >
-                  {categoryDisplay.label}
-                </div>
-                <span className="text-[10px] text-gray-400">Category</span>
-              </div>
-            )}
-            
-            <Field label="Service Title" required error={stepErrors.title}>
-              <div className="relative">
-                <FileText
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  size={14}
-                />
-                <input
-                  className={`w-full pl-9 pr-3 py-2.5 border rounded-lg text-[13px] outline-none focus:ring-1 focus:ring-[#EFB034] ${stepErrors.title ? "border-red-300" : "border-gray-200"}`}
-                  placeholder="e.g. Custom Wedding Dress"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  autoFocus
-                />
-              </div>
-            </Field>
-
-            {/* Category selection - only show if no category selected yet */}
+            {/* Only show category selection if no category selected yet */}
             {!selectedCategory && (
               <div>
                 <label className="block text-[11px] font-medium text-gray-700 mb-1.5">
@@ -1362,26 +1328,24 @@ const ServiceForm = ({ onClose, editingListing }) => {
               </div>
             )}
             
-            {/* Show selected category as badge with edit option */}
-            {selectedCategory && (
-              <div className="pt-2">
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <span className={categoryDisplay.color}>{categoryDisplay.icon}</span>
-                    <span className="text-[12px] font-medium text-gray-700">
-                      {categoryDisplay.label}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCategory("")}
-                    className="text-[10px] text-gray-400 hover:text-[#EFB034] flex items-center gap-1"
-                  >
-                    <Edit size={10} /> Change
-                  </button>
-                </div>
+            {/* Service Title input - main focus */}
+            <Field label="Service Title" required error={stepErrors.title}>
+              <div className="relative">
+                <FileText
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  size={14}
+                />
+                <input
+                  className={`w-full pl-9 pr-3 py-2.5 border rounded-lg text-[13px] outline-none focus:ring-1 focus:ring-[#EFB034] ${stepErrors.title ? "border-red-300" : "border-gray-200"}`}
+                  placeholder="e.g. Custom Wedding Dress"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  autoFocus
+                />
               </div>
-            )}
+            </Field>
+
+         
           </div>
         )}
 
@@ -1451,6 +1415,7 @@ const ServiceForm = ({ onClose, editingListing }) => {
         )}
       </div>
 
+      {/* Footer - Cancel and Next buttons only (no step indicator text) */}
       <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 shrink-0">
         {step === 1 ? (
           <button
@@ -1467,9 +1432,7 @@ const ServiceForm = ({ onClose, editingListing }) => {
             <ChevronLeft size={14} /> Back
           </button>
         )}
-        <span className="text-[11px] text-gray-400 font-medium">
-          {step} / 4
-        </span>
+        {/* Step indicator removed as requested */}
         {step < 4 ? (
           <button
             onClick={goNext}
