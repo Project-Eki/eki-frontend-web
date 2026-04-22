@@ -254,14 +254,7 @@ const TailoringStep2 = ({ d, set, errors }) => (
         <option value="in_person">In-person fitting only</option>
       </Sel>
     </Field>
-    <div className="col-span-2">
-      <Toggle
-        checked={!!d.homeService}
-        onChange={(v) => set("homeService", v)}
-        label="Home Service Available"
-        desc="We come to your location for measurements and delivery"
-      />
-    </div>
+    {/* REMOVED: Home Service Available toggle */}
     <Field label="Contact Phone" required error={errors.phone}>
       <div className="ring-1 ring-amber-300 rounded-lg">
         <PhoneField
@@ -1136,7 +1129,7 @@ const ServiceForm = ({ onClose, editingListing }) => {
               ? "tailoring"
               : bc === "beauty"
                 ? "beauty"
-                : "other",
+                : "professional",
     );
     const det = editingListing.detail || {};
     setData((prev) => ({
