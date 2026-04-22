@@ -54,7 +54,7 @@ export const validateBusinessIdentity = (formData) => {
     errors.business_type = "Required";
   }
 
-  // Business Category - NEW validation for multi-select
+  // Business Category - FIXED validation for multi-select
   if (formData.business_type === "both") {
     // For "both", require at least 2 categories
     if (!formData.business_category || !Array.isArray(formData.business_category) || formData.business_category.length === 0) {
@@ -65,9 +65,22 @@ export const validateBusinessIdentity = (formData) => {
       errors.business_category = `Please select ${2 - formData.business_category.length} more category/categories`;
     }
   } else if (formData.business_type === "products" || formData.business_type === "services") {
-    // For single selection, require 1 category
-    if (!formData.business_category || formData.business_category.trim() === "") {
-      errors.business_category = "Please select a category";
+    // For single selection, handle both string and array cases
+    const categoryValue = formData.business_category;
+    
+    // Check if it's an array (shouldn't happen for non-both, but handle gracefully)
+    if (Array.isArray(categoryValue)) {
+      if (categoryValue.length === 0) {
+        errors.business_category = "Please select a category";
+      } else if (categoryValue.length > 1) {
+        errors.business_category = "Only one category allowed for this business type";
+      }
+      // If it's an array with one item, it's valid
+    } else {
+      // Handle string case
+      if (!categoryValue || categoryValue.trim() === "") {
+        errors.business_category = "Please select a category";
+      }
     }
   }
 

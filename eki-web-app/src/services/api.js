@@ -204,9 +204,16 @@ const prepareVendorFormData = (formData, isFinalSubmission = false) => {
         return; // Skip this field entirely
       }
 
-      // Force business_category to lowercase
+      // Handle business_category - don't stringify arrays
       if (key === "business_category") {
-        value = String(value).toLowerCase();
+        if (Array.isArray(value)) {
+          // For FormData, we need to send as JSON string because FormData doesn't support nested arrays
+          // But for the PATCH request we're using JSON, not FormData
+          data.append(key, JSON.stringify(value));
+        } else {
+          data.append(key, String(value).toLowerCase());
+        }
+        return;
       }
 
       // Ensure phone doesn't have spaces and has a +
@@ -273,13 +280,40 @@ const prepareVendorFormData = (formData, isFinalSubmission = false) => {
 
 
 
-// Save vendor profile incrementally (PATCH) - Steps 3, 4, 5
 export const completeVendorOnboarding = async (formData) => {
-  // First: send text fields as JSON to confirm they save
+  // Get the business category value
+  let businessCategoryValue = formData.business_category;
+  
+  // If it's an array, send as JSON string (FormData doesn't support arrays)
+  if (Array.isArray(businessCategoryValue)) {
+    console.log("Sending array as JSON string:", businessCategoryValue);
+    businessCategoryValue = JSON.stringify(businessCategoryValue);
+  } else if (typeof businessCategoryValue === 'string') {
+    businessCategoryValue = businessCategoryValue.toLowerCase();
+  }
+  // // If it's an array, keep it as array (don't convert)
+  // // If it's a string, handle appropriately
+  // if (Array.isArray(businessCategoryValue)) {
+  //   // Keep as array - it will be JSON.stringify'd by axios automatically
+  //   console.log("Sending array:", businessCategoryValue);
+  // } else if (typeof businessCategoryValue === 'string') {
+  //   // Check if it's a stringified array
+  //   if (businessCategoryValue.startsWith('[') && businessCategoryValue.endsWith(']')) {
+  //     try {
+  //       businessCategoryValue = JSON.parse(businessCategoryValue);
+  //       console.log("Parsed string to array:", businessCategoryValue);
+  //     } catch (e) {
+  //       businessCategoryValue = businessCategoryValue.toLowerCase();
+  //     }
+  //   } else {
+  //     businessCategoryValue = businessCategoryValue.toLowerCase();
+  //   }
+  // }
+  
   const textPayload = {
     business_name: formData.business_name,
     business_type: formData.business_type,
-    business_category: formData.business_category?.toLowerCase(),
+    business_category: businessCategoryValue,  // Use the processed value
     owner_full_name: formData.owner_full_name,
     registration_number: formData.registration_number,
     tax_id: formData.tax_id,
@@ -555,5 +589,97 @@ export const markNotificationRead = async (notificationId) => {
   const response = await api.post(
     `/accounts/admin/notifications/${notificationId}/read/`
   );
+  return response.data;
+};
+
+
+
+/*  PAYMENTS & TRANSACTIONS  */
+
+// Get payment transactions with filters and pagination
+export const getPaymentTransactions = async (filters = {}) => {
+  const {
+    status = '',
+    date_from = '',
+    date_to = '',
+    reference = '',
+    order_reference = '',
+    customer_email = '',
+    limit = 50,
+    offset = 0
+  } = filters;
+
+  const params = {};
+  if (status) params.status = status;
+  if (date_from) params.date_from = date_from;
+  if (date_to) params.date_to = date_to;
+  if (reference) params.reference = reference;
+  if (order_reference) params.order_reference = order_reference;
+  if (customer_email) params.customer_email = customer_email;
+  params.limit = limit;
+  params.offset = offset;
+
+  const response = await api.get("/payments/payments/", { params });
+  return response.data;
+};
+
+// Get transaction summary for dashboard
+export const getTransactionSummary = async (days = 30) => {
+  const response = await api.get("/payments/summary/", { params: { days } });
+  return response.data;
+};
+
+// Get wallet transactions (admin only)
+export const getWalletTransactions = async (filters = {}) => {
+  const {
+    type = '',
+    vendor_id = '',
+    date_from = '',
+    date_to = '',
+    limit = 50,
+    offset = 0
+  } = filters;
+
+  const params = {};
+  if (type) params.type = type;
+  if (vendor_id) params.vendor_id = vendor_id;
+  if (date_from) params.date_from = date_from;
+  if (date_to) params.date_to = date_to;
+  params.limit = limit;
+  params.offset = offset;
+
+  const response = await api.get("/payments/wallet-transactions/", { params });
+  return response.data;
+};
+
+// Get withdrawal requests (admin only)
+export const getWithdrawalRequests = async (filters = {}) => {
+  const {
+    status = '',
+    vendor_id = '',
+    date_from = '',
+    date_to = '',
+    limit = 50,
+    offset = 0
+  } = filters;
+
+  const params = {};
+  if (status) params.status = status;
+  if (vendor_id) params.vendor_id = vendor_id;
+  if (date_from) params.date_from = date_from;
+  if (date_to) params.date_to = date_to;
+  params.limit = limit;
+  params.offset = offset;
+
+  const response = await api.get("/payments/withdrawals/", { params });
+  return response.data;
+};
+
+// Process withdrawal (approve/reject)
+export const processWithdrawal = async (withdrawalId, action, rejectionReason = "") => {
+  const response = await api.post(`/payments/withdrawals/${withdrawalId}/process/`, {
+    action,
+    rejection_reason: rejectionReason
+  });
   return response.data;
 };

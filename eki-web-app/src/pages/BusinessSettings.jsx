@@ -47,7 +47,7 @@ const DJANGO_BASE = (() => {
   if (envUrl) return envUrl.replace(/\/api\/v1\/?$/, "");
   // Fallback: same host as the current page (works on DigitalOcean)
   // or explicit localhost for local dev
-  return "http://127.0.0.1:8000";
+  return window.location.origin;
 })();
 
 /**

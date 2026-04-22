@@ -1,16 +1,7 @@
 import axios from 'axios';
-// ─── Smart base URL: HTTP locally, HTTPS in production ───────────────────────
-// .env.local (not committed) can override for local dev
-// .env (not committed) is used for production builds
-const isProduction =
-  window.location.hostname !== 'localhost' &&
-  window.location.hostname !== '127.0.0.1';
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ??
-  (isProduction
-    ? 'https://joineki.com/api/v1'
-    : 'http://127.0.0.1:8000/api/v1');
+  import.meta.env.VITE_API_BASE_URL ?? 'https://joineki.com/api/v1';
 
 // ─── Helper to convert relative image paths to absolute URLs ─────────────────
 export const getImageUrl = (path) => {
@@ -448,47 +439,61 @@ export const getVendorOrders = async ({ status = '', search = '' } = {}) => {
   }
 };
 
-export const updateVendorOrderStatus = async (orderId, status) => {
-  const r = await api.patch(`/orders/vendor/orders-status/${orderId}/`, { status });
-  return r.data?.data ?? r.data;
+// ─── Unified Vendor Action Endpoint ──────────────────────────────────────────
+// POST /api/v1/orders/vendor/action/{order_id}/
+// Handles: ready_for_pickup, start_service, complete_service,
+//          confirm_onsite, resend_code, update_tracking, mark_fulfilled, update_status
+const vendorOrderAction = async (orderId, action, extraPayload = {}) => {
+  const payload = { action, ...extraPayload };
+
+  // ── DEBUG: log exactly what we send and what the server returns ─────────────
+  console.group(`[vendorOrderAction] ${action} on order ${orderId}`);
+  console.log('REQUEST payload:', JSON.stringify(payload, null, 2));
+
+  try {
+    const r = await api.post(`/orders/vendor/action/${orderId}/`, payload);
+    console.log('RESPONSE status:', r.status);
+    console.log('RESPONSE data:', JSON.stringify(r.data, null, 2));
+    console.groupEnd();
+    return r.data?.data ?? r.data;
+  } catch (err) {
+    console.error('ERROR status   :', err.response?.status);
+    console.error('ERROR data     :', JSON.stringify(err.response?.data, null, 2));
+    console.groupEnd();
+    throw err;
+  }
 };
 
-export const startServiceOrder = async (orderId) => {
-  const r = await api.post(`/orders/start-service/${orderId}/`);
-  return r.data?.data ?? r.data;
-};
-
-export const completeServiceOrder = async (orderId) => {
-  const r = await api.post(`/orders/complete-service/${orderId}/`);
-  return r.data?.data ?? r.data;
-};
-
-export const markOrderReadyForPickup = async (orderId) => {
-  const r = await api.post(`/orders/ready-for-pickup/${orderId}/`);
-  return r.data?.data ?? r.data;
-};
-
-// ─── NEW: Order Confirmation & Pickup Code Verification (MOCK for UI testing) ─
-// TODO: Replace with real API calls once backend endpoints are ready.
-export const confirmVendorOrder = async (orderId) => {
-  console.log(`[MOCK] confirmVendorOrder called for order ${orderId}`);
-  await new Promise(resolve => setTimeout(resolve, 800));
-  return {
-    id: orderId,
-    status: 'confirmed',
-    pickup_code: Math.random().toString(36).substring(2, 10).toUpperCase(),
-  };
-};
+// ─── Order Actions (all via unified endpoint) ────────────────────────────────
+// confirm_onsite requires confirmation_code (vendor's own code to verify buyer is present)
+export const confirmVendorOrder = (orderId, confirmationCode, notes = '') =>
+  vendorOrderAction(orderId, 'confirm_onsite', {
+    confirmation_code: confirmationCode,
+    ...(notes ? { notes } : {}),
+  });
 
 export const verifyPickupCode = async (orderId, code) => {
-  console.log(`[MOCK] verifyPickupCode called for order ${orderId} with code ${code}`);
-  await new Promise(resolve => setTimeout(resolve, 800));
-  return {
-    id: orderId,
-    status: 'completed',
-    verified: true,
-  };
+  const r = await vendorOrderAction(orderId, 'mark_fulfilled', { pickup_code: code });
+  return r;
 };
+
+export const resendPickupCode = (orderId) =>
+  vendorOrderAction(orderId, 'resend_code');
+
+export const updateVendorOrderStatus = (orderId, status) =>
+  vendorOrderAction(orderId, 'update_status', { status });
+
+export const startServiceOrder = (orderId) =>
+  vendorOrderAction(orderId, 'start_service');
+
+export const completeServiceOrder = (orderId) =>
+  vendorOrderAction(orderId, 'complete_service');
+
+export const markOrderReadyForPickup = (orderId) =>
+  vendorOrderAction(orderId, 'ready_for_pickup');
+
+export const updateOrderTracking = (orderId, trackingData) =>
+  vendorOrderAction(orderId, 'update_tracking', trackingData);
 
 // ─── Wallet & Escrow ─────────────────────────────────────────────────────────
 export const getVendorWallet = async () => {

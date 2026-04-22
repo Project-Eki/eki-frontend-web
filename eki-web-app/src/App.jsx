@@ -24,6 +24,10 @@ import PaymentAndPayout from "./pages/PaymentAndPayout";
 import BusinessSettings from "./pages/BusinessSettings";
 import VendorReviews from "./pages/VendorReview";
 import Demo from "./pages/Demo";
+import VendorChat from "./pages/vendorchat";   
+import AdminTransactions from "./pages/AdminTransactions";
+import AdminWalletTransactions from "./pages/AdminWalletTransactions";
+import AdminWithdrawals from "./pages/AdminWithdrawals";
 
 // --- THE OTP IMPORT ---
 import OtpVerify from "./pages/otp";
@@ -38,7 +42,9 @@ const ProtectedRoute = ({ children, allowedRole }) => {
   const isAuthenticated =
     user.isAuthenticated ||
     (!!localStorage.getItem("access_token") &&
-      !!(localStorage.getItem("userRole") || localStorage.getItem("vendor_role")));
+      !!(
+        localStorage.getItem("userRole") || localStorage.getItem("vendor_role")
+      ));
 
   const role =
     user.role ||
@@ -71,74 +77,162 @@ function App() {
           <Route path="/admin-login" element={<AdminSignin />} />
 
           {/* Vendor Onboarding */}
-          <Route path="/VendorOnboarding" element={
-            <VendorOnboardingProvider>
-              <VendorOnboarding />
-            </VendorOnboardingProvider>
-          } />
+          <Route
+            path="/VendorOnboarding"
+            element={
+              <VendorOnboardingProvider>
+                <VendorOnboarding />
+              </VendorOnboardingProvider>
+            }
+          />
 
           {/* Protected Vendor Routes — VendorProvider scoped here only */}
-          <Route path="/vendordashboard" element={
-            <ProtectedRoute allowedRole="vendor">
-              <VendorLayout><VendorDashboard /></VendorLayout>
-            </ProtectedRoute>
-          } />
+          <Route
+            path="/vendordashboard"
+            element={
+              <ProtectedRoute allowedRole="vendor">
+                <VendorLayout>
+                  <VendorDashboard />
+                </VendorLayout>
+              </ProtectedRoute>
+            }
+          />
 
-          <Route path="/product-dashboard" element={
-            <ProtectedRoute allowedRole="vendor">
-              <VendorLayout><ProductDashboard /></VendorLayout>
-            </ProtectedRoute>
-          } />
+          <Route
+            path="/product-dashboard"
+            element={
+              <ProtectedRoute allowedRole="vendor">
+                <VendorLayout>
+                  <ProductDashboard />
+                </VendorLayout>
+              </ProtectedRoute>
+            }
+          />
 
           <Route path="/order-management" element={
             <ProtectedRoute allowedRole="vendor">
               <VendorLayout><OrderManagement /></VendorLayout>
             </ProtectedRoute>
           } />
-
-          <Route path="/business-settings" element={
+          <Route path="/vendor-chat" element={
             <ProtectedRoute allowedRole="vendor">
-              <VendorLayout><BusinessSettings /></VendorLayout>
+              <VendorLayout><VendorChat /></VendorLayout>
             </ProtectedRoute>
           } />
 
-          <Route path="/services" element={
-            <ProtectedRoute allowedRole="vendor">
-              <VendorLayout><ServiceManagement /></VendorLayout>
-            </ProtectedRoute>
-          } />
+          <Route
+            path="/business-settings"
+            element={
+              <ProtectedRoute allowedRole="vendor">
+                <VendorLayout>
+                  <BusinessSettings />
+                </VendorLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/services"
+            element={
+              <ProtectedRoute allowedRole="vendor">
+                <VendorLayout>
+                  <ServiceManagement />
+                </VendorLayout>
+              </ProtectedRoute>
+            }
+          />
 
           {/* Protected Admin Routes */}
-          <Route path="/admindashboard" element={
-            <ProtectedRoute allowedRole="admin">
-              <AdminDashboard />
-            </ProtectedRoute>
-          } />
+          <Route
+            path="/admindashboard"
+            element={
+              <ProtectedRoute allowedRole="admin">
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
 
-          <Route path="/admin-management" element={
-            <ProtectedRoute allowedRole="admin">
-              <AdminManagement />
-            </ProtectedRoute>
-          } />
+          <Route
+            path="/admin-management"
+            element={
+              <ProtectedRoute allowedRole="admin">
+                <AdminManagement />
+              </ProtectedRoute>
+            }
+          />
 
-          <Route path="/admin-payments" element={
-            <ProtectedRoute allowedRole="admin">
-              <PaymentAndPayout />
-            </ProtectedRoute>
-          } />
+          <Route
+            path="/admin-payments"
+            element={
+              <ProtectedRoute allowedRole="admin">
+                <PaymentAndPayout />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin-transactions"
+            element={
+              <ProtectedRoute allowedRole="admin">
+                <AdminTransactions />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin-wallet-transactions"
+            element={
+              <ProtectedRoute allowedRole="admin">
+                <AdminWalletTransactions />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin-withdrawals"
+            element={
+              <ProtectedRoute allowedRole="admin">
+                <AdminWithdrawals />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Shared Protected Routes */}
           <Route path="/settings" element={<Settings />} />
-          <Route path="/payment" element={<ProtectedRoute><PaymentSystem /></ProtectedRoute>} />
-          <Route path="/account-settings" element={<ProtectedRoute><AccountSettingsPage /></ProtectedRoute>} />
-          <Route path="/vendor-reviews" element={<ProtectedRoute allowedRole="vendor"><VendorReviews /></ProtectedRoute>} />
+          <Route
+            path="/payment"
+            element={
+              <ProtectedRoute>
+                <PaymentSystem />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/account-settings"
+            element={
+              <ProtectedRoute>
+                <AccountSettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vendor-reviews"
+            element={
+              <ProtectedRoute allowedRole="vendor">
+                <VendorReviews />
+              </ProtectedRoute>
+            }
+          />
 
           {/* 404 Fallback */}
-          <Route path="*" element={
-            <div className="p-10 text-center text-red-500 font-bold">
-              404 - Page Not Found
-            </div>
-          } />
+          <Route
+            path="*"
+            element={
+              <div className="p-10 text-center text-red-500 font-bold">
+                404 - Page Not Found
+              </div>
+            }
+          />
         </Routes>
       </div>
     </AuthProvider>
