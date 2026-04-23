@@ -379,43 +379,51 @@ const AdminManagement = () => {
       ]);
 
       // Get vendor array from response
-      const rawVendors = vendorsResponse.data?.data || vendorsResponse.data || [];
+      const rawVendors =
+        vendorsResponse.data?.data || vendorsResponse.data || [];
       const vendorArray = Array.isArray(rawVendors) ? rawVendors : [];
 
-      // Calculate stats from actual vendor data
-      const totalVendors = vendorArray.length;
-      const pendingVendors = vendorArray.filter(v =>
-        v.verification_status === "pending" || v.verification_status === "under_review"
+      // Get stats from backend dashboard response
+      const dashboardData = dashResponse.data?.data || dashResponse.data || {};
+      const summaryCards = dashboardData.overview?.summary_cards || {};
+
+      // Calculate pending and approved from vendor array
+      const pendingVendors = vendorArray.filter(
+        (v) =>
+          v.verification_status === "pending" ||
+          v.verification_status === "under_review",
       ).length;
-      const approvedVendors = vendorArray.filter(v =>
-        v.verification_status === "approved"
+      const approvedVendors = vendorArray.filter(
+        (v) => v.verification_status === "approved",
       ).length;
 
       setStats({
-        total: totalVendors || "—",
+        total: summaryCards.total_vendors || approvedVendors || "—",
         pending: pendingVendors || "—",
         approved: approvedVendors || "—",
       });
 
-      // Map vendors with all fields 
+      // Map vendors with all fields
       setVendors(
         vendorArray.map((v) => ({
           id: v.id,
           name: v.business_name || v.owner_full_name || v.user_name || "—",
           email: v.user_email || v.business_email || "",
           status: normStatus(v.verification_status),
-          submitted: v.created_at ? new Date(v.created_at).toLocaleDateString() : "—",
+          submitted: v.created_at
+            ? new Date(v.created_at).toLocaleDateString()
+            : "—",
           businessName: v.business_name || "—",
           businessType: v.business_type || "—",
           businessCategory: v.business_category || "—",
-        }))
+        })),
       );
     } catch (err) {
       console.error("AdminManagement load error:", err);
     } finally {
       setLoading(false);
       // The refresh button shows a spinning animation and becomes disabled
-      setRefreshing(false);   
+      setRefreshing(false);
     }
   }, []);
 
