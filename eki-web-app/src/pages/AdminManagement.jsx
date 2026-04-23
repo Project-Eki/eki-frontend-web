@@ -9,7 +9,7 @@ import {
   updateVendorStatus,
 } from "../services/api";
 import {
-  Store, Clock, TrendingUp, X, FileText, ExternalLink, AlertTriangle, Loader2, RefreshCw,
+  Store, Clock, TrendingUp, X, FileText, ExternalLink, AlertTriangle, Loader2, RefreshCw, Ban
 } from "lucide-react";
 import api from "../services/api";
 
@@ -684,6 +684,14 @@ const AdminManagement = () => {
           onConfirm={handleReject}
           onClose={() => setShowReject(false)}
           loading={rejectLoading}
+        />
+      )}
+      {showSuspend && vendorDetail && (
+        <SuspendVendorModal
+          vendor={vendorDetail}
+          onConfirm={handleSuspend}
+          onClose={() => setShowSuspend(false)}
+          loading={suspendLoading}
         />
       )}
       {showTerminate && vendorDetail && (
