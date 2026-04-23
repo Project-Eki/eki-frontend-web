@@ -204,6 +204,47 @@ const RejectVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
   );
 };
 
+// Suspend Modal
+const SuspendVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
+  const [reason, setReason] = useState("");
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-orange-100 bg-orange-50">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={16} className="text-orange-600" />
+            <h2 className="text-sm font-bold text-orange-800">Suspend Vendor</h2>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-orange-100">
+            <X size={16} className="text-orange-500" />
+          </button>
+        </div>
+        <div className="p-5 space-y-3.5">
+          <p className="text-xs text-gray-600">
+            Suspending <strong>{vendor?.name}</strong> will temporarily block their access.
+          </p>
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-gray-700">Reason for suspension <span className="text-red-400">*</span></label>
+            <textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)}
+              placeholder="Explain why this vendor is being suspended…"
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-orange-400"
+            />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
+            <button onClick={() => onConfirm(reason)} disabled={!reason.trim() || loading}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-orange-600 text-white text-xs font-bold rounded-xl hover:bg-orange-700 disabled:opacity-40"
+            >
+              {loading ? <Loader2 size={13} className="animate-spin" /> : <Ban size={13} />}
+              Suspend Vendor
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Terminate Modal
 const TerminateVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
   const [confirmText, setConfirmText] = useState("");
@@ -315,6 +356,8 @@ const AdminManagement = () => {
   const [rejectLoading, setRejectLoading] = useState(false);
   const [showReinstate, setShowReinstate] = useState(false);
   const [reinstateLoading, setReinstateLoading] = useState(false);
+  const [showSuspend, setShowSuspend] = useState(false);
+  const [suspendLoading, setSuspendLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -443,10 +486,11 @@ const AdminManagement = () => {
       const newStatus = "Suspended";
       setVendors((prev) => prev.map((v) => (v.id === vendorDetail.id ? { ...v, status: newStatus } : v)));
       setVendorDetail((prev) => (prev ? { ...prev, status: newStatus } : prev));
+      setShowSuspend(false);
     } catch (err) {
       alert(err?.response?.data?.message || "Suspension failed.");
     } finally {
-      setActionLoading(false);
+      setSuspendLoading(false);
     }
   };
 
@@ -502,7 +546,10 @@ const AdminManagement = () => {
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-[#ecece7] font-sans">
       <div className="flex flex-1 min-h-0">
-        <Sidebar mobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar
+          mobileOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           <div className="shrink-0 pr-3 pt-3">
             <Navbar3 onMenuClick={() => setSidebarOpen(true)} />
@@ -510,25 +557,42 @@ const AdminManagement = () => {
           <div className="flex-1 overflow-y-auto">
             <main className="px-4 py-4 sm:px-6 space-y-5">
               <div className="flex items-center justify-between">
-                <h1 className="text-lg font-bold text-gray-900">Vendor Management</h1>
-                  
-                <button 
+                <h1 className="text-lg font-bold text-gray-900">
+                  Vendor Management
+                </h1>
+
+                <button
                   onClick={handleRefresh}
                   disabled={refreshing}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border rounded-lg transition-colors hover:opacity-90"
                   style={{ borderColor: GOLD, color: GOLD }}
                 >
-                  <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />
+                  <RefreshCw
+                    size={12}
+                    className={refreshing ? "animate-spin" : ""}
+                  />
                   Refresh
                 </button>
               </div>
               {/* Stats cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <StatCard label="Total Vendors" value={stats.total} type="vendors" />
-                <StatCard label="Pending Verification" value={stats.pending} type="pending" />
-                <StatCard label="Vendors Approved" value={stats.approved} type="earners" />
+                <StatCard
+                  label="Total Vendors"
+                  value={stats.total}
+                  type="vendors"
+                />
+                <StatCard
+                  label="Pending Verification"
+                  value={stats.pending}
+                  type="pending"
+                />
+                <StatCard
+                  label="Vendors Approved"
+                  value={stats.approved}
+                  type="earners"
+                />
               </div>
-                 {/* Vendor table */}
+              {/* Vendor table */}
               {loading ? (
                 <div className="bg-gray-100 rounded-xl h-48 animate-pulse" />
               ) : (
@@ -541,16 +605,27 @@ const AdminManagement = () => {
             </main>
 
             <footer className="bg-[#1D4D4C] text-white py-3 px-5 sm:px-10 flex flex-col sm:flex-row justify-between items-center gap-2 text-[10px] shrink-0 mx-3 mb-3 rounded-xl">
-              <div className="hidden sm:block">Buy Smart. Sell Fast. Grow Together...</div>
+              <div className="hidden sm:block">
+                Buy Smart. Sell Fast. Grow Together...
+              </div>
               <div>© 2026 Vendor Portal. All rights reserved.</div>
               <div className="flex flex-wrap justify-center gap-3">
                 <span className="relative inline-block cursor-pointer hover:underline">
-                  eki<span className="absolute text-[5px] -bottom-0 -right-2">TM</span>
+                  eki
+                  <span className="absolute text-[5px] -bottom-0 -right-2">
+                    TM
+                  </span>
                 </span>
                 <span className="cursor-pointer hover:underline">Support</span>
-                <span className="cursor-pointer hover:underline">Privacy Policy</span>
-                <span className="cursor-pointer hover:underline">Terms of Service</span>
-                <span className="cursor-pointer hover:underline">Ijoema ltd</span>
+                <span className="cursor-pointer hover:underline">
+                  Privacy Policy
+                </span>
+                <span className="cursor-pointer hover:underline">
+                  Terms of Service
+                </span>
+                <span className="cursor-pointer hover:underline">
+                  Ijoema ltd
+                </span>
               </div>
             </footer>
           </div>
@@ -561,20 +636,30 @@ const AdminManagement = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 sticky top-0 bg-white z-10">
-              <h2 className="text-sm font-bold text-gray-900">Vendor Profile</h2>
-              <button onClick={closeModal} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100">
+              <h2 className="text-sm font-bold text-gray-900">
+                Vendor Profile
+              </h2>
+              <button
+                onClick={closeModal}
+                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100"
+              >
                 <X size={16} className="text-gray-500" />
               </button>
             </div>
             {detailLoading ? (
               <div className="p-6 space-y-3">
-                {[1, 2, 3, 4].map((i) => <div key={i} className="bg-gray-100 h-9 rounded-xl animate-pulse" />)}
+                {[1, 2, 3, 4].map((i) => (
+                  <div
+                    key={i}
+                    className="bg-gray-100 h-9 rounded-xl animate-pulse"
+                  />
+                ))}
               </div>
             ) : vendorDetail ? (
               <VendorProfile
                 vendor={vendorDetail}
                 onApprove={() => handleApprove(vendorDetail.id)}
-                onSuspend={handleSuspend}
+                onSuspend={() => setShowSuspend(true)}
                 onReject={() => setShowReject(true)}
                 onReviewDocuments={() => setShowDocReview(true)}
                 onTerminate={() => setShowTerminate(true)}
@@ -587,16 +672,35 @@ const AdminManagement = () => {
       )}
 
       {showDocReview && vendorDetail && (
-        <DocumentReviewModal vendorId={vendorDetail.id} vendorName={vendorDetail.name} onClose={() => setShowDocReview(false)} />
+        <DocumentReviewModal
+          vendorId={vendorDetail.id}
+          vendorName={vendorDetail.name}
+          onClose={() => setShowDocReview(false)}
+        />
       )}
       {showReject && vendorDetail && (
-        <RejectVendorModal vendor={vendorDetail} onConfirm={handleReject} onClose={() => setShowReject(false)} loading={rejectLoading} />
+        <RejectVendorModal
+          vendor={vendorDetail}
+          onConfirm={handleReject}
+          onClose={() => setShowReject(false)}
+          loading={rejectLoading}
+        />
       )}
       {showTerminate && vendorDetail && (
-        <TerminateVendorModal vendor={vendorDetail} onConfirm={handleTerminate} onClose={() => setShowTerminate(false)} loading={terminateLoading} />
+        <TerminateVendorModal
+          vendor={vendorDetail}
+          onConfirm={handleTerminate}
+          onClose={() => setShowTerminate(false)}
+          loading={terminateLoading}
+        />
       )}
       {showReinstate && vendorDetail && (
-        <ReinstateVendorModal vendor={vendorDetail} onConfirm={handleReinstate} onClose={() => setShowReinstate(false)} loading={reinstateLoading} />
+        <ReinstateVendorModal
+          vendor={vendorDetail}
+          onConfirm={handleReinstate}
+          onClose={() => setShowReinstate(false)}
+          loading={reinstateLoading}
+        />
       )}
     </div>
   );
