@@ -4,7 +4,7 @@ import { Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react';
 
 import loginIllustration from '../assets/Login.jpeg';
 import { validateLoginForm } from '../utils/Validation';
-import { SigninUser as manualLogin } from "../services/authService";
+import { SigninUser as manualLogin } from '../services/authService';
 import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
