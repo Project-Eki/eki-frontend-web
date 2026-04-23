@@ -49,7 +49,7 @@ const VendorOnboarding = () => {
   ];
 
   return (
-    <div className="h-screen w-full overflow-hidden flex flex-col bg-[#ecece7] font-sans">
+    <div className="min-h-screen w-full  flex flex-col bg-[#ecece7] font-sans">
 
       {/* MOBILE TOP PROGRESS BAR */}
       <div className="md:hidden w-full bg-[#125852] px-4 py-3 shadow-lg flex flex-col gap-2 shrink-0">
@@ -139,7 +139,7 @@ const VendorOnboarding = () => {
         </aside>
 
         {/* MAIN CONTENT */}
-        <main className="flex-1 min-h-0 flex flex-col items-center overflow-y-auto px-2 md:px-4 lg:px-8 py-2">
+        <main className="flex-1 flex flex-col items-center overflow-y-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3">
           <div
             className={`w-full transition-all duration-300 ${
               currentStep >= 3 ? "max-w-[900px]" : "max-w-[600px]"
