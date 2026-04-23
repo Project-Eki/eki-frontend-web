@@ -443,7 +443,6 @@ const AdminManagement = () => {
       const newStatus = "Suspended";
       setVendors((prev) => prev.map((v) => (v.id === vendorDetail.id ? { ...v, status: newStatus } : v)));
       setVendorDetail((prev) => (prev ? { ...prev, status: newStatus } : prev));
-      setShowSuspend(false);
     } catch (err) {
       alert(err?.response?.data?.message || "Suspension failed.");
     } finally {
