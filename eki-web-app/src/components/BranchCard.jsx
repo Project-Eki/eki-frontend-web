@@ -37,6 +37,12 @@ const BranchCard = ({ branch, index, onEdit, onRemove }) => {
         <div className="col-span-2">
           <span className="font-semibold">Address:</span> {branch.address}
         </div>
+        {/* Country field - displayed first */}
+        {branch.country && (
+          <div>
+            <span className="font-semibold">Country:</span> {branch.country}
+          </div>
+        )}
         <div>
           <span className="font-semibold">City:</span> {branch.city}
         </div>
