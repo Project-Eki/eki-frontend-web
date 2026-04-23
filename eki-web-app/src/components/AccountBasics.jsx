@@ -182,7 +182,7 @@ const AccountBasics = () => {
         </div>
 
         {/* Password Fields */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="password-grid grid grid-cols-2 gap-3">
           {/* Password */}
           <div className="relative">
             <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={12} />

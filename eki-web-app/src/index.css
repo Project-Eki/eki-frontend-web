@@ -2,13 +2,12 @@
 
 @layer base {
   html {
-    font-family: 'Inter', sans-serif;
-    @apply text-gray-900 antialiased; /* High-end font smoothing */
+    font-family: 'Poppins', sans-serif;
+    @apply text-gray-900 antialiased;
   }
   
   h1, h2, h3, h4, .font-display, .font-black {
-    font-family: 'Poppins', sans-serif;
-    letter-spacing: -0.02em; /* Makes Poppins look cleaner in headers */
+    letter-spacing: -0.02em;
   }
 }
 

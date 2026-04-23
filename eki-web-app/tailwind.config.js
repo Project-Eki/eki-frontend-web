@@ -7,10 +7,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        // 'Inter' for body text (clean & readable)
-        sans: ['Inter', 'sans-serif'],
-        // 'Poppins' for headings (bold & modern)
-        display: ['Poppins', 'sans-serif'],
+        sans: ['Poppins', 'sans-serif'],
       },
     },
   },

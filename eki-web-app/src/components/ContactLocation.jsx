@@ -1,9 +1,7 @@
 import React, { useState } from "react";
 import { HiOutlineLocationMarker, HiOutlinePhone } from "react-icons/hi";
 import {
-  HiOutlineBuildingOffice,
   HiOutlineMapPin,
-  HiOutlineHome,
   HiOutlineClock,
   HiPlus,
 } from "react-icons/hi2";
@@ -12,8 +10,10 @@ import "react-phone-number-input/style.css";
 import { validateContactLocation } from "../utils/onboardingValidation";
 import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
 import SearchableCountrySelector from "./SearchableCountrySelector";
+import SearchableCitySelector from "./SearchableCitySelector";
 import BranchModal from "./BranchModal";
 import BranchCard from "./BranchCard";
+import AddressAutocomplete from "./AddressAutocomplete";
 
 // Inline error component
 const InlineError = ({ message }) => (
@@ -57,11 +57,27 @@ const ContactLocation = () => {
     setErrors(validationErrors);
   };
 
-  // FIXED: Remove spaces from phone number immediately
+  // Remove spaces from phone number immediately
   const handlePhoneChange = (value) => {
-    // Remove ALL spaces from the phone number before saving to state
     const cleanValue = value ? value.replace(/\s/g, "") : "";
     handleChange("business_phone", cleanValue);
+  };
+
+  // Auto-fills city and zip_code when user picks an address from OSM
+  const handleAddressParsed = ({ city, zip }) => {
+    // Only update if city is provided and city field is empty
+    if (city && !formData.city) {
+      dispatch({
+        type: ACTIONS.UPDATE_FORM,
+        payload: { city: city },
+      });
+    }
+    if (zip && !formData.zip_code) {
+      dispatch({
+        type: ACTIONS.UPDATE_FORM,
+        payload: { zip_code: zip },
+      });
+    }
   };
 
   // Branch Locations Management
@@ -125,6 +141,7 @@ const ContactLocation = () => {
       business_phone: true,
       country: true,
       city: true,
+      address: true,
       opening_time: true,
       closing_time: true,
     });
@@ -181,7 +198,7 @@ const ContactLocation = () => {
           </div>
         </div>
 
-        {/* Country */}
+        {/* Country - Uses your existing SearchableCountrySelector */}
         <div className="flex flex-col">
           <SearchableCountrySelector
             value={formData.country}
@@ -191,51 +208,23 @@ const ContactLocation = () => {
           />
         </div>
 
-        {/* City */}
-        <div className="flex flex-col">
-          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
-            City <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <HiOutlineBuildingOffice
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"
-              size={12}
-            />
-            <input
-              type="text"
-              value={formData.city || ""}
-              onChange={(e) => handleChange("city", e.target.value)}
-              onBlur={() => handleBlur("city")}
-              placeholder="e.g. Kampala"
-              className={`w-full h-8 pl-9 pr-3 bg-white border rounded-xl focus:outline-none text-[11px] ${
-                showError("city")
-                  ? "border-red-400 placeholder:text-gray-400"
-                  : "border-gray-200 placeholder:text-gray-400"
-              }`}
-            />
-            {showError("city") && <InlineError message={errors.city} />}
-          </div>
-        </div>
+        {/* City - Uses your existing SearchableCitySelector with country-state-city */}
+        <SearchableCitySelector
+          countryCode={formData.country}
+          value={formData.city || ""}
+          onChange={(val) => handleChange("city", val)}
+          error={showError("city") ? errors.city : ""}
+        />
 
-        {/* Street Address */}
-        <div className="flex flex-col">
-          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
-             Address{" "}
-            <span className="text-gray-400 text-[9px]">(Optional)</span>
-          </label>
-          <div className="relative">
-            <HiOutlineHome
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"
-              size={12}
-            />
-            <input
-              type="text"
-              value={formData.address || ""}
-              onChange={(e) => handleChange("address", e.target.value)}
-              placeholder="123 Business Way, Suite 4"
-              className="w-full h-8 pl-9 pr-3 bg-white border border-gray-200 rounded-xl focus:outline-none text-[11px] focus:border-[#F2B53D] placeholder:text-gray-400"
-            />
-          </div>
+        {/* Street Address - OSM Address Autocomplete */}
+        <div className="flex flex-col md:col-span-2" data-field="address">
+          <AddressAutocomplete
+            value={formData.address || ""}
+            onChange={(val) => handleChange("address", val)}
+            onAddressParsed={handleAddressParsed}
+            onBlur={() => handleBlur("address")}
+            error={showError("address") ? errors.address : null}
+          />
         </div>
 
         {/* Landmark */}
@@ -280,7 +269,7 @@ const ContactLocation = () => {
           </div>
         </div>
 
-        {/* Row with Zip Code and Branch Locations on same row */}
+        {/* Zip/Postal Code */}
         <div className="flex flex-col">
           <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
             Zip/Postal Code{" "}
@@ -297,7 +286,7 @@ const ContactLocation = () => {
           </div>
         </div>
 
-        {/* Branch Locations with Add Button - Same row as Zip Code */}
+        {/* Branch Locations with Add Button */}
         <div className="flex flex-col">
           <div className="flex items-center justify-between mb-0.5">
             <label className="text-[10px] font-semibold text-gray-700 ml-1">

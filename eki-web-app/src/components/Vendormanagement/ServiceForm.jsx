@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Hotel,
   Plane,
@@ -30,6 +30,8 @@ import {
   Archive,
   Send,
   BookOpen,
+  Sparkles,
+  Edit,
 } from "lucide-react";
 import { uploadListingImage } from "../../services/api";
 import api from "../../services/api";
@@ -39,6 +41,7 @@ import {
   validateStep,
   validateAllSteps,
 } from "../../utils/ServiceFormValidation";
+import { useVendor } from "../../context/useVendor";
 
 // PHONE INPUT (optional dependency)
 let PhoneInput = null;
@@ -185,28 +188,195 @@ const ImageSlot = ({ preview, label, onClick }) => (
   </div>
 );
 
-// STEP 2 FORMS
+// ==================== TAILORING SPECIFIC FORM ====================
+const TailoringStep2 = ({ d, set, errors }) => (
+  <div className="grid grid-cols-2 gap-1.5">
+    <div className="col-span-2">
+      <SectionHeader icon={Scissors} label="TAILORING DETAILS" />
+    </div>
+    <Field label="Service Type" required error={errors.tailoringServiceType}>
+      <Sel
+        value={d.tailoringServiceType || "custom"}
+        onChange={(e) => set("tailoringServiceType", e.target.value)}
+        error={errors.tailoringServiceType}
+      >
+        <option value="custom">Custom Made</option>
+        <option value="alterations">Alterations & Repairs</option>
+        <option value="embroidery">Embroidery</option>
+        <option value="rental">Rental / Hire</option>
+      </Sel>
+    </Field>
+    <Field label="Base Price" required error={errors.price}>
+      <InputIcon
+        icon={DollarSign}
+        type="number"
+        placeholder="0.00"
+        value={d.price || ""}
+        onChange={(e) => set("price", e.target.value)}
+        error={errors.price}
+      />
+    </Field>
+    <Field label="Price Unit">
+      <Sel
+        value={d.priceUnit || "item"}
+        onChange={(e) => set("priceUnit", e.target.value)}
+      >
+        <option value="item">Per Item</option>
+        <option value="outfit">Per Outfit</option>
+        <option value="hour">Per Hour</option>
+        <option value="project">Per Project</option>
+      </Sel>
+    </Field>
+    <Field label="Fabric Material" required error={errors.fabricMaterial}>
+      <InputIcon
+        icon={Scissors}
+        placeholder="e.g. Cotton, Silk, Wool blend"
+        value={d.fabricMaterial || ""}
+        onChange={(e) => set("fabricMaterial", e.target.value)}
+        error={errors.fabricMaterial}
+      />
+    </Field>
+    <Field label="Turnaround Time">
+      <InputIcon
+        icon={Clock}
+        placeholder="e.g. 3-5 days, 1 week"
+        value={d.turnaroundTime || ""}
+        onChange={(e) => set("turnaroundTime", e.target.value)}
+      />
+    </Field>
+    <Field label="Measurements Required">
+      <Sel
+        value={d.measurementsRequired || "optional"}
+        onChange={(e) => set("measurementsRequired", e.target.value)}
+      >
+        <option value="optional">Optional</option>
+        <option value="required">Required</option>
+        <option value="in_person">In-person fitting only</option>
+      </Sel>
+    </Field>
+    {/* REMOVED: Home Service Available toggle */}
+    <Field label="Contact Phone" required error={errors.phone}>
+      <div className="ring-1 ring-amber-300 rounded-lg">
+        <PhoneField
+          value={d.phone}
+          onChange={(v) => set("phone", v)}
+          error={errors.phone}
+        />
+      </div>
+    </Field>
+  </div>
+);
 
-const ProfessionalStep2 = ({ d, set, errors }) => (
+// ==================== BEAUTY & HEALTH SPECIFIC FORM ====================
+const BeautyHealthStep2 = ({ d, set, errors }) => (
+  <div className="grid grid-cols-2 gap-1.5">
+    <div className="col-span-2">
+      <SectionHeader icon={Sparkles} label="BEAUTY & HEALTH SERVICES" />
+    </div>
+    <Field label="Service Category" required error={errors.beautyCategory}>
+      <Sel
+        value={d.beautyCategory || ""}
+        onChange={(e) => set("beautyCategory", e.target.value)}
+        error={errors.beautyCategory}
+      >
+        <option value="">Select category</option>
+        <option value="hair">Hair Styling & Braiding</option>
+        <option value="makeup">Makeup Artistry</option>
+        <option value="skincare">Skincare & Facials</option>
+        <option value="massage">Massage Therapy</option>
+        <option value="nails">Nail Care</option>
+        <option value="barber">Barber Services</option>
+        <option value="bridal">Bridal Packages</option>
+        <option value="wellness">Wellness & Spa</option>
+      </Sel>
+    </Field>
+    <Field label="Base Price" required error={errors.price}>
+      <InputIcon
+        icon={DollarSign}
+        type="number"
+        placeholder="0.00"
+        value={d.price || ""}
+        onChange={(e) => set("price", e.target.value)}
+        error={errors.price}
+      />
+    </Field>
+    <Field label="Price Unit">
+      <Sel
+        value={d.priceUnit || "session"}
+        onChange={(e) => set("priceUnit", e.target.value)}
+      >
+        <option value="session">Per Session</option>
+        <option value="hour">Per Hour</option>
+        <option value="person">Per Person</option>
+        <option value="package">Package Deal</option>
+      </Sel>
+    </Field>
+    <Field label="Duration">
+      <InputIcon
+        icon={Clock}
+        placeholder="e.g. 60 min, 2 hours"
+        value={d.duration || ""}
+        onChange={(e) => set("duration", e.target.value)}
+      />
+    </Field>
+    <Field label="Products Used">
+      <InputIcon
+        icon={Tag}
+        placeholder="e.g. Organic, Professional brands"
+        value={d.productsUsed || ""}
+        onChange={(e) => set("productsUsed", e.target.value)}
+      />
+    </Field>
+    <div className="col-span-2">
+      <Toggle
+        checked={!!d.mobileService}
+        onChange={(v) => set("mobileService", v)}
+        label="Mobile Service"
+        desc="I come to your location"
+      />
+    </div>
+    <div className="col-span-2">
+      <Toggle
+        checked={!!d.groupSessions}
+        onChange={(v) => set("groupSessions", v)}
+        label="Group Sessions Available"
+        desc="For bridal parties, events, etc."
+      />
+    </div>
+    <Field label="Contact Phone" required error={errors.phone}>
+      <div className="ring-1 ring-amber-300 rounded-lg">
+        <PhoneField
+          value={d.phone}
+          onChange={(v) => set("phone", v)}
+          error={errors.phone}
+        />
+      </div>
+    </Field>
+  </div>
+);
+
+// ==================== OTHER SERVICES FORM ====================
+const OtherServicesStep2 = ({ d, set, errors }) => (
   <div className="grid grid-cols-2 gap-1.5">
     <div className="col-span-2">
       <SectionHeader icon={Briefcase} label="SERVICE CONFIGURATION" />
     </div>
-    <Field label="Sub-Category" required error={errors.category}>
+    <Field label="Service Sub-Category" required error={errors.otherCategory}>
       <Sel
-        value={d.category || ""}
-        onChange={(e) => set("category", e.target.value)}
-        error={errors.category}
+        value={d.otherCategory || ""}
+        onChange={(e) => set("otherCategory", e.target.value)}
+        error={errors.otherCategory}
       >
         <option value="">Select sub-category</option>
-        <option value="tailoring">Tailoring</option>
-        <option value="beauty">Beauty & Health</option>
-        <option value="food">Food & Beverages</option>
-        <option value="other">Events & Decoration</option>
-        <option value="other">Education & Tutoring</option>
-        <option value="professional">Consulting & Coaching</option>
-        <option value="other">IT & Technology</option>
-        <option value="other">Cleaning & Maintenance</option>
+        <option value="events">Events & Decoration</option>
+        <option value="education">Education & Tutoring</option>
+        <option value="consulting">Consulting & Coaching</option>
+        <option value="it">IT & Technology</option>
+        <option value="cleaning">Cleaning & Maintenance</option>
+        <option value="photography">Photography & Videography</option>
+        <option value="catering">Catering & Food Services</option>
+        <option value="logistics">Logistics & Delivery</option>
+        <option value="repair">Repair Services</option>
         <option value="other">Other / General Services</option>
       </Sel>
     </Field>
@@ -235,7 +405,7 @@ const ProfessionalStep2 = ({ d, set, errors }) => (
     <Field label="Duration">
       <InputIcon
         icon={Clock}
-        placeholder="e.g. 60 min"
+        placeholder="e.g. 60 min, 2 days"
         value={d.duration || ""}
         onChange={(e) => set("duration", e.target.value)}
       />
@@ -259,23 +429,7 @@ const ProfessionalStep2 = ({ d, set, errors }) => (
         onChange={(e) => set("languages", e.target.value)}
       />
     </Field>
-    {d.category === "tailoring" && (
-      <Field
-        label="Fabric Material"
-        required
-        error={errors.fabricMaterial}
-        hint="Required for tailoring"
-      >
-        <InputIcon
-          icon={Scissors}
-          placeholder="e.g. Wool blend, Cotton"
-          value={d.fabricMaterial || ""}
-          onChange={(e) => set("fabricMaterial", e.target.value)}
-          error={errors.fabricMaterial}
-        />
-      </Field>
-    )}
-    <Field label="Contact Phone" hint="Pre-filled from your profile">
+    <Field label="Contact Phone" required error={errors.phone}>
       <div className="ring-1 ring-amber-300 rounded-lg">
         <PhoneField
           value={d.phone}
@@ -283,15 +437,6 @@ const ProfessionalStep2 = ({ d, set, errors }) => (
           error={errors.phone}
         />
       </div>
-    </Field>
-    <Field label="Contact Email" hint="Pre-filled from your profile">
-      <InputIcon
-        icon={Mail}
-        type="email"
-        placeholder="your@email.com"
-        value={d.email || ""}
-        onChange={(e) => set("email", e.target.value)}
-      />
     </Field>
     <div className="col-span-2">
       <Toggle
@@ -316,10 +461,11 @@ const ProfessionalStep2 = ({ d, set, errors }) => (
   </div>
 );
 
+// ==================== HOTEL FORM (Hospitality) ====================
 const HotelStep2 = ({ d, set, errors }) => (
   <div className="grid grid-cols-2 gap-1.5">
     <div className="col-span-2">
-      <SectionHeader icon={Hotel} label="HOTEL CONFIGURATION" />
+      <SectionHeader icon={Hotel} label="HOSPITALITY CONFIGURATION" />
     </div>
     <Field label="Property Type" required error={errors.propertyType}>
       <Sel
@@ -414,12 +560,7 @@ const HotelStep2 = ({ d, set, errors }) => (
       />
     </Field>
     <div className="col-span-2">
-      <Field
-        label="Address"
-        required
-        error={errors.address}
-        hint="Pre-filled from your profile"
-      >
+      <Field label="Address" required error={errors.address}>
         <div className="ring-1 ring-amber-300 rounded-lg">
           <InputIcon
             icon={MapPin}
@@ -431,9 +572,13 @@ const HotelStep2 = ({ d, set, errors }) => (
         </div>
       </Field>
     </div>
-    <Field label="Phone" hint="Pre-filled from your profile">
+    <Field label="Phone" required error={errors.phone}>
       <div className="ring-1 ring-amber-300 rounded-lg">
-        <PhoneField value={d.phone} onChange={(v) => set("phone", v)} />
+        <PhoneField
+          value={d.phone}
+          onChange={(v) => set("phone", v)}
+          error={errors.phone}
+        />
       </div>
     </Field>
     <Field label="Booking Email">
@@ -445,35 +590,10 @@ const HotelStep2 = ({ d, set, errors }) => (
         onChange={(e) => set("email", e.target.value)}
       />
     </Field>
-    <div className="col-span-2">
-      <Field label="Website">
-        <InputIcon
-          icon={Globe}
-          type="url"
-          placeholder="https://www.yourhotel.com"
-          value={d.website || ""}
-          onChange={(e) => set("website", e.target.value)}
-        />
-      </Field>
-    </div>
-    <div className="col-span-2">
-      <Field label="Cancellation Policy">
-        <Sel
-          value={d.cancellation || ""}
-          onChange={(e) => set("cancellation", e.target.value)}
-        >
-          <option value="">Select policy</option>
-          <option value="free_24h">Free cancellation up to 24 hours</option>
-          <option value="free_48h">Free cancellation up to 48 hours</option>
-          <option value="free_7d">Free cancellation up to 7 days</option>
-          <option value="non_refundable">Non-refundable</option>
-          <option value="partial_50">Partial refund (50%)</option>
-        </Sel>
-      </Field>
-    </div>
   </div>
 );
 
+// ==================== AIRLINE FORM ====================
 const AirlineStep2 = ({ d, set, errors }) => (
   <div className="grid grid-cols-2 gap-1.5">
     <div className="col-span-2">
@@ -493,14 +613,6 @@ const AirlineStep2 = ({ d, set, errors }) => (
         <option value="private_jet">Private Jet</option>
         <option value="ticketing">Travel Agency / Ticketing</option>
       </Sel>
-    </Field>
-    <Field label="Flight Code">
-      <input
-        className={iCls}
-        placeholder="e.g. UG-202"
-        value={d.flightCode || ""}
-        onChange={(e) => set("flightCode", e.target.value)}
-      />
     </Field>
     <Field label="Origin" required error={errors.origin}>
       <InputIcon
@@ -543,61 +655,19 @@ const AirlineStep2 = ({ d, set, errors }) => (
         <option value="all">All Classes</option>
       </Sel>
     </Field>
-    <Field label="Duration">
-      <InputIcon
-        icon={Clock}
-        placeholder="e.g. 1h 45min"
-        value={d.flightDuration || ""}
-        onChange={(e) => set("flightDuration", e.target.value)}
-      />
-    </Field>
-    <Field label="Frequency">
-      <Sel
-        value={d.frequency || ""}
-        onChange={(e) => set("frequency", e.target.value)}
-      >
-        <option value="">Select</option>
-        <option value="daily">Daily</option>
-        <option value="several_weekly">Several times a week</option>
-        <option value="weekly">Weekly</option>
-        <option value="on_demand">On Demand / Charter</option>
-        <option value="seasonal">Seasonal</option>
-      </Sel>
-    </Field>
-    <Field label="Seats">
-      <InputIcon
-        icon={User}
-        type="number"
-        placeholder="180"
-        value={d.capacity || ""}
-        onChange={(e) => set("capacity", e.target.value)}
-      />
-    </Field>
-    <Field label="IATA Code">
-      <input
-        className={iCls}
-        placeholder="e.g. EK, QR"
-        value={d.iata || ""}
-        onChange={(e) => set("iata", e.target.value)}
-      />
-    </Field>
-    <Field label="Contact Phone" hint="Pre-filled from your profile">
+    <Field label="Contact Phone" required error={errors.phone}>
       <div className="ring-1 ring-amber-300 rounded-lg">
-        <PhoneField value={d.phone} onChange={(v) => set("phone", v)} />
+        <PhoneField
+          value={d.phone}
+          onChange={(v) => set("phone", v)}
+          error={errors.phone}
+        />
       </div>
-    </Field>
-    <Field label="Booking Email">
-      <InputIcon
-        icon={Mail}
-        type="email"
-        placeholder="bookings@airline.com"
-        value={d.email || ""}
-        onChange={(e) => set("email", e.target.value)}
-      />
     </Field>
   </div>
 );
 
+// ==================== TRANSPORT FORM ====================
 const TransportStep2 = ({ d, set, errors }) => (
   <div className="grid grid-cols-2 gap-1.5">
     <div className="col-span-2">
@@ -618,7 +688,6 @@ const TransportStep2 = ({ d, set, errors }) => (
         <option value="bus">Bus / Coach</option>
         <option value="truck">Truck / Pickup</option>
         <option value="ambulance">Ambulance</option>
-        <option value="other">Other</option>
       </Sel>
     </Field>
     <Field label="Service Mode" required error={errors.serviceMode}>
@@ -636,8 +705,7 @@ const TransportStep2 = ({ d, set, errors }) => (
         <option value="shuttle">School / Event Shuttle</option>
       </Sel>
     </Field>
-
-        <Field label="Origin / Pickup Location"  required error={errors.origin}>
+    <Field label="Origin / Pickup" required error={errors.origin}>
       <InputIcon
         icon={MapPin}
         placeholder="e.g. Kampala, Entebbe Airport"
@@ -646,17 +714,15 @@ const TransportStep2 = ({ d, set, errors }) => (
         error={errors.origin}
       />
     </Field>
-
-        <Field label="Destination / Dropoff Location" required error={errors.destination}>
-      <InputIcon 
-        icon={MapPin} 
-        placeholder="e.g. Murchison Falls, Queen Elizabeth, Bwindi" 
-        value={d.destination||""} 
-        onChange={e=>set("destination",e.target.value)} 
+    <Field label="Destination" required error={errors.destination}>
+      <InputIcon
+        icon={MapPin}
+        placeholder="e.g. Murchison Falls, Queen Elizabeth"
+        value={d.destination || ""}
+        onChange={(e) => set("destination", e.target.value)}
         error={errors.destination}
       />
     </Field>
-
     <Field label="Price" required error={errors.price}>
       <InputIcon
         icon={DollarSign}
@@ -678,15 +744,13 @@ const TransportStep2 = ({ d, set, errors }) => (
         <option value="day">Per Day</option>
       </Sel>
     </Field>
-    <Field label="Driver Name" hint="Pre-filled from your profile">
-      <div className="ring-1 ring-amber-300 rounded-lg">
-        <InputIcon
-          icon={User}
-          placeholder="Full name"
-          value={d.driver || ""}
-          onChange={(e) => set("driver", e.target.value)}
-        />
-      </div>
+    <Field label="Driver Name">
+      <InputIcon
+        icon={User}
+        placeholder="Full name"
+        value={d.driver || ""}
+        onChange={(e) => set("driver", e.target.value)}
+      />
     </Field>
     <Field label="Seating Capacity">
       <InputIcon
@@ -697,28 +761,15 @@ const TransportStep2 = ({ d, set, errors }) => (
         onChange={(e) => set("seats", e.target.value)}
       />
     </Field>
-    <Field label="Vehicle Model">
-      <input
-        className={iCls}
-        placeholder="e.g. Toyota Hiace 2020"
-        value={d.vehicleModel || ""}
-        onChange={(e) => set("vehicleModel", e.target.value)}
-      />
-    </Field>
     <Field label="Number Plate" required error={errors.plate}>
       <input
-        className={`${iCls} ${errors.plate ? "border-red-300 focus:ring-red-400 focus:border-red-400" : ""}`}
+        className={`${iCls} ${errors.plate ? "border-red-300" : ""}`}
         placeholder="e.g. UAA 123B"
         value={d.plate || ""}
         onChange={(e) => set("plate", e.target.value)}
       />
     </Field>
-    <Field
-      label="Contact Phone"
-      required
-      error={errors.phone}
-      hint="Pre-filled from your profile"
-    >
+    <Field label="Contact Phone" required error={errors.phone}>
       <div className="ring-1 ring-amber-300 rounded-lg">
         <PhoneField
           value={d.phone}
@@ -727,7 +778,6 @@ const TransportStep2 = ({ d, set, errors }) => (
         />
       </div>
     </Field>
-
     <div className="col-span-2">
       <Toggle
         checked={!!d.available24h}
@@ -740,65 +790,63 @@ const TransportStep2 = ({ d, set, errors }) => (
 );
 
 // STEP 3 — Description + amenities/inclusions
-const Step3Content = ({ serviceType, d, set, errors }) => {
+const Step3Content = ({ serviceCategory, d, set, errors }) => {
   const wc = countWords(d.description || "");
   const wcColor =
     wc > 20 ? "text-red-500" : wc > 0 ? "text-[#C8900A]" : "text-gray-400";
-  const items =
-    {
-      hotel: [
-        "Free WiFi",
-        "Parking",
-        "Swimming Pool",
-        "Gym / Fitness",
-        "Restaurant",
-        "Bar / Lounge",
-        "Airport Shuttle",
-        "Conference Room",
-        "Spa",
-        "Room Service",
-        "Air Conditioning",
-        "Breakfast Included",
-      ],
-      professional: [
-        "One-on-One",
-        "Group Sessions",
-        "Certificate Provided",
-        "Materials Included",
-        "Follow-up Session",
-        "Online Resources",
-      ],
-      airline: [
-        "Carry-on Baggage",
-        "Checked Baggage",
-        "Meals",
-        "In-flight Entertainment",
-        "WiFi",
-        "Lounge Access",
-        "Airport Transfer",
-        "Travel Insurance",
-      ],
-      transport: [
-        "Air Conditioning",
-        "WiFi / Hotspot",
-        "GPS Tracking",
-        "Music System",
-        "Child Seat Available",
-        "Luggage Space",
-        "Wheelchair Accessible",
-        "Pet Friendly",
-        "Intercity Routes",
-        "24/7 Availability",
-      ],
-    }[serviceType] || [];
-  const checkKey = serviceType === "hotel" ? "amenities" : "inclusions";
-  const checkLabel =
-    {
-      hotel: "Amenities",
-      airline: "Included in Ticket",
-      transport: "Vehicle Features",
-      professional: "What's Included",
-    }[serviceType] || "Extras";
+
+  const getAmenities = () => {
+    switch (serviceCategory) {
+      case "hotel":
+        return [
+          "Free WiFi",
+          "Parking",
+          "Swimming Pool",
+          "Restaurant",
+          "Air Conditioning",
+          "Breakfast Included",
+        ];
+      case "airline":
+        return [
+          "Carry-on Baggage",
+          "Checked Baggage",
+          "Meals",
+          "In-flight Entertainment",
+          "WiFi",
+        ];
+      case "transport":
+        return [
+          "Air Conditioning",
+          "GPS Tracking",
+          "Music System",
+          "Luggage Space",
+          "24/7 Availability",
+        ];
+      case "tailoring":
+        return [
+          "Free Consultation",
+          "Fitting Included",
+          "Delivery Available",
+          "Alterations",
+          "Fabric Swatches",
+        ];
+      case "beauty":
+        return [
+          "Products Included",
+          "Sanitized Tools",
+          "Free Consultation",
+          "Aftercare Advice",
+        ];
+      default:
+        return [
+          "Professional Service",
+          "Guaranteed Quality",
+          "Customer Support",
+        ];
+    }
+  };
+
+  const checkKey = "inclusions";
 
   return (
     <div className="space-y-3 ml-0.5">
@@ -812,270 +860,153 @@ const Step3Content = ({ serviceType, d, set, errors }) => {
           <textarea
             rows={3}
             placeholder="Describe your service (max 20 words)..."
-            className={`${iCls} resize-none w-full ${errors.description ? "border-red-300 focus:ring-red-400 focus:border-red-400" : ""}`}
+            className={`${iCls} resize-none w-full`}
             value={d.description || ""}
             onChange={(e) => set("description", e.target.value)}
           />
           <span
-            className={`absolute bottom-1 right-2 text-[8px] font-bold tabular-nums pointer-events-none ${wcColor}`}
+            className={`absolute bottom-1 right-2 text-[8px] font-bold ${wcColor}`}
           >
             {wc}/20
           </span>
         </div>
       </Field>
-      {items.length > 0 && (
-        <Field label={checkLabel}>
-          <div className="grid grid-cols-3 gap-x-3 gap-y-1 p-2 bg-gray-50 rounded-lg border border-gray-100">
-            {items.map((item) => (
-              <Check
-                key={item}
-                label={item}
-                checked={(d[checkKey] || []).includes(item)}
-                onChange={(c) =>
-                  set(
-                    checkKey,
-                    c
-                      ? [...(d[checkKey] || []), item]
-                      : (d[checkKey] || []).filter((x) => x !== item),
-                  )
-                }
-              />
-            ))}
-          </div>
-        </Field>
-      )}
+      <Field label="What's Included">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1 p-2 bg-gray-50 rounded-lg">
+          {getAmenities().map((item) => (
+            <Check
+              key={item}
+              label={item}
+              checked={(d[checkKey] || []).includes(item)}
+              onChange={(c) =>
+                set(
+                  checkKey,
+                  c
+                    ? [...(d[checkKey] || []), item]
+                    : (d[checkKey] || []).filter((x) => x !== item),
+                )
+              }
+            />
+          ))}
+        </div>
+      </Field>
     </div>
   );
 };
 
 // STEP 4 — Images + Status selector + Review
 const Step4Content = ({
-  serviceType,
+  categoryLabel,
   title,
   d,
-  set,
   coverPreview1,
   coverPreview2,
   onImage1Click,
   onImage2Click,
   selectedStatus,
   onStatusChange,
-}) => {
-  const catLabel =
-    {
-      hotel: "Hotel",
-      airline: "Airline",
-      professional: "Service",
-      transport: "Transport",
-    }[serviceType] || "";
-
-  return (
-    <div className="space-y-3">
-      {/* Cover images */}
-      <Field
-        label="Cover Images"
-        hint="Upload up to 2 images — JPG, PNG, or WebP, max 5 MB each (optional)"
-      >
-        <div className="flex gap-2">
-          <ImageSlot
-            preview={coverPreview1}
-            label="Primary Image"
-            onClick={onImage1Click}
-          />
-          <ImageSlot
-            preview={coverPreview2}
-            label="Second Image (optional)"
-            onClick={onImage2Click}
-          />
-        </div>
-      </Field>
-
-      {/*STATUS SELECTOR
-          published → service goes live immediately, visible to all buyers
-          draft     → saved privately, only the vendor can see it
-          archived  → hidden from buyers, kept for records (useful for seasonal services)
-      */}
-      <div>
-        <p className="text-[10px] font-medium text-gray-700 mb-1.5">
-          Listing Status
-        </p>
-        <div className="grid grid-cols-3 gap-1.5">
-          {/* PUBLISH option */}
-          <button
-            type="button"
-            onClick={() => onStatusChange("published")}
-            className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border transition-all text-center
-              ${
-                selectedStatus === "published"
-                  ? "border-[#EFB034] bg-[#1D4D4C]/10 text-[#EFB034]"
-                  : "border-gray-200 bg-white text-gray-500 hover:border-[#EFB034] hover:bg-[#EFB034]/5"
-              }`}
-          >
-            <Send
-              size={12}
-              className={
-                selectedStatus === "published"
-                  ? "text-[#EFB034]"
-                  : "text-gray-400"
-              }
-            />
-            <span className="text-[9px] font-bold uppercase tracking-tight">
-              Publish
-            </span>
-            <span className="text-[7px] leading-tight opacity-70">
-              Live & visible
-            </span>
-          </button>
-
-          {/* DRAFT option */}
-          <button
-            type="button"
-            onClick={() => onStatusChange("draft")}
-            className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border transition-all text-center
-              ${
-                selectedStatus === "draft"
-                  ? "border-[#1D4D4C] bg-[#1D4D4C]/10 text-[#1D4D4C]"
-                  : "border-gray-200 bg-white text-gray-500 hover:border-[#1D4D4C] hover:bg-[#1D4D4C]/5"
-              }`}
-          >
-            <BookOpen
-              size={12}
-              className={
-                selectedStatus === "draft" ? "text-[#1D4D4C]" : "text-gray-400"
-              }
-            />
-            <span className="text-[9px] font-bold uppercase tracking-tight">
-              Draft
-            </span>
-            <span className="text-[7px] leading-tight opacity-70">
-              Save privately
-            </span>
-          </button>
-
-          {/* ARCHIVE option */}
-          <button
-            type="button"
-            onClick={() => onStatusChange("archived")}
-            className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border transition-all text-center
-              ${
-                selectedStatus === "archived"
-                  ? "border-gray-500 bg-gray-100 text-gray-700"
-                  : "border-gray-200 bg-white text-gray-500 hover:border-gray-400 hover:bg-gray-50"
-              }`}
-          >
-            <Archive
-              size={12}
-              className={
-                selectedStatus === "archived"
-                  ? "text-gray-600"
-                  : "text-gray-400"
-              }
-            />
-            <span className="text-[9px] font-bold uppercase tracking-tight">
-              Archive
-            </span>
-            <span className="text-[7px] leading-tight opacity-70">
-              Hide & keep
-            </span>
-          </button>
-        </div>
-        {/* Status explanation */}
-        <p className="text-[8px] text-gray-400 mt-1">
-          {selectedStatus === "published" &&
-            "✓ Service will be visible to all buyers on the marketplace."}
-          {selectedStatus === "draft" &&
-            "✓ Service will be saved but only visible to you. You can publish it later."}
-          {selectedStatus === "archived" &&
-            "✓ Service will be hidden from buyers but kept in your records."}
-        </p>
+}) => (
+  <div className="space-y-3">
+    <Field
+      label="Cover Images"
+      hint="Upload up to 2 images — JPG, PNG, or WebP, max 5 MB each (optional)"
+    >
+      <div className="flex gap-2">
+        <ImageSlot
+          preview={coverPreview1}
+          label="Primary Image"
+          onClick={onImage1Click}
+        />
+        <ImageSlot
+          preview={coverPreview2}
+          label="Second Image (optional)"
+          onClick={onImage2Click}
+        />
       </div>
+    </Field>
 
-      {/* Review summary */}
-      <div className="bg-gray-50 rounded-lg border border-gray-100 p-2 space-y-1">
-        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-wide mb-1">
-          Review before saving
-        </p>
-        {[
-          ["Title", title || "—"],
-          ["Category", catLabel],
-          ["Price", d.price ? `${d.price}` : "—"],
-          ["Email", d.email || "Not provided"],
-          ["Status", selectedStatus],
-          [
-            "Images",
-            [coverPreview1, coverPreview2].filter(Boolean).length > 0
-              ? `${[coverPreview1, coverPreview2].filter(Boolean).length} uploaded`
-              : "○ None (optional)",
-          ],
-        ].map(([k, v]) => (
-          <div key={k} className="flex items-center justify-between text-[9px]">
-            <span className="text-gray-400">{k}</span>
-            <span
-              className={`font-medium ${k === "Status" && v === "published" ? "text-[#1D4D4C]" : k === "Status" && v === "draft" ? "text-[#EFB034]" : "text-gray-700"}`}
-            >
-              {v}
-            </span>
-          </div>
-        ))}
+    <div>
+      <p className="text-[10px] font-medium text-gray-700 mb-1.5">
+        Listing Status
+      </p>
+      <div className="grid grid-cols-3 gap-1.5">
+        <button
+          type="button"
+          onClick={() => onStatusChange("published")}
+          className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border transition-all ${selectedStatus === "published" ? "border-[#EFB034] bg-[#1D4D4C]/10 text-[#EFB034]" : "border-gray-200 bg-white text-gray-500"}`}
+        >
+          <Send size={12} />{" "}
+          <span className="text-[9px] font-bold">Publish</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onStatusChange("draft")}
+          className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border transition-all ${selectedStatus === "draft" ? "border-[#1D4D4C] bg-[#1D4D4C]/10 text-[#1D4D4C]" : "border-gray-200 bg-white text-gray-500"}`}
+        >
+          <BookOpen size={12} />{" "}
+          <span className="text-[9px] font-bold">Draft</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onStatusChange("archived")}
+          className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border transition-all ${selectedStatus === "archived" ? "border-gray-500 bg-gray-100 text-gray-700" : "border-gray-200 bg-white text-gray-500"}`}
+        >
+          <Archive size={12} />{" "}
+          <span className="text-[9px] font-bold">Archive</span>
+        </button>
       </div>
     </div>
-  );
-};
 
-// CATEGORIES
-const CATEGORIES = [
-  { id: "hotel", label: "Hotels", icon: <Hotel size={12} /> },
-  { id: "airline", label: "Airlines", icon: <Plane size={12} /> },
-  { id: "professional", label: "Services", icon: <Briefcase size={12} /> },
-  { id: "transport", label: "Transport", icon: <Bike size={12} /> },
-];
+    <div className="bg-gray-50 rounded-lg p-2">
+      <p className="text-[8px] font-bold text-gray-400 mb-1">
+        Review before saving
+      </p>
+      {[
+        ["Title", title || "—"],
+        ["Category", categoryLabel],
+        ["Price", d.price ? `${d.price}` : "—"],
+        ["Status", selectedStatus],
+      ].map(([k, v]) => (
+        <div key={k} className="flex justify-between text-[9px]">
+          <span className="text-gray-400">{k}</span>
+          <span className="font-medium text-gray-700">{v}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
-// STEP INDICATOR
+// STEP INDICATOR - UPDATED VERSION
 const STEP_LABELS = ["Basics", "Details", "Description", "Publish"];
-
 const StepIndicator = ({ current }) => (
-  <div className="flex items-center w-full mb-2 shrink-0">
-    {STEP_LABELS.map((label, i) => {
-      const n = i + 1,
-        done = n < current,
-        active = n === current;
+  <div className="flex items-center gap-2">
+    {STEP_LABELS.map((label, idx) => {
+      const stepNum = idx + 1;
+      const isActive = stepNum === current;
+      const isCompleted = stepNum < current;
+      
       return (
-        <React.Fragment key={n}>
-          <div className="flex flex-col items-center shrink-0">
+        <React.Fragment key={stepNum}>
+          <div className="flex items-center gap-2">
             <div
-              className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold border-2 transition-all
-              ${
-                done
-                  ? "border-[#EFB034] text-white"
-                  : active
-                    ? "border-[#125852] text-white"
-                    : "bg-white border-gray-200 text-gray-400"
-              }`}
-              style={
-                done
-                  ? { backgroundColor: "#EFB034" }
-                  : active
-                    ? { backgroundColor: "#125852" }
-                    : {}
-              }
+              className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold transition-all
+                ${isCompleted 
+                  ? "bg-[#EFB034] text-white" 
+                  : isActive 
+                    ? "bg-[#125852] text-white ring-2 ring-[#125852]/20" 
+                    : "bg-gray-100 text-gray-400"
+                }`}
             >
-              {done ? (
-                <CheckCircle size={10} className="text-white" />
-              ) : (
-                <span>{n}</span>
-              )}
+              {isCompleted ? <CheckCircle size={14} /> : stepNum}
             </div>
-            <span
-              className={`text-[8px] mt-0.5 font-medium whitespace-nowrap
-              ${done ? "text-[#EFB034]" : active ? "text-[#125852]" : "text-gray-300"}`}
-            >
+            <span className={`text-[11px] font-medium hidden sm:inline
+              ${isActive ? "text-[#125852]" : isCompleted ? "text-[#EFB034]" : "text-gray-400"}
+            `}>
               {label}
             </span>
           </div>
-          {i < STEP_LABELS.length - 1 && (
-            <div
-              className={`flex-1 h-0.5 mx-1 mb-4 transition-colors ${done ? "bg-[#EFB034]" : "bg-gray-200"}`}
-            />
+          {idx < STEP_LABELS.length - 1 && (
+            <div className={`flex-1 h-0.5 rounded-full ${isCompleted ? "bg-[#EFB034]" : "bg-gray-200"}`} />
           )}
         </React.Fragment>
       );
@@ -1090,47 +1021,83 @@ const validateImageFile = (file) => {
   return null;
 };
 
+// Helper to get category display name
+const getCategoryDisplay = (category) => {
+  const map = {
+    tailoring: {
+      label: "Tailoring",
+      icon: <Scissors size={14} />,
+      color: "text-purple-600",
+    },
+    beauty: {
+      label: "Beauty & Health",
+      icon: <Sparkles size={14} />,
+      color: "text-pink-600",
+    },
+    hotels: {
+      label: "Hospitality",
+      icon: <Hotel size={14} />,
+      color: "text-orange-600",
+    },
+    airlines: {
+      label: "Airlines",
+      icon: <Plane size={14} />,
+      color: "text-blue-600",
+    },
+    transport: {
+      label: "Transport",
+      icon: <Car size={14} />,
+      color: "text-green-600",
+    },
+    other: {
+      label: "Other Services",
+      icon: <Briefcase size={14} />,
+      color: "text-gray-600",
+    },
+  };
+  return map[category] || map["other"];
+};
+
 // MAIN COMPONENT
 const ServiceForm = ({ onClose, editingListing }) => {
+  const { businessCategory, vendorType } = useVendor();
   const isEditing = !!editingListing;
 
   const [step, setStep] = useState(1);
   const [stepErrors, setStepErrors] = useState({});
-  const [serviceType, setServiceType] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [title, setTitle] = useState("");
   const [data, setData] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [globalError, setGlobalError] = useState("");
-
-  // Status chosen by vendor in Step 4
-  // Default: 'published' for new services (same as before)
-  // In edit mode: pre-fill from existing listing status
   const [selectedStatus, setSelectedStatus] = useState("published");
-
   const [coverImage1, setCoverImage1] = useState(null);
   const [coverPreview1, setCoverPreview1] = useState(null);
   const [coverImage2, setCoverImage2] = useState(null);
   const [coverPreview2, setCoverPreview2] = useState(null);
-
   const fileRef1 = useRef(null);
   const fileRef2 = useRef(null);
 
-  const [categoryMap, setCategoryMap] = useState({});
-  useEffect(() => {
-    api
-      .get("/listings/categories/")
-      .then((res) => {
-        const arr = res.data?.data || res.data || [];
-        const map = {};
-        (Array.isArray(arr) ? arr : []).forEach((c) => {
-          map[c.slug] = c.id;
-        });
-        setCategoryMap(map);
-      })
-      .catch(() => {});
-  }, []);
+  // Available categories from vendor onboarding
+  const availableCategories = useMemo(() => {
+    if (!businessCategory) return [];
+    const categories = [];
+    if (Array.isArray(businessCategory)) {
+      businessCategory.forEach((cat) => {
+        if (getCategoryDisplay(cat)) categories.push(cat);
+      });
+    } else if (businessCategory && getCategoryDisplay(businessCategory)) {
+      categories.push(businessCategory);
+    }
+    return categories;
+  }, [businessCategory]);
 
-  // Pre-fill from vendor profile
+  useEffect(() => {
+    if (!isEditing && availableCategories.length === 1 && !selectedCategory) {
+      setSelectedCategory(availableCategories[0]);
+    }
+  }, [availableCategories, isEditing, selectedCategory]);
+
   useEffect(() => {
     api
       .get("/accounts/register-vendor/")
@@ -1140,72 +1107,39 @@ const ServiceForm = ({ onClose, editingListing }) => {
           ...prev,
           phone: p.business_phone || p.phone_number || prev.phone || "",
           address: p.address || prev.address || "",
-          city: p.city || prev.city || "",
-          country: p.country || prev.country || "",
           email: p.business_email || p.email || prev.email || "",
-          driver: p.owner_full_name || p.owner_name || prev.driver || "",
         }));
       })
       .catch(() => {});
   }, []);
 
-  // Pre-fill from editingListing
   useEffect(() => {
     if (!editingListing) return;
     setTitle(editingListing.title || "");
-
-    // Set the status from the existing listing so vendor can change it
     setSelectedStatus(editingListing.status || "published");
-
     const bc = editingListing.business_category;
-    if (bc === "hotels") setServiceType("hotel");
-    else if (bc === "airlines") setServiceType("airline");
-    else if (bc === "transport") setServiceType("transport");
-    else setServiceType("professional");
-
+    setSelectedCategory(
+      bc === "hotels"
+        ? "hotels"
+        : bc === "airlines"
+          ? "airlines"
+          : bc === "transport"
+            ? "transport"
+            : bc === "tailoring"
+              ? "tailoring"
+              : bc === "beauty"
+                ? "beauty"
+                : "professional",
+    );
     const det = editingListing.detail || {};
     setData((prev) => ({
       ...prev,
       price: editingListing.price || "",
       description: editingListing.description || "",
-      availability: editingListing.availability || "available",
-      address: editingListing.location || prev.address || "",
       phone: editingListing.contact_phone || prev.phone || "",
       email: editingListing.contact_email || prev.email || "",
-      propertyType: det.property_type || "",
-      stars: det.star_rating || "",
-      roomCategory: det.rooms?.[0]?.room_type || "",
-      maxGuests: det.rooms?.[0]?.max_adults || "",
-      totalRooms: det.rooms?.[0]?.rooms_available || "",
-      checkIn: det.check_in_time || "",
-      checkOut: det.check_out_time || "",
-      amenities: det.amenities || [],
-      serviceType: det.service_type || "",
-      flightCode: det.flight_number || "",
-      destinations: det.destination || "",
-      flightDuration: det.flight_duration || "",
-      capacity: det.seat_classes?.[0]?.seats_available || "",
-      cabinClass: det.seat_classes?.[0]?.seat_class || "",
-      iata: det.iata_code || "",
-      vehicleType: det.vehicle_type || "",
-      vehicleModel: det.vehicle_model || "",
-      plate: det.vehicle_number_plate || "",
-      serviceMode: det.service_mode || "",
-      driver: det.driver_name || prev.driver || "",
-      seats: det.seats_available || "",
-      available24h: det.available_24h || false,
-      origin: det.origin || "",
-      category: det.sub_category || (bc === "tailoring" ? "tailoring" : ""),
-      fabricMaterial: det.fabric_material || "",
-      duration:
-        det.duration || (det.duration_days ? String(det.duration_days) : ""),
-      languages: det.languages || "",
-      remote: det.is_remote || det.delivery_mode === "remote",
-      platform: det.platform_url || "",
-      inclusions: det.inclusions || [],
-      priceUnit: editingListing.price_unit || det.price_unit || "session",
+      ...det,
     }));
-
     if (editingListing.images?.length > 0)
       setCoverPreview1(editingListing.images[0]?.image || null);
     if (editingListing.images?.length > 1)
@@ -1215,7 +1149,7 @@ const ServiceForm = ({ onClose, editingListing }) => {
   const set = (k, v) => setData((p) => ({ ...p, [k]: v }));
 
   const goNext = () => {
-    const errs = validateStep(step, serviceType, title, data);
+    const errs = validateStep(step, selectedCategory, title, data);
     if (Object.keys(errs).length > 0) {
       setStepErrors(errs);
       return;
@@ -1251,269 +1185,204 @@ const ServiceForm = ({ onClose, editingListing }) => {
     });
   };
 
-
   const handleSubmit = async () => {
-  const { step: errStep, errors } = validateAllSteps(
-    serviceType,
-    title,
-    data,
-  );
-  if (errStep) {
-    setStep(errStep);
-    setStepErrors(errors);
-    return;
-  }
-
-  setIsLoading(true);
-  setGlobalError("");
-
-  try {
-    const enrichedData = {
-      ...data,
-      category_id: categoryMap[data.category] || undefined,
-    };
-    // Build the payload with the vendor-selected status
-    const payload = {
-      ...buildListingPayload(serviceType, title, enrichedData),
-      status: selectedStatus, // Override the default 'published' with the vendor's choice
-    };
-
-    // Debug log to see what's being sent
-    console.log(" Submitting payload:", JSON.stringify(payload, null, 2));
-
-    let listingId;
-    if (isEditing) {
-      await api.patch(`/listings/${editingListing.id}/`, payload);
-      listingId = editingListing.id;
-    } else {
-      const res = await api.post("/listings/", payload);
-      const newListing = res.data?.data || res.data;
-      listingId = newListing?.id;
+    const { step: errStep, errors } = validateAllSteps(
+      selectedCategory,
+      title,
+      data,
+    );
+    if (errStep) {
+      setStep(errStep);
+      setStepErrors(errors);
+      return;
     }
-
-    // Upload images (only new File objects, not existing URLs)
-    if (listingId) {
-      if (coverImage1 instanceof File)
-        await uploadListingImage(listingId, coverImage1);
-      if (coverImage2 instanceof File)
-        await uploadListingImage(listingId, coverImage2);
-    }
-
-    onClose?.(true);
-  } catch (err) {
-    console.error("Submission error:", err.response?.data);
-    
-    const serverErrors = err.response?.data?.errors;
-    
-    if (serverErrors && serverErrors.detail && typeof serverErrors.detail === 'object') {
-      // Handle nested detail errors (like destination field)
-      const fieldErrors = [];
-      Object.entries(serverErrors.detail).forEach(([field, messages]) => {
-        const friendlyName = {
-          destination: 'Destination / Dropoff Location',
-          origin: 'Pickup Location / Origin',
-          vehicle_type: 'Vehicle Type',
-          service_mode: 'Service Mode',
-          price_per_seat: 'Price',
-          vehicle_number_plate: 'Number Plate',
-          driver_name: 'Driver Name'
-        }[field] || field;
-        
-        fieldErrors.push(`${friendlyName}: ${Array.isArray(messages) ? messages.join(', ') : messages}`);
-      });
-      
-      setGlobalError(`Please fix the following: ${fieldErrors.join(' • ')}`);
-    } 
-    else if (serverErrors && typeof serverErrors === 'object') {
-      // Handle flat error objects
-      const readable = Object.entries(serverErrors)
-        .map(([f, msgs]) => {
-          const friendlyName = {
-            destination: 'Destination',
-            origin: 'Pickup Location',
-            price: 'Price',
-            phone: 'Contact Phone'
-          }[f] || f;
-          return `${friendlyName}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`;
-        })
-        .join(' • ');
-      setGlobalError(`Please fix: ${readable}`);
-    } 
-    else {
+    setIsLoading(true);
+    setGlobalError("");
+    try {
+      const payload = {
+        ...buildListingPayload(selectedCategory, title, data),
+        status: selectedStatus,
+      };
+      let listingId;
+      if (isEditing) {
+        await api.patch(`/listings/${editingListing.id}/`, payload);
+        listingId = editingListing.id;
+      } else {
+        const res = await api.post("/listings/", payload);
+        listingId = res.data?.data?.id;
+      }
+      if (listingId) {
+        if (coverImage1 instanceof File)
+          await uploadListingImage(listingId, coverImage1);
+        if (coverImage2 instanceof File)
+          await uploadListingImage(listingId, coverImage2);
+      }
+      onClose?.(true);
+    } catch (err) {
+      console.error("Submission error:", err.response?.data);
       setGlobalError(
         err.response?.data?.detail ||
-        err.response?.data?.message ||
-        'Failed to save. Please check all required fields and try again.'
+          err.response?.data?.message ||
+          "Failed to save. Please try again.",
       );
+    } finally {
+      setIsLoading(false);
     }
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
-  // Label on the submit button changes based on selected status
   const submitLabel =
     {
       published: isEditing ? "Save & Publish" : "Publish Service",
       draft: isEditing ? "Save as Draft" : "Save as Draft",
       archived: isEditing ? "Save & Archive" : "Archive",
     }[selectedStatus] || "Save";
+  const categoryDisplay = getCategoryDisplay(selectedCategory);
 
   return (
     <div className="flex flex-col h-full bg-white rounded-2xl overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-3 pb-1 shrink-0">
+     
+      <div className="px-6 pt-4 pb-2 border-b border-gray-100 flex justify-between items-start shrink-0">
         <div>
-          <h3 className="text-sm font-bold text-gray-900">
-            {isEditing
-              ? "Edit Service"
-              : {
-                  1: "New Service",
-                  2: "Configure Service",
-                  3: "Description",
-                  4: "Review & Save",
-                }[step]}
-          </h3>
-          <p className="text-[9px] text-gray-400">
-            {
-              {
-                1: "Choose a category and give your service a title.",
-                2: "Fill in the key details for this listing.",
-                3: "Write up to 20 words about your service.",
-                4: "Set status, upload images, and save.",
-              }[step]
-            }
+          <h2 className="text-lg font-bold text-gray-900">
+            {isEditing ? "Edit Service" : "Add New Service"}
+          </h2>
+          <p className="text-[11px] text-gray-500 mt-0.5">
+            Step {step} of 4 : {categoryDisplay?.label || "Select Category"}
           </p>
         </div>
         <button
           onClick={() => onClose?.(false)}
-          className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors shrink-0"
+          className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors shrink-0"
         >
-          <X size={12} />
+          <X size={14} />
         </button>
       </div>
 
       {/* Step indicator */}
-      <div className="px-4 pb-0 shrink-0">
+      <div className="px-6 pt-3 pb-1">
         <StepIndicator current={step} />
       </div>
 
-      {/* Global error */}
       {globalError && (
-        <div className="mx-4 flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 px-2 py-1 rounded-lg text-[9px] mb-1 shrink-0">
-          <AlertCircle size={10} className="shrink-0 mt-0.5" />
+        <div className="mx-6 flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-[10px] mb-2">
+          <AlertCircle size={12} />
           <span className="flex-1">{globalError}</span>
-          <button
-            onClick={() => setGlobalError("")}
-            className="ml-auto shrink-0"
-          >
-            <X size={10} />
+          <button onClick={() => setGlobalError("")}>
+            <X size={12} />
           </button>
         </div>
       )}
 
-      {/* Step content */}
-      <div className="flex-1 overflow-y-auto px-4 pb-2">
-        {/* STEP 1 */}
+      <div className="flex-1 overflow-y-auto px-6 pb-4">
         {step === 1 && (
-          <div className="space-y-3">
+          <div className="space-y-4 px-1">
+            {/* Only show category selection if no category selected yet */}
+            {!selectedCategory && (
+              <div>
+                <label className="block text-[11px] font-medium text-gray-700 mb-1.5">
+                  Select Category <span className="text-red-400">*</span>
+                </label>
+                {stepErrors.category && (
+                  <p className="text-[10px] text-red-500 mb-2 flex items-center gap-1">
+                    <AlertCircle size={10} /> {stepErrors.category}
+                  </p>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  {availableCategories.map((cat) => {
+                    const display = getCategoryDisplay(cat);
+                    const active = selectedCategory === cat;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`relative flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all
+                          ${active 
+                            ? "border-[#EFB034] bg-[#EFB034]/5" 
+                            : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                          }`}
+                      >
+                        {active && (
+                          <CheckCircle2
+                            className="absolute top-2 right-2 text-[#EFB034]"
+                            size={14}
+                          />
+                        )}
+                        <span className={active ? "text-[#C8900A]" : "text-gray-500"}>
+                          {display.icon}
+                        </span>
+                        <span className="text-[11px] font-medium mt-1.5">
+                          {display.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
+            {/* Service Title input - main focus */}
             <Field label="Service Title" required error={stepErrors.title}>
               <div className="relative">
                 <FileText
-                  className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400"
-                  size={12}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  size={14}
                 />
                 <input
-                  className={`${iCls_icon} ${stepErrors.title ? "border-red-300 focus:ring-red-400 focus:border-red-400" : ""}`}
-                  placeholder="e.g. Executive Business Coaching"
+                  className={`w-full pl-9 pr-3 py-2.5 border rounded-lg text-[13px] outline-none focus:ring-1 focus:ring-[#EFB034] ${stepErrors.title ? "border-red-300" : "border-gray-200"}`}
+                  placeholder="e.g. Custom Wedding Dress"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   autoFocus
                 />
               </div>
             </Field>
-            <div>
-              <label className="block text-[10px] font-medium text-gray-700 mb-1">
-                Select Category <span className="text-red-400">*</span>
-              </label>
-              {stepErrors.category && (
-                <p className="text-[9px] text-red-500 flex items-center gap-1 mb-1">
-                  <AlertCircle size={8} /> {stepErrors.category}
-                </p>
-              )}
-              <div className="grid grid-cols-2 gap-1.5">
-                {CATEGORIES.map((cat) => {
-                  const active = serviceType === cat.id;
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setServiceType(cat.id)}
-                      className={`relative flex flex-col items-center justify-center p-1.5 h-10 rounded-lg border-2 transition-all
-                        ${active ? "border-[#EFB034] bg-[#EFB034]/10 text-[#C8900A]" : "border-gray-100 bg-white text-gray-500 hover:border-gray-200 hover:bg-gray-50"}`}
-                    >
-                      {active && (
-                        <CheckCircle2
-                          className="absolute top-0.5 right-0.5 text-[#EFB034]"
-                          size={8}
-                        />
-                      )}
-                      <span
-                        className={active ? "text-[#C8900A]" : "text-gray-400"}
-                      >
-                        {cat.icon}
-                      </span>
-                      <span className="text-[8px] font-medium mt-0.5 uppercase tracking-tight">
-                        {cat.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+
+         
           </div>
         )}
 
-        {/* STEP 2 */}
-        {step === 2 && (
+        {step === 2 && selectedCategory && (
           <div>
             <p className="text-[8px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1 mb-2 flex items-center gap-1">
-              <AlertCircle size={8} /> Fields with an orange ring were
-              pre-filled from your profile. You can edit them.
+              <AlertCircle size={8} /> Pre-filled fields from your profile can be edited.
             </p>
-            {serviceType === "professional" && (
-              <ProfessionalStep2 d={data} set={set} errors={stepErrors} />
+            {selectedCategory === "tailoring" && (
+              <TailoringStep2 d={data} set={set} errors={stepErrors} />
             )}
-            {serviceType === "hotel" && (
+            {selectedCategory === "beauty" && (
+              <BeautyHealthStep2 d={data} set={set} errors={stepErrors} />
+            )}
+            {selectedCategory === "hotels" && (
               <HotelStep2 d={data} set={set} errors={stepErrors} />
             )}
-            {serviceType === "airline" && (
+            {selectedCategory === "airlines" && (
               <AirlineStep2 d={data} set={set} errors={stepErrors} />
             )}
-            {serviceType === "transport" && (
+            {selectedCategory === "transport" && (
               <TransportStep2 d={data} set={set} errors={stepErrors} />
+            )}
+            {selectedCategory === "other" && (
+              <OtherServicesStep2 d={data} set={set} errors={stepErrors} />
             )}
           </div>
         )}
 
-        {/* STEP 3 */}
-        {step === 3 && (
+        {step === 3 && selectedCategory && (
           <Step3Content
-            serviceType={serviceType}
+            serviceCategory={selectedCategory}
             d={data}
             set={set}
             errors={stepErrors}
           />
         )}
 
-        {/* STEP 4 */}
-        {step === 4 && (
+        {step === 4 && selectedCategory && (
           <div>
             <Step4Content
-              serviceType={serviceType}
+              categoryLabel={categoryDisplay.label}
               title={title}
               d={data}
-              set={set}
               coverPreview1={coverPreview1}
               coverPreview2={coverPreview2}
               onImage1Click={() => fileRef1.current?.click()}
@@ -1535,67 +1404,54 @@ const ServiceForm = ({ onClose, editingListing }) => {
               className="hidden"
               onChange={(e) => handleImageChange(2, e)}
             />
-            {stepErrors.image1 && (
-              <p className="text-[9px] text-red-500 flex items-center gap-1 mt-1">
-                <AlertCircle size={8} /> Image 1: {stepErrors.image1}
-              </p>
-            )}
-            {stepErrors.image2 && (
-              <p className="text-[9px] text-red-500 flex items-center gap-1 mt-1">
-                <AlertCircle size={8} /> Image 2: {stepErrors.image2}
-              </p>
-            )}
           </div>
         )}
       </div>
 
-      {/* Navigation footer */}
-      <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100 shrink-0">
+      {/* Footer - Cancel and Next buttons only (no step indicator text) */}
+      <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 shrink-0">
         {step === 1 ? (
           <button
             onClick={() => onClose?.(false)}
-            className="px-3 py-1 border-2 border-gray-200 text-gray-600 font-medium rounded-lg text-[11px] hover:bg-gray-50"
+            className="px-4 py-2 border border-gray-300 rounded-lg text-[12px] font-medium text-gray-600 hover:bg-gray-50 transition-colors"
           >
             Cancel
           </button>
         ) : (
           <button
             onClick={goBack}
-            disabled={isLoading}
-            className="flex items-center gap-1 px-3 py-1 border-2 border-gray-200 text-gray-600 font-medium rounded-lg text-[11px] hover:bg-gray-50 disabled:opacity-40"
+            className="flex items-center gap-1 px-4 py-2 border border-gray-300 rounded-lg text-[12px] font-medium text-gray-600 hover:bg-gray-50 transition-colors"
           >
-            <ChevronLeft size={11} /> Back
+            <ChevronLeft size={14} /> Back
           </button>
         )}
-        <span className="text-[9px] text-gray-400 font-medium">{step} / 4</span>
+        {/* Step indicator removed as requested */}
         {step < 4 ? (
           <button
             onClick={goNext}
-            className="flex items-center gap-1 px-4 py-1 rounded-lg text-[11px] font-medium text-white transition-all active:scale-95"
-            style={{ backgroundColor: "#EFB034" }}
+            disabled={!selectedCategory && step === 1}
+            className={`flex items-center gap-1 px-5 py-2 rounded-lg text-[12px] font-medium text-white transition-all active:scale-95
+              ${!selectedCategory && step === 1 ? "bg-gray-300 cursor-not-allowed" : "bg-[#EFB034] hover:bg-[#E0A83B]"}`}
           >
-            Next <ChevronRight size={11} />
+            Next <ChevronRight size={14} />
           </button>
         ) : (
           <button
             onClick={handleSubmit}
             disabled={isLoading}
-            className={`flex items-center gap-1 px-4 py-1 rounded-lg text-[11px] font-medium text-white transition-all active:scale-95 disabled:opacity-50
-              ${
-                selectedStatus === "published"
-                  ? "bg-[#EFB034] hover:bg-[#EFB034]/90"
-                  : selectedStatus === "draft"
-                    ? "bg-[#1D4D4C] hover:bg-[#1D4D4C]/90"
-                    : "bg-gray-500 hover:bg-gray-600"
+            className={`flex items-center gap-1 px-5 py-2 rounded-lg text-[12px] font-medium text-white transition-all active:scale-95 disabled:opacity-50
+              ${selectedStatus === "published" 
+                ? "bg-[#EFB034] hover:bg-[#E0A83B]" 
+                : selectedStatus === "draft" 
+                  ? "bg-[#1D4D4C] hover:bg-[#16423E]" 
+                  : "bg-gray-500 hover:bg-gray-600"
               }`}
           >
             {isLoading ? (
-              <>
-                <Loader2 size={11} className="animate-spin" /> Saving…
-              </>
+              <Loader2 size={14} className="animate-spin" />
             ) : (
               <>
-                <CheckCircle size={11} /> {submitLabel}
+                <CheckCircle size={14} /> {submitLabel}
               </>
             )}
           </button>
