@@ -33,6 +33,7 @@ const ContactLocation = () => {
   const [branchForm, setBranchForm] = useState({
     address: "",
     city: "",
+    country: "", // Added country field
     phone: "",
     hours: "",
     landmark: "",
@@ -57,34 +58,25 @@ const ContactLocation = () => {
     setErrors(validationErrors);
   };
 
-  // Remove spaces from phone number immediately
   const handlePhoneChange = (value) => {
     const cleanValue = value ? value.replace(/\s/g, "") : "";
     handleChange("business_phone", cleanValue);
   };
 
-  // Auto-fills city and zip_code when user picks an address from OSM
   const handleAddressParsed = ({ city, zip }) => {
-    // Only update if city is provided and city field is empty
     if (city && !formData.city) {
-      dispatch({
-        type: ACTIONS.UPDATE_FORM,
-        payload: { city: city },
-      });
+      dispatch({ type: ACTIONS.UPDATE_FORM, payload: { city: city } });
     }
     if (zip && !formData.zip_code) {
-      dispatch({
-        type: ACTIONS.UPDATE_FORM,
-        payload: { zip_code: zip },
-      });
+      dispatch({ type: ACTIONS.UPDATE_FORM, payload: { zip_code: zip } });
     }
   };
 
-  // Branch Locations Management
   const handleAddBranch = () => {
     const newBranch = {
       address: branchForm.address,
       city: branchForm.city,
+      country: branchForm.country || formData.country, // Include country, fallback to main country
       phone: branchForm.phone || "",
       hours: branchForm.hours || "",
       landmark: branchForm.landmark || "",
@@ -108,6 +100,7 @@ const ContactLocation = () => {
     setBranchForm({
       address: branch.address || "",
       city: branch.city || "",
+      country: branch.country || "", // Added country field
       phone: branch.phone || "",
       hours: branch.hours || "",
       landmark: branch.landmark || "",
@@ -127,6 +120,7 @@ const ContactLocation = () => {
     setBranchForm({
       address: "",
       city: "",
+      country: "", // Added country field
       phone: "",
       hours: "",
       landmark: "",
@@ -198,7 +192,7 @@ const ContactLocation = () => {
           </div>
         </div>
 
-        {/* Country - Uses your existing SearchableCountrySelector */}
+        {/* Country */}
         <div className="flex flex-col">
           <SearchableCountrySelector
             value={formData.country}
@@ -208,7 +202,7 @@ const ContactLocation = () => {
           />
         </div>
 
-        {/* City - Uses your existing SearchableCitySelector with country-state-city */}
+        {/* City — sits beside Street Address */}
         <SearchableCitySelector
           countryCode={formData.country}
           value={formData.city || ""}
@@ -216,8 +210,8 @@ const ContactLocation = () => {
           error={showError("city") ? errors.city : ""}
         />
 
-        {/* Street Address - OSM Address Autocomplete */}
-        <div className="flex flex-col md:col-span-2" data-field="address">
+        {/* Street Address — now a single column (sits beside City) */}
+        <div className="flex flex-col" data-field="address">
           <AddressAutocomplete
             value={formData.address || ""}
             onChange={(val) => handleChange("address", val)}
