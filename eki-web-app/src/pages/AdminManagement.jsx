@@ -480,7 +480,7 @@ const AdminManagement = () => {
 
   const handleSuspend = async (reason) => {
     if (!vendorDetail) return;
-    setActionLoading(true);
+    setSuspendLoading(true);
     try {
       await updateVendorStatus(vendorDetail.id, "suspended", reason);
       const newStatus = "Suspended";
@@ -528,7 +528,7 @@ const AdminManagement = () => {
 
   const handleReinstate = async (reason) => {
     if (!vendorDetail) return;
-    setActionLoading(true);
+      setReinstateLoading(true);
     try {
       await updateVendorStatus(vendorDetail.id, "approved", reason || "Reinstated by admin");
       const newStatus = "Approved";
@@ -665,6 +665,8 @@ const AdminManagement = () => {
                 onTerminate={() => setShowTerminate(true)}
                 onReinstate={() => setShowReinstate(true)}
                 actionLoading={actionLoading}
+                reinstateLoading={reinstateLoading}
+                suspendLoading={suspendLoading}
               />
             ) : null}
           </div>
