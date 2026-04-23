@@ -163,7 +163,17 @@ export const validateContactLocation = (formData) => {
     errors.city = "Required";
   }
 
-  // Street Address - OPTIONAL (no validation)
+  // Street Address 
+if (!formData.address?.trim()) {
+  errors.address = "Required";
+}
+
+// ZIP Code - Optional but validated if provided
+if (formData.zip_code && formData.zip_code.trim().length > 0) {
+  if (formData.zip_code.trim().length < 3) {
+    errors.zip_code = "Invalid postal code";
+  }
+}
 
   // Operating Hours - Required with logical validation
   if (!formData.opening_time) {

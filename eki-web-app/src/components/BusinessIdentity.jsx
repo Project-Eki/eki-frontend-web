@@ -1,10 +1,17 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { HiOutlineBriefcase, HiOutlineBuildingOffice, HiOutlineUser, HiOutlineIdentification, HiOutlineDocumentText, HiOutlineClipboardDocumentList } from "react-icons/hi2";
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  HiOutlineBriefcase,
+  HiOutlineBuildingOffice,
+  HiOutlineUser,
+  HiOutlineIdentification,
+  HiOutlineDocumentText,
+  HiOutlineClipboardDocumentList,
+} from "react-icons/hi2";
 import { FaRegBuilding, FaRegFileAlt } from "react-icons/fa";
 import { MdWarning, MdError, MdCheckCircle, MdClose } from "react-icons/md";
 import { IoWarningOutline } from "react-icons/io5";
 import { validateBusinessIdentity } from "../utils/onboardingValidation";
-import MessageAlert from './MessageAlert';
+import MessageAlert from "./MessageAlert";
 import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
 
 // Reusable inline error tag
@@ -81,11 +88,11 @@ const BusinessIdentity = () => {
   const [generalError, setGeneralError] = useState("");
   const [showToast, setShowToast] = useState(false);
 
-  const categoryOptions = useMemo(() => 
-    getCategoryOptions(formData.business_type), 
-    [formData.business_type]
+  const categoryOptions = useMemo(
+    () => getCategoryOptions(formData.business_type),
+    [formData.business_type],
   );
- // Memoized word count calculation for performance
+  // Memoized word count calculation for performance
 
   const wordCount = useMemo(() => {
     return (formData.business_description || "")
@@ -96,31 +103,51 @@ const BusinessIdentity = () => {
 
   // Auto-populate owner_full_name
   useEffect(() => {
-    if (!formData.owner_full_name && formData.first_name && formData.last_name) {
+    if (
+      !formData.owner_full_name &&
+      formData.first_name &&
+      formData.last_name
+    ) {
       dispatch({
         type: ACTIONS.UPDATE_FORM,
         payload: {
-          owner_full_name: `${formData.first_name} ${formData.last_name}`
-        }
+          owner_full_name: `${formData.first_name} ${formData.last_name}`,
+        },
       });
     }
-  }, [formData.first_name, formData.last_name, formData.owner_full_name, dispatch]);
+  }, [
+    formData.first_name,
+    formData.last_name,
+    formData.owner_full_name,
+    dispatch,
+  ]);
 
   // Convert business_category format when business type changes
   useEffect(() => {
-    if (formData.business_type === "both" && !Array.isArray(formData.business_category)) {
+    if (
+      formData.business_type === "both" &&
+      !Array.isArray(formData.business_category)
+    ) {
       // Convert string to array
-      const newValue = formData.business_category ? [formData.business_category] : [];
+      const newValue = formData.business_category
+        ? [formData.business_category]
+        : [];
       dispatch({
         type: ACTIONS.UPDATE_FORM,
-        payload: { business_category: newValue }
+        payload: { business_category: newValue },
       });
-    } else if (formData.business_type !== "both" && Array.isArray(formData.business_category)) {
+    } else if (
+      formData.business_type !== "both" &&
+      Array.isArray(formData.business_category)
+    ) {
       // Convert array to string (take first item)
-      const newValue = formData.business_category.length > 0 ? formData.business_category[0] : "";
+      const newValue =
+        formData.business_category.length > 0
+          ? formData.business_category[0]
+          : "";
       dispatch({
         type: ACTIONS.UPDATE_FORM,
-        payload: { business_category: newValue }
+        payload: { business_category: newValue },
       });
     }
   }, [formData.business_type, dispatch]);
@@ -128,21 +155,23 @@ const BusinessIdentity = () => {
   const handleCategoryChange = (value) => {
     if (formData.business_type === "both") {
       // Multi-select logic
-      const currentCategories = Array.isArray(formData.business_category) ? formData.business_category : [];
+      const currentCategories = Array.isArray(formData.business_category)
+        ? formData.business_category
+        : [];
       let newCategories;
-      
+
       if (currentCategories.includes(value)) {
-        newCategories = currentCategories.filter(cat => cat !== value);
+        newCategories = currentCategories.filter((cat) => cat !== value);
       } else {
         newCategories = [...currentCategories, value];
       }
-      
+
       dispatch({
         type: ACTIONS.UPDATE_FORM,
-        payload: { business_category: newCategories }
+        payload: { business_category: newCategories },
       });
-      setTouched(prev => ({ ...prev, business_category: true }));
-      
+      setTouched((prev) => ({ ...prev, business_category: true }));
+
       // Clear error if minimum 2 categories selected
       if (newCategories.length >= 2 && errors.business_category) {
         const newErrors = { ...errors };
@@ -153,26 +182,28 @@ const BusinessIdentity = () => {
       // Single-select logic
       dispatch({
         type: ACTIONS.UPDATE_FORM,
-        payload: { business_category: value }
+        payload: { business_category: value },
       });
-      setTouched(prev => ({ ...prev, business_category: true }));
+      setTouched((prev) => ({ ...prev, business_category: true }));
     }
-    
+
     // Real-time validation
-    const validationErrors = validateBusinessIdentity({ ...formData, business_category: 
-      formData.business_type === "both" ? 
-        (Array.isArray(formData.business_category) ? 
-          (formData.business_category.includes(value) ? 
-            formData.business_category.filter(cat => cat !== value) : 
-            [...formData.business_category, value]) : 
-          [value]) : 
-        value
+    const validationErrors = validateBusinessIdentity({
+      ...formData,
+      business_category:
+        formData.business_type === "both"
+          ? Array.isArray(formData.business_category)
+            ? formData.business_category.includes(value)
+              ? formData.business_category.filter((cat) => cat !== value)
+              : [...formData.business_category, value]
+            : [value]
+          : value,
     });
     setErrors(validationErrors);
   };
 
   const handleChange = (field, value) => {
-    if (field === 'business_description') {
+    if (field === "business_description") {
       const words = value.trim().split(/\s+/).filter(Boolean);
       if (words.length > 30) {
         setShowToast(true);
@@ -180,23 +211,26 @@ const BusinessIdentity = () => {
       }
       if (showToast) setShowToast(false);
     }
-    
+
     dispatch({ type: ACTIONS.UPDATE_FORM, payload: { [field]: value } });
-    setTouched(prev => ({ ...prev, [field]: true }));
-    
-    const validationErrors = validateBusinessIdentity({ ...formData, [field]: value });
+    setTouched((prev) => ({ ...prev, [field]: true }));
+
+    const validationErrors = validateBusinessIdentity({
+      ...formData,
+      [field]: value,
+    });
     setErrors(validationErrors);
   };
 
   const handleBlur = (field) => {
-    setTouched(prev => ({ ...prev, [field]: true }));
+    setTouched((prev) => ({ ...prev, [field]: true }));
     const validationErrors = validateBusinessIdentity(formData);
     setErrors(validationErrors);
   };
 
   const handleContinue = () => {
     setGeneralError("");
-    
+
     setTouched({
       business_name: true,
       business_category: true,
@@ -206,27 +240,31 @@ const BusinessIdentity = () => {
       tax_id: true,
       business_description: true,
     });
-    
+
     const validationErrors = validateBusinessIdentity(formData);
     setErrors(validationErrors);
-    
+
     if (Object.keys(validationErrors).length === 0) {
       dispatch({ type: ACTIONS.NEXT_STEP });
     } else {
       //  scroll to first error
       const firstErrorField = Object.keys(validationErrors)[0];
-      const errorElement = document.querySelector(`[data-field="${firstErrorField}"]`);
+      const errorElement = document.querySelector(
+        `[data-field="${firstErrorField}"]`,
+      );
       if (errorElement) {
-        errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        errorElement.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     }
   };
 
   const showError = (field) => touched[field] && errors[field];
-  
+
   const hasMinimumCategories = () => {
     if (formData.business_type === "both") {
-      const categories = Array.isArray(formData.business_category) ? formData.business_category : [];
+      const categories = Array.isArray(formData.business_category)
+        ? formData.business_category
+        : [];
       return categories.length >= 2;
     }
     return true;
@@ -234,9 +272,12 @@ const BusinessIdentity = () => {
 
   return (
     <>
-    {/* Toast notification*/}
+      {/* Toast notification*/}
       {showToast && (
-        <Toast message="Business description cannot exceed 30 words" onClose={() => setShowToast(false)} />
+        <Toast
+          message="Business description cannot exceed 30 words"
+          onClose={() => setShowToast(false)}
+        />
       )}
 
       <div className="w-full animate-fadeIn">
@@ -245,12 +286,18 @@ const BusinessIdentity = () => {
             <HiOutlineBriefcase className="text-[#F2B53D]" size={16} />
           </div>
           <div>
-            <h3 className="font-bold text-[13px] text-gray-800">Business Identity</h3>
-            <p className="text-[10px] text-gray-500">Legal details as on official documents</p>
+            <h3 className="font-bold text-[13px] text-gray-800">
+              Business Identity
+            </h3>
+            <p className="text-[10px] text-gray-500">
+              Legal details as on official documents
+            </p>
           </div>
         </div>
 
-        {generalError && <MessageAlert message={generalError} type="error" className="mb-2" />}
+        {generalError && (
+          <MessageAlert message={generalError} type="error" className="mb-2" />
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-2">
           {/* Legal Business Name */}
@@ -259,20 +306,25 @@ const BusinessIdentity = () => {
               Legal Business Name <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <HiOutlineBuildingOffice className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={12} />
+              <HiOutlineBuildingOffice
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"
+                size={12}
+              />
               <input
                 type="text"
                 value={formData.business_name || ""}
-                onChange={(e) => handleChange('business_name', e.target.value)}
-                onBlur={() => handleBlur('business_name')}
+                onChange={(e) => handleChange("business_name", e.target.value)}
+                onBlur={() => handleBlur("business_name")}
                 placeholder="e.g. Global Tech Solutions Ltd."
                 className={`w-full h-8 pl-9 pr-3 bg-white border rounded-xl focus:outline-none text-[11px] transition-colors ${
-                  showError('business_name')
-                    ? 'border-red-400 focus:border-red-500'
-                    : 'border-gray-200 focus:border-[#F2B53D]'
+                  showError("business_name")
+                    ? "border-red-400 focus:border-red-500"
+                    : "border-gray-200 focus:border-[#F2B53D]"
                 }`}
               />
-              {showError('business_name') && <InlineError message={errors.business_name} />}
+              {showError("business_name") && (
+                <InlineError message={errors.business_name} />
+              )}
             </div>
           </div>
 
@@ -282,13 +334,18 @@ const BusinessIdentity = () => {
               Business Type <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <FaRegBuilding className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={11} />
+              <FaRegBuilding
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"
+                size={11}
+              />
               <select
                 value={formData.business_type || ""}
-                onChange={(e) => handleChange('business_type', e.target.value)}
-                onBlur={() => handleBlur('business_type')}
+                onChange={(e) => handleChange("business_type", e.target.value)}
+                onBlur={() => handleBlur("business_type")}
                 className={`w-full h-8 pl-9 pr-8 border rounded-xl text-[11px] focus:border-[#F2B53D] outline-none bg-white cursor-pointer appearance-none transition-colors ${
-                  showError('business_type') ? 'border-red-400' : 'border-gray-200'
+                  showError("business_type")
+                    ? "border-red-400"
+                    : "border-gray-200"
                 }`}
               >
                 <option value="">Select business type</option>
@@ -296,52 +353,80 @@ const BusinessIdentity = () => {
                 <option value="services">Services</option>
                 <option value="both">Both</option>
               </select>
-              {showError('business_type') && <InlineError message={errors.business_type} />}
+              {showError("business_type") && (
+                <InlineError message={errors.business_type} />
+              )}
             </div>
           </div>
 
           {/* Business Category */}
-          <div className={`flex flex-col ${formData.business_type === "both" ? "md:col-span-2" : ""}`} data-field="business_category">
+          <div
+            className={`flex flex-col ${formData.business_type === "both" ? "md:col-span-2" : ""}`}
+            data-field="business_category"
+          >
             <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
               Business Category <span className="text-red-500">*</span>
               {formData.business_type === "both" && (
-                <span className="text-[8px] text-gray-500 ml-1">(Select at least 2 categories)</span>
+                <span className="text-[8px] text-gray-500 ml-1">
+                  (Select at least 2 categories)
+                </span>
               )}
             </label>
-            
+
             {formData.business_type === "both" ? (
               <div className="relative">
-                <div className={`border rounded-xl p-2 max-h-32 overflow-y-auto ${
-                  showError('business_category') ? 'border-red-400' : 'border-gray-200'
-                }`}>
-                  {categoryOptions.map(option => {
-                    const isSelected = Array.isArray(formData.business_category) && 
-                                      formData.business_category.includes(option.value);
+                <div
+                  className={`border rounded-xl p-2 max-h-32 overflow-y-auto ${
+                    showError("business_category")
+                      ? "border-red-400"
+                      : "border-gray-200"
+                  }`}
+                >
+                  {categoryOptions.map((option) => {
+                    const isSelected =
+                      Array.isArray(formData.business_category) &&
+                      formData.business_category.includes(option.value);
                     return (
-                      <label key={option.value} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-50 px-2 rounded">
+                      <label
+                        key={option.value}
+                        className="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-50 px-2 rounded"
+                      >
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleCategoryChange(option.value)}
                           className="w-3 h-3 rounded border-gray-300 text-[#F2B53D] focus:ring-[#F2B53D] accent-[#1D4D4C]"
                         />
-                        <span className="text-[11px] text-gray-700">{option.label}</span>
+                        <span className="text-[11px] text-gray-700">
+                          {option.label}
+                        </span>
                       </label>
                     );
                   })}
                 </div>
-                {showError('business_category') && <InlineError message={errors.business_category} />}
-                
+                {showError("business_category") && (
+                  <InlineError message={errors.business_category} />
+                )}
+
                 {Array.isArray(formData.business_category) && (
                   <div className="mt-1 flex justify-between items-center">
-                    <div className={`text-[9px] ${
-                      formData.business_category.length === 0 ? 'text-gray-400' :
-                      formData.business_category.length >= 2 ? 'text-green-600' : 'text-orange-500'
-                    }`}>
-                      Selected: {formData.business_category.length} category(ies)
-                      {formData.business_category.length < 2 && formData.business_category.length > 0 && (
-                        <span className="ml-1">(Need {2 - formData.business_category.length} more)</span>
-                      )}
+                    <div
+                      className={`text-[9px] ${
+                        formData.business_category.length === 0
+                          ? "text-gray-400"
+                          : formData.business_category.length >= 2
+                            ? "text-green-600"
+                            : "text-orange-500"
+                      }`}
+                    >
+                      Selected: {formData.business_category.length}{" "}
+                      category(ies)
+                      {formData.business_category.length < 2 &&
+                        formData.business_category.length > 0 && (
+                          <span className="ml-1">
+                            (Need {2 - formData.business_category.length} more)
+                          </span>
+                        )}
                     </div>
                     {formData.business_category.length === 1 && (
                       <div className="text-[8px] text-orange-500 flex items-center gap-1">
@@ -354,24 +439,43 @@ const BusinessIdentity = () => {
               </div>
             ) : (
               <div className="relative">
-                <HiOutlineClipboardDocumentList className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={12} />
+                <HiOutlineClipboardDocumentList
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"
+                  size={12}
+                />
                 <select
-                  value={formData.business_category || ""}
+                  value={
+                    Array.isArray(formData.business_category)
+                      ? formData.business_category[0] || ""
+                      : formData.business_category || ""
+                  }
                   onChange={(e) => handleCategoryChange(e.target.value)}
-                  onBlur={() => handleBlur('business_category')}
+                  onBlur={() => handleBlur("business_category")}
                   disabled={!formData.business_type}
                   className={`w-full h-8 pl-9 pr-8 border rounded-xl text-[11px] focus:border-[#F2B53D]  outline-none cursor-pointer appearance-none transition-colors ${
-                    !formData.business_type ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : 'bg-white'
+                    !formData.business_type
+                      ? "bg-gray-50 text-gray-400 cursor-not-allowed"
+                      : "bg-white"
                   } ${
-                    showError('business_category') ? 'border-red-400' : 'border-gray-200'
+                    showError("business_category")
+                      ? "border-red-400"
+                      : "border-gray-200"
                   }`}
                 >
-                  <option value="">{!formData.business_type ? "Select business type first" : "Select category"}</option>
-                  {categoryOptions.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
+                  <option value="">
+                    {!formData.business_type
+                      ? "Select business type first"
+                      : "Select category"}
+                  </option>
+                  {categoryOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
                   ))}
                 </select>
-                {showError('business_category') && <InlineError message={errors.business_category} />}
+                {showError("business_category") && (
+                  <InlineError message={errors.business_category} />
+                )}
               </div>
             )}
           </div>
@@ -382,20 +486,27 @@ const BusinessIdentity = () => {
               Owner Full Name <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <HiOutlineUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={12} />
+              <HiOutlineUser
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"
+                size={12}
+              />
               <input
                 type="text"
                 value={formData.owner_full_name || ""}
-                onChange={(e) => handleChange('owner_full_name', e.target.value)}
-                onBlur={() => handleBlur('owner_full_name')}
+                onChange={(e) =>
+                  handleChange("owner_full_name", e.target.value)
+                }
+                onBlur={() => handleBlur("owner_full_name")}
                 placeholder="First & Last name"
                 className={`w-full h-8 pl-9 pr-3 bg-white border rounded-xl focus:outline-none text-[11px] transition-colors ${
-                  showError('owner_full_name')
-                    ? 'border-red-400 focus:border-red-500'
-                    : 'border-gray-200 focus:border-[#F2B53D]'
+                  showError("owner_full_name")
+                    ? "border-red-400 focus:border-red-500"
+                    : "border-gray-200 focus:border-[#F2B53D]"
                 }`}
               />
-              {showError('owner_full_name') && <InlineError message={errors.owner_full_name} />}
+              {showError("owner_full_name") && (
+                <InlineError message={errors.owner_full_name} />
+              )}
             </div>
           </div>
 
@@ -405,20 +516,27 @@ const BusinessIdentity = () => {
               Registration Number <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <HiOutlineIdentification className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={12} />
+              <HiOutlineIdentification
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"
+                size={12}
+              />
               <input
                 type="text"
                 value={formData.registration_number || ""}
-                onChange={(e) => handleChange('registration_number', e.target.value)}
-                onBlur={() => handleBlur('registration_number')}
+                onChange={(e) =>
+                  handleChange("registration_number", e.target.value)
+                }
+                onBlur={() => handleBlur("registration_number")}
                 placeholder="e.g. BN123456 or CPR/2020/1234"
                 className={`w-full h-8 pl-9 pr-3 bg-white border rounded-xl focus:outline-none text-[11px] transition-colors ${
-                  showError('registration_number')
-                    ? 'border-red-400 focus:border-red-500'
-                    : 'border-gray-200 focus:border-[#F2B53D]'
+                  showError("registration_number")
+                    ? "border-red-400 focus:border-red-500"
+                    : "border-gray-200 focus:border-[#F2B53D]"
                 }`}
               />
-              {showError('registration_number') && <InlineError message={errors.registration_number} />}
+              {showError("registration_number") && (
+                <InlineError message={errors.registration_number} />
+              )}
             </div>
           </div>
 
@@ -428,62 +546,88 @@ const BusinessIdentity = () => {
               Tax ID (TIN) <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <FaRegFileAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={11} />
+              <FaRegFileAlt
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"
+                size={11}
+              />
               <input
                 type="text"
                 value={formData.tax_id || ""}
-                onChange={(e) => handleChange('tax_id', e.target.value)}
-                onBlur={() => handleBlur('tax_id')}
+                onChange={(e) => handleChange("tax_id", e.target.value)}
+                onBlur={() => handleBlur("tax_id")}
                 placeholder="e.g. 1234567890 or A123456789Z"
                 className={`w-full h-8 pl-9 pr-3 bg-white border rounded-xl focus:outline-none text-[11px] transition-colors ${
-                  showError('tax_id')
-                    ? 'border-red-400 focus:border-red-500'
-                    : 'border-gray-200 focus:border-[#F2B53D]'
+                  showError("tax_id")
+                    ? "border-red-400 focus:border-red-500"
+                    : "border-gray-200 focus:border-[#F2B53D]"
                 }`}
               />
-              {showError('tax_id') && <InlineError message={errors.tax_id} />}
+              {showError("tax_id") && <InlineError message={errors.tax_id} />}
             </div>
           </div>
 
           {/* Business Description */}
-          <div className="flex flex-col md:col-span-2" data-field="business_description">
+          <div
+            className="flex flex-col md:col-span-2"
+            data-field="business_description"
+          >
             <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
               Business Description <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <HiOutlineDocumentText className="absolute left-3 top-2.5 text-gray-400 z-10" size={12} />
+              <HiOutlineDocumentText
+                className="absolute left-3 top-2.5 text-gray-400 z-10"
+                size={12}
+              />
               <textarea
                 value={formData.business_description || ""}
-                onChange={(e) => handleChange('business_description', e.target.value)}
-                onBlur={() => handleBlur('business_description')}
+                onChange={(e) =>
+                  handleChange("business_description", e.target.value)
+                }
+                onBlur={() => handleBlur("business_description")}
                 placeholder="Describe what you sell or your business mission... (Max 30 words)"
                 className={`w-full h-14 pl-9 pr-3 pt-2 border rounded-xl text-[11px] focus:outline-none resize-none transition-colors ${
-                  showError('business_description') || wordCount > 30
-                    ? 'border-red-400 focus:border-red-500'
-                    : 'border-gray-200 focus:border-[#F2B53D]'
+                  showError("business_description") || wordCount > 30
+                    ? "border-red-400 focus:border-red-500"
+                    : "border-gray-200 focus:border-[#F2B53D]"
                 }`}
                 maxLength={500}
               />
-              {showError('business_description') && <InlineError message={errors.business_description} />}
-              
+              {showError("business_description") && (
+                <InlineError message={errors.business_description} />
+              )}
+
               {/* Word counter with visual feedback*/}
               <div className="flex justify-between items-center mt-1">
                 <div className="flex items-center gap-1">
                   {wordCount > 0 && wordCount <= 30 && (
-                    <MdCheckCircle size={10} className={wordCount > 20 ? "text-yellow-500" : "text-green-500"} />
+                    <MdCheckCircle
+                      size={10}
+                      className={
+                        wordCount > 20 ? "text-yellow-500" : "text-green-500"
+                      }
+                    />
                   )}
-                  <p className={`text-[9px] transition-colors ${
-                    wordCount > 30 ? "text-red-500 font-medium" : 
-                    wordCount > 20 ? "text-yellow-600" : 
-                    wordCount > 0 ? "text-green-600" : "text-gray-400"
-                  }`}>
+                  <p
+                    className={`text-[9px] transition-colors ${
+                      wordCount > 30
+                        ? "text-red-500 font-medium"
+                        : wordCount > 20
+                          ? "text-yellow-600"
+                          : wordCount > 0
+                            ? "text-green-600"
+                            : "text-gray-400"
+                    }`}
+                  >
                     {wordCount === 0 ? "No words yet" : `${wordCount}/30 words`}
                   </p>
                 </div>
                 {wordCount > 25 && wordCount <= 30 && (
                   <div className="flex items-center gap-1">
                     <IoWarningOutline size={10} className="text-yellow-600" />
-                    <p className="text-[8px] text-yellow-600">Getting close to limit</p>
+                    <p className="text-[8px] text-yellow-600">
+                      Getting close to limit
+                    </p>
                   </div>
                 )}
               </div>
@@ -491,7 +635,9 @@ const BusinessIdentity = () => {
               {wordCount > 30 && (
                 <div className="flex items-center gap-1 mt-0.5">
                   <MdError size={10} className="text-red-500" />
-                  <p className="text-red-500 text-[8px]">Cannot exceed 30 words. Please shorten your description.</p>
+                  <p className="text-red-500 text-[8px]">
+                    Cannot exceed 30 words. Please shorten your description.
+                  </p>
                 </div>
               )}
             </div>
@@ -503,11 +649,15 @@ const BusinessIdentity = () => {
           <button
             type="button"
             onClick={handleContinue}
-            disabled={wordCount > 30 || (formData.business_type === "both" && !hasMinimumCategories())}
+            disabled={
+              wordCount > 30 ||
+              (formData.business_type === "both" && !hasMinimumCategories())
+            }
             className={`w-full max-w-[200px] h-7 rounded-full text-white font-bold text-[11px] transition-all ${
-              (wordCount > 30 || (formData.business_type === "both" && !hasMinimumCategories()))
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-[#D99201] hover:bg-[#e0a630] active:bg-[#c68500]'
+              wordCount > 30 ||
+              (formData.business_type === "both" && !hasMinimumCategories())
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-[#D99201] hover:bg-[#e0a630] active:bg-[#c68500]"
             }`}
           >
             Continue
