@@ -227,10 +227,10 @@ const VendorProfile = ({ vendor, onApprove, onSuspend, onReject, onReviewDocumen
         {isSuspended && (
           <button
             onClick={onReinstate}
-            disabled={reinstateLoading || actionLoading}
+            disabled={reinstateLoading}
             className="w-full flex items-center justify-center gap-2 py-2.5 bg-green-600 text-white text-xs font-bold rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
           >
-            {reinstateLoading || actionLoading ? (
+            {reinstateLoading ? (
               <Loader2 size={14} className="animate-spin" />
             ) : (
               <CheckCircle size={14} />
@@ -256,10 +256,10 @@ const VendorProfile = ({ vendor, onApprove, onSuspend, onReject, onReviewDocumen
           {!isSuspended && (
             <button
               onClick={onSuspend}
-              disabled={actionLoading}
+              disabled={suspendLoading}
               className="flex-1 flex items-center justify-center gap-2 py-2 border border-orange-100 rounded-xl text-[11px] font-bold text-orange-500 hover:bg-orange-50 transition-colors disabled:opacity-50"
             >
-              {actionLoading ? (
+              {suspendLoading ? (
                 <Loader2 size={13} className="animate-spin" />
               ) : (
                 <Ban size={13} />
