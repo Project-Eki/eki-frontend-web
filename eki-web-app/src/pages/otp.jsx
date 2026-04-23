@@ -9,8 +9,9 @@ const OTPVerify = () => {
   const navigate = useNavigate();
   const [otp, setOtp] = useState(new Array(6).fill(""));
   const [error, setError] = useState("");
-  const [timer, setTimer] = useState(60);
   const [isLoading, setIsLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
   const email = state?.email || "";
   const inputRefs = useRef([]);
 
@@ -18,11 +19,7 @@ const OTPVerify = () => {
     if (!email) {
       navigate('/reset-password-request');
     }
-    if (timer > 0) {
-      const interval = setInterval(() => setTimer(prev => prev - 1), 1000);
-      return () => clearInterval(interval);
-    }
-  }, [timer, email, navigate]);
+  }, [email, navigate]);
 
   const handleChange = (element, index) => {
     const value = element.value;
@@ -59,12 +56,26 @@ const OTPVerify = () => {
   };
 
   const handleResend = async () => {
+    setResendLoading(true);
+    setResendSuccess(false);
+    setError("");
     try {
       await resendOtp(email);
-      setTimer(60);
-      setError("");
+      setOtp(new Array(6).fill(""));
+      setResendSuccess(true);
+      setTimeout(() => setResendSuccess(false), 4000);
     } catch (err) {
-      setError(err.message);
+      const djangoErrors = err.response?.data?.errors ?? err.response?.data;
+      if (djangoErrors && typeof djangoErrors === 'object') {
+        const messages = Object.values(djangoErrors)
+          .map(msg => Array.isArray(msg) ? msg.join(', ') : msg)
+          .join(' ');
+        setError(messages);
+      } else {
+        setError(err.message || "Failed to resend code. Please try again.");
+      }
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -96,12 +107,12 @@ const OTPVerify = () => {
                   value={data}
                   onChange={(e) => handleChange(e.target, index)}
                   onKeyDown={(e) => handleKeyDown(e, index)}
-                  className={`w-12 h-12 text-center text-2xl font-bold border-2 rounded-2xl outline-none transition-all ${
+                  className={`w-12 h-12 text-center text-2xl font-bold rounded-2xl outline-none transition-all bg-gray-50 text-gray-900 ${
                     error
-                      ? 'border-red-500 bg-red-50 focus:border-red-500'
+                      ? 'border-2 border-red-500'
                       : data
-                      ? 'border-[#EFB034] bg-[#EFB034] text-white focus:ring-2 focus:ring-[#EFB034]/30'
-                      : 'border-gray-200 bg-gray-50 focus:border-[#EFB034] focus:bg-[#EFB034]/10 focus:ring-2 focus:ring-[#EFB034]/30'
+                      ? 'border-2 border-[#EFB034]'
+                      : 'border-2 border-gray-200 focus:border-[#EFB034]'
                   }`}
                 />
               </React.Fragment>
@@ -109,8 +120,14 @@ const OTPVerify = () => {
           </div>
 
           {error && (
-            <p className="text-red-500 text-sm mb-6 font-bold text-center">
+            <p className="text-red-500 text-sm mb-4 font-bold text-center">
               {error}
+            </p>
+          )}
+
+          {resendSuccess && (
+            <p className="text-emerald-600 text-sm mb-4 font-semibold text-center">
+              A new code has been sent to your email.
             </p>
           )}
 
@@ -127,16 +144,19 @@ const OTPVerify = () => {
           </button>
 
           <div className="text-center mt-6">
+            <p className="text-xs text-gray-400 mb-2">
+              Didn't receive the code?
+            </p>
             <button
-              disabled={timer > 0}
+              disabled={resendLoading}
               onClick={handleResend}
-              className={`text-sm font-medium transition-colors ${
-                timer > 0
+              className={`text-sm font-semibold transition-colors ${
+                resendLoading
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-[#EFB034] hover:underline cursor-pointer"
               }`}
             >
-              {timer > 0 ? `Resend Code in ${timer}s` : "Resend New Code"}
+              {resendLoading ? "Sending..." : "Resend New Code"}
             </button>
           </div>
         </div>

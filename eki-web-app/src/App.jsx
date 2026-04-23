@@ -24,7 +24,7 @@ import PaymentAndPayout from "./pages/PaymentAndPayout";
 import BusinessSettings from "./pages/BusinessSettings";
 import VendorReviews from "./pages/VendorReview";
 import Demo from "./pages/Demo";
-import VendorChat from "./pages/vendorchat";   
+import VendorChat from "./pages/Vendorchatpage";   
 
 // --- THE OTP IMPORT ---
 import OtpVerify from "./pages/otp";

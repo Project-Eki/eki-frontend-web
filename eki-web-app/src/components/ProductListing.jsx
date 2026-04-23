@@ -258,91 +258,81 @@ const DescriptionField = ({ value, onChange, error }) => {
 };
 
 // ─── VariantSection ───────────────────────────────────────────────────────────
-const VariantSection = ({ sizes, colors, onToggleChip }) => {
-  const [colorDropdownOpen, setColorDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
+// FIX: Colors now rendered as chips (same pattern as sizes) — selected chip is
+//      highlighted with bg-[#125852] text-white, includes color swatch dot.
+//      Removed the dropdown entirely.
+const VariantSection = ({ sizes, colors, onToggleChip }) => (
+  <div className="space-y-4 border border-slate-100 rounded-xl p-4 bg-slate-50/50">
+    <h4 className="text-[11px] font-bold uppercase text-slate-600 tracking-wider">Product Variants</h4>
 
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setColorDropdownOpen(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  return (
-    <div className="space-y-4 border border-slate-100 rounded-xl p-4 bg-slate-50/50">
-      <h4 className="text-[11px] font-bold uppercase text-slate-600 tracking-wider">Product Variants</h4>
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Ruler size={13} className="text-slate-400" />
-          <label className="text-[11px] font-bold uppercase text-slate-500">Available Sizes</label>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {SIZE_OPTIONS.map((size) => (
+    {/* ── Sizes ── */}
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Ruler size={13} className="text-slate-400" />
+        <label className="text-[11px] font-bold uppercase text-slate-500">Available Sizes</label>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {SIZE_OPTIONS.map((size) => {
+          const selected = sizes.includes(size);
+          return (
             <button
-              key={size} type="button"
+              key={size}
+              type="button"
               onClick={() => onToggleChip('sizes', size)}
               className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
-                sizes.includes(size) ? 'bg-[#125852] text-white border-[#125852]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#125852] hover:text-[#125852]'
+                selected
+                  ? 'bg-[#125852] text-white border-[#125852] shadow-sm'
+                  : 'bg-white text-slate-500 border-slate-200 hover:border-[#125852] hover:text-[#125852]'
               }`}
             >
               {size === 'one_size' ? 'One Size' : size}
             </button>
-          ))}
-        </div>
-        {sizes.length > 0 && <p className="text-[10px] text-[#125852] font-medium">Selected: {sizes.join(', ')}</p>}
+          );
+        })}
       </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Palette size={13} className="text-slate-400" />
-          <label className="text-[11px] font-bold uppercase text-slate-500">Available Colors</label>
-        </div>
-        <div className="relative" ref={dropdownRef}>
-          <button
-            type="button"
-            onClick={() => setColorDropdownOpen((v) => !v)}
-            className="w-full flex items-center justify-between px-3 py-2 border border-slate-200 rounded-lg bg-white text-sm text-slate-600 hover:border-[#125852] transition-colors"
-          >
-            <div className="flex items-center gap-2 flex-wrap min-h-[18px]">
-              {colors.length === 0 ? (
-                <span className="text-slate-400 text-[12px]">Select colors…</span>
-              ) : (
-                colors.map((c) => (
-                  <span key={c} className="flex items-center gap-1 bg-[#125852]/10 text-[#125852] px-2 py-0.5 rounded-full text-[10px] font-bold">
-                    <span className="w-2.5 h-2.5 rounded-full border border-white/40 flex-shrink-0" style={{ backgroundColor: COLOR_SWATCHES[c] || '#ccc' }} />
-                    {c}
-                  </span>
-                ))
-              )}
-            </div>
-            {colorDropdownOpen ? <ChevronUp size={16} className="text-slate-400 flex-shrink-0" /> : <ChevronDown size={16} className="text-slate-400 flex-shrink-0" />}
-          </button>
-          {colorDropdownOpen && (
-            <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl overflow-y-auto max-h-48 p-2">
-              {COLOR_OPTIONS.map((color) => {
-                const selected = colors.includes(color);
-                return (
-                  <button
-                    key={color} type="button"
-                    onClick={() => onToggleChip('colors', color)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${selected ? 'bg-[#125852] text-white' : 'text-slate-600 hover:bg-slate-50'}`}
-                  >
-                    <span className="w-4 h-4 rounded-full border-2 border-white shadow flex-shrink-0" style={{ backgroundColor: COLOR_SWATCHES[color] || '#ccc' }} />
-                    {color}
-                    {selected && <CheckCircle2 size={12} className="ml-auto" />}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-        {colors.length > 0 && <p className="text-[10px] text-[#125852] font-medium">Selected: {colors.join(', ')}</p>}
-      </div>
+      {sizes.length > 0 && (
+        <p className="text-[10px] text-[#125852] font-medium">Selected: {sizes.join(', ')}</p>
+      )}
     </div>
-  );
-};
+
+    {/* ── Colors — chip row matching sizes pattern ── */}
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Palette size={13} className="text-slate-400" />
+        <label className="text-[11px] font-bold uppercase text-slate-500">Available Colors</label>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {COLOR_OPTIONS.map((color) => {
+          const selected = colors.includes(color);
+          const swatch = COLOR_SWATCHES[color] || '#ccc';
+          // For White swatch on selected (dark bg) we keep the border visible
+          const swatchBorder = color === 'White' ? '1px solid rgba(0,0,0,0.15)' : '1px solid rgba(255,255,255,0.3)';
+          return (
+            <button
+              key={color}
+              type="button"
+              onClick={() => onToggleChip('colors', color)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                selected
+                  ? 'bg-[#125852] text-white border-[#125852] shadow-sm'
+                  : 'bg-white text-slate-500 border-slate-200 hover:border-[#125852] hover:text-[#125852]'
+              }`}
+            >
+              <span
+                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: swatch, border: swatchBorder }}
+              />
+              {color}
+            </button>
+          );
+        })}
+      </div>
+      {colors.length > 0 && (
+        <p className="text-[10px] text-[#125852] font-medium">Selected: {colors.join(', ')}</p>
+      )}
+    </div>
+  </div>
+);
 
 // ─── ImageGrid ────────────────────────────────────────────────────────────────
 const ImageGrid = ({ existingImages = [], pendingImages = [], onRemoveExisting, onRemovePending, onAdd, onCameraCapture }) => {
@@ -735,12 +725,29 @@ const ProductListing = ({
   useEffect(() => {
     if (!isOpen) return;
     if (initialData) {
+      // ── FIX: Compute available stock = total stock minus any reserved/ordered qty
+      // The API may return reserved_stock, ordered_quantity, or pending_orders.
+      // We subtract these from the raw stock so the form always shows true available qty.
+      const rawStock =
+        initialData.stock ??
+        initialData.detail?.stock ??
+        initialData.stock_quantity ??
+        0;
+      const reserved =
+        initialData.reserved_stock ??
+        initialData.ordered_quantity ??
+        initialData.pending_quantity ??
+        initialData.detail?.reserved_stock ??
+        0;
+      // Available stock is raw minus reserved, floored at 0
+      const availableStock = Math.max(0, Number(rawStock) - Number(reserved));
+
       setFormData({
         title: initialData.title || '',
         price: initialData.price ? String(initialData.price) : '',
         sku: initialData.sku || '',
         description: initialData.description || '',
-        stock: initialData.stock ?? initialData.detail?.stock ?? initialData.stock_quantity ?? 0,
+        stock: availableStock,
         imageFiles: [],
         sizes: initialData.sizes || [],
         colors: initialData.colors || [],
@@ -1033,14 +1040,49 @@ const ProductListing = ({
                   />
                 </div>
               </div>
+
+              {/* ── Stock field: label shows available vs total if reserved qty exists ── */}
               <div className="space-y-1">
-                <label className="text-[11px] font-bold uppercase text-slate-500">Stock Quantity</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold uppercase text-slate-500">Stock Quantity</label>
+                  {isEditMode && initialData && (() => {
+                    const reserved =
+                      initialData.reserved_stock ??
+                      initialData.ordered_quantity ??
+                      initialData.pending_quantity ??
+                      initialData.detail?.reserved_stock ??
+                      0;
+                    return reserved > 0 ? (
+                      <span className="text-[9px] text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded-full">
+                        {reserved} reserved from orders
+                      </span>
+                    ) : null;
+                  })()}
+                </div>
                 <input
                   type="number" name="stock" value={formData.stock}
                   onChange={handleInputChange}
                   placeholder="e.g. 10" min="0" step="1"
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#F5B841]"
                 />
+                {isEditMode && initialData && (() => {
+                  const reserved =
+                    initialData.reserved_stock ??
+                    initialData.ordered_quantity ??
+                    initialData.pending_quantity ??
+                    initialData.detail?.reserved_stock ??
+                    0;
+                  const rawStock =
+                    initialData.stock ??
+                    initialData.detail?.stock ??
+                    initialData.stock_quantity ??
+                    0;
+                  return reserved > 0 ? (
+                    <p className="text-[9px] text-slate-400">
+                      Total stock: {rawStock} — showing available after {reserved} reserved
+                    </p>
+                  ) : null;
+                })()}
               </div>
 
               <div className="space-y-3 border border-slate-100 rounded-xl p-4 bg-slate-50/50">
