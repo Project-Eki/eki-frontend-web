@@ -455,7 +455,7 @@ const AdminManagement = () => {
     setTerminateLoading(true);
     try {
       await updateVendorStatus(vendorDetail.id, "terminated", reason);
-      const newStatus = "Suspended";
+      const newStatus = "Terminated";
       setVendors((prev) => prev.map((v) => (v.id === vendorDetail.id ? { ...v, status: newStatus } : v)));
       setVendorDetail((prev) => (prev ? { ...prev, status: newStatus } : prev));
       setShowTerminate(false);
