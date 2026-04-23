@@ -528,7 +528,7 @@ const AdminManagement = () => {
 
   const handleReinstate = async (reason) => {
     if (!vendorDetail) return;
-    setReinstateLoading(true);
+    setActionLoading(true);
     try {
       await updateVendorStatus(vendorDetail.id, "approved", reason || "Reinstated by admin");
       const newStatus = "Approved";
