@@ -435,11 +435,11 @@ const AdminManagement = () => {
     }
   };
 
-  const handleSuspend = async () => {
+  const handleSuspend = async (reason) => {
     if (!vendorDetail) return;
     setActionLoading(true);
     try {
-      await updateVendorStatus(vendorDetail.id, "suspended", "Suspended by admin");
+      await updateVendorStatus(vendorDetail.id, "suspended", reason);
       const newStatus = "Suspended";
       setVendors((prev) => prev.map((v) => (v.id === vendorDetail.id ? { ...v, status: newStatus } : v)));
       setVendorDetail((prev) => (prev ? { ...prev, status: newStatus } : prev));
@@ -458,7 +458,6 @@ const AdminManagement = () => {
       const newStatus = "Terminated";
       setVendors((prev) => prev.map((v) => (v.id === vendorDetail.id ? { ...v, status: newStatus } : v)));
       setVendorDetail((prev) => (prev ? { ...prev, status: newStatus } : prev));
-      setShowTerminate(false);
     } catch (err) {
       alert(err?.response?.data?.message || "Termination failed.");
     } finally {
@@ -474,7 +473,6 @@ const AdminManagement = () => {
       const newStatus = "Rejected";
       setVendors((prev) => prev.map((v) => (v.id === vendorDetail.id ? { ...v, status: newStatus } : v)));
       setVendorDetail((prev) => (prev ? { ...prev, status: newStatus } : prev));
-      setShowReject(false);
     } catch (err) {
       alert(err?.response?.data?.message || "Rejection failed.");
     } finally {
