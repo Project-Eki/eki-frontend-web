@@ -43,7 +43,7 @@ const InfoRow = ({ icon: Icon, label, value }) => (
  *  onTerminate       — open TerminateVendorModal in parent
  *  actionLoading     — disables buttons during API calls
  */
-const VendorProfile = ({ vendor, onApprove, onSuspend, onReject, onReviewDocuments, onTerminate, onReinstate, actionLoading }) => {
+const VendorProfile = ({ vendor, onApprove, onSuspend, onReject, onReviewDocuments, onTerminate, onReinstate}) => {
   const isPending   = vendor.status === "Pending"   || vendor.status === "under_review";
   const isApproved  = vendor.status === "Approved"  || vendor.status === "Verified";
   const isSuspended = vendor.status === "Suspended";
