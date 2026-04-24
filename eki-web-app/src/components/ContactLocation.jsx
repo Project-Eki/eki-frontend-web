@@ -280,24 +280,12 @@ const ContactLocation = () => {
           </div>
         </div>
 
-        {/* Branch Locations with Add Button */}
+        {/* Branch Locations with Add Button INSIDE the input field */}
         <div className="flex flex-col">
-          <div className="flex items-center justify-between mb-0.5">
-            <label className="text-[10px] font-semibold text-gray-700 ml-1">
-              Branch Locations{" "}
-              <span className="text-gray-400 text-[9px]">(Optional)</span>
-            </label>
-            <button
-              type="button"
-              onClick={() => {
-                resetBranchForm();
-                setShowBranchModal(true);
-              }}
-              className="flex items-center gap-1 px-2 py-0.5 bg-[#FFF8ED] text-[#F2B53D] rounded-md text-[8px] font-semibold hover:bg-[#F2B53D]/10 transition-all"
-            >
-              <HiPlus size={8} /> Add Branch
-            </button>
-          </div>
+          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
+            Branch Locations{" "}
+            <span className="text-gray-400 text-[9px]">(Optional)</span>
+          </label>
           <div className="relative">
             <input
               type="text"
@@ -308,8 +296,18 @@ const ContactLocation = () => {
               }
               placeholder="No branches added"
               readOnly
-              className="w-full h-8 pl-3 pr-3 bg-gray-50 border border-gray-200 rounded-xl text-[11px] text-gray-600 cursor-default"
+              className="w-full h-8 pl-3 pr-16 bg-gray-50 border border-gray-200 rounded-xl text-[11px] text-gray-600 cursor-default"
             />
+            <button
+              type="button"
+              onClick={() => {
+                resetBranchForm();
+                setShowBranchModal(true);
+              }}
+              className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1 px-2 py-0.5 bg-[#FFF8ED] text-[#F2B53D] rounded-md text-[8px] font-semibold hover:bg-[#F2B53D]/10 transition-all z-10"
+            >
+              <HiPlus size={8} /> Add Branch
+            </button>
           </div>
         </div>
 
