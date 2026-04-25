@@ -101,8 +101,7 @@ const VendorChatPage = () => {
           conv.buyer_name ??
           conv.buyer?.name ??
           conv.buyer?.full_name ??
-          [conv.buyer?.first_name, conv.buyer?.last_name].filter(Boolean).join(' ') ||
-          'Buyer',
+          ([conv.buyer?.first_name, conv.buyer?.last_name].filter(Boolean).join(' ') || 'Buyer'),
         avatar: conv.buyer_avatar ?? conv.buyer?.profile_picture ?? null,
         lastSeen: conv.last_message_at
           ? new Date(conv.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
