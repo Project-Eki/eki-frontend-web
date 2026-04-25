@@ -33,6 +33,7 @@ const ContactLocation = () => {
   const [branchForm, setBranchForm] = useState({
     address: "",
     city: "",
+    country: "", // Added country field
     phone: "",
     hours: "",
     landmark: "",
@@ -57,34 +58,25 @@ const ContactLocation = () => {
     setErrors(validationErrors);
   };
 
-  // Remove spaces from phone number immediately
   const handlePhoneChange = (value) => {
     const cleanValue = value ? value.replace(/\s/g, "") : "";
     handleChange("business_phone", cleanValue);
   };
 
-  // Auto-fills city and zip_code when user picks an address from OSM
   const handleAddressParsed = ({ city, zip }) => {
-    // Only update if city is provided and city field is empty
     if (city && !formData.city) {
-      dispatch({
-        type: ACTIONS.UPDATE_FORM,
-        payload: { city: city },
-      });
+      dispatch({ type: ACTIONS.UPDATE_FORM, payload: { city: city } });
     }
     if (zip && !formData.zip_code) {
-      dispatch({
-        type: ACTIONS.UPDATE_FORM,
-        payload: { zip_code: zip },
-      });
+      dispatch({ type: ACTIONS.UPDATE_FORM, payload: { zip_code: zip } });
     }
   };
 
-  // Branch Locations Management
   const handleAddBranch = () => {
     const newBranch = {
       address: branchForm.address,
       city: branchForm.city,
+      country: branchForm.country || formData.country, // Include country, fallback to main country
       phone: branchForm.phone || "",
       hours: branchForm.hours || "",
       landmark: branchForm.landmark || "",
@@ -108,6 +100,7 @@ const ContactLocation = () => {
     setBranchForm({
       address: branch.address || "",
       city: branch.city || "",
+      country: branch.country || "", // Added country field
       phone: branch.phone || "",
       hours: branch.hours || "",
       landmark: branch.landmark || "",
@@ -127,6 +120,7 @@ const ContactLocation = () => {
     setBranchForm({
       address: "",
       city: "",
+      country: "", // Added country field
       phone: "",
       hours: "",
       landmark: "",
@@ -198,7 +192,7 @@ const ContactLocation = () => {
           </div>
         </div>
 
-        {/* Country - Uses your existing SearchableCountrySelector */}
+        {/* Country */}
         <div className="flex flex-col">
           <SearchableCountrySelector
             value={formData.country}
@@ -208,7 +202,7 @@ const ContactLocation = () => {
           />
         </div>
 
-        {/* City - Uses your existing SearchableCitySelector with country-state-city */}
+        {/* City — sits beside Street Address */}
         <SearchableCitySelector
           countryCode={formData.country}
           value={formData.city || ""}
@@ -216,8 +210,8 @@ const ContactLocation = () => {
           error={showError("city") ? errors.city : ""}
         />
 
-        {/* Street Address - OSM Address Autocomplete */}
-        <div className="flex flex-col md:col-span-2" data-field="address">
+        {/* Street Address — now a single column (sits beside City) */}
+        <div className="flex flex-col" data-field="address">
           <AddressAutocomplete
             value={formData.address || ""}
             onChange={(val) => handleChange("address", val)}
@@ -286,24 +280,12 @@ const ContactLocation = () => {
           </div>
         </div>
 
-        {/* Branch Locations with Add Button */}
+        {/* Branch Locations with Add Button INSIDE the input field */}
         <div className="flex flex-col">
-          <div className="flex items-center justify-between mb-0.5">
-            <label className="text-[10px] font-semibold text-gray-700 ml-1">
-              Branch Locations{" "}
-              <span className="text-gray-400 text-[9px]">(Optional)</span>
-            </label>
-            <button
-              type="button"
-              onClick={() => {
-                resetBranchForm();
-                setShowBranchModal(true);
-              }}
-              className="flex items-center gap-1 px-2 py-0.5 bg-[#FFF8ED] text-[#F2B53D] rounded-md text-[8px] font-semibold hover:bg-[#F2B53D]/10 transition-all"
-            >
-              <HiPlus size={8} /> Add Branch
-            </button>
-          </div>
+          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
+            Branch Locations{" "}
+            <span className="text-gray-400 text-[9px]">(Optional)</span>
+          </label>
           <div className="relative">
             <input
               type="text"
@@ -314,8 +296,18 @@ const ContactLocation = () => {
               }
               placeholder="No branches added"
               readOnly
-              className="w-full h-8 pl-3 pr-3 bg-gray-50 border border-gray-200 rounded-xl text-[11px] text-gray-600 cursor-default"
+              className="w-full h-8 pl-3 pr-16 bg-gray-50 border border-gray-200 rounded-xl text-[11px] text-gray-600 cursor-default"
             />
+            <button
+              type="button"
+              onClick={() => {
+                resetBranchForm();
+                setShowBranchModal(true);
+              }}
+              className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1 px-2 py-0.5 bg-[#FFF8ED] text-[#F2B53D] rounded-md text-[8px] font-semibold hover:bg-[#F2B53D]/10 transition-all z-10"
+            >
+              <HiPlus size={8} /> Add Branch
+            </button>
           </div>
         </div>
 

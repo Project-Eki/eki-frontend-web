@@ -3,6 +3,11 @@ import { HiX } from "react-icons/hi";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 
+// Reuse the same autocomplete components from ContactLocation
+import AddressAutocomplete from "./AddressAutocomplete";
+import SearchableCitySelector from "./SearchableCitySelector";
+import SearchableCountrySelector from "./SearchableCountrySelector";
+
 const BranchModal = ({
   isOpen,
   onClose,
@@ -21,6 +26,28 @@ const BranchModal = ({
     onSave();
   };
 
+  // When the user picks an address from the OSM autocomplete,
+  // auto-fill city if it's empty (same behaviour as ContactLocation)
+  const handleAddressParsed = ({ city, country }) => {
+    if (city && !branchForm.city) {
+      setBranchForm((prev) => ({ ...prev, city }));
+    }
+    // Auto-fill country if provided and not already set
+    if (country && !branchForm.country) {
+      setBranchForm((prev) => ({ ...prev, country }));
+    }
+  };
+
+  // Handle country change - reset city when country changes
+  const handleCountryChange = (countryValue) => {
+    setBranchForm((prev) => ({ 
+      ...prev, 
+      country: countryValue,
+      // Reset city when country changes to avoid invalid city-country pairs
+      city: ""
+    }));
+  };
+
   return (
     <div
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
@@ -30,49 +57,52 @@ const BranchModal = ({
         className="bg-white rounded-xl p-4 max-w-md w-full mx-4"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* ── Header ── */}
         <div className="flex justify-between items-center mb-3">
           <h4 className="font-bold text-sm text-gray-800">
             {isEditing ? "Edit Branch Location" : "Add Branch Location"}
           </h4>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <HiX size={16} />
           </button>
         </div>
 
         <div className="space-y-2">
+          {/* ── Country Selector (NEW - same as ContactLocation) ── */}
+          <SearchableCountrySelector
+            value={branchForm.country || ""}
+            onChange={handleCountryChange}
+            error=""
+            showInlineError={false}
+          />
+
+          {/* ── Address — OSM autocomplete (same as ContactLocation) ── */}
           <div>
-            <label className="text-[10px] font-semibold text-gray-700 mb-0.5 block">
-              Address <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              placeholder="Street address"
+            <AddressAutocomplete
               value={branchForm.address}
-              onChange={(e) =>
-                setBranchForm({ ...branchForm, address: e.target.value })
+              onChange={(val) =>
+                setBranchForm((prev) => ({ ...prev, address: val }))
               }
-              className="w-full h-8 px-3 border border-gray-200 rounded-lg text-[11px] focus:border-[#F2B53D] outline-none"
+              onAddressParsed={handleAddressParsed}
+              error={null}
             />
           </div>
 
+          {/* ── City — searchable dropdown (same as ContactLocation) ── */}
+          {/* Pass the country from the branch form if available,
+              otherwise leave it undefined so the selector shows all cities */}
           <div>
-            <label className="text-[10px] font-semibold text-gray-700 mb-0.5 block">
-              City <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              placeholder="City"
-              value={branchForm.city}
-              onChange={(e) =>
-                setBranchForm({ ...branchForm, city: e.target.value })
+            <SearchableCitySelector
+              countryCode={branchForm.country || undefined}
+              value={branchForm.city || ""}
+              onChange={(val) =>
+                setBranchForm((prev) => ({ ...prev, city: val }))
               }
-              className="w-full h-8 px-3 border border-gray-200 rounded-lg text-[11px] focus:border-[#F2B53D] outline-none"
+              error=""
             />
           </div>
 
+          {/* ── Landmark (optional) ── */}
           <div>
             <label className="text-[10px] font-semibold text-gray-700 mb-0.5 block">
               Landmark <span className="text-gray-400">(Optional)</span>
@@ -82,12 +112,13 @@ const BranchModal = ({
               placeholder="Nearby landmark"
               value={branchForm.landmark}
               onChange={(e) =>
-                setBranchForm({ ...branchForm, landmark: e.target.value })
+                setBranchForm((prev) => ({ ...prev, landmark: e.target.value }))
               }
               className="w-full h-8 px-3 border border-gray-200 rounded-lg text-[11px] focus:border-[#F2B53D] outline-none"
             />
           </div>
 
+          {/* ── Phone (optional) ── */}
           <div>
             <label className="text-[10px] font-semibold text-gray-700 mb-0.5 block">
               Phone <span className="text-gray-400">(Optional)</span>
@@ -97,12 +128,13 @@ const BranchModal = ({
               defaultCountry="UG"
               value={branchForm.phone}
               onChange={(value) =>
-                setBranchForm({ ...branchForm, phone: value || "" })
+                setBranchForm((prev) => ({ ...prev, phone: value || "" }))
               }
               className="w-full h-8 px-3 border border-gray-200 rounded-lg text-[11px]"
             />
           </div>
 
+          {/* ── Hours (optional) ── */}
           <div>
             <label className="text-[10px] font-semibold text-gray-700 mb-0.5 block">
               Hours <span className="text-gray-400">(Optional)</span>
@@ -112,13 +144,14 @@ const BranchModal = ({
               placeholder="e.g. Mon-Fri 9am-5pm"
               value={branchForm.hours}
               onChange={(e) =>
-                setBranchForm({ ...branchForm, hours: e.target.value })
+                setBranchForm((prev) => ({ ...prev, hours: e.target.value }))
               }
               className="w-full h-8 px-3 border border-gray-200 rounded-lg text-[11px] focus:border-[#F2B53D] outline-none"
             />
           </div>
         </div>
 
+        {/* ── Action buttons ── */}
         <div className="flex gap-2 mt-4">
           <button
             onClick={onClose}

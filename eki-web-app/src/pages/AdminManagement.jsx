@@ -206,13 +206,15 @@ const RejectVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
 
 // Suspend Modal
 const SuspendVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
+  const [confirmText, setConfirmText] = useState("");
   const [reason, setReason] = useState("");
+  const canConfirm = confirmText === "SUSPEND" && reason.trim().length > 0;
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-orange-100 bg-orange-50">
           <div className="flex items-center gap-2">
-            <AlertTriangle size={16} className="text-orange-600" />
+            <Ban size={16} className="text-orange-600" />
             <h2 className="text-sm font-bold text-orange-800">Suspend Vendor</h2>
           </div>
           <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-orange-100">
@@ -220,20 +222,29 @@ const SuspendVendorModal = ({ vendor, onConfirm, onClose, loading }) => {
           </button>
         </div>
         <div className="p-5 space-y-3.5">
-          <p className="text-xs text-gray-600">
-            Suspending <strong>{vendor?.name}</strong> will temporarily block their access.
-          </p>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
+            This will temporarily suspend <strong>{vendor?.name}</strong>. They will lose access until reinstated.
+          </div>
           <div className="space-y-1">
-            <label className="text-[11px] font-semibold text-gray-700">Reason for suspension <span className="text-red-400">*</span></label>
+            <label className="text-[11px] font-semibold text-gray-700">Reason <span className="text-red-400">*</span></label>
             <textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)}
-              placeholder="Explain why this vendor is being suspended…"
+              placeholder="Explain why this vendor is being suspended..."
               className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-orange-400"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-gray-700">
+              Type <span className="font-black text-orange-600 tracking-wider">SUSPEND</span> to confirm
+            </label>
+            <input type="text" value={confirmText} onChange={(e) => setConfirmText(e.target.value)}
+              placeholder="SUSPEND"
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-orange-400"
             />
           </div>
           <div className="flex gap-2 pt-1">
             <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
-            <button onClick={() => onConfirm(reason)} disabled={!reason.trim() || loading}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-orange-600 text-white text-xs font-bold rounded-xl hover:bg-orange-700 disabled:opacity-40"
+            <button onClick={() => onConfirm(reason)} disabled={!canConfirm || loading}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-orange-500 text-white text-xs font-bold rounded-xl hover:bg-orange-600 disabled:opacity-40"
             >
               {loading ? <Loader2 size={13} className="animate-spin" /> : <Ban size={13} />}
               Suspend Vendor
@@ -368,43 +379,51 @@ const AdminManagement = () => {
       ]);
 
       // Get vendor array from response
-      const rawVendors = vendorsResponse.data?.data || vendorsResponse.data || [];
+      const rawVendors =
+        vendorsResponse.data?.data || vendorsResponse.data || [];
       const vendorArray = Array.isArray(rawVendors) ? rawVendors : [];
 
-      // Calculate stats from actual vendor data
-      const totalVendors = vendorArray.length;
-      const pendingVendors = vendorArray.filter(v =>
-        v.verification_status === "pending" || v.verification_status === "under_review"
+      // Get stats from backend dashboard response
+      const dashboardData = dashResponse.data?.data || dashResponse.data || {};
+      const summaryCards = dashboardData.overview?.summary_cards || {};
+
+      // Calculate pending and approved from vendor array
+      const pendingVendors = vendorArray.filter(
+        (v) =>
+          v.verification_status === "pending" ||
+          v.verification_status === "under_review",
       ).length;
-      const approvedVendors = vendorArray.filter(v =>
-        v.verification_status === "approved"
+      const approvedVendors = vendorArray.filter(
+        (v) => v.verification_status === "approved",
       ).length;
 
       setStats({
-        total: totalVendors || "—",
+        total: summaryCards.total_vendors || approvedVendors || "—",
         pending: pendingVendors || "—",
         approved: approvedVendors || "—",
       });
 
-      // Map vendors with all fields 
+      // Map vendors with all fields
       setVendors(
         vendorArray.map((v) => ({
           id: v.id,
           name: v.business_name || v.owner_full_name || v.user_name || "—",
           email: v.user_email || v.business_email || "",
           status: normStatus(v.verification_status),
-          submitted: v.created_at ? new Date(v.created_at).toLocaleDateString() : "—",
+          submitted: v.created_at
+            ? new Date(v.created_at).toLocaleDateString()
+            : "—",
           businessName: v.business_name || "—",
           businessType: v.business_type || "—",
           businessCategory: v.business_category || "—",
-        }))
+        })),
       );
     } catch (err) {
       console.error("AdminManagement load error:", err);
     } finally {
       setLoading(false);
       // The refresh button shows a spinning animation and becomes disabled
-      setRefreshing(false);   
+      setRefreshing(false);
     }
   }, []);
 
@@ -484,9 +503,14 @@ const AdminManagement = () => {
     try {
       await updateVendorStatus(vendorDetail.id, "suspended", reason);
       const newStatus = "Suspended";
-      setVendors((prev) => prev.map((v) => (v.id === vendorDetail.id ? { ...v, status: newStatus } : v)));
+      setVendors((prev) =>
+        prev.map((v) =>
+          v.id === vendorDetail.id ? { ...v, status: newStatus } : v,
+        ),
+      );
       setVendorDetail((prev) => (prev ? { ...prev, status: newStatus } : prev));
       setShowSuspend(false);
+      alert("Vendor has been suspended successfully.");
     } catch (err) {
       alert(err?.response?.data?.message || "Suspension failed.");
     } finally {
@@ -528,7 +552,7 @@ const AdminManagement = () => {
 
   const handleReinstate = async (reason) => {
     if (!vendorDetail) return;
-      setReinstateLoading(true);
+    setReinstateLoading(true);
     try {
       await updateVendorStatus(vendorDetail.id, "approved", reason || "Reinstated by admin");
       const newStatus = "Approved";
@@ -665,8 +689,6 @@ const AdminManagement = () => {
                 onTerminate={() => setShowTerminate(true)}
                 onReinstate={() => setShowReinstate(true)}
                 actionLoading={actionLoading}
-                reinstateLoading={reinstateLoading}
-                suspendLoading={suspendLoading}
               />
             ) : null}
           </div>
