@@ -117,35 +117,70 @@ const VendorChatPage = () => {
   }, []);
 
   // ── Fetch messages for a conversation ──────────────────────────────────────
-  // Returns the normalized array (or [] on 500) — does NOT setState itself so
-  // the caller can decide whether to replace or merge.
+  // Tries 3 strategies in order; returns null on all server failures so the
+  // vendor can still send messages even when history is unavailable.
   const loadMessages = useCallback(async (conversationId) => {
+
+    // Strategy 1: standard detail endpoint GET /chat/conversations/{id}/
     try {
       const res = await api.get(`/chat/conversations/${conversationId}/`, {
         params: { limit: 50, offset: 0 },
       });
       const data = res.data;
-
-      // Backend returns newest-first; reverse so oldest is at top
       const raw = Array.isArray(data.messages)
         ? data.messages
         : Array.isArray(data)
           ? data
           : [];
-
+      console.log(`[chat] strategy 1 OK — ${raw.length} messages`);
       return raw.slice().reverse().map(normalizeMessage);
-    } catch (err) {
-      const status = err.response?.status;
-      console.error(`Failed to load messages (${status}):`, err);
-
-      if (status === 500 || status === 404) {
-        // The endpoint is broken server-side — return empty rather than crashing.
-        // The user can still send; we'll append sent messages optimistically.
-        return null; // null signals "server error" vs [] which means "no messages"
-      }
-      throw err;
+    } catch (err1) {
+      console.warn(`[chat] strategy 1 failed (${err1.response?.status}), trying strategy 2…`);
     }
+
+    // Strategy 2: messages sub-route GET /chat/conversations/{id}/messages/
+    try {
+      const res = await api.get(`/chat/conversations/${conversationId}/messages/`, {
+        params: { limit: 50, offset: 0 },
+      });
+      const data = res.data;
+      const raw = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.results)
+          ? data.results
+          : Array.isArray(data?.messages)
+            ? data.messages
+            : [];
+      console.log(`[chat] strategy 2 OK — ${raw.length} messages`);
+      return raw.slice().reverse().map(normalizeMessage);
+    } catch (err2) {
+      console.warn(`[chat] strategy 2 failed (${err2.response?.status}), trying strategy 3…`);
+    }
+
+    // Strategy 3: paginated messages endpoint GET /chat/messages/?conversation={id}
+    try {
+      const res = await api.get('/chat/messages/', {
+        params: { conversation: conversationId, limit: 50, offset: 0 },
+      });
+      const data = res.data;
+      const raw = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.results)
+          ? data.results
+          : Array.isArray(data?.messages)
+            ? data.messages
+            : [];
+      console.log(`[chat] strategy 3 OK — ${raw.length} messages`);
+      return raw.slice().reverse().map(normalizeMessage);
+    } catch (err3) {
+      console.warn(`[chat] all strategies failed (last: ${err3.response?.status}).`);
+    }
+
+    // All strategies failed — null tells the caller to show the warning banner
+    // but still allow the vendor to send new messages optimistically.
+    return null;
   }, []);
+
 
   // ── Select a conversation and load its messages ─────────────────────────────
   const handleSelectConversation = useCallback(async (buyer) => {
