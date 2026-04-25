@@ -19,7 +19,7 @@ import ServiceManagement from "./pages/ServiceManagement";
 import AdminManagement from "./pages/AdminManagement";
 import AdminBuyerManagement from "./pages/AdminBuyerManagement";
 import AdminProductsManagement from "./pages/AdminProductsManagement";
-// import AdminServicesManagement from "./pages/AdminServicesManagement";
+import AdminServicesManagement from "./pages/AdminServicesManagement";
 import ProductDashboard from "./pages/ProductDashboard";
 import OrderManagement from "./pages/OrderManagement";
 import PaymentSystem from "./pages/PaymentSystem";
@@ -185,14 +185,14 @@ function App() {
           />
 
           
-           {/* <Route
+           <Route
             path="/admin-services-management"
             element={
               <ProtectedRoute allowedRole="admin">
                 <AdminServicesManagement />
               </ProtectedRoute>
             }
-          /> */}
+          />
 
           <Route
             path="/admin-payments"
