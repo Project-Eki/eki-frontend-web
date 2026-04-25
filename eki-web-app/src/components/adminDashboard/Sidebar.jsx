@@ -29,8 +29,8 @@ const menuItems = [
     label: "Listings",
     path: "#",
     submenu: [
-      { icon: Package, label: "Products", path: "/product-dashboard" },
-      { icon: Wrench, label: "Services", path: "/service-dashboard" },
+      { icon: Package, label: "Products", path: "/admin-products-management" },
+      { icon: Wrench, label: "Services", path: "/admin-services-management" },
     ],
   },
   {
