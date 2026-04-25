@@ -17,6 +17,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import VendorDashboard from "./pages/VendorDashboard";
 import ServiceManagement from "./pages/ServiceManagement";
 import AdminManagement from "./pages/AdminManagement";
+import AdminBuyerManagement from "./pages/AdminBuyerManagement";
 import ProductDashboard from "./pages/ProductDashboard";
 import OrderManagement from "./pages/OrderManagement";
 import PaymentSystem from "./pages/PaymentSystem";
@@ -158,6 +159,15 @@ function App() {
             element={
               <ProtectedRoute allowedRole="admin">
                 <AdminManagement />
+              </ProtectedRoute>
+            }
+          />
+
+           <Route
+            path="/admin-buyer-management"
+            element={
+              <ProtectedRoute allowedRole="admin">
+                <AdminBuyerManagement />
               </ProtectedRoute>
             }
           />

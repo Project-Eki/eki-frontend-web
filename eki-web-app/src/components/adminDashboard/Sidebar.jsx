@@ -23,7 +23,7 @@ import ekiLogo from "../../assets/eki-logo2.png";
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admindashboard" },
   { icon: Users, label: "Vendors", path: "/admin-management" },
-  { icon: Store, label: "Buyers", path: "/buyer-management" },
+  { icon: Store, label: "Buyers", path: "/admin-buyer-management" },
   {
     icon: Box,
     label: "Listings",
