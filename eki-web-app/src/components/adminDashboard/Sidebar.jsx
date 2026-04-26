@@ -43,7 +43,7 @@ const menuItems = [
       { icon: Banknote, label: "Withdrawals", path: "/admin-withdrawals" },
     ],
   },
-  { icon: ShoppingCart, label: "Orders", path: "/order-management" },
+  { icon: ShoppingCart, label: "Orders", path: "/admin-orders-management" },
 ];
 
 const LogoutModal = ({ isOpen, onClose, onConfirm }) => {

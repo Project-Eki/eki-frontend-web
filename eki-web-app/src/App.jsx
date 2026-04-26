@@ -20,6 +20,7 @@ import AdminManagement from "./pages/AdminManagement";
 import AdminBuyerManagement from "./pages/AdminBuyerManagement";
 import AdminProductsManagement from "./pages/AdminProductsManagement";
 import AdminServicesManagement from "./pages/AdminServicesManagement";
+import AdminOrdersManagement from "./pages/AdminOrdersManagement";
 import ProductDashboard from "./pages/ProductDashboard";
 import OrderManagement from "./pages/OrderManagement";
 import PaymentSystem from "./pages/PaymentSystem";
@@ -37,6 +38,7 @@ import AdminWithdrawals from "./pages/AdminWithdrawals";
 import OtpVerify from "./pages/otp";
 
 import "./App.css";
+
 
 // --- PROTECTED ROUTE — reads directly from localStorage as fallback ---
 const ProtectedRoute = ({ children, allowedRole }) => {
@@ -226,6 +228,16 @@ function App() {
             element={
               <ProtectedRoute allowedRole="admin">
                 <AdminWithdrawals />
+              </ProtectedRoute>
+            }
+          />
+
+          
+          <Route
+            path="/admin-orders-management"
+            element={
+              <ProtectedRoute allowedRole="admin">
+                <AdminOrdersManagement />
               </ProtectedRoute>
             }
           />
