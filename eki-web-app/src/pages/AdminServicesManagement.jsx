@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "../components/adminDashboard/Sidebar";
 import Navbar3 from "../components/adminDashboard/Navbar3";
 import { Layers, CheckCircle, Clock, Flag, RefreshCw, X } from "lucide-react";
-import { ServiceStatCard } from "../components/AdminServicesManagement/ServiceStatcard";
+import { ServiceStatCard } from "../components/AdminServicesManagement/ServiceStatCard";
 import { ServiceTable } from "../components/AdminServicesManagement/ServiceTable";
 import { ServiceCategoryChart } from "../components/AdminServicesManagement/ServiceCategoryChart";
 import { ServiceStatusChart } from "../components/AdminServicesManagement/ServiceStatusChart";
