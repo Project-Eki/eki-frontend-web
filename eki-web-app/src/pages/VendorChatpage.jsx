@@ -149,17 +149,17 @@ const VendorChatPage = () => {
   const [editText,         setEditText]         = useState('');
   const [deleteConfirmId,  setDeleteConfirmId]  = useState(null);
 
-  // Emoji picker state
+  // Emoji picker
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   // Refs
   const messagesEndRef   = useRef(null);
   const fileInputRef     = useRef(null);
-  const imageInputRef    = useRef(null); // dedicated image input
+  const imageInputRef    = useRef(null); // Dedicated image input
   const inputRef         = useRef(null);
   const selectedBuyerRef = useRef(null);
   const debugLoggedRef   = useRef(false);
-  const emojiPanelRef    = useRef(null);   // to handle outside click
+  const emojiPanelRef    = useRef(null);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -304,16 +304,25 @@ const VendorChatPage = () => {
     setInputValue('');
     setTimeout(scrollToBottom, 50);
     try {
-      const res     = await api.post(`/chat/conversations/${buyer.id}/send/`, { message_type: 'text', message: text });
+      const res = await api.post(`/chat/conversations/${buyer.id}/send/`, {
+        message_type: 'text',
+        message: text,          // <-- Change to 'content' if your backend requires it
+      });
       const rawData = res.data?.data ?? res.data;
       const realMsg = (rawData && typeof rawData === 'object')
         ? (normalizeMessage(rawData, 'vendor') ?? { ...optimistic, _optimistic: false })
         : { ...optimistic, _optimistic: false };
       setMessages((prev) => prev.map((m) => (m.id === tempId ? realMsg : m)));
       fetchConversations();
-    } catch {
+    } catch (err) {
+      // 🆕 Show the exact backend error message
+      const backendMsg =
+        err.response?.data?.message ??
+        err.response?.data?.detail ??
+        err.response?.data?.error ??
+        (err.response?.data ? JSON.stringify(err.response.data) : 'Failed to send.');
+      setSendError(backendMsg);
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
-      setSendError('Message failed to send. Please try again.');
     } finally {
       setIsSending(false);
       inputRef.current?.focus();
@@ -324,7 +333,7 @@ const VendorChatPage = () => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); }
   }, [handleSendMessage]);
 
-  // ── File upload (used by both paperclip and camera buttons) ─────────────
+  // ── File / image upload (shared handler) ──────────────────────────────────
   const handleFileChange = useCallback(async (e) => {
     const file  = e.target.files?.[0];
     const buyer = selectedBuyerRef.current;
@@ -343,15 +352,25 @@ const VendorChatPage = () => {
       const optimistic = makeOptimisticMsg(tempId, file_name || file.name, msgType, file_url, file_name || file.name);
       setMessages((prev) => [...prev, optimistic]);
       setTimeout(scrollToBottom, 50);
-      const res     = await api.post(`/chat/conversations/${buyer.id}/send/`, { message_type: msgType, media_url: file_url, file_name, file_size, mime_type });
+      const res = await api.post(`/chat/conversations/${buyer.id}/send/`, {
+        message_type: msgType,
+        media_url: file_url,
+        file_name,
+        file_size,
+        mime_type,
+      });
       const rawData = res.data?.data ?? res.data;
       const realMsg = (rawData && typeof rawData === 'object')
         ? (normalizeMessage(rawData, 'vendor') ?? { ...optimistic, _optimistic: false })
         : { ...optimistic, _optimistic: false };
       setMessages((prev) => prev.map((m) => (m.id === tempId ? realMsg : m)));
       fetchConversations();
-    } catch {
-      setSendError('File upload failed. Please try again.');
+    } catch (err) {
+      const backendMsg =
+        err.response?.data?.message ??
+        err.response?.data?.detail ??
+        (err.response?.data ? JSON.stringify(err.response.data) : 'File upload failed.');
+      setSendError(backendMsg);
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
     } finally {
       setAttachmentFile(null);
@@ -370,8 +389,8 @@ const VendorChatPage = () => {
   const handleEditSave = async () => {
     const id = editingMessageId;
     if (!id || !editText.trim()) return;
-
     try {
+      // 👇 Adjust endpoint to match your backend (e.g., /chat/messages/{id}/edit/)
       await api.patch(`/chat/messages/${id}/edit/`, { message: editText.trim() });
       setMessages((prev) => prev.map((m) => {
         if (m.id === id) return { ...m, text: editText.trim() };
@@ -379,7 +398,7 @@ const VendorChatPage = () => {
       }));
       setEditingMessageId(null);
     } catch (err) {
-      alert('Failed to edit message. Check backend endpoint.');
+      alert('Failed to edit. Check backend endpoint.');
     }
   };
 
@@ -388,36 +407,32 @@ const VendorChatPage = () => {
   };
 
   // ── Delete message ──────────────────────────────────────────────────────
-  const handleDeleteConfirm = (msgId) => {
-    setDeleteConfirmId(msgId);
-  };
+  const handleDeleteConfirm = (msgId) => setDeleteConfirmId(msgId);
 
   const handleDeleteExecute = async (msgId) => {
     try {
-      await api.delete(`/chat/messages/${msgId}/delete/`);
+      await api.delete(`/chat/messages/${msgId}/delete/`); // Your authService already has this
       setMessages((prev) => prev.filter((m) => m.id !== msgId));
       setDeleteConfirmId(null);
     } catch (err) {
-      alert('Failed to delete message. Check backend endpoint.');
+      alert('Failed to delete. Check backend endpoint.');
     }
   };
 
-  const handleDeleteCancel = () => {
-    setDeleteConfirmId(null);
-  };
+  const handleDeleteCancel = () => setDeleteConfirmId(null);
 
-  // ── Emoji picker handlers ────────────────────────────────────────────────
+  // ── Emoji picker ─────────────────────────────────────────────────────────
   const toggleEmojiPicker = () => {
-    setShowEmojiPicker(prev => !prev);
+    setShowEmojiPicker((prev) => !prev);
     setTimeout(() => inputRef.current?.focus(), 50);
   };
 
   const onEmojiSelect = (emoji) => {
-    setInputValue(prev => prev + emoji);
+    setInputValue((prev) => prev + emoji);
     inputRef.current?.focus();
   };
 
-  // Close emoji picker on outside click
+  // Close picker on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (emojiPanelRef.current && !emojiPanelRef.current.contains(event.target)) {
@@ -454,6 +469,7 @@ const VendorChatPage = () => {
     catch { return ''; }
   };
 
+  // ── Date display (no lines, just centred text) ────────────────────────────
   const formatDateSep = (ts) => {
     if (!ts) return '';
     try {
@@ -461,7 +477,7 @@ const VendorChatPage = () => {
       yesterday.setDate(today.getDate() - 1);
       if (d.toDateString() === today.toDateString())     return 'Today';
       if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-      return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+      return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     } catch { return ''; }
   };
 
@@ -471,7 +487,7 @@ const VendorChatPage = () => {
   return (
     <div
       style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}
-      className="flex h-[calc(100vh-2rem)] w-full rounded-2xl overflow-hidden bg-white shadow-xl border border-gray-200"
+      className="flex h-[calc(100vh-2rem)] w-full rounded-2xl overflow-hidden bg-white shadow-xl border border-gray-200 relative"
     >
       {/* ═══════════════════════ LEFT SIDEBAR ═══════════════════════ */}
       <div className="w-72 flex-shrink-0 flex flex-col bg-white border-r border-gray-100">
@@ -607,10 +623,11 @@ const VendorChatPage = () => {
           ) : (
             Object.entries(groupedMessages).map(([dateKey, group]) => (
               <div key={dateKey}>
-                <div className="flex items-center gap-3 my-5">
-                  <div className="flex-1 h-px bg-gray-200" />
-                  <span className="text-[11px] text-gray-400 font-medium px-2 flex-shrink-0">{formatDateSep(group.date)}</span>
-                  <div className="flex-1 h-px bg-gray-200" />
+                {/* ── Clean date separator (no lines) ── */}
+                <div className="flex justify-center my-4">
+                  <span className="text-[11px] text-gray-400 font-medium bg-white px-3 py-0.5 rounded-full shadow-sm border border-gray-100">
+                    {formatDateSep(group.date)}
+                  </span>
                 </div>
 
                 <div className="space-y-2">
@@ -727,13 +744,16 @@ const VendorChatPage = () => {
           <div ref={messagesEndRef} />
         </div>
 
+        {/* ── Error display ── */}
         {sendError && (
           <div className="flex items-center gap-2 px-5 py-2 bg-red-50 border-t border-red-100 text-red-600 text-[12px]">
-            <AlertCircle size={13} className="flex-shrink-0" /><span>{sendError}</span>
-            <button onClick={() => setSendError('')} className="ml-auto hover:text-red-800"><X size={12} /></button>
+            <AlertCircle size={13} className="flex-shrink-0" />
+            <span className="flex-1">{sendError}</span>
+            <button onClick={() => setSendError('')} className="hover:text-red-800"><X size={12} /></button>
           </div>
         )}
 
+        {/* ── Attachment indicator ── */}
         {attachmentFile && (
           <div className="px-6 py-2 bg-white border-t border-gray-100 flex items-center gap-2">
             <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-1.5 text-[12px] text-gray-600">
@@ -745,12 +765,11 @@ const VendorChatPage = () => {
           </div>
         )}
 
-        {/* ── Emoji Picker ── */}
+        {/* ── Emoji picker (absolute positioned above the input) ── */}
         {selectedBuyer && showEmojiPicker && (
           <div
             ref={emojiPanelRef}
-            className="absolute bottom-[80px] left-1/2 -translate-x-1/2 bg-white border border-gray-200 rounded-2xl shadow-xl p-3 w-[380px] max-w-[95vw] grid grid-cols-10 gap-1.5 overflow-y-auto max-h-[240px] z-50"
-            style={{ bottom: '85px', left: '50%', transform: 'translateX(-50%)' }}
+            className="absolute bottom-[90px] left-1/2 -translate-x-1/2 bg-white border border-gray-200 rounded-2xl shadow-xl p-3 w-[380px] max-w-[95vw] grid grid-cols-10 gap-1.5 overflow-y-auto max-h-[240px] z-50"
           >
             {EMOJI_LIST.map((emoji, index) => (
               <button
@@ -766,7 +785,7 @@ const VendorChatPage = () => {
 
         {/* ── Message input area ── */}
         {selectedBuyer && (
-          <div className="px-5 py-3.5 bg-white border-t border-gray-100 relative">
+          <div className="px-5 py-3.5 bg-white border-t border-gray-100">
             <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-2xl px-3 py-2 focus-within:border-[#125852]/30 focus-within:bg-white transition-all">
               {/* Emoji button */}
               <button
@@ -777,7 +796,7 @@ const VendorChatPage = () => {
                 <Smile size={18} />
               </button>
 
-              {/* Image upload button */}
+              {/* Image (camera) upload button */}
               <button
                 type="button"
                 onClick={() => imageInputRef.current?.click()}
@@ -787,7 +806,7 @@ const VendorChatPage = () => {
                 <Camera size={18} />
               </button>
 
-              {/* File upload button */}
+              {/* File (paperclip) upload button */}
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -797,7 +816,10 @@ const VendorChatPage = () => {
                 <Paperclip size={18} />
               </button>
 
-              <input ref={inputRef} type="text" value={inputValue}
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={`Reply to ${selectedBuyer.name}…`}
@@ -820,12 +842,16 @@ const VendorChatPage = () => {
                 accept="image/*"
               />
 
-              <button type="button" onClick={handleSendMessage} disabled={!inputValue.trim() || isSending}
+              <button
+                type="button"
+                onClick={handleSendMessage}
+                disabled={!inputValue.trim() || isSending}
                 className={`p-2 rounded-xl transition-all flex-shrink-0 ${
                   inputValue.trim() && !isSending
                     ? 'bg-[#EFB034] text-white hover:bg-[#d4952c] shadow-sm'
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }`}>
+                }`}
+              >
                 {isSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
               </button>
             </div>
