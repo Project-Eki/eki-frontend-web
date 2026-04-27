@@ -266,7 +266,7 @@ const handleAuthSuccess = (response) => {
                   Don't have an account?{" "}
                   <button
                     type="button"
-                    onClick={() => navigate('/vendorOnboarding')}
+                    onClick={() => navigate('/signup')}
                     className="text-[#234E4D] font-semibold hover:underline"
                   >
                     Sign up

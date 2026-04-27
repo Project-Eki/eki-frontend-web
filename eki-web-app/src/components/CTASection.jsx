@@ -18,7 +18,7 @@ const CTASection = () => {
         <p className="text-xl md:text-lg mb-6 opacity-90 text-white max-w-lg mx-auto">
           Join Eki's network of trusted sellers and reach thousands of local buyers. It's easy, secure, and rewarding.
         </p>
-          <Link to="/VendorOnboarding">
+          <Link to="/signup">
         <button className="px-8 py-3 text-base bg-[#EFB034] text-white border-none rounded-lg cursor-pointer font-semibold transition-all duration-300 hover:bg-[#d99c1c] hover:-translate-y-0.5 hover:shadow-[0_20px_30px_rgba(0,0,0,0.2)] inline-block">
           Start Selling Today
         </button>

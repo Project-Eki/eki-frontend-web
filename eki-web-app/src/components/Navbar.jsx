@@ -96,8 +96,8 @@ const Navbar = () => {
             </li>
             <li>
               <Link
-                to="/vendorOnboarding"
-                className={getNavItemClasses('/vendorOnboarding')}
+                to="/signup"
+                className={getNavItemClasses('/signup')}
               >
                 {t('nav.signup')}
               </Link>
@@ -177,9 +177,9 @@ const Navbar = () => {
             {t('nav.login')}
           </Link>
           <Link
-            to="/vendorOnboarding"
+            to="/signup"
             className={`block w-full text-left ${
-              location.pathname === '/vendorOnboarding'
+              location.pathname === '/signup'
                 ? 'bg-[#efb034] text-white px-4 py-2 rounded-lg text-sm font-bold'
                 : 'font-medium text-gray-800 text-sm'
             }`}
