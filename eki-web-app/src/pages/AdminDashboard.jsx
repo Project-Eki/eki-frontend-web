@@ -292,7 +292,7 @@ const AdminDashboard = () => {
 
             <footer className="bg-[#1D4D4C] text-white py-3 px-5 sm:px-10 flex flex-col sm:flex-row justify-between items-center gap-2 text-[10px] shrink-0 mx-3 mb-3 rounded-xl">
               <div className="hidden sm:block">Buy Smart. SellEasy.</div>
-              <div>© 2026 Vendor Portal. All rights reserved.</div>
+              <div>© 2026 Admin Portal. All rights reserved.</div>
               <div className="flex flex-wrap justify-center gap-3">
                 <span className="relative inline-block cursor-pointer hover:underline">
                   eki<span className="absolute text-[5px] -bottom-0 -right-2">TM</span>

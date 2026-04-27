@@ -29,8 +29,8 @@ const menuItems = [
     label: "Listings",
     path: "#",
     submenu: [
-      { icon: Package, label: "Products", path: "/product-dashboard" },
-      { icon: Wrench, label: "Services", path: "/service-dashboard" },
+      { icon: Package, label: "Products", path: "/admin-products-management" },
+      { icon: Wrench, label: "Services", path: "/admin-services-management" },
     ],
   },
   {
@@ -43,7 +43,7 @@ const menuItems = [
       { icon: Banknote, label: "Withdrawals", path: "/admin-withdrawals" },
     ],
   },
-  { icon: ShoppingCart, label: "Orders", path: "/order-management" },
+  { icon: ShoppingCart, label: "Orders", path: "/admin-orders-management" },
 ];
 
 const LogoutModal = ({ isOpen, onClose, onConfirm }) => {
