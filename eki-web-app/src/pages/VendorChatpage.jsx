@@ -8,18 +8,11 @@ import api from '../services/authService';
 import Footer from '../components/Vendormanagement/VendorFooter';
 
 // ─── Helper: resolve sender role from any shape the backend might return ─────
-// The backend may return sender as:
-//   - a string email:   "vendor@example.com"
-//   - a string "vendor" / "buyer":  literal role strings
-//   - a string id:      "42"
-//   - an object:        { id, email, role }
-// We compare against both the stored vendor email AND the stored vendor id.
 const resolveIsVendorMessage = (msg) => {
   const vendorEmail = (localStorage.getItem('vendor_email') || '').toLowerCase().trim();
   const vendorId    = (localStorage.getItem('vendor_id') || '').trim();
   const vendorRole  = (localStorage.getItem('vendor_role') || '').toLowerCase().trim();
 
-  // Check explicit is_vendor / sender_role / role fields first
   if (msg.is_vendor === true)  return true;
   if (msg.is_vendor === false) return false;
   if (msg.sender_role === 'vendor') return true;
@@ -27,11 +20,9 @@ const resolveIsVendorMessage = (msg) => {
 
   const rawSender = msg.sender;
 
-  // Literal role strings
   if (rawSender === 'vendor') return true;
   if (rawSender === 'buyer')  return false;
 
-  // Object sender
   if (rawSender && typeof rawSender === 'object') {
     if (rawSender.role === 'vendor') return true;
     if (rawSender.role === 'buyer')  return false;
@@ -42,29 +33,48 @@ const resolveIsVendorMessage = (msg) => {
     return false;
   }
 
-  // String sender — try email match, then id match
   if (typeof rawSender === 'string') {
     const s = rawSender.toLowerCase().trim();
     if (vendorEmail && s === vendorEmail) return true;
     if (vendorId && s === vendorId) return true;
   }
 
-  // Fall back to stored role (if the backend uses a role flag on the message)
-  if (vendorRole === 'vendor') return false; // can't use role to infer message ownership
+  if (vendorRole === 'vendor') return false;
   return false;
 };
 
-// ─── Normalize a raw message from the API into a consistent shape ────────────
-const normalizeMessage = (msg) => ({
-  id: msg.id,
-  text: msg.message || msg.text || msg.content || '',
-  sender: resolveIsVendorMessage(msg) ? 'vendor' : 'buyer',
-  timestamp: msg.created_at || msg.timestamp || msg.sent_at || null,
-  type: msg.message_type || msg.type || 'text',
-  mediaUrl: msg.media_url || msg.media || msg.file_url || null,
-  fileName: msg.file_name || null,
-  mimeType: msg.mime_type || null,
-});
+// ─── FIX: Normalize a raw message — safely extracts text, never passes an object to JSX ─────
+const normalizeMessage = (msg) => {
+  // Guard: skip null/non-object entries
+  if (!msg || typeof msg !== 'object') return null;
+
+  // FIX: prefer message_display (human-readable field the backend returns),
+  // then message, then text/content — always coerce to string
+  const rawText =
+    msg.message_display ??
+    msg.message ??
+    msg.text ??
+    msg.content ??
+    '';
+
+  // Ensure text is ALWAYS a string — never an object — prevents React error #31
+  const text = typeof rawText === 'string'
+    ? rawText
+    : rawText !== null && rawText !== undefined
+      ? String(rawText)
+      : '';
+
+  return {
+    id: msg.id,
+    text,
+    sender: resolveIsVendorMessage(msg) ? 'vendor' : 'buyer',
+    timestamp: msg.created_at || msg.timestamp || msg.sent_at || null,
+    type: msg.message_type || msg.type || 'text',
+    mediaUrl: msg.media_url || msg.media || msg.file_url || null,
+    fileName: msg.file_name || null,
+    mimeType: msg.mime_type || null,
+  };
+};
 
 const VendorChatPage = () => {
   const [buyers, setBuyers] = useState([]);
@@ -83,7 +93,6 @@ const VendorChatPage = () => {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const inputRef = useRef(null);
-  // Keep a ref to the currently selected conversation to avoid stale closures
   const selectedBuyerRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -117,8 +126,6 @@ const VendorChatPage = () => {
   }, []);
 
   // ── Fetch messages for a conversation ──────────────────────────────────────
-  // Tries 3 strategies in order; returns null on all server failures so the
-  // vendor can still send messages even when history is unavailable.
   const loadMessages = useCallback(async (conversationId) => {
 
     // Strategy 1: standard detail endpoint GET /chat/conversations/{id}/
@@ -133,7 +140,8 @@ const VendorChatPage = () => {
           ? data
           : [];
       console.log(`[chat] strategy 1 OK — ${raw.length} messages`);
-      return raw.slice().reverse().map(normalizeMessage);
+      // FIX: filter(Boolean) removes any null entries from normalizeMessage
+      return raw.slice().reverse().map(normalizeMessage).filter(Boolean);
     } catch (err1) {
       console.warn(`[chat] strategy 1 failed (${err1.response?.status}), trying strategy 2…`);
     }
@@ -152,7 +160,8 @@ const VendorChatPage = () => {
             ? data.messages
             : [];
       console.log(`[chat] strategy 2 OK — ${raw.length} messages`);
-      return raw.slice().reverse().map(normalizeMessage);
+      // FIX: filter(Boolean) removes any null entries from normalizeMessage
+      return raw.slice().reverse().map(normalizeMessage).filter(Boolean);
     } catch (err2) {
       console.warn(`[chat] strategy 2 failed (${err2.response?.status}), trying strategy 3…`);
     }
@@ -171,16 +180,14 @@ const VendorChatPage = () => {
             ? data.messages
             : [];
       console.log(`[chat] strategy 3 OK — ${raw.length} messages`);
-      return raw.slice().reverse().map(normalizeMessage);
+      // FIX: filter(Boolean) removes any null entries from normalizeMessage
+      return raw.slice().reverse().map(normalizeMessage).filter(Boolean);
     } catch (err3) {
       console.warn(`[chat] all strategies failed (last: ${err3.response?.status}).`);
     }
 
-    // All strategies failed — null tells the caller to show the warning banner
-    // but still allow the vendor to send new messages optimistically.
     return null;
   }, []);
-
 
   // ── Select a conversation and load its messages ─────────────────────────────
   const handleSelectConversation = useCallback(async (buyer) => {
@@ -195,7 +202,6 @@ const VendorChatPage = () => {
     const result = await loadMessages(buyer.id);
 
     if (result === null) {
-      // 500 from server — show a warning but keep the chat open so the vendor can still send
       setFetchError(
         'Message history could not be loaded (server error). You can still send messages below.'
       );
@@ -217,7 +223,6 @@ const VendorChatPage = () => {
     setSendError('');
     setIsSending(true);
 
-    // Optimistic update — add the message immediately so the vendor sees feedback
     const optimisticMsg = {
       id: `temp-${Date.now()}`,
       text,
@@ -236,17 +241,19 @@ const VendorChatPage = () => {
         message: text,
       });
 
-      // Replace the optimistic entry with the real message from the server
-      const realMsg = normalizeMessage(res.data?.data ?? res.data ?? optimisticMsg);
+      // FIX: normalizeMessage safely converts the API response; fallback to optimistic on bad shape
+      const rawData = res.data?.data ?? res.data;
+      const realMsg = rawData && typeof rawData === 'object'
+        ? (normalizeMessage(rawData) ?? optimisticMsg)
+        : optimisticMsg;
+
       setMessages((prev) =>
         prev.map((m) => (m.id === optimisticMsg.id ? { ...realMsg } : m))
       );
 
-      // Refresh conversation list so "last message" updates in the sidebar
       fetchConversations();
     } catch (err) {
       console.error('Failed to send message:', err);
-      // Remove the optimistic entry on failure and show an error
       setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id));
       setSendError('Message failed to send. Please try again.');
     } finally {
@@ -277,7 +284,6 @@ const VendorChatPage = () => {
       const { file_url, file_name, file_size, mime_type } = uploadRes.data;
       const msgType = file.type.startsWith('image/') ? 'image' : 'file';
 
-      // Optimistic entry for the attachment
       const optimisticAttachment = {
         id: `temp-attach-${Date.now()}`,
         text: file_name || file.name,
@@ -297,7 +303,12 @@ const VendorChatPage = () => {
         mime_type,
       });
 
-      const realMsg = normalizeMessage(res.data?.data ?? res.data ?? optimisticAttachment);
+      // FIX: same safe normalizeMessage call here
+      const rawData = res.data?.data ?? res.data;
+      const realMsg = rawData && typeof rawData === 'object'
+        ? (normalizeMessage(rawData) ?? optimisticAttachment)
+        : optimisticAttachment;
+
       setMessages((prev) =>
         prev.map((m) => (m.id === optimisticAttachment.id ? realMsg : m))
       );
@@ -357,6 +368,15 @@ const VendorChatPage = () => {
   const selectedBuyerOrderRef = selectedBuyer?.orderRef
     ? `ORDER #${selectedBuyer.orderRef}`
     : 'ACTIVE NOW';
+
+  // ── FIX: Safe text renderer — never lets an object reach JSX ────────────────
+  const safeText = (value) => {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    // If somehow an object slips through, show nothing rather than crash
+    return '';
+  };
 
   return (
     <div
@@ -569,10 +589,11 @@ const VendorChatPage = () => {
                                 rel="noreferrer"
                                 className="flex items-center gap-2 underline"
                               >
-                                <File size={14} /> {msg.fileName || msg.text}
+                                <File size={14} /> {safeText(msg.fileName || msg.text)}
                               </a>
                             ) : (
-                              <p className="break-words">{msg.text}</p>
+                              // FIX: safeText() guarantees a string — never an object — reaches JSX
+                              <p className="break-words">{safeText(msg.text)}</p>
                             )}
                           </div>
 
