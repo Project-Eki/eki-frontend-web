@@ -103,8 +103,7 @@ const DocumentViewerModal = ({ url, label, onClose }) => {
   );
 };
 
-// Document Review Modal - Updated to match OperationCompliance exactly
-// Document Review Modal - Updated to match OperationCompliance exactly
+// Document Review Modal 
 const DocumentReviewModal = ({ vendorId, vendorName, onClose }) => {
   const [docs, setDocs] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -561,45 +560,54 @@ const AdminManagement = () => {
     loadData();
   }, [loadData]);
 
-  const handleSelectVendor = async (vendor) => {
-    setSelectedVendor(vendor);
-    setVendorDetail(null);
-    setDetailLoading(true);
-    try {
-      const response = await api.get(`/accounts/admin/vendors/${vendor.id}/`);
-      const d = response.data?.data || response.data;
-      setVendorDetail({
-        ...vendor,
-        email: d.user_email || d.business_email || "—",
-        name: d.user_name || d.owner_full_name || vendor.name,
-        profilePicture: resolveUrl(d.profile_picture_url || d.profile_picture || null),
-        businessName: d.business_name || "—",
-        businessType: d.business_type || "—",
-        businessCategory: d.business_category || "—",
-        businessPhone: d.business_phone || "—",
-        businessEmail: d.business_email || "—",
-        address: d.address || "—",
-        city: d.city || "—",
-        country: d.country || "—",
-        registrationNo: d.registration_number || "—",
-        taxId: d.tax_id || "—",
-        openingTime: d.opening_time || "—",
-        closingTime: d.closing_time || "—",
-        verifiedAt: d.verified_at || "—",
-        // Documents matching OperationCompliance exactly
-        hasGovId: d.has_government_issued_id || false,
-        hasLicense: d.has_business_license || false,
-        hasTaxCert: d.has_tax_certificate || false,
-        hasIncCert: d.has_incorporation_cert || false,
-        hasProfCert: d.has_professional_body_certification || false, // Optional document
-      });
-    } catch (err) {
-      console.error("Vendor detail load error:", err);
-      setVendorDetail(vendor);
-    } finally {
-      setDetailLoading(false);
-    }
-  };
+ const handleSelectVendor = async (vendor) => {
+  setSelectedVendor(vendor);
+  setVendorDetail(null);
+  setDetailLoading(true);
+  try {
+    const response = await api.get(`/accounts/admin/vendors/${vendor.id}/`);
+    const d = response.data?.data || response.data;
+    
+    // Debug the profile picture
+    console.log("Profile picture from API:", {
+      profile_picture_url: d.profile_picture_url,
+      profile_picture: d.profile_picture,
+      resolved: resolveUrl(d.profile_picture_url || d.profile_picture || null)
+    });
+    
+    setVendorDetail({
+      ...vendor,
+      email: d.user_email || d.business_email || "—",
+      name: d.user_name || d.owner_full_name || vendor.name,
+      // Make sure this is correctly resolving the URL
+      profilePicture: resolveUrl(d.profile_picture_url || d.profile_picture || null),
+      businessName: d.business_name || "—",
+      businessType: d.business_type || "—",
+      businessCategory: d.business_category || "—",
+      businessPhone: d.business_phone || "—",
+      businessEmail: d.business_email || "—",
+      address: d.address || "—",
+      city: d.city || "—",
+      country: d.country || "—",
+      registrationNo: d.registration_number || "—",
+      taxId: d.tax_id || "—",
+      openingTime: d.opening_time || "—",
+      closingTime: d.closing_time || "—",
+      verifiedAt: d.verified_at || "—",
+       // Documents matching OperationCompliance exactly
+      hasGovId: d.has_government_issued_id || false,
+      hasLicense: d.has_business_license || false,
+      hasTaxCert: d.has_tax_certificate || false,
+      hasIncCert: d.has_incorporation_cert || false,
+      hasProfCert: d.has_professional_body_certification || false,
+    });
+  } catch (err) {
+    console.error("Vendor detail load error:", err);
+    setVendorDetail(vendor);
+  } finally {
+    setDetailLoading(false);
+  }
+};
 
   const closeModal = () => {
     setSelectedVendor(null);

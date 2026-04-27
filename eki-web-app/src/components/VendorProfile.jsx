@@ -75,40 +75,41 @@ const VendorProfile = ({ vendor, onApprove, onSuspend, onReject, onReviewDocumen
     <div className="p-6 space-y-6">
 
       {/* Avatar + name + status */}
-      <div className="flex items-center gap-4">
-        {vendor.profilePicture ? (
-          <img
-            src={vendor.profilePicture}
-            alt={vendor.name}
-            className="w-16 h-16 rounded-full object-cover border-2 border-gray-100 shrink-0"
-            onError={(e) => {
-              console.error("Failed to load image:", vendor.profilePicture);
-              e.target.style.display = 'none';
-              const parent = e.target.parentElement;
-              const fallback = document.createElement('div');
-              fallback.className = "w-16 h-16 rounded-full bg-teal-50 flex items-center justify-center shrink-0 border-2 border-teal-100";
-              fallback.innerHTML = `<span class="text-xl font-bold text-teal-600">${(vendor.name || "?")[0].toUpperCase()}</span>`;
-              parent.appendChild(fallback);
-            }}
-          />
-        ) : (
-          <div className="w-16 h-16 rounded-full bg-teal-50 flex items-center justify-center shrink-0 border-2 border-teal-100">
-            <span className="text-xl font-bold text-teal-600">{(vendor.name || "?")[0].toUpperCase()}</span>
-          </div>
-        )}
-        <div>
-          <h3 className="font-bold text-gray-900 text-base">{vendor.name}</h3>
-          <p className="text-xs text-gray-500">{vendor.email || "—"}</p>
-          <span className={`mt-1.5 inline-block px-2.5 py-0.5 text-[10px] font-bold rounded-full uppercase border ${
-            isApproved  ? "bg-green-50 text-green-600 border-green-100" :
-            isSuspended ? "bg-red-50 text-red-500 border-red-100"      :
-            isRejected  ? "bg-rose-50 text-rose-500 border-rose-100"   :
-                          "bg-yellow-50 text-yellow-600 border-yellow-100"
-          }`}>
-            {vendor.status}
-          </span>
-        </div>
-      </div>
+<div className="flex items-center gap-4">
+  {vendor.profilePicture ? (
+    <img
+      src={vendor.profilePicture}
+      alt={vendor.name}
+      className="w-16 h-16 rounded-full object-cover border-2 border-gray-100 shrink-0"
+      onError={(e) => {
+        console.error("Failed to load profile image:", vendor.profilePicture);
+        e.target.onerror = null; // Prevent infinite loop
+        e.target.style.display = 'none';
+        // Create fallback element
+        const fallbackDiv = document.createElement('div');
+        fallbackDiv.className = "w-16 h-16 rounded-full bg-teal-50 flex items-center justify-center shrink-0 border-2 border-teal-100";
+        fallbackDiv.innerHTML = `<span class="text-xl font-bold text-teal-600">${(vendor.name || "?")[0].toUpperCase()}</span>`;
+        e.target.parentNode.appendChild(fallbackDiv);
+      }}
+    />
+  ) : (
+    <div className="w-16 h-16 rounded-full bg-teal-50 flex items-center justify-center shrink-0 border-2 border-teal-100">
+      <span className="text-xl font-bold text-teal-600">{(vendor.name || "?")[0].toUpperCase()}</span>
+    </div>
+  )}
+  <div>
+    <h3 className="font-bold text-gray-900 text-base">{vendor.name}</h3>
+    <p className="text-xs text-gray-500">{vendor.email || "—"}</p>
+    <span className={`mt-1.5 inline-block px-2.5 py-0.5 text-[10px] font-bold rounded-full uppercase border ${
+      isApproved  ? "bg-green-50 text-green-600 border-green-100" :
+      isSuspended ? "bg-red-50 text-red-500 border-red-100"      :
+      isRejected  ? "bg-rose-50 text-rose-500 border-rose-100"   :
+                    "bg-yellow-50 text-yellow-600 border-yellow-100"
+    }`}>
+      {vendor.status}
+    </span>
+  </div>
+</div>
 
       {/* Business Information */}
       <div>
