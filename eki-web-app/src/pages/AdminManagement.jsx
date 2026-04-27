@@ -9,7 +9,7 @@ import {
   updateVendorStatus,
 } from "../services/api";
 import {
-  Store, Clock, CheckCircle, X, FileText, ExternalLink, AlertTriangle, Loader2, RefreshCw, Ban
+  Store, Clock, CheckCircle, X, FileText, AlertTriangle, Loader2, RefreshCw, Ban, Eye
 } from "lucide-react";
 import api from "../services/api";
 
@@ -18,8 +18,15 @@ const GOLD = "#EFB034";
 // Django base URL for resolving relative media paths
 const DJANGO_BASE = (() => {
   const env = import.meta.env.VITE_API_BASE_URL;
-  if (env) return env.replace(/\/api\/v1\/?$/, "");
-  return "http://134.122.22.45";
+  if (env) {
+    // If it's an absolute URL (http/https), strip /api/v1
+    if (env.startsWith("http://") || env.startsWith("https://")) {
+      return env.replace(/\/api\/v1\/?$/, "");
+    }
+    // If it's a relative URL like '/api/v1', Django is on the same origin
+    return window.location.origin;
+  }
+  return window.location.origin;
 })();
 
 const resolveUrl = (url) => {
@@ -56,22 +63,88 @@ const StatCard = ({ title, number, icon: Icon, iconBgColor = 'bg-[#235E5D]', ico
   );
 };
 
-// Document Review Modal
+// Document Viewer Modal - Same pattern as Business Settings
+const DocumentViewerModal = ({ url, label, onClose }) => {
+  const [loaded, setLoaded] = useState(false);
+  const absoluteUrl = resolveUrl(url);
+  const isPDF = absoluteUrl?.split("?")[0].toLowerCase().endsWith(".pdf");
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
+          <span className="text-sm font-semibold text-slate-700">{label}</span>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors">
+            <X size={17} className="text-slate-500" />
+          </button>
+        </div>
+
+        {/* Loading spinner */}
+        {!loaded && (
+          <div className="flex-1 flex items-center justify-center py-16">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 size={32} className="animate-spin text-[#EFB034]" />
+              <p className="text-xs text-slate-400">Loading document…</p>
+            </div>
+          </div>
+        )}
+
+        {/* Document */}
+        <div className={`flex-1 overflow-auto ${loaded ? "block" : "hidden"}`}>
+          {isPDF ? (
+            <iframe src={absoluteUrl} title={label} className="w-full h-[75vh]" onLoad={() => setLoaded(true)} />
+          ) : (
+            <img src={absoluteUrl} alt={label} className="w-full h-auto object-contain p-4" onLoad={() => setLoaded(true)} onError={() => setLoaded(true)} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Document Review Modal - Updated to match OperationCompliance exactly
+// Document Review Modal - Updated to match OperationCompliance exactly
 const DocumentReviewModal = ({ vendorId, vendorName, onClose }) => {
   const [docs, setDocs] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [viewerDoc, setViewerDoc] = useState(null);
 
   useEffect(() => {
     const fetchDocs = async () => {
       setLoading(true);
       try {
         const response = await api.get(`/accounts/admin/vendors/${vendorId}/review/`);
+        console.log("=== FULL API RESPONSE ===");
+        console.log("Status:", response.status);
+        console.log("Headers:", response.headers);
+        console.log("Data:", response.data);
+        
         const detail = response.data?.data || response.data;
+        
+        console.log("=== PARSED DETAIL ===");
+        console.log("Detail object:", detail);
+        console.log("Documents object:", detail.documents);
+        console.log("Document keys:", Object.keys(detail.documents || {}));
+        
+        // Log each document's URL
+        if (detail.documents) {
+          Object.entries(detail.documents).forEach(([key, doc]) => {
+            console.log(`Document ${key}:`, {
+              url: doc?.url,
+              absoluteUrl: resolveUrl(doc?.url),
+              filename: doc?.filename,
+              expiry: doc?.expiry_date
+            });
+          });
+        }
+        
         setDocs(detail.documents || {});
       } catch (err) {
-        setError("Failed to load documents. Please try again.");
         console.error("Document fetch error:", err);
+        console.error("Error response:", err.response?.data);
+        setError(`Failed to load documents: ${err.response?.data?.message || err.message}`);
       } finally {
         setLoading(false);
       }
@@ -79,68 +152,148 @@ const DocumentReviewModal = ({ vendorId, vendorName, onClose }) => {
     if (vendorId) fetchDocs();
   }, [vendorId]);
 
+  // Document labels matching the OperationCompliance component exactly
   const DOC_LABELS = {
     government_issued_id: "Government Issued ID",
-    country_issued_id: "Country Issued ID",
     business_license: "Business License",
     tax_certificate: "Tax Certificate",
     incorporation_cert: "Incorporation Certificate",
+    professional_body_certification: "Professional Certification",
   };
 
+const openDocumentViewer = (url, label) => {
+  if (url) {
+    const fullUrl = resolveUrl(url);
+    console.log(`Opening document viewer for ${label}:`, fullUrl);
+    // Add cache-busting parameter to prevent caching issues
+    const urlWithCache = `${fullUrl}?t=${Date.now()}`;
+    setViewerDoc({ url: urlWithCache, label });
+  } else {
+    console.warn(`No URL for document: ${label}`);
+  }
+};
+
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-          <div>
-            <h2 className="text-sm font-bold text-gray-900">Document Review</h2>
-            <p className="text-[11px] text-gray-400 mt-0.5">{vendorName}</p>
+    <>
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+            <div>
+              <h2 className="text-sm font-bold text-gray-900">Document Review</h2>
+              <p className="text-[11px] text-gray-400 mt-0.5">{vendorName}</p>
+            </div>
+            <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100">
+              <X size={16} className="text-gray-500" />
+            </button>
           </div>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100">
-            <X size={16} className="text-gray-500" />
-          </button>
-        </div>
-        <div className="p-5">
-          {loading && (
-            <div className="space-y-2.5">
-              {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />)}
-            </div>
-          )}
-          {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-xs">{error}</div>}
-          {!loading && !error && docs && (
-            <div className="space-y-2.5">
-              {Object.keys(DOC_LABELS).map((key) => {
-                const doc = docs[key];
-                const absoluteUrl = resolveUrl(doc?.url);
-                return (
-                  <div key={key}
-                    className={`flex items-center justify-between p-3 rounded-xl border ${doc ? "border-green-100 bg-green-50/40" : "border-gray-100 bg-gray-50"}`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <FileText size={14} className={doc ? "text-green-600" : "text-gray-300"} />
-                      <div>
-                        <p className="text-xs font-semibold text-gray-800">{DOC_LABELS[key]}</p>
-                        {doc?.filename && (
-                          <p className="text-[10px] text-gray-400 mt-0.5 truncate max-w-[180px]">{doc.filename}</p>
-                        )}
+          <div className="p-5 max-h-[60vh] overflow-y-auto">
+            {loading && (
+              <div className="space-y-2.5">
+                {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />)}
+              </div>
+            )}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-xs">
+                <p className="font-bold mb-1">Error loading documents:</p>
+                <p>{error}</p>
+                <button 
+                  onClick={() => window.location.reload()} 
+                  className="mt-2 text-xs underline"
+                >
+                  Refresh page
+                </button>
+              </div>
+            )}
+            {!loading && !error && docs && (
+              <div className="space-y-2.5">
+                {Object.entries(DOC_LABELS).map(([key, label]) => {
+                  const doc = docs[key];
+                  const absoluteUrl = doc?.url ? resolveUrl(doc.url) : null;
+                  const isRequired = key !== 'professional_body_certification';
+                  const isMissing = !doc || !doc.url;
+                  
+                  console.log(`Rendering ${key}:`, {
+                    hasDoc: !!doc,
+                    url: doc?.url,
+                    absoluteUrl,
+                    isMissing
+                  });
+                  
+                  return (
+                    <div key={key}
+                      className={`flex items-center justify-between p-3 rounded-xl border ${
+                        !isMissing ? "border-green-100 bg-green-50/40" : 
+                        isRequired ? "border-red-100 bg-red-50/40" : "border-gray-100 bg-gray-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                        <FileText size={14} className={!isMissing ? "text-green-600" : isRequired ? "text-red-400" : "text-gray-400"} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-gray-800">
+                            {label}
+                            {!isRequired && <span className="text-[9px] text-gray-400 ml-1">(Optional)</span>}
+                          </p>
+                          {doc?.filename && (
+                            <p className="text-[10px] text-gray-400 mt-0.5 truncate">{doc.filename}</p>
+                          )}
+                          {doc?.uploaded_at && (
+                            <p className="text-[9px] text-gray-400 mt-0.5">
+                              Uploaded: {new Date(doc.uploaded_at).toLocaleDateString()}
+                            </p>
+                          )}
+                          {doc?.expiry_date && key !== 'incorporation_cert' && (
+                            <p className="text-[9px] text-amber-600 mt-0.5 flex items-center gap-1">
+                              <Clock size={8} /> Expires: {new Date(doc.expiry_date).toLocaleDateString()}
+                            </p>
+                          )}
+                          {key === 'incorporation_cert' && doc && (
+                            <p className="text-[9px] text-green-600 mt-0.5 flex items-center gap-1">
+                              <CheckCircle size={8} /> No expiry date required
+                            </p>
+                          )}
+                          {!isRequired && !doc && (
+                            <p className="text-[9px] text-gray-400 mt-0.5 italic">Optional document</p>
+                          )}
+                        </div>
                       </div>
+                      {absoluteUrl ? (
+                        <button
+                          onClick={() => openDocumentViewer(absoluteUrl, label)}
+                          className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-teal-700 bg-white border border-teal-100 rounded-lg hover:bg-teal-50 transition-colors shrink-0 ml-2"
+                        >
+                          <Eye size={9} /> View
+                        </button>
+                      ) : (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ml-2 ${
+                          isRequired ? "bg-red-50 text-red-500" : "bg-gray-100 text-gray-400"
+                        }`}>
+                          {isRequired ? "Missing" : "Not uploaded"}
+                        </span>
+                      )}
                     </div>
-                    {absoluteUrl ? (
-                      <a href={absoluteUrl} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-teal-700 bg-white border border-teal-100 rounded-lg hover:bg-teal-50 transition-colors"
-                      >
-                        View <ExternalLink size={9} />
-                      </a>
-                    ) : (
-                      <span className="text-[10px] font-bold px-2 py-0.5 bg-red-50 text-red-500 rounded-full">Missing</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
+            {!loading && !error && !docs && (
+              <div className="text-center py-8">
+                <FileText size={32} className="mx-auto text-gray-300 mb-2" />
+                <p className="text-xs text-gray-500">No documents found for this vendor.</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Document Viewer Modal */}
+      {viewerDoc && (
+        <DocumentViewerModal 
+          url={viewerDoc.url} 
+          label={viewerDoc.label} 
+          onClose={() => setViewerDoc(null)} 
+        />
+      )}
+    </>
   );
 };
 
@@ -356,16 +509,12 @@ const AdminManagement = () => {
         api.get("/accounts/admin/vendors/"),
       ]);
 
-      // Get vendor array from response
-      const rawVendors =
-        vendorsResponse.data?.data || vendorsResponse.data || [];
+      const rawVendors = vendorsResponse.data?.data || vendorsResponse.data || [];
       const vendorArray = Array.isArray(rawVendors) ? rawVendors : [];
 
-      // Get stats from backend dashboard response
       const dashboardData = dashResponse.data?.data || dashResponse.data || {};
       const summaryCards = dashboardData.overview?.summary_cards || {};
 
-      // Calculate pending and approved from vendor array
       const pendingVendors = vendorArray.filter(
         (v) =>
           v.verification_status === "pending" ||
@@ -376,12 +525,11 @@ const AdminManagement = () => {
       ).length;
 
       setStats({
-        total: summaryCards.total_vendors || approvedVendors || "—",
+        total: summaryCards.total_vendors || approvedVendors || vendorArray.length || "—",
         pending: pendingVendors || "—",
         approved: approvedVendors || "—",
       });
 
-      // Map vendors with all fields
       setVendors(
         vendorArray.map((v) => ({
           id: v.id,
@@ -400,13 +548,10 @@ const AdminManagement = () => {
       console.error("AdminManagement load error:", err);
     } finally {
       setLoading(false);
-      // The refresh button shows a spinning animation and becomes disabled
       setRefreshing(false);
     }
   }, []);
 
-  
-  // Handle refresh button click
   const handleRefresh = async () => {
     setRefreshing(true);
     await loadData();
@@ -427,7 +572,7 @@ const AdminManagement = () => {
         ...vendor,
         email: d.user_email || d.business_email || "—",
         name: d.user_name || d.owner_full_name || vendor.name,
-        profilePicture: resolveUrl(d.profile_picture || null),
+        profilePicture: resolveUrl(d.profile_picture_url || d.profile_picture || null),
         businessName: d.business_name || "—",
         businessType: d.business_type || "—",
         businessCategory: d.business_category || "—",
@@ -441,11 +586,12 @@ const AdminManagement = () => {
         openingTime: d.opening_time || "—",
         closingTime: d.closing_time || "—",
         verifiedAt: d.verified_at || "—",
+        // Documents matching OperationCompliance exactly
         hasGovId: d.has_government_issued_id || false,
-        hasCountryId: d.has_country_issued_id || false,
         hasLicense: d.has_business_license || false,
         hasTaxCert: d.has_tax_certificate || false,
         hasIncCert: d.has_incorporation_cert || false,
+        hasProfCert: d.has_professional_body_certification || false, // Optional document
       });
     } catch (err) {
       console.error("Vendor detail load error:", err);
@@ -576,7 +722,7 @@ const AdminManagement = () => {
                   Refresh
                 </button>
               </div>
-              {/* Stats cards - Updated to match dashboard UI */}
+              {/* Stats cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <StatCard 
                   title="Total Vendors" 
