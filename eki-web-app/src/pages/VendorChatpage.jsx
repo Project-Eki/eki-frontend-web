@@ -3,7 +3,7 @@ import {
   Search, Send, Paperclip, MoreVertical,
   Image, File, X, Loader2, MessageCircle,
   Smile, Plus, Filter, CheckCheck, AlertCircle,
-  Edit3, Trash2
+  Edit3, Trash2, Camera
 } from 'lucide-react';
 import api, { getVendorProfile } from '../services/authService';
 import Footer from '../components/Vendormanagement/VendorFooter';
@@ -114,6 +114,20 @@ const makeOptimisticMsg = (id, text, type = 'text', mediaUrl = null, fileName = 
   _optimistic: true,
 });
 
+// ─── Emoji data ──────────────────────────────────────────────────────────────
+const EMOJI_LIST = [
+  '😀','😃','😄','😁','😅','😂','🤣','😊','😇','🙂','😉','😌','😍','🥰','😘','😗','😋','😛','😜','🤪','😝','🤑',
+  '🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','😮','😯','😲','😳','🥺','😢','😭','😱','😖',
+  '😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖',
+  '😺','😸','😹','😻','😼','😽','🙀','😿','😾','🙈','🙉','🙊','💋','💌','💘','💝','💖','💗','💓','💞','💕','💟',
+  '❤️','🔥','⭐','🌟','✨','💥','💯','💢','💨','💦','💤','🕳️','🎉','🎊','🎈','🎂','🎁','🏆','🏅','🎖️','🏵️',
+  '👍','👎','👏','🙌','🤝','🤜','🤛','✊','👊','💪','🤞','✌️','🤟','🤘','👌','🤌','🤏','👈','👉','👆','👇','☝️',
+  '✋','🤚','🖐️','🖖','👋','🤙','💅','🤳','💃','🕺','👯','👫','👬','👭','🧑‍🤝‍🧑','👨‍👩‍👦','👨‍👩‍👧','👨‍👩‍👧‍👦','👨‍👩‍👦‍👦','👨‍👩‍👧‍👧',
+  '👩‍👩‍👦','👩‍👩‍👧','👩‍👩‍👧‍👦','👩‍👩‍👦‍👦','👩‍👩‍👧‍👧','👨‍👨‍👦','👨‍👨‍👧','👨‍👨‍👧‍👦','👨‍👨‍👦‍👦','👨‍👨‍👧‍👧','👩‍👦','👩‍👧','👩‍👧‍👦','👩‍👦‍👦','👩‍👧‍👧',
+  '👨‍👦','👨‍👧','👨‍👧‍👦','👨‍👦‍👦','👨‍👧‍👧','🪢','🧶','🧵','🪡','🧥','🥼','🦺','👚','👕','👖','🩲','🩳','👔','👗','👙',
+  '👘','🥻','🩱','🩴','👠','👡','👢','👞','👟','🥿','🧢','👒','🎩','🎓','👑','⛑️','🪖','💄','💍','💎'
+];
+
 const VendorChatPage = () => {
   const [buyers,         setBuyers]         = useState([]);
   const [selectedBuyer,  setSelectedBuyer]  = useState(null);
@@ -135,11 +149,17 @@ const VendorChatPage = () => {
   const [editText,         setEditText]         = useState('');
   const [deleteConfirmId,  setDeleteConfirmId]  = useState(null);
 
+  // Emoji picker state
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  // Refs
   const messagesEndRef   = useRef(null);
   const fileInputRef     = useRef(null);
+  const imageInputRef    = useRef(null); // dedicated image input
   const inputRef         = useRef(null);
   const selectedBuyerRef = useRef(null);
   const debugLoggedRef   = useRef(false);
+  const emojiPanelRef    = useRef(null);   // to handle outside click
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -304,7 +324,7 @@ const VendorChatPage = () => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); }
   }, [handleSendMessage]);
 
-  // ── File upload ─────────────────────────────────────────────────────────────
+  // ── File upload (used by both paperclip and camera buttons) ─────────────
   const handleFileChange = useCallback(async (e) => {
     const file  = e.target.files?.[0];
     const buyer = selectedBuyerRef.current;
@@ -337,6 +357,7 @@ const VendorChatPage = () => {
       setAttachmentFile(null);
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+      if (imageInputRef.current) imageInputRef.current.value = '';
     }
   }, [fetchConversations, scrollToBottom]);
 
@@ -351,10 +372,6 @@ const VendorChatPage = () => {
     if (!id || !editText.trim()) return;
 
     try {
-      // 👇 Adjust the endpoint to match your backend. Common patterns:
-      // - api.patch(`/chat/messages/${id}/`, { message: editText.trim() })
-      // - api.patch(`/chat/messages/${id}/edit/`, { message: editText.trim() })
-      // Use the same pattern as your delete endpoint (just with PATCH and maybe "/edit/")
       await api.patch(`/chat/messages/${id}/edit/`, { message: editText.trim() });
       setMessages((prev) => prev.map((m) => {
         if (m.id === id) return { ...m, text: editText.trim() };
@@ -362,7 +379,7 @@ const VendorChatPage = () => {
       }));
       setEditingMessageId(null);
     } catch (err) {
-      alert('Failed to edit message. Check the endpoint or backend.');
+      alert('Failed to edit message. Check backend endpoint.');
     }
   };
 
@@ -377,18 +394,41 @@ const VendorChatPage = () => {
 
   const handleDeleteExecute = async (msgId) => {
     try {
-      // Uses the exact function from authService (already defined)
       await api.delete(`/chat/messages/${msgId}/delete/`);
       setMessages((prev) => prev.filter((m) => m.id !== msgId));
       setDeleteConfirmId(null);
     } catch (err) {
-      alert('Failed to delete message. Check if the backend endpoint /chat/messages/{id}/delete/ exists.');
+      alert('Failed to delete message. Check backend endpoint.');
     }
   };
 
   const handleDeleteCancel = () => {
     setDeleteConfirmId(null);
   };
+
+  // ── Emoji picker handlers ────────────────────────────────────────────────
+  const toggleEmojiPicker = () => {
+    setShowEmojiPicker(prev => !prev);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const onEmojiSelect = (emoji) => {
+    setInputValue(prev => prev + emoji);
+    inputRef.current?.focus();
+  };
+
+  // Close emoji picker on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (emojiPanelRef.current && !emojiPanelRef.current.contains(event.target)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showEmojiPicker]);
 
   useEffect(() => { fetchConversations(); }, [fetchConversations]);
   useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
@@ -705,23 +745,81 @@ const VendorChatPage = () => {
           </div>
         )}
 
-        {selectedBuyer && (
-          <div className="px-5 py-3.5 bg-white border-t border-gray-100">
-            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-2xl px-3 py-2 focus-within:border-[#125852]/30 focus-within:bg-white transition-all">
-              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading}
-                className="p-1.5 text-gray-400 hover:text-[#125852] rounded-full hover:bg-gray-100 transition-colors flex-shrink-0">
-                <Paperclip size={18} />
+        {/* ── Emoji Picker ── */}
+        {selectedBuyer && showEmojiPicker && (
+          <div
+            ref={emojiPanelRef}
+            className="absolute bottom-[80px] left-1/2 -translate-x-1/2 bg-white border border-gray-200 rounded-2xl shadow-xl p-3 w-[380px] max-w-[95vw] grid grid-cols-10 gap-1.5 overflow-y-auto max-h-[240px] z-50"
+            style={{ bottom: '85px', left: '50%', transform: 'translateX(-50%)' }}
+          >
+            {EMOJI_LIST.map((emoji, index) => (
+              <button
+                key={index}
+                onClick={() => onEmojiSelect(emoji)}
+                className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 rounded-lg text-lg transition-colors"
+              >
+                {emoji}
               </button>
-              <button type="button" className="p-1.5 text-gray-400 hover:text-[#125852] rounded-full hover:bg-gray-100 transition-colors flex-shrink-0">
+            ))}
+          </div>
+        )}
+
+        {/* ── Message input area ── */}
+        {selectedBuyer && (
+          <div className="px-5 py-3.5 bg-white border-t border-gray-100 relative">
+            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-2xl px-3 py-2 focus-within:border-[#125852]/30 focus-within:bg-white transition-all">
+              {/* Emoji button */}
+              <button
+                type="button"
+                onClick={toggleEmojiPicker}
+                className="p-1.5 text-gray-400 hover:text-[#125852] rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
+              >
                 <Smile size={18} />
               </button>
+
+              {/* Image upload button */}
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={isUploading}
+                className="p-1.5 text-gray-400 hover:text-[#125852] rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
+              >
+                <Camera size={18} />
+              </button>
+
+              {/* File upload button */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="p-1.5 text-gray-400 hover:text-[#125852] rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
+              >
+                <Paperclip size={18} />
+              </button>
+
               <input ref={inputRef} type="text" value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={`Reply to ${selectedBuyer.name}…`}
                 className="flex-1 bg-transparent text-[13.5px] text-gray-700 placeholder-gray-400 outline-none"
               />
-              <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} accept="image/*,.pdf,.doc,.docx,.txt" />
+
+              {/* Hidden file inputs */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                onChange={handleFileChange}
+                accept="*/*"
+              />
+              <input
+                type="file"
+                ref={imageInputRef}
+                className="hidden"
+                onChange={handleFileChange}
+                accept="image/*"
+              />
+
               <button type="button" onClick={handleSendMessage} disabled={!inputValue.trim() || isSending}
                 className={`p-2 rounded-xl transition-all flex-shrink-0 ${
                   inputValue.trim() && !isSending
