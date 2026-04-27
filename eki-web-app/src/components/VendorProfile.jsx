@@ -5,6 +5,9 @@
  *  - onReject prop added — opens RejectVendorModal in parent (AdminManagement)
  *  - Reject button shown for Pending vendors alongside Approve
  *  - Profile picture URL is now resolved by parent (AdminManagement passes resolvedUrl)
+ *  - Documents match exactly what vendors upload in OperationCompliance
+ *  - Documents: Government ID, Business License, Tax Certificate, Incorporation Certificate
+ *  - Professional Certification is optional (shown but not required)
  *  - All other props/display unchanged
  */
 
@@ -14,11 +17,16 @@ import {
   Phone, MapPin, Clock, Hash, Building2, AlertTriangle, XCircle,
 } from "lucide-react";
 
-const DocRow = ({ label, hasDoc }) => (
+const DocRow = ({ label, hasDoc, isOptional = false }) => (
   <div className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-    <span className="text-xs text-gray-600">{label}</span>
-    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${hasDoc ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"}`}>
-      {hasDoc ? "Submitted" : "Missing"}
+    <span className="text-xs text-gray-600">
+      {label}
+      {isOptional && <span className="text-[9px] text-gray-400 ml-1">(Optional)</span>}
+    </span>
+    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+      hasDoc ? "bg-green-50 text-green-600" : isOptional ? "bg-gray-100 text-gray-400" : "bg-red-50 text-red-500"
+    }`}>
+      {hasDoc ? "Submitted" : isOptional ? "Not Uploaded" : "Missing"}
     </span>
   </div>
 );
@@ -49,44 +57,59 @@ const VendorProfile = ({ vendor, onApprove, onSuspend, onReject, onReviewDocumen
   const isSuspended = vendor.status === "Suspended";
   const isRejected  = vendor.status === "Rejected";
 
+  // Documents matching OperationCompliance component
   const docList = [
-    { label: "Government Issued ID",      has: vendor.hasGovId     },
-    { label: "Country Issued ID",         has: vendor.hasCountryId },
-    { label: "Business License",          has: vendor.hasLicense   },
-    { label: "Tax Certificate",           has: vendor.hasTaxCert   },
-    { label: "Incorporation Certificate", has: vendor.hasIncCert   },
+    { label: "Government Issued ID",      has: vendor.hasGovId,     isOptional: false },
+    { label: "Business License",          has: vendor.hasLicense,   isOptional: false },
+    { label: "Tax Certificate",           has: vendor.hasTaxCert,   isOptional: false },
+    { label: "Incorporation Certificate", has: vendor.hasIncCert,   isOptional: false },
+    { label: "Professional Certification", has: vendor.hasProfCert, isOptional: true },
   ];
+  
+  const requiredDocs = docList.filter(d => !d.isOptional);
   const submittedCount = docList.filter((d) => d.has).length;
+  const requiredSubmittedCount = requiredDocs.filter((d) => d.has).length;
+  const totalRequired = requiredDocs.length;
 
   return (
     <div className="p-6 space-y-6">
 
       {/* Avatar + name + status */}
-      <div className="flex items-center gap-4">
-        {vendor.profilePicture ? (
-          <img
-            src={vendor.profilePicture}
-            alt={vendor.name}
-            className="w-16 h-16 rounded-full object-cover border-2 border-gray-100 shrink-0"
-          />
-        ) : (
-          <div className="w-16 h-16 rounded-full bg-teal-50 flex items-center justify-center shrink-0 border-2 border-teal-100">
-            <span className="text-xl font-bold text-teal-600">{(vendor.name || "?")[0].toUpperCase()}</span>
-          </div>
-        )}
-        <div>
-          <h3 className="font-bold text-gray-900 text-base">{vendor.name}</h3>
-          <p className="text-xs text-gray-500">{vendor.email || "—"}</p>
-          <span className={`mt-1.5 inline-block px-2.5 py-0.5 text-[10px] font-bold rounded-full uppercase border ${
-            isApproved  ? "bg-green-50 text-green-600 border-green-100" :
-            isSuspended ? "bg-red-50 text-red-500 border-red-100"      :
-            isRejected  ? "bg-rose-50 text-rose-500 border-rose-100"   :
-                          "bg-yellow-50 text-yellow-600 border-yellow-100"
-          }`}>
-            {vendor.status}
-          </span>
-        </div>
-      </div>
+<div className="flex items-center gap-4">
+  {vendor.profilePicture ? (
+    <img
+      src={vendor.profilePicture}
+      alt={vendor.name}
+      className="w-16 h-16 rounded-full object-cover border-2 border-gray-100 shrink-0"
+      onError={(e) => {
+        console.error("Failed to load profile image:", vendor.profilePicture);
+        e.target.onerror = null; // Prevent infinite loop
+        e.target.style.display = 'none';
+        // Create fallback element
+        const fallbackDiv = document.createElement('div');
+        fallbackDiv.className = "w-16 h-16 rounded-full bg-teal-50 flex items-center justify-center shrink-0 border-2 border-teal-100";
+        fallbackDiv.innerHTML = `<span class="text-xl font-bold text-teal-600">${(vendor.name || "?")[0].toUpperCase()}</span>`;
+        e.target.parentNode.appendChild(fallbackDiv);
+      }}
+    />
+  ) : (
+    <div className="w-16 h-16 rounded-full bg-teal-50 flex items-center justify-center shrink-0 border-2 border-teal-100">
+      <span className="text-xl font-bold text-teal-600">{(vendor.name || "?")[0].toUpperCase()}</span>
+    </div>
+  )}
+  <div>
+    <h3 className="font-bold text-gray-900 text-base">{vendor.name}</h3>
+    <p className="text-xs text-gray-500">{vendor.email || "—"}</p>
+    <span className={`mt-1.5 inline-block px-2.5 py-0.5 text-[10px] font-bold rounded-full uppercase border ${
+      isApproved  ? "bg-green-50 text-green-600 border-green-100" :
+      isSuspended ? "bg-red-50 text-red-500 border-red-100"      :
+      isRejected  ? "bg-rose-50 text-rose-500 border-rose-100"   :
+                    "bg-yellow-50 text-yellow-600 border-yellow-100"
+    }`}>
+      {vendor.status}
+    </span>
+  </div>
+</div>
 
       {/* Business Information */}
       <div>
@@ -125,21 +148,21 @@ const VendorProfile = ({ vendor, onApprove, onSuspend, onReject, onReviewDocumen
         <div className="flex items-center justify-between mb-3">
           <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Documents</h4>
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-            submittedCount === 5 ? "bg-green-50 text-green-600" :
-            submittedCount > 0  ? "bg-amber-50 text-amber-600" :
-                                   "bg-red-50 text-red-500"
+            requiredSubmittedCount === totalRequired ? "bg-green-50 text-green-600" :
+            requiredSubmittedCount > 0  ? "bg-amber-50 text-amber-600" :
+                                         "bg-red-50 text-red-500"
           }`}>
-            {submittedCount}/5 submitted
+            {requiredSubmittedCount}/{totalRequired} required submitted | {submittedCount} total
           </span>
         </div>
         <div className="bg-gray-50 rounded-xl px-4 py-1">
-          {docList.map((d) => <DocRow key={d.label} label={d.label} hasDoc={d.has} />)}
+          {docList.map((d) => <DocRow key={d.label} label={d.label} hasDoc={d.has} isOptional={d.isOptional} />)}
         </div>
         <button
           onClick={onReviewDocuments}
           className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 bg-[#234E4D] text-white text-xs font-bold rounded-xl hover:opacity-90 transition-opacity shadow-sm"
         >
-          <FileText size={14} /> Review Documents ({submittedCount}/5)
+          <FileText size={14} /> Review Documents ({submittedCount} total)
         </button>
       </div>
 
