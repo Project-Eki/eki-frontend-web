@@ -339,7 +339,6 @@ const VendorChatPage = () => {
       setTimeout(scrollToBottom, 50);
 
       try {
-        // ★ Fake the MIME type to audio/mp4 so the server accepts it
         const audioFile = new File([file], file.name.replace(/\.webm$/, '.mp4'), {
           type: 'audio/mp4'
         });
@@ -604,36 +603,32 @@ const VendorChatPage = () => {
       style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}
       className="flex h-[calc(100vh-2rem)] w-full rounded-2xl overflow-hidden bg-white shadow-xl border border-gray-200 relative"
     >
-      {/* LEFT SIDEBAR */}
-      <div className="w-72 flex-shrink-0 flex flex-col bg-white border-r border-gray-100">
-        <div className="flex items-center justify-between px-5 pt-5 pb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-[#125852] flex items-center justify-center flex-shrink-0 shadow-sm">
-              <MessageCircle size={14} className="text-white" />
-            </div>
-            <span className="font-bold text-gray-800 text-[15px]">Eki Chat</span>
-          </div>
+      {/* LEFT SIDEBAR – WhatsApp‑style compact list */}
+      <div className="w-64 flex-shrink-0 flex flex-col bg-white border-r border-gray-100">
+
+        <div className="flex items-center justify-between px-4 pt-4 pb-2">
+          <span className="font-semibold text-gray-800 text-sm">Eki Chat</span>
           <div className="flex items-center gap-1">
-            <button className="w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 transition-colors"><Plus size={16} /></button>
-            <button className="w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 transition-colors"><Filter size={14} /></button>
+            <button className="w-6 h-6 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500"><Plus size={14} /></button>
+            <button className="w-6 h-6 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500"><Filter size={12} /></button>
           </div>
         </div>
 
-        <div className="px-4 pb-3">
+        <div className="px-3 pb-3">
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input type="text" placeholder="Find messages or orders..." value={searchTerm}
+            <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input type="text" placeholder="Search conversations" value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[13px] text-gray-700 placeholder-gray-400 outline-none focus:border-[#125852]/40 focus:bg-white transition-all"
+              className="w-full pl-7 pr-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 placeholder-gray-400 outline-none focus:border-[#075E54]/40 focus:bg-white transition-all"
             />
           </div>
         </div>
 
-        <div className="flex gap-2 px-4 pb-3">
+        <div className="flex gap-1 px-3 pb-2">
           {['all', 'unread'].map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`px-5 py-1.5 rounded-full text-[13px] font-semibold transition-all capitalize ${
-                activeTab === tab ? 'bg-[#125852] text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100'
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-all capitalize ${
+                activeTab === tab ? 'bg-[#075E54] text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100'
               }`}>{tab}</button>
           ))}
         </div>
@@ -641,31 +636,32 @@ const VendorChatPage = () => {
         <div className="flex-1 overflow-y-auto">
           {filteredBuyers.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-              <MessageCircle size={32} className="mb-2 opacity-30" />
-              <p className="text-[13px]">No conversations</p>
+              <MessageCircle size={28} className="mb-2 opacity-30" />
+              <p className="text-xs">No conversations</p>
             </div>
           ) : filteredBuyers.map((buyer) => (
             <div key={buyer.id} onClick={() => handleSelectConversation(buyer)}
-              className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors border-b border-gray-50 ${
-                selectedBuyer?.id === buyer.id ? 'bg-blue-50/60' : 'hover:bg-gray-50'
+              className={`flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors border-b border-gray-50 ${
+                selectedBuyer?.id === buyer.id ? 'bg-[#075E54]/10' : 'hover:bg-gray-50'
               }`}>
               <div className="relative flex-shrink-0">
-                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#EFB034] to-[#c8891f] flex items-center justify-center text-white font-bold text-base shadow-sm overflow-hidden">
+                <div className="w-9 h-9 rounded-full bg-[#075E54] flex items-center justify-center text-white font-medium text-xs shadow-sm overflow-hidden">
                   {buyer.avatar ? <img src={buyer.avatar} alt="" className="w-full h-full object-cover" /> : getInitials(buyer.name)}
                 </div>
-                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-white rounded-full" />
+                {/* online dot */}
+                <span className="absolute bottom-0 right-0 w-2 h-2 bg-green-400 border-2 border-white rounded-full" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <span className={`text-[13px] font-semibold truncate ${buyer.unread > 0 ? 'text-gray-900' : 'text-gray-700'}`}>{buyer.name}</span>
-                  <span className="text-[11px] text-gray-400 ml-2 flex-shrink-0">{buyer.lastSeen}</span>
+                  <span className={`text-xs font-semibold truncate ${buyer.unread > 0 ? 'text-gray-900' : 'text-gray-700'}`}>{buyer.name}</span>
+                  <span className="text-[10px] text-gray-400 ml-1 flex-shrink-0">{buyer.lastSeen}</span>
                 </div>
                 <div className="flex items-center justify-between mt-0.5">
-                  <p className={`text-[12px] truncate ${buyer.unread > 0 ? 'text-gray-600 font-medium' : 'text-gray-400'}`}>
+                  <p className={`text-[11px] truncate ${buyer.unread > 0 ? 'text-gray-600 font-medium' : 'text-gray-400'}`}>
                     {buyer.lastMessage || 'No messages yet'}
                   </p>
                   {buyer.unread > 0 && (
-                    <span className="ml-2 flex-shrink-0 min-w-[18px] h-[18px] bg-[#EFB034] rounded-full text-white text-[10px] font-bold flex items-center justify-center px-1">
+                    <span className="ml-1 flex-shrink-0 min-w-[16px] h-[16px] bg-[#075E54] rounded-full text-white text-[9px] font-bold flex items-center justify-center px-1">
                       {buyer.unread}
                     </span>
                   )}
@@ -676,64 +672,61 @@ const VendorChatPage = () => {
         </div>
       </div>
 
-      {/* MAIN CHAT */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#fafafa]">
+      {/* MAIN CHAT – compact WhatsApp‑style bubbles */}
+      <div className="flex-1 flex flex-col min-w-0 bg-[#efeae2]">  {/* WhatsApp wallpaper-like background */}
+
         {selectedBuyer ? (
-          <div className="flex items-center justify-between px-6 py-3.5 bg-white border-b border-gray-100 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#EFB034] to-[#c8891f] flex items-center justify-center text-white font-bold text-sm overflow-hidden shadow-sm">
+          <div className="flex items-center justify-between px-4 py-2 bg-[#075E54] text-white shadow-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white font-semibold text-xs overflow-hidden shadow-sm">
                 {selectedBuyer.avatar ? <img src={selectedBuyer.avatar} alt="" className="w-full h-full object-cover" /> : getInitials(selectedBuyer.name)}
               </div>
               <div>
-                <p className="text-[14px] font-bold text-gray-900 leading-tight">{selectedBuyer.name}</p>
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide leading-tight">{orderRef}</p>
+                <p className="text-sm font-semibold leading-tight">{selectedBuyer.name}</p>
+                <p className="text-[10px] text-white/70 uppercase tracking-wide leading-tight">{orderRef}</p>
               </div>
             </div>
-            <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-              <MoreVertical size={16} className="text-gray-400" />
-            </button>
+            <button className="p-1 hover:bg-white/10 rounded-full"><MoreVertical size={14} /></button>
           </div>
         ) : (
-          <div className="flex items-center justify-between px-6 py-3.5 bg-white border-b border-gray-100">
-            <p className="text-[13px] text-gray-400">Select a conversation to start chatting</p>
-          </div>
+          <div className="flex items-center px-4 py-2 bg-[#075E54] text-white text-xs">Select a conversation</div>
         )}
 
         {fetchError && (
-          <div className="flex items-center gap-2 px-5 py-2 bg-amber-50 border-b border-amber-100 text-amber-700 text-[12px]">
-            <AlertCircle size={13} className="flex-shrink-0" /><span>{fetchError}</span>
+          <div className="flex items-center gap-2 px-4 py-1 bg-amber-50 text-amber-700 text-xs">
+            <AlertCircle size={12} /><span>{fetchError}</span>
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-1">
+        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
           {loading ? (
-            <div className="flex flex-col gap-4 animate-pulse">
+            <div className="flex flex-col gap-3 animate-pulse">
               {[1, 2, 3].map((i) => (
                 <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`h-10 rounded-2xl ${i % 2 === 0 ? 'bg-[#125852]/20 w-2/5' : 'bg-gray-200 w-1/3'}`} />
+                  <div className={`h-8 rounded-xl ${i % 2 === 0 ? 'bg-[#075E54]/30 w-2/5' : 'bg-white/80 w-1/3'}`} />
                 </div>
               ))}
             </div>
           ) : !selectedBuyer ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-300">
-              <MessageCircle size={56} className="mb-3 opacity-30" />
-              <p className="text-[14px] font-medium">Select a conversation</p>
+            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+              <MessageCircle size={48} className="mb-2 opacity-20" />
+              <p className="text-sm">Select a conversation</p>
             </div>
           ) : messages.length === 0 && !fetchError ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
-              <MessageCircle size={40} className="mb-2 opacity-30" />
-              <p className="text-[13px]">No messages yet. Say hello!</p>
+              <MessageCircle size={36} className="mb-2 opacity-20" />
+              <p className="text-xs">No messages yet. Say hello!</p>
             </div>
           ) : (
             Object.entries(groupedMessages).map(([dateKey, group]) => (
               <div key={dateKey}>
-                <div className="flex justify-center my-4">
-                  <span className="text-[11px] text-gray-400 font-medium bg-white px-3 py-0.5 rounded-full shadow-sm border border-gray-100">
+                <div className="flex justify-center my-3">
+                  <span className="text-[10px] text-gray-500 bg-white/80 px-2 py-0.5 rounded-md shadow-sm">
                     {formatDateSep(group.date)}
                   </span>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1">
                   {group.msgs.map((msg, idx) => {
                     const processedMsg = extractAudioFromMessage(msg);
                     const isVendor     = processedMsg.sender === 'vendor';
@@ -744,10 +737,10 @@ const VendorChatPage = () => {
                     return (
                       <div
                         key={processedMsg.id ?? idx}
-                        className={`flex items-end gap-2 ${isVendor ? 'justify-end' : 'justify-start'} relative group`}
+                        className={`flex items-end gap-1.5 ${isVendor ? 'justify-end' : 'justify-start'} relative group`}
                       >
                         {!isVendor && (
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#EFB034] to-[#c8891f] flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0 mb-0.5 overflow-hidden shadow-sm">
+                          <div className="w-6 h-6 rounded-full bg-[#075E54] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 mb-0.5 overflow-hidden shadow-sm">
                             {selectedBuyer?.avatar
                               ? <img src={selectedBuyer.avatar} alt="" className="w-full h-full object-cover" />
                               : getInitials(selectedBuyer?.name)
@@ -755,59 +748,60 @@ const VendorChatPage = () => {
                           </div>
                         )}
 
-                        <div className={`max-w-[60%] flex flex-col ${isVendor ? 'items-end' : 'items-start'}`}>
+                        <div className={`max-w-[70%] flex flex-col ${isVendor ? 'items-end' : 'items-start'}`}>
                           {isVendor && !isOptimistic && (
-                            <div className={`mb-1 flex items-center gap-1 transition-opacity duration-150 ${
+                            <div className={`mb-0.5 flex items-center gap-1 transition-opacity duration-150 ${
                               isEditing || isDeletingConfirm ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                             }`}>
-                              <button onClick={(e) => { e.stopPropagation(); handleEditStart(processedMsg); }} className="p-0.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Edit message"><Edit3 size={13} /></button>
-                              <button onClick={(e) => { e.stopPropagation(); handleDeleteConfirm(processedMsg.id); }} className="p-0.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded" title="Delete message"><Trash2 size={13} /></button>
+                              <button onClick={(e) => { e.stopPropagation(); handleEditStart(processedMsg); }} className="p-0.5 text-gray-400 hover:text-blue-500 rounded" title="Edit"><Edit3 size={10} /></button>
+                              <button onClick={(e) => { e.stopPropagation(); handleDeleteConfirm(processedMsg.id); }} className="p-0.5 text-gray-400 hover:text-red-500 rounded" title="Delete"><Trash2 size={10} /></button>
                             </div>
                           )}
 
                           {isDeletingConfirm && (
-                            <div className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-[12px] text-gray-700 mb-1 shadow-sm flex items-center gap-2">
-                              <span>Delete this message?</span>
-                              <button onClick={() => handleDeleteExecute(processedMsg.id)} className="text-red-600 font-bold hover:underline">Delete</button>
-                              <button onClick={handleDeleteCancel} className="text-gray-400 hover:text-gray-600">Cancel</button>
+                            <div className="bg-white rounded-lg px-2 py-1 text-[10px] text-gray-700 mb-0.5 shadow-sm flex items-center gap-1">
+                              <span>Delete?</span>
+                              <button onClick={() => handleDeleteExecute(processedMsg.id)} className="text-red-500 font-bold">Yes</button>
+                              <button onClick={handleDeleteCancel} className="text-gray-400">No</button>
                             </div>
                           )}
 
                           {isEditing ? (
-                            <div className="flex items-center gap-2">
-                              <input type="text" value={editText} onChange={(e) => setEditText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleEditSave(); if (e.key === 'Escape') handleEditCancel(); }} className="px-3 py-1.5 bg-white border border-[#125852] rounded-xl text-[13.5px] outline-none focus:ring-1 focus:ring-[#125852] shadow-sm w-full min-w-[200px]" autoFocus />
-                              <button onClick={handleEditSave} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Save"><CheckCheck size={16} /></button>
-                              <button onClick={handleEditCancel} className="p-1 text-gray-400 hover:bg-gray-100 rounded" title="Cancel"><X size={16} /></button>
+                            <div className="flex items-center gap-1">
+                              <input type="text" value={editText} onChange={(e) => setEditText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleEditSave(); if (e.key === 'Escape') handleEditCancel(); }}
+                                className="px-2 py-1 bg-white border border-[#075E54] rounded-lg text-xs outline-none focus:ring-1 focus:ring-[#075E54] shadow-sm w-full min-w-[120px]" autoFocus />
+                              <button onClick={handleEditSave} className="p-0.5 text-green-600" title="Save"><CheckCheck size={12} /></button>
+                              <button onClick={handleEditCancel} className="p-0.5 text-gray-400" title="Cancel"><X size={12} /></button>
                             </div>
                           ) : (
-                            <div className={`px-4 py-2.5 rounded-2xl text-[13.5px] leading-relaxed shadow-sm ${
+                            <div className={`px-2.5 py-1.5 rounded-2xl text-xs shadow-sm ${
                               isVendor
-                                ? `bg-[#125852] text-white rounded-br-sm ${isOptimistic ? 'opacity-70' : ''}`
-                                : 'bg-[#EFB034] text-white rounded-bl-sm border border-[#d4952c]/30'
+                                ? `bg-[#075E54] text-white rounded-br-md ${isOptimistic ? 'opacity-70' : ''}`
+                                : 'bg-white text-gray-900 rounded-bl-md border border-gray-200/60'
                             }`}>
                               {processedMsg.type === 'voice' ? (
-                                <audio controls src={processedMsg.mediaUrl} className="max-w-full h-8" />
+                                <audio controls src={processedMsg.mediaUrl} className="max-w-full h-6" />
                               ) : processedMsg.type === 'image' ? (
-                                <img src={processedMsg.mediaUrl} alt="attachment" className="rounded-lg max-w-full h-auto" />
+                                <img src={processedMsg.mediaUrl} alt="attachment" className="rounded-lg max-w-[180px] max-h-[180px] object-cover" />
                               ) : processedMsg.type === 'file' ? (
-                                <a href={processedMsg.mediaUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 underline">
-                                  <FileIcon size={14} />{safeStr(processedMsg.fileName || processedMsg.text)}
+                                <a href={processedMsg.mediaUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 underline">
+                                  <FileIcon size={12} />{safeStr(processedMsg.fileName || processedMsg.text)}
                                 </a>
                               ) : (
-                                <p className="break-words whitespace-pre-wrap">{safeStr(processedMsg.text)}</p>
+                                <p className="break-words whitespace-pre-wrap leading-relaxed">{safeStr(processedMsg.text)}</p>
                               )}
                             </div>
                           )}
 
-                          <div className={`flex items-center gap-1 mt-1 ${isVendor ? 'flex-row-reverse' : ''}`}>
-                            <span className="text-[10px] text-gray-400">{formatTime(processedMsg.timestamp)}</span>
-                            {isVendor && !isOptimistic && <CheckCheck size={12} className="text-[#EFB034]" />}
-                            {isVendor && isOptimistic  && <Loader2 size={10} className="animate-spin text-gray-400" />}
+                          <div className={`flex items-center gap-1 mt-0.5 ${isVendor ? 'flex-row-reverse' : ''}`}>
+                            <span className="text-[9px] text-gray-500">{formatTime(processedMsg.timestamp)}</span>
+                            {isVendor && !isOptimistic && <CheckCheck size={10} className="text-[#075E54]" />}
+                            {isVendor && isOptimistic  && <Loader2 size={8} className="animate-spin text-gray-400" />}
                           </div>
                         </div>
 
                         {isVendor && (
-                          <div className="w-7 h-7 rounded-full bg-[#125852] flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0 mb-0.5 shadow-sm overflow-hidden">
+                          <div className="w-6 h-6 rounded-full bg-[#075E54] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 mb-0.5 shadow-sm overflow-hidden">
                             {vendorProfile.picture
                               ? <img src={vendorProfile.picture} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
                               : vendorProfile.initial
@@ -825,72 +819,71 @@ const VendorChatPage = () => {
         </div>
 
         {sendError && (
-          <div className="flex items-center gap-2 px-5 py-2 bg-red-50 border-t border-red-100 text-red-600 text-[12px]">
-            <AlertCircle size={13} className="flex-shrink-0" />
-            <span className="flex-1">{sendError}</span>
-            <button onClick={() => setSendError('')} className="hover:text-red-800"><X size={12} /></button>
+          <div className="flex items-center gap-2 px-4 py-1 bg-red-50 text-red-600 text-[10px]">
+            <AlertCircle size={12} /><span>{sendError}</span>
+            <button onClick={() => setSendError('')} className="ml-auto hover:text-red-800"><X size={10} /></button>
           </div>
         )}
 
         {attachmentFile && (
-          <div className="px-6 py-2 bg-white border-t border-gray-100 flex items-center gap-2">
-            <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-1.5 text-[12px] text-gray-600 flex-1 min-w-0">
-              {attachmentFile.type.startsWith('audio') ? <Mic size={13} /> :
-               attachmentFile.type.startsWith('image') ? <FileIcon size={13} /> : <FileIcon size={13} />}
-              <span className="truncate max-w-[200px]">{attachmentFile.name}</span>
+          <div className="px-4 py-1 bg-white border-t border-gray-100 flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-gray-100 rounded-lg px-2 py-1 text-[10px] text-gray-600 flex-1 min-w-0">
+              {attachmentFile.type.startsWith('audio') ? <Mic size={10} /> :
+               attachmentFile.type.startsWith('image') ? <FileIcon size={10} /> : <FileIcon size={10} />}
+              <span className="truncate max-w-[150px]">{attachmentFile.name}</span>
               {attachmentFile.type.startsWith('audio') && (
-                <audio controls src={URL.createObjectURL(attachmentFile)} className="ml-2 h-8" />
+                <audio controls src={URL.createObjectURL(attachmentFile)} className="ml-1 h-5" />
               )}
-              <button onClick={() => setAttachmentFile(null)} className="text-red-400 hover:text-red-600 ml-auto flex-shrink-0"><X size={13} /></button>
+              <button onClick={() => setAttachmentFile(null)} className="text-red-400 hover:text-red-600 ml-auto"><X size={10} /></button>
             </div>
-            {isUploading && <Loader2 size={13} className="animate-spin text-gray-400" />}
+            {isUploading && <Loader2 size={10} className="animate-spin text-gray-400" />}
           </div>
         )}
 
         {selectedBuyer && (
-          <div className="px-5 py-3.5 bg-white border-t border-gray-100">
+          <div className="px-3 py-2 bg-white border-t border-gray-200">
             {showEmojiPicker && (
-              <div className="relative mb-2">
-                <div className="absolute bottom-full left-0 z-20 bg-white border border-gray-200 rounded-xl shadow-lg p-2 grid grid-cols-7 gap-1 max-w-[280px]">
+              <div className="relative mb-1">
+                <div className="absolute bottom-full left-0 z-20 bg-white border border-gray-200 rounded-xl shadow-lg p-1.5 grid grid-cols-7 gap-0.5 max-w-[240px]">
                   {EMOJI_LIST.map((emoji) => (
                     <button key={emoji} onClick={() => { setInputValue((prev) => prev + emoji); setShowEmojiPicker(false); inputRef.current?.focus(); }}
-                      className="w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 rounded">{emoji}</button>
+                      className="w-7 h-7 flex items-center justify-center text-sm hover:bg-gray-100 rounded">{emoji}</button>
                   ))}
                 </div>
               </div>
             )}
 
-            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-2xl px-3 py-2 focus-within:border-[#125852]/30 focus-within:bg-white transition-all">
-              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading || isSending} className="p-1.5 text-gray-400 hover:text-[#125852] rounded-full hover:bg-gray-100 transition-colors flex-shrink-0" title="Attach file">
-                <Paperclip size={18} />
+            <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-full px-3 py-1.5 focus-within:border-[#075E54]/30 focus-within:bg-white transition-all">
+              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading || isSending}
+                className="p-1 text-gray-400 hover:text-[#075E54] rounded-full" title="Attach file">
+                <Paperclip size={16} />
               </button>
 
               <button type="button" onClick={isRecording ? stopRecording : startRecording} disabled={isUploading || isSending}
-                className={`p-1.5 rounded-full transition-colors flex-shrink-0 ${
-                  isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-gray-400 hover:text-[#125852] hover:bg-gray-100'
-                }`} title={isRecording ? 'Stop recording' : 'Record voice'}>
-                <Mic size={18} />
+                className={`p-1 rounded-full transition-colors ${
+                  isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-gray-400 hover:text-[#075E54]'
+                }`} title={isRecording ? 'Stop' : 'Record voice'}>
+                <Mic size={16} />
               </button>
-              {isRecording && (
-                <span className="text-xs text-red-500 font-mono">{new Date(recordingTime * 1000).toISOString().substr(14, 5)}</span>
-              )}
+              {isRecording && <span className="text-[10px] text-red-500 font-mono">{new Date(recordingTime * 1000).toISOString().substr(14, 5)}</span>}
 
-              <button type="button" ref={emojiBtnRef} onClick={() => setShowEmojiPicker((prev) => !prev)} className="p-1.5 text-gray-400 hover:text-[#125852] rounded-full hover:bg-gray-100 transition-colors flex-shrink-0" title="Add emoji">
+              <button type="button" ref={emojiBtnRef} onClick={() => setShowEmojiPicker((prev) => !prev)}
+                className="p-1 text-gray-400 hover:text-[#075E54] rounded-full" title="Add emoji">
                 😀
               </button>
 
               <input ref={inputRef} type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown}
-                placeholder={`Reply to ${selectedBuyer.name}…`} className="flex-1 bg-transparent text-[13.5px] text-gray-700 placeholder-gray-400 outline-none" />
+                placeholder="Type a message" className="flex-1 bg-transparent text-xs text-gray-700 placeholder-gray-400 outline-none" />
 
               <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} accept="*/*" />
 
               <button type="button" onClick={handleSendMessage} disabled={(!inputValue.trim() && !attachmentFile) || isSending || isUploading}
-                className={`p-2 rounded-xl transition-all flex-shrink-0 ${
+                className={`p-1.5 rounded-full transition-all ${
                   (inputValue.trim() || attachmentFile) && !isSending && !isUploading
-                    ? 'bg-[#EFB034] text-white hover:bg-[#d4952c] shadow-sm'
+                    ? 'bg-[#075E54] text-white shadow-sm'
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 }`}>
-                {isSending || isUploading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                {isSending || isUploading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
               </button>
             </div>
           </div>
