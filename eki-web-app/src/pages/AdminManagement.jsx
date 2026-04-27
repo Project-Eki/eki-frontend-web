@@ -9,7 +9,7 @@ import {
   updateVendorStatus,
 } from "../services/api";
 import {
-  Store, Clock, TrendingUp, X, FileText, ExternalLink, AlertTriangle, Loader2, RefreshCw, Ban
+  Store, Clock, CheckCircle, X, FileText, ExternalLink, AlertTriangle, Loader2, RefreshCw, Ban
 } from "lucide-react";
 import api from "../services/api";
 
@@ -39,40 +39,18 @@ const normStatus = (s) => {
   return String(s).charAt(0).toUpperCase() + String(s).slice(1);
 };
 
-// Stat card with custom colors per card type
-const StatCard = ({ label, value, type }) => {
-  const icons = {
-    vendors: Store,
-    pending: Clock,
-    earners: TrendingUp,
-  };
-  const Icon = icons[type] || TrendingUp;
-
-  const getCardColors = () => {
-    switch (type) {
-      case 'vendors':
-        return { bg: 'bg-[#235E5D]', text: 'text-white' };
-      case 'pending':
-        return { bg: 'bg-[#EFB034]', text: 'text-white' };
-      case 'earners':
-        return { bg: 'bg-[#EFB034]', text: 'text-white' };
-      default:
-        return { bg: 'bg-[#235E5D]', text: 'text-white' };
-    }
-  };
-
-  const colors = getCardColors();
-
+// StatCard component - matching Dashboard UI
+const StatCard = ({ title, number, icon: Icon, iconBgColor = 'bg-[#235E5D]', iconColor = 'text-white' }) => {
   return (
-    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-3">
-      <div className={`p-2 rounded-xl ${colors.bg} shrink-0`}>
-        <Icon className={colors.text} size={18} />
-      </div>
+    <div className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-between border border-gray-100">
       <div>
-        <p className="text-gray-500 text-[10px] font-medium uppercase tracking-wider">{label}</p>
-        <h3 className={`text-xl font-bold mt-0.5 ${value === "—" ? "text-gray-300" : "text-gray-900"}`}>
-          {value}
+        <p className="text-sm text-gray-500 font-medium">{title}</p>
+        <h3 className={`text-3xl font-bold mt-1 ${number === "—" ? "text-gray-300" : "text-gray-900"}`}>
+          {number}
         </h3>
+      </div>
+      <div className={`p-3 rounded-xl ${iconBgColor} ${iconColor} flex items-center justify-center`}>
+        <Icon size={22} strokeWidth={1.8} />
       </div>
     </div>
   );
@@ -598,22 +576,28 @@ const AdminManagement = () => {
                   Refresh
                 </button>
               </div>
-              {/* Stats cards */}
+              {/* Stats cards - Updated to match dashboard UI */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <StatCard
-                  label="Total Vendors"
-                  value={stats.total}
-                  type="vendors"
+                <StatCard 
+                  title="Total Vendors" 
+                  number={stats.total} 
+                  icon={Store} 
+                  iconBgColor="bg-[#235E5D]" 
+                  iconColor="text-white" 
                 />
-                <StatCard
-                  label="Pending Verification"
-                  value={stats.pending}
-                  type="pending"
+                <StatCard 
+                  title="Pending Verification" 
+                  number={stats.pending} 
+                  icon={Clock} 
+                  iconBgColor="bg-[#EFB034]" 
+                  iconColor="text-white" 
                 />
-                <StatCard
-                  label="Vendors Approved"
-                  value={stats.approved}
-                  type="earners"
+                <StatCard 
+                  title="Vendors Approved" 
+                  number={stats.approved} 
+                  icon={CheckCircle} 
+                  iconBgColor="bg-[#EFB034]" 
+                  iconColor="text-white" 
                 />
               </div>
               {/* Vendor table */}
