@@ -378,12 +378,6 @@ export const submitVendorApplication = async (formData) => {
   return response.data;
 };
 
-// Get vendor profile - USE THE CORRECT ENDPOINT
-// export const getVendorProfile = async () => {
-//   // Try register-vendor endpoint first (GET returns the profile)
-//   const response = await api.get("/accounts/register-vendor/");
-//   return response.data.data; 
-// };
 
 // Alternative: Use the dedicated vendor/profile endpoint
 export const getVendorProfileAlt = async () => {
@@ -593,6 +587,46 @@ export const markNotificationRead = async (notificationId) => {
 };
 
 
+// BUYER MANAGEMENT — add these to api.js
+
+// GET /api/v1/accounts/admin/buyers/
+// Returns { data: { buyers: [...], summary: {...}, pagination: {...} } }
+// Supports ?status=active|pending|suspended  ?search=...  ?page=N
+export const getBuyers = async (filters = {}) => {
+  const response = await api.get("/accounts/admin/buyers/", { params: filters });
+  return response.data;
+};
+
+// POST /api/v1/accounts/admin/buyers/{id}/action/
+// Django's AdminBuyerActionSerializer accepts:
+//   action : "activate" | "deactivate" | "verify_email" | "reset_password" | "delete"
+//   reason : string (optional)
+//
+// UI status  →  Django action
+//  "active"      "activate"
+//  "suspended"   "deactivate"
+//  "terminated"  "delete"
+export const updateBuyerStatus = async (buyerId, uiStatus, reason = "") => {
+  const actionMap = {
+    active:     "activate",
+    suspended:  "deactivate",
+    terminated: "delete",
+    // pass-through if caller already uses Django's action strings
+    activate:   "activate",
+    deactivate: "deactivate",
+    delete:     "delete",
+  };
+
+  const action = actionMap[uiStatus] ?? uiStatus;
+  const payload = { action };
+  if (reason) payload.reason = reason;
+
+  const response = await api.post(
+    `/accounts/admin/buyers/${buyerId}/action/`,
+    payload
+  );
+  return response.data;
+};
 
 /*  PAYMENTS & TRANSACTIONS  */
 
@@ -693,5 +727,59 @@ export const getAdminSettings = async () => {
 // Update admin settings
 export const updateAdminSettings = async (data) => {
   const response = await api.patch("/accounts/admin/settings/", data);
+  return response.data;
+};
+
+// ============================================
+// PRIVACY SETTINGS API FUNCTIONS
+// ============================================
+
+// 1. GET /api/v1/accounts/privacy-settings/ - Fetch all settings on page load
+export const getPrivacySettings = async () => {
+  const response = await api.get('/accounts/privacy-settings/');
+  return response.data;
+};
+
+// 2. PATCH /api/v1/accounts/privacy-settings/ - Update individual settings (for toggles)
+export const updatePrivacySettings = async (settings) => {
+  const response = await api.patch('/accounts/privacy-settings/', settings);
+  return response.data;
+};
+
+// 3. POST /api/v1/accounts/accept-terms/ - Accept Terms of Service
+export const acceptTerms = async (termsVersion) => {
+  const response = await api.post('/accounts/accept-terms/', {
+    terms_version: termsVersion,
+    accepted: true
+  });
+  return response.data;
+};
+
+// 4. POST /api/v1/accounts/accept-data-processing/ - Accept Data Processing Agreement
+export const acceptDataProcessing = async (agreementVersion) => {
+  const response = await api.post('/accounts/accept-data-processing/', {
+    agreement_version: agreementVersion,
+    accepted: true
+  });
+  return response.data;
+};
+
+// 5. GET /api/v1/accounts/export-data/ - Export user data (GDPR)
+export const exportUserData = async () => {
+  const response = await api.get('/accounts/export-data/', {
+    responseType: 'blob' // For file download
+  });
+  return response.data;
+};
+
+// 6. DELETE /api/v1/accounts/delete-data/ - Request account deletion (GDPR)
+export const deleteUserData = async () => {
+  const response = await api.delete('/accounts/delete-data/');
+  return response.data;
+};
+
+// 7. POST /api/v1/accounts/withdraw-consent/ - Withdraw specific consents
+export const withdrawConsent = async (consentTypes) => {
+  const response = await api.post('/accounts/withdraw-consent/', consentTypes);
   return response.data;
 };

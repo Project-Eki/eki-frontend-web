@@ -35,7 +35,7 @@ const Hero = () => {
             </p>
             
             <div className="flex justify-center lg:justify-start">
-              <Link to="/VendorOnboarding">
+              <Link to="/signup">
                 <button className="bg-[#efb034] text-white px-8 py-3 rounded-xl font-bold text-lg transition-all duration-300 hover:bg-[#d99c1c] hover:-translate-y-1 hover:shadow-lg">
                   {t('hero.button')}
                 </button>

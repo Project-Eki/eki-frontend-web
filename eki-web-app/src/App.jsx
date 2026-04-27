@@ -26,6 +26,7 @@ import OrderManagement from "./pages/OrderManagement";
 import PaymentSystem from "./pages/PaymentSystem";
 import PaymentAndPayout from "./pages/PaymentAndPayout";
 import BusinessSettings from "./pages/BusinessSettings";
+import PrivacySettings from "./pages/PrivacySettings";
 import VendorReviews from "./pages/VendorReview";
 import Demo from "./pages/Demo";
 import VendorChat from "./pages/VendorChatpage";     
@@ -87,7 +88,7 @@ function App() {
           <Route path="/admin-login" element={<AdminSignin />} />
           {/* Vendor Onboarding */}
           <Route
-            path="/VendorOnboarding"
+            path="/signup"
             element={
               <VendorOnboardingProvider>
                 <VendorOnboarding />
@@ -155,6 +156,18 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route
+            path="/privacy-settings"
+            element={
+              <ProtectedRoute allowedRole="vendor">
+                <VendorLayout>
+                  <PrivacySettings />
+                </VendorLayout>
+              </ProtectedRoute>
+            }
+          />
+
           {/* Protected Admin Routes */}
           <Route
             path="/admindashboard"
