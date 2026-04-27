@@ -17,6 +17,10 @@ import AdminDashboard from "./pages/AdminDashboard";
 import VendorDashboard from "./pages/VendorDashboard";
 import ServiceManagement from "./pages/ServiceManagement";
 import AdminManagement from "./pages/AdminManagement";
+import AdminBuyerManagement from "./pages/AdminBuyerManagement";
+import AdminProductsManagement from "./pages/AdminProductsManagement";
+import AdminServicesManagement from "./pages/AdminServicesManagement";
+import AdminOrdersManagement from "./pages/AdminOrdersManagement";
 import ProductDashboard from "./pages/ProductDashboard";
 import OrderManagement from "./pages/OrderManagement";
 import PaymentSystem from "./pages/PaymentSystem";
@@ -24,15 +28,17 @@ import PaymentAndPayout from "./pages/PaymentAndPayout";
 import BusinessSettings from "./pages/BusinessSettings";
 import VendorReviews from "./pages/VendorReview";
 import Demo from "./pages/Demo";
-import VendorChat from "./pages/vendorchat";   
+import VendorChat from "./pages/VendorChatpage";     
 import AdminTransactions from "./pages/AdminTransactions";
 import AdminWalletTransactions from "./pages/AdminWalletTransactions";
 import AdminWithdrawals from "./pages/AdminWithdrawals";
+
 
 // --- THE OTP IMPORT ---
 import OtpVerify from "./pages/otp";
 
 import "./App.css";
+
 
 // --- PROTECTED ROUTE — reads directly from localStorage as fallback ---
 const ProtectedRoute = ({ children, allowedRole }) => {
@@ -161,6 +167,35 @@ function App() {
             }
           />
 
+           <Route
+            path="/admin-buyer-management"
+            element={
+              <ProtectedRoute allowedRole="admin">
+                <AdminBuyerManagement />
+              </ProtectedRoute>
+            }
+          />
+
+          
+           <Route
+            path="/admin-products-management"
+            element={
+              <ProtectedRoute allowedRole="admin">
+                <AdminProductsManagement />
+              </ProtectedRoute>
+            }
+          />
+
+          
+           <Route
+            path="/admin-services-management"
+            element={
+              <ProtectedRoute allowedRole="admin">
+                <AdminServicesManagement />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/admin-payments"
             element={
@@ -193,6 +228,16 @@ function App() {
             element={
               <ProtectedRoute allowedRole="admin">
                 <AdminWithdrawals />
+              </ProtectedRoute>
+            }
+          />
+
+          
+          <Route
+            path="/admin-orders-management"
+            element={
+              <ProtectedRoute allowedRole="admin">
+                <AdminOrdersManagement />
               </ProtectedRoute>
             }
           />

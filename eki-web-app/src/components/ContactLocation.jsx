@@ -1,9 +1,7 @@
 import React, { useState } from "react";
 import { HiOutlineLocationMarker, HiOutlinePhone } from "react-icons/hi";
 import {
-  HiOutlineBuildingOffice,
   HiOutlineMapPin,
-  HiOutlineHome,
   HiOutlineClock,
   HiPlus,
 } from "react-icons/hi2";
@@ -12,8 +10,10 @@ import "react-phone-number-input/style.css";
 import { validateContactLocation } from "../utils/onboardingValidation";
 import { useOnboarding, ACTIONS } from "../context/vendorOnboardingContext";
 import SearchableCountrySelector from "./SearchableCountrySelector";
+import SearchableCitySelector from "./SearchableCitySelector";
 import BranchModal from "./BranchModal";
 import BranchCard from "./BranchCard";
+import AddressAutocomplete from "./AddressAutocomplete";
 
 // Inline error component
 const InlineError = ({ message }) => (
@@ -33,6 +33,7 @@ const ContactLocation = () => {
   const [branchForm, setBranchForm] = useState({
     address: "",
     city: "",
+    country: "", // Added country field
     phone: "",
     hours: "",
     landmark: "",
@@ -57,18 +58,25 @@ const ContactLocation = () => {
     setErrors(validationErrors);
   };
 
-  // FIXED: Remove spaces from phone number immediately
   const handlePhoneChange = (value) => {
-    // Remove ALL spaces from the phone number before saving to state
     const cleanValue = value ? value.replace(/\s/g, "") : "";
     handleChange("business_phone", cleanValue);
   };
 
-  // Branch Locations Management
+  const handleAddressParsed = ({ city, zip }) => {
+    if (city && !formData.city) {
+      dispatch({ type: ACTIONS.UPDATE_FORM, payload: { city: city } });
+    }
+    if (zip && !formData.zip_code) {
+      dispatch({ type: ACTIONS.UPDATE_FORM, payload: { zip_code: zip } });
+    }
+  };
+
   const handleAddBranch = () => {
     const newBranch = {
       address: branchForm.address,
       city: branchForm.city,
+      country: branchForm.country || formData.country, // Include country, fallback to main country
       phone: branchForm.phone || "",
       hours: branchForm.hours || "",
       landmark: branchForm.landmark || "",
@@ -92,6 +100,7 @@ const ContactLocation = () => {
     setBranchForm({
       address: branch.address || "",
       city: branch.city || "",
+      country: branch.country || "", // Added country field
       phone: branch.phone || "",
       hours: branch.hours || "",
       landmark: branch.landmark || "",
@@ -111,6 +120,7 @@ const ContactLocation = () => {
     setBranchForm({
       address: "",
       city: "",
+      country: "", // Added country field
       phone: "",
       hours: "",
       landmark: "",
@@ -125,6 +135,7 @@ const ContactLocation = () => {
       business_phone: true,
       country: true,
       city: true,
+      address: true,
       opening_time: true,
       closing_time: true,
     });
@@ -191,51 +202,23 @@ const ContactLocation = () => {
           />
         </div>
 
-        {/* City */}
-        <div className="flex flex-col">
-          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
-            City <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <HiOutlineBuildingOffice
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"
-              size={12}
-            />
-            <input
-              type="text"
-              value={formData.city || ""}
-              onChange={(e) => handleChange("city", e.target.value)}
-              onBlur={() => handleBlur("city")}
-              placeholder="e.g. Kampala"
-              className={`w-full h-8 pl-9 pr-3 bg-white border rounded-xl focus:outline-none text-[11px] ${
-                showError("city")
-                  ? "border-red-400 placeholder:text-gray-400"
-                  : "border-gray-200 placeholder:text-gray-400"
-              }`}
-            />
-            {showError("city") && <InlineError message={errors.city} />}
-          </div>
-        </div>
+        {/* City — sits beside Street Address */}
+        <SearchableCitySelector
+          countryCode={formData.country}
+          value={formData.city || ""}
+          onChange={(val) => handleChange("city", val)}
+          error={showError("city") ? errors.city : ""}
+        />
 
-        {/* Street Address */}
-        <div className="flex flex-col">
-          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
-             Address{" "}
-            <span className="text-gray-400 text-[9px]">(Optional)</span>
-          </label>
-          <div className="relative">
-            <HiOutlineHome
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"
-              size={12}
-            />
-            <input
-              type="text"
-              value={formData.address || ""}
-              onChange={(e) => handleChange("address", e.target.value)}
-              placeholder="123 Business Way, Suite 4"
-              className="w-full h-8 pl-9 pr-3 bg-white border border-gray-200 rounded-xl focus:outline-none text-[11px] focus:border-[#F2B53D] placeholder:text-gray-400"
-            />
-          </div>
+        {/* Street Address — now a single column (sits beside City) */}
+        <div className="flex flex-col" data-field="address">
+          <AddressAutocomplete
+            value={formData.address || ""}
+            onChange={(val) => handleChange("address", val)}
+            onAddressParsed={handleAddressParsed}
+            onBlur={() => handleBlur("address")}
+            error={showError("address") ? errors.address : null}
+          />
         </div>
 
         {/* Landmark */}
@@ -280,7 +263,7 @@ const ContactLocation = () => {
           </div>
         </div>
 
-        {/* Row with Zip Code and Branch Locations on same row */}
+        {/* Zip/Postal Code */}
         <div className="flex flex-col">
           <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
             Zip/Postal Code{" "}
@@ -297,24 +280,12 @@ const ContactLocation = () => {
           </div>
         </div>
 
-        {/* Branch Locations with Add Button - Same row as Zip Code */}
+        {/* Branch Locations with Add Button INSIDE the input field */}
         <div className="flex flex-col">
-          <div className="flex items-center justify-between mb-0.5">
-            <label className="text-[10px] font-semibold text-gray-700 ml-1">
-              Branch Locations{" "}
-              <span className="text-gray-400 text-[9px]">(Optional)</span>
-            </label>
-            <button
-              type="button"
-              onClick={() => {
-                resetBranchForm();
-                setShowBranchModal(true);
-              }}
-              className="flex items-center gap-1 px-2 py-0.5 bg-[#FFF8ED] text-[#F2B53D] rounded-md text-[8px] font-semibold hover:bg-[#F2B53D]/10 transition-all"
-            >
-              <HiPlus size={8} /> Add Branch
-            </button>
-          </div>
+          <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
+            Branch Locations{" "}
+            <span className="text-gray-400 text-[9px]">(Optional)</span>
+          </label>
           <div className="relative">
             <input
               type="text"
@@ -325,8 +296,18 @@ const ContactLocation = () => {
               }
               placeholder="No branches added"
               readOnly
-              className="w-full h-8 pl-3 pr-3 bg-gray-50 border border-gray-200 rounded-xl text-[11px] text-gray-600 cursor-default"
+              className="w-full h-8 pl-3 pr-16 bg-gray-50 border border-gray-200 rounded-xl text-[11px] text-gray-600 cursor-default"
             />
+            <button
+              type="button"
+              onClick={() => {
+                resetBranchForm();
+                setShowBranchModal(true);
+              }}
+              className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1 px-2 py-0.5 bg-[#FFF8ED] text-[#F2B53D] rounded-md text-[8px] font-semibold hover:bg-[#F2B53D]/10 transition-all z-10"
+            >
+              <HiPlus size={8} /> Add Branch
+            </button>
           </div>
         </div>
 

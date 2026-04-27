@@ -440,13 +440,9 @@ export const getVendorOrders = async ({ status = '', search = '' } = {}) => {
 };
 
 // ─── Unified Vendor Action Endpoint ──────────────────────────────────────────
-// POST /api/v1/orders/vendor/action/{order_id}/
-// Handles: ready_for_pickup, start_service, complete_service,
-//          confirm_onsite, resend_code, update_tracking, mark_fulfilled, update_status
 const vendorOrderAction = async (orderId, action, extraPayload = {}) => {
   const payload = { action, ...extraPayload };
 
-  // ── DEBUG: log exactly what we send and what the server returns ─────────────
   console.group(`[vendorOrderAction] ${action} on order ${orderId}`);
   console.log('REQUEST payload:', JSON.stringify(payload, null, 2));
 
@@ -465,7 +461,6 @@ const vendorOrderAction = async (orderId, action, extraPayload = {}) => {
 };
 
 // ─── Order Actions (all via unified endpoint) ────────────────────────────────
-// confirm_onsite requires confirmation_code (vendor's own code to verify buyer is present)
 export const confirmVendorOrder = (orderId, confirmationCode, notes = '') =>
   vendorOrderAction(orderId, 'confirm_onsite', {
     confirmation_code: confirmationCode,
@@ -610,6 +605,11 @@ const normalizeImage = (img) => {
   return { ...img, image: getImageUrl(imageUrl) };
 };
 
+// ─── FIX: normalizeListing now reads reserved/ordered quantities from the API
+//     response and exposes them so the form can compute available stock correctly.
+//     Fields checked (in priority order):
+//       reserved_stock, reserved, ordered_quantity, pending_quantity,
+//       detail.reserved_stock, detail.reserved, detail.ordered_quantity
 const normalizeListing = (item) => {
   const salesStatus = item.sales_status || item.detail?.sales_status || {};
   const discountEnabled = salesStatus?.on_sale === true;
@@ -618,6 +618,7 @@ const normalizeListing = (item) => {
 
   const normalizedVariants = (item.variants ?? item.detail?.variants ?? []).map((v) => ({
     ...v,
+    // FIX: preserve exact stock from each variant — do not default to 0
     stock: v.stock ?? v.quantity ?? v.stock_quantity ?? v.detail?.stock ?? 0,
   }));
 
@@ -630,12 +631,39 @@ const normalizeListing = (item) => {
 
   const normalizedImages = imagesArray.map(normalizeImage).filter(Boolean);
 
+  // ── FIX: capture reserved/ordered quantity from any field the API may use ──
+  const reservedStock =
+    item.reserved_stock ??
+    item.reserved ??
+    item.ordered_quantity ??
+    item.pending_quantity ??
+    item.detail?.reserved_stock ??
+    item.detail?.reserved ??
+    item.detail?.ordered_quantity ??
+    0;
+
+  // Raw total stock from API
+  const rawStock =
+    item.detail?.stock ??
+    item.stock ??
+    item.stock_quantity ??
+    item.quantity ??
+    0;
+
+  // Available stock = total - reserved, floored at 0
+  const availableStock = Math.max(0, Number(rawStock) - Number(reservedStock));
+
   return {
     ...item,
     id: item.id,
     is_published: item.is_published === true || item.status === 'published',
     sku: item.detail?.sku ?? item.sku ?? '',
-    stock: item.detail?.stock ?? item.stock ?? item.stock_quantity ?? item.quantity ?? 0,
+    // FIX: expose AVAILABLE stock (total minus reserved) so the form and card
+    //      display the real purchasable quantity, preventing false "insufficient stock"
+    stock: availableStock,
+    // Keep raw stock and reserved separately for audit/display in the form
+    raw_stock: Number(rawStock),
+    reserved_stock: Number(reservedStock),
     variants: normalizedVariants,
     branch_location: item.branch_location ?? item.detail?.branch_location ?? '',
     discount_enabled: discountEnabled,
@@ -672,11 +700,14 @@ export const createProductListing = async (productData) => {
     const colors = Array.isArray(productData.colors) ? productData.colors.filter(Boolean) : [];
     if (variants.length === 0) {
       if (sizes.length > 0 && colors.length > 0) {
-        sizes.forEach((size) => colors.forEach((color) => variants.push({ color, size, stock: 0 })));
+        // FIX: pass real stockQty into each generated variant instead of hardcoded 0
+        sizes.forEach((size) => colors.forEach((color) => variants.push({ color, size, stock: stockQty })));
       } else if (sizes.length > 0) {
-        sizes.forEach((size) => variants.push({ color: '', size, stock: 0 }));
+        // FIX: pass real stockQty into each generated variant instead of hardcoded 0
+        sizes.forEach((size) => variants.push({ color: '', size, stock: stockQty }));
       } else {
-        colors.forEach((color) => variants.push({ color, size: '', stock: 0 }));
+        // FIX: pass real stockQty into each generated variant instead of hardcoded 0
+        colors.forEach((color) => variants.push({ color, size: '', stock: stockQty }));
       }
     }
   }
@@ -726,10 +757,13 @@ export const updateProductListing = async (listingId, productData) => {
     const colors = Array.isArray(productData.colors) ? productData.colors.filter(Boolean) : [];
     if (variants.length === 0) {
       if (sizes.length > 0 && colors.length > 0) {
+        // FIX: pass real stockQty into each generated variant instead of hardcoded 0
         sizes.forEach((size) => colors.forEach((color) => variants.push({ color, size, stock: stockQty })));
       } else if (sizes.length > 0) {
+        // FIX: pass real stockQty into each generated variant instead of hardcoded 0
         sizes.forEach((size) => variants.push({ color: '', size, stock: stockQty }));
       } else {
+        // FIX: pass real stockQty into each generated variant instead of hardcoded 0
         colors.forEach((color) => variants.push({ color, size: '', stock: stockQty }));
       }
     }
@@ -813,5 +847,104 @@ export const updateProductVariant = (listingId, variantId, data) =>
 
 export const deleteProductVariant = (listingId, variantId) =>
   api.delete(`/listings/${listingId}/variants/${variantId}/`).then((r) => r.data);
+
+// ─── Chat API (aligned with actual backend logic) ─────────────────────────
+
+// Start or get a conversation for an existing ORDER
+export const startChatConversation = (orderId) =>
+  api.post('/chat/conversation/start/', { order_id: orderId })
+    .then(r => r.data);   // Returns ConversationSerializer data
+
+// Get all conversations (vendor inbox)
+export const getChatConversations = () =>
+  api.get('/chat/conversations/').then(r => {
+    const list = r.data ?? [];  // Already an array from view
+    return (Array.isArray(list) ? list : []).map(c => ({
+      ...c,
+      // Unread count is already added by the backend as c._unread_count
+      unread_count: c._unread_count || c.unread_count || 0,
+    }));
+  });
+
+// Get a single conversation with messages (chat window)
+export const getChatConversation = (conversationId, limit = 50, offset = 0) =>
+  api.get(`/chat/conversations/${conversationId}/`, {
+    params: { limit, offset },
+  }).then(r => {
+    const data = r.data;
+    // The backend returns messages in reverse chronological order;
+    // reverse them so the chat displays oldest first.
+    const messages = (data.messages || []).slice().reverse();
+    return { ...data, messages };
+  });
+
+// Mark whole conversation as read
+export const markChatConversationRead = (conversationId) =>
+  api.post(`/chat/conversations/${conversationId}/read/`)
+    .then(r => r.data);
+
+// Send a message (supports text, image, file, location, voice)
+export const sendChatMessage = (conversationId, messageData) => {
+  // messageData shape depends on type:
+  // - text:  { message_type: 'text', message: 'hello' }
+  // - image: { message_type: 'image', media_url: '...', file_name: '...', file_size: ... }
+  // - file:  { message_type: 'file', media_url: '...', file_name: '...', file_size: ..., mime_type: '...' }
+  // - voice: { message_type: 'voice', voice_url: '...', voice_duration: ... }
+  // - location: { message_type: 'location', latitude: ..., longitude: ..., location_name: ..., location_address: ... }
+  // You can also attach reply_to_id if replying.
+  return api.post(`/chat/conversations/${conversationId}/send/`, messageData)
+    .then(r => r.data);
+};
+
+// Delete a message (only sender can delete; soft delete)
+export const deleteChatMessage = (messageId) =>
+  api.delete(`/chat/messages/${messageId}/delete/`)
+    .then(r => r.data);
+
+// Mark messages as delivered
+export const markChatMessagesDelivered = (messageIds) =>
+  api.post('/chat/messages/delivered/', {
+    message_ids: Array.isArray(messageIds) ? messageIds : [messageIds],
+  }).then(r => r.data);
+
+// Share location (creates a message immediately)
+export const shareChatLocation = (conversationId, latitude, longitude,
+  locationName = '', locationAddress = '') =>
+  api.post('/chat/share-location/', {
+    conversation_id: conversationId,
+    latitude,
+    longitude,
+    location_name: locationName,
+    location_address: locationAddress,
+  }).then(r => r.data);
+
+// Send a voice note (creates a message immediately)
+export const sendVoiceNote = (conversationId, voiceUrl, duration) =>
+  api.post('/chat/voice-note/', {
+    conversation_id: conversationId,
+    voice_url: voiceUrl,
+    duration,
+  }).then(r => r.data);
+
+// Typing indicator
+export const sendChatTyping = (conversationId, isTyping) =>
+  api.post('/chat/typing/', {
+    conversation_id: conversationId,
+    is_typing: isTyping,
+  }).then(r => r.data);
+
+// Get total unread count for the logged-in vendor
+export const getUnreadChatCount = () =>
+  api.get('/chat/unread-count/').then(r => r.data.unread_count ?? 0);
+
+// Upload a file (image, document, voice) and get back a URL
+export const uploadChatFile = (file, fileType = 'image') => {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('file_type', fileType);   // 'image', 'voice', or 'file'
+  return api.post('/chat/upload/', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then(r => r.data);  // { success, file_url, file_name, file_size, mime_type }
+};
 
 export default api;

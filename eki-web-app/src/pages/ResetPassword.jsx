@@ -18,6 +18,7 @@ const ResetPasswordPage = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [redirectCountdown, setRedirectCountdown] = useState(60);
 
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -33,6 +34,17 @@ const ResetPasswordPage = () => {
       document.documentElement.style.overflow = '';
     };
   }, []);
+
+  // 60-second countdown before auto-redirect after success
+  useEffect(() => {
+    if (!isSuccess) return;
+    if (redirectCountdown <= 0) {
+      navigate('/login');
+      return;
+    }
+    const timer = setInterval(() => setRedirectCountdown(prev => prev - 1), 1000);
+    return () => clearInterval(timer);
+  }, [isSuccess, redirectCountdown, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -61,7 +73,6 @@ const ResetPasswordPage = () => {
     try {
       await passwordResetConfirm(payload);
       setIsSuccess(true);
-      setTimeout(() => navigate('/login'), 3000);
     } catch (err) {
       const djangoErrors = err.response?.data?.errors ?? err.response?.data;
       if (djangoErrors && typeof djangoErrors === 'object') {
@@ -112,11 +123,18 @@ const ResetPasswordPage = () => {
                     Success!
                   </h2>
                   <p
-                    className="text-sm text-gray-600"
+                    className="text-sm text-gray-600 mb-3"
                     style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 400 }}
                   >
-                    Password reset successfully. Redirecting you to login...
+                    Password reset successfully. You will be redirected to login in{' '}
+                    <span className="font-semibold text-emerald-700">{redirectCountdown}s</span>.
                   </p>
+                  <div className="w-full bg-emerald-100 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="bg-emerald-500 h-1.5 rounded-full transition-all duration-1000"
+                      style={{ width: `${(redirectCountdown / 60) * 100}%` }}
+                    />
+                  </div>
                 </div>
                 <Link
                   to="/login"

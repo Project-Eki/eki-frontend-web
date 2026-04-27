@@ -1,3 +1,4 @@
+import React from "react";
 import { useOnboarding } from "../context/vendorOnboardingContext";
 import { ACTIONS } from "../context/vendorOnboardingContext";
 import AccountBasics from "../components/AccountBasics";
@@ -39,6 +40,13 @@ const VendorOnboarding = () => {
     }
   };
 
+  const handleSidebarClick = (stepIndex) => {
+    const stepNumber = stepIndex + 1;
+    if ([3, 4, 5, 6].includes(stepNumber)) {
+      dispatch({ type: ACTIONS.SET_STEP, payload: stepNumber });
+    }
+  };
+
   const steps = [
     { title: "Account Basics", subtitle: "Personal information & credentials" },
     { title: "Verify Email", subtitle: "Confirm your email address" },
@@ -49,8 +57,8 @@ const VendorOnboarding = () => {
   ];
 
   return (
-    <div className="h-screen w-full overflow-hidden flex flex-col bg-[#ecece7] font-sans">
-
+    <div className="h-screen w-full flex flex-col bg-[#ecece7] font-sans overflow-hidden">
+      
       {/* MOBILE TOP PROGRESS BAR */}
       <div className="md:hidden w-full bg-[#125852] px-4 py-3 shadow-lg flex flex-col gap-2 shrink-0">
         <div className="flex items-center justify-between">
@@ -78,30 +86,22 @@ const VendorOnboarding = () => {
           ))}
         </div>
         <p className="text-white/70 text-[10px] font-medium">
-          Step {currentStep} of 6 —{" "}
-          <span className="text-white font-semibold">{steps[currentStep - 1]?.title}</span>
+          Step {currentStep} of {steps.length}
         </p>
       </div>
 
-      {/* BODY ROW: sidebar + main */}
-      <div className="flex flex-1 min-h-0 p-3 gap-3">
+      {/* BODY ROW: Added pl-8 to create space on the left of the sidebar */}
+      <div className="flex flex-1 min-h-0 p-3 pl-8 gap-6 overflow-hidden">
 
-        {/* SIDEBAR - Increased width */}
+        {/* SIDEBAR */}
         <aside
-          className="
-            hidden
-            md:flex md:flex-col
-            md:w-[260px] lg:w-[300px]
-            shrink-0 rounded-[16px]
-            overflow-hidden
-          "
+          className="hidden md:flex md:flex-col md:w-[260px] lg:w-[300px] shrink-0 rounded-[16px] overflow-hidden"
           style={{
             background: "linear-gradient(160deg, #125852 0%, #0e4440 40%, #0b3330 100%)",
             boxShadow: "0px 4px 9px rgba(23,26,31,0.11), 0px 0px 2px rgba(23,26,31,0.12)",
           }}
         >
-          {/* Logo */}
-          <div className="flex justify-center items-center pt-6 pb-5 px-4 shrink-0">
+          <div className="flex justify-center items-center pt-6 pb-4 px-4 shrink-0">
             <img
               src={ekiLogo}
               alt="Eki Logo"
@@ -109,37 +109,41 @@ const VendorOnboarding = () => {
             />
           </div>
 
-          {/* Steps container */}
-          <div className="relative flex flex-col flex-1 overflow-y-auto px-4 pb-6">
-            {/* Connector line - properly aligned from first to last circle center */}
-            <div
-              className="absolute w-px bg-white/30 z-0"
-              style={{ 
-                left: "28px", // Center of circle (px-4 = 16px + half of w-6 circle = 12px = 28px)
-                top: "60px",  // Adjusted for smaller card height
-                bottom: "60px" // Adjusted for smaller card height
-              }}
-            />
-            
-            {/* Added gap-4 between steps */}
-            <div className="flex flex-col gap-4">
-              {steps.map((step, i) => (
-                <StepCard
-                  key={step.title}
-                  title={step.title}
-                  subtitle={step.subtitle}
-                  isActive={currentStep === i + 1}
-                  isCompleted={currentStep > i + 1}
-                  isFirst={i === 0}
-                  isLast={i === steps.length - 1}
-                />
-              ))}
+          <div className="relative flex flex-col flex-1 px-4 pb-6 overflow-hidden">
+          
+            <div className="relative flex flex-col gap-6">
+              
+              <div
+                className="absolute w-px bg-white/30"
+                style={{
+                  left: "21px",   // Adjusted for px-2.5 padding
+                  top: "16px",    // Starts center of first compact card
+                  bottom: "16px", // Ends center of last compact card
+                  zIndex: 0
+                }}
+              />
+
+              {steps.map((step, i) => {
+                const stepNum = i + 1;
+                const isNavigable = [3, 4, 5, 6].includes(stepNum);
+                
+                return (
+                  <StepCard
+                    key={step.title}
+                    title={step.title}
+                    subtitle={step.subtitle}
+                    isActive={currentStep === stepNum}
+                    isCompleted={currentStep > stepNum}
+                    onClick={isNavigable ? () => handleSidebarClick(i) : undefined}
+                  />
+                );
+              })}
             </div>
           </div>
         </aside>
 
         {/* MAIN CONTENT */}
-        <main className="flex-1 min-h-0 flex flex-col items-center overflow-y-auto px-2 md:px-4 lg:px-8 py-2">
+        <main className="flex-1 flex flex-col items-center overflow-y-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3">
           <div
             className={`w-full transition-all duration-300 ${
               currentStep >= 3 ? "max-w-[900px]" : "max-w-[600px]"
@@ -149,14 +153,12 @@ const VendorOnboarding = () => {
               <OnboardingSuccess />
             ) : (
               <>
-                {/* Step badge */}
                 <div className="mb-4 mt-2">
                   <span className="bg-[#FFF8ED] text-[#F2B53D] px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase border border-[#F2B53D]/20">
                     Step {currentStep} of 6
                   </span>
                 </div>
 
-                {/* Card */}
                 <div
                   className="w-full rounded-[16px] border border-white/30 p-5 md:p-6 backdrop-blur-md animate-slideUp"
                   style={{
@@ -187,50 +189,12 @@ const VendorOnboarding = () => {
                     </div>
                   )}
 
-                  {currentStep === 1 && (
-                    <AccountBasics
-                      formData={formData}
-                      updateFormData={handleUpdate}
-                      onNext={handleNextStep}
-                    />
-                  )}
-                  {currentStep === 2 && (
-                    <VerifyEmail
-                      formData={formData}
-                      onNext={handleNextStep}
-                      onBack={handleBackStep}
-                    />
-                  )}
-                  {currentStep === 3 && (
-                    <BusinessIdentity
-                      formData={formData}
-                      updateFormData={handleUpdate}
-                      onNext={handleNextStep}
-                      onBack={handleBackStep}
-                    />
-                  )}
-                  {currentStep === 4 && (
-                    <ContactLocation
-                      formData={formData}
-                      updateFormData={handleUpdate}
-                      onNext={handleNextStep}
-                      onBack={() => dispatch({ type: ACTIONS.SET_STEP, payload: 3 })}
-                    />
-                  )}
-                  {currentStep === 5 && (
-                    <OperationCompliance
-                      formData={formData}
-                      updateFormData={handleUpdate}
-                      onBack={() => dispatch({ type: ACTIONS.SET_STEP, payload: 4 })}
-                    />
-                  )}
-                  {currentStep === 6 && (
-                    <ReviewAndSubmit
-                      formData={formData}
-                      onBack={() => dispatch({ type: ACTIONS.SET_STEP, payload: 5 })}
-                      onSubmitSuccess={() => dispatch({ type: ACTIONS.SET_STEP, payload: 7 })}
-                    />
-                  )}
+                  {currentStep === 1 && <AccountBasics formData={formData} updateFormData={handleUpdate} onNext={handleNextStep} />}
+                  {currentStep === 2 && <VerifyEmail formData={formData} onNext={handleNextStep} onBack={handleBackStep} />}
+                  {currentStep === 3 && <BusinessIdentity formData={formData} updateFormData={handleUpdate} onNext={handleNextStep} onBack={handleBackStep} />}
+                  {currentStep === 4 && <ContactLocation formData={formData} updateFormData={handleUpdate} onNext={handleNextStep} onBack={() => dispatch({ type: ACTIONS.SET_STEP, payload: 3 })} />}
+                  {currentStep === 5 && <OperationCompliance formData={formData} updateFormData={handleUpdate} onBack={() => dispatch({ type: ACTIONS.SET_STEP, payload: 4 })} />}
+                  {currentStep === 6 && <ReviewAndSubmit formData={formData} onBack={() => dispatch({ type: ACTIONS.SET_STEP, payload: 5 })} onSubmitSuccess={() => dispatch({ type: ACTIONS.SET_STEP, payload: 7 })} />}
                 </div>
               </>
             )}
@@ -238,9 +202,8 @@ const VendorOnboarding = () => {
         </main>
       </div>
 
-      {/* Footer */}
       <Footer />
-
+      
       {process.env.NODE_ENV === "development" && (
         <div className="fixed bottom-4 right-4 bg-black/80 p-4 rounded-2xl flex gap-2 z-50">
           <p className="text-white text-xs self-center mr-2">Dev:</p>
@@ -259,18 +222,19 @@ const VendorOnboarding = () => {
   );
 };
 
-/* STEP CARD - Reduced height with better spacing */
-const StepCard = ({ title, subtitle, isActive, isCompleted, isFirst, isLast }) => (
+/* STEP CARD - Decreased padding (py-1) to reduce height */
+const StepCard = ({ title, subtitle, isActive, isCompleted, onClick }) => (
   <div
+    onClick={onClick}
     className={`
-      flex items-center gap-3 px-3 py-2 rounded-[10px] transition-all relative z-10 w-full
+      flex items-center gap-3 px-2.5 py-1 rounded-[10px] transition-all relative z-10 w-full
+      ${onClick ? "cursor-pointer hover:bg-white/10" : "cursor-default"}
       ${isActive
         ? "bg-white shadow-lg"
         : "bg-white/40 backdrop-blur-md border border-white/40 shadow-md"
       }
     `}
   >
-    {/* Smaller circle for reduced height */}
     <div
       className={`
         w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center
@@ -283,9 +247,8 @@ const StepCard = ({ title, subtitle, isActive, isCompleted, isFirst, isLast }) =
       {isCompleted && <HiCheck className="text-[#235E5D]" size={10} />}
     </div>
 
-    {/* Compact text area */}
     <div className="flex-1 min-w-0">
-      <p className={`font-semibold text-[11px] lg:text-[12px] truncate leading-tight ${isActive || isCompleted ? "text-gray-800" : "text-gray-700"}`}>
+      <p className={`font-semibold text-[11px] lg:text-[11px] truncate leading-tight ${isActive || isCompleted ? "text-gray-800" : "text-gray-700"}`}>
         {title}
       </p>
       <p className={`text-[9px] lg:text-[10px] truncate leading-tight ${isActive || isCompleted ? "text-gray-600" : "text-gray-600/80"}`}>

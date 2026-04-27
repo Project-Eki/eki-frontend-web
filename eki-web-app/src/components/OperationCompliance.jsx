@@ -396,7 +396,7 @@ const OperationCompliance = () => {
         </div>
         <div>
           <h3 className="font-bold text-[12px] text-gray-800">Operations & Compliance</h3>
-          <p className="text-[8px] text-gray-500">Upload documents. Must be current & legible.</p>
+          <p className="text-[8px] text-gray-500">Upload documents for vendor verification. Ensure they are current and legible.</p>
         </div>
       </div>
 
