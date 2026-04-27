@@ -587,6 +587,46 @@ export const markNotificationRead = async (notificationId) => {
 };
 
 
+// BUYER MANAGEMENT — add these to api.js
+
+// GET /api/v1/accounts/admin/buyers/
+// Returns { data: { buyers: [...], summary: {...}, pagination: {...} } }
+// Supports ?status=active|pending|suspended  ?search=...  ?page=N
+export const getBuyers = async (filters = {}) => {
+  const response = await api.get("/accounts/admin/buyers/", { params: filters });
+  return response.data;
+};
+
+// POST /api/v1/accounts/admin/buyers/{id}/action/
+// Django's AdminBuyerActionSerializer accepts:
+//   action : "activate" | "deactivate" | "verify_email" | "reset_password" | "delete"
+//   reason : string (optional)
+//
+// UI status  →  Django action
+//  "active"      "activate"
+//  "suspended"   "deactivate"
+//  "terminated"  "delete"
+export const updateBuyerStatus = async (buyerId, uiStatus, reason = "") => {
+  const actionMap = {
+    active:     "activate",
+    suspended:  "deactivate",
+    terminated: "delete",
+    // pass-through if caller already uses Django's action strings
+    activate:   "activate",
+    deactivate: "deactivate",
+    delete:     "delete",
+  };
+
+  const action = actionMap[uiStatus] ?? uiStatus;
+  const payload = { action };
+  if (reason) payload.reason = reason;
+
+  const response = await api.post(
+    `/accounts/admin/buyers/${buyerId}/action/`,
+    payload
+  );
+  return response.data;
+};
 
 /*  PAYMENTS & TRANSACTIONS  */
 
