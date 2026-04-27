@@ -683,3 +683,58 @@ export const processWithdrawal = async (withdrawalId, action, rejectionReason = 
   });
   return response.data;
 };
+
+
+// ============================================
+// PRIVACY SETTINGS API FUNCTIONS
+// ============================================
+
+// 1. GET /api/v1/accounts/privacy-settings/ - Fetch all settings on page load
+export const getPrivacySettings = async () => {
+  const response = await api.get('/accounts/privacy-settings/');
+  return response.data;
+};
+
+// 2. PATCH /api/v1/accounts/privacy-settings/ - Update individual settings (for toggles)
+export const updatePrivacySettings = async (settings) => {
+  const response = await api.patch('/accounts/privacy-settings/', settings);
+  return response.data;
+};
+
+// 3. POST /api/v1/accounts/accept-terms/ - Accept Terms of Service
+export const acceptTerms = async (termsVersion) => {
+  const response = await api.post('/accounts/accept-terms/', {
+    terms_version: termsVersion,
+    accepted: true
+  });
+  return response.data;
+};
+
+// 4. POST /api/v1/accounts/accept-data-processing/ - Accept Data Processing Agreement
+export const acceptDataProcessing = async (agreementVersion) => {
+  const response = await api.post('/accounts/accept-data-processing/', {
+    agreement_version: agreementVersion,
+    accepted: true
+  });
+  return response.data;
+};
+
+// 5. GET /api/v1/accounts/export-data/ - Export user data (GDPR)
+export const exportUserData = async () => {
+  const response = await api.get('/accounts/export-data/', {
+    responseType: 'blob' // For file download
+  });
+  return response.data;
+};
+
+// 6. DELETE /api/v1/accounts/delete-data/ - Request account deletion (GDPR)
+export const deleteUserData = async () => {
+  const response = await api.delete('/accounts/delete-data/');
+  return response.data;
+};
+
+// 7. POST /api/v1/accounts/withdraw-consent/ - Withdraw specific consents
+export const withdrawConsent = async (consentTypes) => {
+  const response = await api.post('/accounts/withdraw-consent/', consentTypes);
+  return response.data;
+};

@@ -26,6 +26,7 @@ import OrderManagement from "./pages/OrderManagement";
 import PaymentSystem from "./pages/PaymentSystem";
 import PaymentAndPayout from "./pages/PaymentAndPayout";
 import BusinessSettings from "./pages/BusinessSettings";
+import PrivacySettings from "./pages/PrivacySettings";
 import VendorReviews from "./pages/VendorReview";
 import Demo from "./pages/Demo";
 import VendorChat from "./pages/VendorChatpage";     
@@ -143,6 +144,17 @@ function App() {
               <ProtectedRoute allowedRole="vendor">
                 <VendorLayout>
                   <ServiceManagement />
+                </VendorLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/privacy-settings"
+            element={
+              <ProtectedRoute allowedRole="vendor">
+                <VendorLayout>
+                  <PrivacySettings />
                 </VendorLayout>
               </ProtectedRoute>
             }
