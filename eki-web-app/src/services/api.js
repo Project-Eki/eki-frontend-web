@@ -683,3 +683,15 @@ export const processWithdrawal = async (withdrawalId, action, rejectionReason = 
   });
   return response.data;
 };
+
+// Get current admin settings (profile, permissions, preferences)
+export const getAdminSettings = async () => {
+  const response = await api.get("/accounts/admin/settings/");
+  return response.data;
+};
+
+// Update admin settings
+export const updateAdminSettings = async (data) => {
+  const response = await api.patch("/accounts/admin/settings/", data);
+  return response.data;
+};

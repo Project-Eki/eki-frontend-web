@@ -11,7 +11,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Search, Bell, Menu, CheckCheck, UserCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import api, { getAdminNotifications, markNotificationRead } from "../../services/api";
+import api, {
+  getAdminNotifications,
+  markNotificationRead,
+} from "../../services/api";
 
 const NOTIF_TYPE_STYLE = {
   new_vendor:           { dot: "bg-blue-500"   },
@@ -58,28 +61,48 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
   // ─── Fetch vendor profile for name + avatar on mount ─────────────────────────
   // IMPORTANT: api baseURL = 'http://134.122.22.45' (no /api/v1 suffix)
   // So we use the FULL path here: /api/v1/accounts/vendor/profile/
+  // ─── Fetch profile based on user role ─────────────────────────────────────────
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await api.get("/api/v1/accounts/vendor/profile/");
-        const data = res.data?.data ?? res.data;
+        const role =
+          localStorage.getItem("userRole") ||
+          localStorage.getItem("user_role") ||
+          "";
+        const isAdmin = role.toLowerCase() === "admin";
 
-        const name = [data?.first_name, data?.last_name]
-          .filter(Boolean)
-          .join(" ")
-          .trim();
-        if (name) setProfileName(name);
-
-        // Only set avatar from API if the parent prop hasn't already provided one
-        if (data?.profile_picture && !profileImage) {
-          setAvatarUrl(data.profile_picture);
-          setAvatarError(false);
+        if (isAdmin) {
+          // Admin profile
+          const res = await api.get("/accounts/admin/settings/");
+          const data = res.data?.data ?? res.data;
+          const name = [data?.profile?.first_name, data?.profile?.last_name]
+            .filter(Boolean)
+            .join(" ")
+            .trim();
+          if (name) setProfileName(name);
+          if (data?.profile?.profile_picture_url && !profileImage) {
+            setAvatarUrl(data.profile.profile_picture_url);
+            setAvatarError(false);
+          }
+        } else if (role.toLowerCase() === "vendor") {
+          // ONLY fetch vendor profile if actually a vendor
+          const res = await api.get("/accounts/vendor/profile/");
+          const data = res.data?.data ?? res.data;
+          const name = [data?.first_name, data?.last_name]
+            .filter(Boolean)
+            .join(" ")
+            .trim();
+          if (name) setProfileName(name);
+          if (data?.profile_picture && !profileImage) {
+            setAvatarUrl(data.profile_picture);
+            setAvatarError(false);
+          }
         }
       } catch (err) {
-        // Non-fatal — name/avatar fallback to defaults
         console.error("Navbar3: failed to load profile", err.message);
       }
     };
+
     fetchProfile();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -165,7 +188,7 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
   // Mark all notifications as read
   const handleMarkAllRead = async () => {
     try {
-      await api.post("/api/v1/accounts/admin/notifications/mark-read/", {
+      await api.post("/accounts/admin/notifications/mark-read/", {
         mark_all: true,
       });
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
@@ -348,6 +371,6 @@ const Navbar3 = ({ userName = "User", onMenuClick, profileImage = null }) => {
       <div className="h-0.5 bg-gradient-to-b from-slate-100 to-transparent sticky top-14 z-40 pointer-events-none" />
     </>
   );
-};
+};;
 
 export default Navbar3;
