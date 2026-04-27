@@ -4,7 +4,7 @@ import {
   Image, File, X, Loader2, MessageCircle,
   Smile, Plus, Filter, CheckCheck, AlertCircle
 } from 'lucide-react';
-import api from '../services/authService';
+import api, { getVendorProfile } from '../services/authService';
 import Footer from '../components/Vendormanagement/VendorFooter';
 
 // ─── Resolve whether a message was sent by the vendor ────────────────────────
@@ -50,7 +50,6 @@ const safeStr = (val) => {
 };
 
 // ─── Normalize a raw API message into a consistent shape ─────────────────────
-// forceSender: pass 'vendor' to override detection (used after sending)
 const normalizeMessage = (msg, forceSender = null) => {
   if (!msg || typeof msg !== 'object') return null;
 
@@ -84,7 +83,7 @@ const normalizeMessage = (msg, forceSender = null) => {
 const makeOptimisticMsg = (id, text, type = 'text', mediaUrl = null, fileName = null) => ({
   id,
   text:        safeStr(text),
-  sender:      'vendor',   // always vendor — the vendor is the one typing
+  sender:      'vendor',
   timestamp:   new Date().toISOString(),
   type,
   mediaUrl,
@@ -107,6 +106,13 @@ const VendorChatPage = () => {
   const [activeTab,      setActiveTab]      = useState('all');
   const [inputValue,     setInputValue]     = useState('');
 
+  // ── Vendor profile state (picture + name for navbar & bubbles) ──────────────
+  const [vendorProfile, setVendorProfile] = useState({
+    name:    '',
+    picture: null,          // URL string or null
+    initial: 'V',
+  });
+
   const messagesEndRef   = useRef(null);
   const fileInputRef     = useRef(null);
   const inputRef         = useRef(null);
@@ -114,6 +120,35 @@ const VendorChatPage = () => {
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  // ── Fetch vendor profile on mount ───────────────────────────────────────────
+  useEffect(() => {
+    const loadVendorProfile = async () => {
+      try {
+        const res      = await getVendorProfile();
+        const fullName = [res.first_name, res.last_name].filter(Boolean).join(' ').trim();
+        const initial  = (res.first_name || res.last_name || 'V').charAt(0).toUpperCase();
+        const picture  = res.profile_picture || null;
+
+        setVendorProfile({ name: fullName, picture, initial });
+
+        // Persist so other pages can read it without an extra API call
+        if (res.first_name) localStorage.setItem('vendor_first_name', res.first_name);
+        if (picture)        localStorage.setItem('vendor_profile_picture', picture);
+      } catch (err) {
+        console.error('Failed to load vendor profile:', err);
+        // Graceful fallback to whatever is in localStorage
+        const firstName = localStorage.getItem('vendor_first_name') || 'V';
+        const picture   = localStorage.getItem('vendor_profile_picture') || null;
+        setVendorProfile({
+          name:    firstName,
+          picture,
+          initial: firstName.charAt(0).toUpperCase(),
+        });
+      }
+    };
+    loadVendorProfile();
   }, []);
 
   // ── Fetch conversation list ─────────────────────────────────────────────────
@@ -150,7 +185,6 @@ const VendorChatPage = () => {
       const res  = await api.get(`/chat/conversations/${conversationId}/`, { params: { limit: 50, offset: 0 } });
       const data = res.data;
       const raw  = Array.isArray(data.messages) ? data.messages : Array.isArray(data) ? data : [];
-      console.log(`[chat] strategy 1 OK — ${raw.length} messages`);
       return toNorm(raw);
     } catch (e1) {
       console.warn('[chat] strategy 1 failed', e1.response?.status);
@@ -163,7 +197,6 @@ const VendorChatPage = () => {
         : Array.isArray(data?.results)  ? data.results
         : Array.isArray(data?.messages) ? data.messages
         : [];
-      console.log(`[chat] strategy 2 OK — ${raw.length} messages`);
       return toNorm(raw);
     } catch (e2) {
       console.warn('[chat] strategy 2 failed', e2.response?.status);
@@ -176,7 +209,6 @@ const VendorChatPage = () => {
         : Array.isArray(data?.results)  ? data.results
         : Array.isArray(data?.messages) ? data.messages
         : [];
-      console.log(`[chat] strategy 3 OK — ${raw.length} messages`);
       return toNorm(raw);
     } catch (e3) {
       console.warn('[chat] all strategies failed', e3.response?.status);
@@ -220,7 +252,6 @@ const VendorChatPage = () => {
     const tempId     = `temp-${Date.now()}`;
     const optimistic = makeOptimisticMsg(tempId, text);
 
-    // Add the optimistic bubble immediately — always on the right (vendor) side
     setMessages((prev) => [...prev, optimistic]);
     setInputValue('');
     setTimeout(scrollToBottom, 50);
@@ -231,7 +262,6 @@ const VendorChatPage = () => {
         message:      text,
       });
 
-      // Replace optimistic with confirmed server message, force sender = vendor
       const rawData = res.data?.data ?? res.data;
       const realMsg = (rawData && typeof rawData === 'object')
         ? (normalizeMessage(rawData, 'vendor') ?? { ...optimistic, _optimistic: false })
@@ -252,7 +282,6 @@ const VendorChatPage = () => {
     }
   }, [inputValue, isSending, fetchConversations, scrollToBottom]);
 
-  // ── Handle Enter key ────────────────────────────────────────────────────────
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -355,8 +384,32 @@ const VendorChatPage = () => {
   };
 
   const getInitials   = (name) => name?.charAt(0)?.toUpperCase() || '?';
-  const vendorInitial = (localStorage.getItem('vendor_first_name') || 'V').charAt(0).toUpperCase();
   const orderRef      = selectedBuyer?.orderRef ? `ORDER #${selectedBuyer.orderRef}` : 'ACTIVE NOW';
+
+  // ── Reusable vendor avatar widget ───────────────────────────────────────────
+  const VendorAvatar = ({ size = 'sm' }) => {
+    const dim = size === 'lg' ? 'w-9 h-9 text-sm' : 'w-7 h-7 text-[11px]';
+    return (
+      <div className={`${dim} rounded-full bg-[#125852] flex items-center justify-center text-white font-bold flex-shrink-0 shadow-sm overflow-hidden`}>
+        {vendorProfile.picture ? (
+          <img
+            src={vendorProfile.picture}
+            alt={vendorProfile.name || 'Vendor'}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              // If image fails to load, hide it and show initial instead
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'flex';
+            }}
+          />
+        ) : null}
+        {/* Fallback initial — hidden when image loads successfully */}
+        <span style={{ display: vendorProfile.picture ? 'none' : 'flex' }}>
+          {vendorProfile.initial}
+        </span>
+      </div>
+    );
+  };
 
   return (
     <div
@@ -366,11 +419,23 @@ const VendorChatPage = () => {
       {/* ════════════════════════════════ LEFT SIDEBAR ════════════════════════ */}
       <div className="w-72 flex-shrink-0 flex flex-col bg-white border-r border-gray-100">
 
-        {/* Header */}
+        {/* Header — shows vendor profile picture */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-[#125852] flex items-center justify-center">
-              <MessageCircle size={14} className="text-white" />
+            {/* Vendor profile picture in the navbar/header area */}
+            <div className="w-7 h-7 rounded-full bg-[#125852] flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
+              {vendorProfile.picture ? (
+                <img
+                  src={vendorProfile.picture}
+                  alt={vendorProfile.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <MessageCircle size={14} className="text-white" />
+              )}
             </div>
             <span className="font-bold text-gray-800 text-[15px]">Eki Chat</span>
           </div>
@@ -482,13 +547,38 @@ const VendorChatPage = () => {
                 <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide leading-tight">{orderRef}</p>
               </div>
             </div>
-            <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-              <MoreVertical size={16} className="text-gray-400" />
-            </button>
+            {/* Vendor profile picture in top-right of chat header */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-gray-400 font-medium hidden sm:block">{vendorProfile.name}</span>
+                <div className="w-8 h-8 rounded-full bg-[#125852] flex items-center justify-center text-white font-bold text-[11px] overflow-hidden shadow-sm flex-shrink-0">
+                  {vendorProfile.picture ? (
+                    <img
+                      src={vendorProfile.picture}
+                      alt={vendorProfile.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+                    />
+                  ) : null}
+                  <span style={{ display: vendorProfile.picture ? 'none' : 'block' }}>
+                    {vendorProfile.initial}
+                  </span>
+                </div>
+              </div>
+              <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <MoreVertical size={16} className="text-gray-400" />
+              </button>
+            </div>
           </div>
         ) : (
-          <div className="flex items-center justify-center px-6 py-3.5 bg-white border-b border-gray-100">
+          <div className="flex items-center justify-between px-6 py-3.5 bg-white border-b border-gray-100">
             <p className="text-[13px] text-gray-400">Select a conversation to start chatting</p>
+            {/* Vendor profile picture even on empty state */}
+            <div className="w-8 h-8 rounded-full bg-[#125852] flex items-center justify-center text-white font-bold text-[11px] overflow-hidden shadow-sm">
+              {vendorProfile.picture ? (
+                <img src={vendorProfile.picture} alt="" className="w-full h-full object-cover" />
+              ) : vendorProfile.initial}
+            </div>
           </div>
         )}
 
@@ -535,8 +625,6 @@ const VendorChatPage = () => {
 
                 <div className="space-y-2">
                   {group.msgs.map((msg, idx) => {
-                    // vendor = RIGHT side (like WhatsApp "you")
-                    // buyer  = LEFT  side (like WhatsApp "them")
                     const isVendor     = msg.sender === 'vendor';
                     const isOptimistic = msg._optimistic === true;
 
@@ -560,9 +648,7 @@ const VendorChatPage = () => {
                           <div className={`
                             px-4 py-2.5 rounded-2xl text-[13.5px] leading-relaxed shadow-sm
                             ${isVendor
-                              // Vendor = dark green bubble, RIGHT, tail bottom-right
                               ? `bg-[#125852] text-white rounded-br-sm ${isOptimistic ? 'opacity-70' : ''}`
-                              // Buyer = white bubble, LEFT, tail bottom-left
                               : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
                             }
                           `}>
@@ -601,10 +687,26 @@ const VendorChatPage = () => {
                           </div>
                         </div>
 
-                        {/* ── Vendor avatar — RIGHT side only ── */}
+                        {/* ── Vendor avatar — RIGHT side only — uses real profile picture ── */}
                         {isVendor && (
-                          <div className="w-7 h-7 rounded-full bg-[#125852] flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0 mb-0.5 shadow-sm">
-                            {vendorInitial}
+                          <div className="w-7 h-7 rounded-full bg-[#125852] flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0 mb-0.5 shadow-sm overflow-hidden">
+                            {vendorProfile.picture ? (
+                              <img
+                                src={vendorProfile.picture}
+                                alt={vendorProfile.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                                }}
+                              />
+                            ) : null}
+                            <span
+                              className="w-full h-full flex items-center justify-center"
+                              style={{ display: vendorProfile.picture ? 'none' : 'flex' }}
+                            >
+                              {vendorProfile.initial}
+                            </span>
                           </div>
                         )}
                       </div>
