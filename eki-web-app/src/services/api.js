@@ -378,12 +378,6 @@ export const submitVendorApplication = async (formData) => {
   return response.data;
 };
 
-// Get vendor profile - USE THE CORRECT ENDPOINT
-// export const getVendorProfile = async () => {
-//   // Try register-vendor endpoint first (GET returns the profile)
-//   const response = await api.get("/accounts/register-vendor/");
-//   return response.data.data; 
-// };
 
 // Alternative: Use the dedicated vendor/profile endpoint
 export const getVendorProfileAlt = async () => {

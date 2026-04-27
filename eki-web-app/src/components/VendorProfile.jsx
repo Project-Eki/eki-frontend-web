@@ -9,12 +9,14 @@
  *  - Documents: Government ID, Business License, Tax Certificate, Incorporation Certificate
  *  - Professional Certification is optional (shown but not required)
  *  - All other props/display unchanged
+ *  - Added icons to Category, Registration Number, and Tax ID (TIN) for UI consistency
  */
 
 import React from "react";
 import {
   Ban, FileText, CheckCircle, Loader2,
   Phone, MapPin, Clock, Hash, Building2, AlertTriangle, XCircle,
+  Layers, CreditCard, FileCheck,
 } from "lucide-react";
 
 const DocRow = ({ label, hasDoc, isOptional = false }) => (
@@ -88,7 +90,7 @@ const VendorProfile = ({ vendor, onApprove, onSuspend, onReject, onReviewDocumen
         // Create fallback element
         const fallbackDiv = document.createElement('div');
         fallbackDiv.className = "w-16 h-16 rounded-full bg-teal-50 flex items-center justify-center shrink-0 border-2 border-teal-100";
-        fallbackDiv.innerHTML = `<span class="text-xl font-bold text-teal-600">${(vendor.name || "?")[0].toUpperCase()}</span>`;
+        fallbackDiv.innerHTML = `<span className="text-xl font-bold text-teal-600">${(vendor.name || "?")[0].toUpperCase()}</span>`;
         e.target.parentNode.appendChild(fallbackDiv);
       }}
     />
@@ -117,10 +119,10 @@ const VendorProfile = ({ vendor, onApprove, onSuspend, onReject, onReviewDocumen
         <div className="bg-gray-50 rounded-xl px-4 py-1">
           <InfoRow icon={Building2} label="Business Name"     value={vendor.businessName}     />
           <InfoRow icon={FileText}  label="Business Type"     value={vendor.businessType}     />
-          <InfoRow icon={Hash}      label="Category"          value={vendor.businessCategory} />
+          <InfoRow icon={Layers}    label="Category"          value={vendor.businessCategory} />
           <InfoRow icon={Phone}     label="Business Phone"    value={vendor.businessPhone}    />
-          <InfoRow icon={Hash}      label="Registration No."  value={vendor.registrationNo}   />
-          <InfoRow icon={Hash}      label="Tax ID (TIN)"      value={vendor.taxId}            />
+          <InfoRow icon={CreditCard} label="Registration No."  value={vendor.registrationNo}   />
+          <InfoRow icon={FileCheck} label="Tax ID (TIN)"      value={vendor.taxId}            />
         </div>
       </div>
 
