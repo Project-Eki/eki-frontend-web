@@ -85,7 +85,7 @@ function App() {
 
           {/* Vendor Onboarding */}
           <Route
-            path="/VendorOnboarding"
+            path="/signup"
             element={
               <VendorOnboardingProvider>
                 <VendorOnboarding />

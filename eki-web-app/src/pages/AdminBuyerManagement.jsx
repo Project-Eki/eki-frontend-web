@@ -9,7 +9,7 @@ import BuyerList from "../components/Buyermanagement/BuyerList";
 //   updateBuyerStatus,
 // } from "../services/api";
 import {
-  Users, Clock, TrendingUp, X, FileText, ExternalLink, AlertTriangle, Loader2, RefreshCw, Ban, CheckCircle
+  Users, UserCheck, UserX, X, FileText, ExternalLink, AlertTriangle, Loader2, RefreshCw, Ban, CheckCircle
 } from "lucide-react";
 // import api from "../services/api";
 
@@ -28,40 +28,18 @@ const resolveUrl = (url) => {
   return `${DJANGO_BASE}${url.startsWith("/") ? "" : "/"}${url}`;
 };
 
-// Stat card with custom colors per card type
-const StatCard = ({ label, value, type }) => {
-  const icons = {
-    buyers: Users,
-    active: Users,
-    suspended: Clock,
-  };
-  const Icon = icons[type] || TrendingUp;
-
-  const getCardColors = () => {
-    switch (type) {
-      case 'buyers':
-        return { bg: 'bg-[#235E5D]', text: 'text-white' };
-      case 'active':
-        return { bg: 'bg-[#EFB034]', text: 'text-white' };
-      case 'suspended':
-        return { bg: 'bg-[#EFB034]', text: 'text-white' };
-      default:
-        return { bg: 'bg-[#235E5D]', text: 'text-white' };
-    }
-  };
-
-  const colors = getCardColors();
-
+// StatCard component - matching Dashboard UI
+const StatCard = ({ title, number, icon: Icon, iconBgColor = 'bg-[#235E5D]', iconColor = 'text-white' }) => {
   return (
-    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-3">
-      <div className={`p-2 rounded-xl ${colors.bg} shrink-0`}>
-        <Icon className={colors.text} size={18} />
-      </div>
+    <div className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-between border border-gray-100">
       <div>
-        <p className="text-gray-500 text-[10px] font-medium uppercase tracking-wider">{label}</p>
-        <h3 className={`text-xl font-bold mt-0.5 ${value === "—" ? "text-gray-300" : "text-gray-900"}`}>
-          {value}
+        <p className="text-sm text-gray-500 font-medium">{title}</p>
+        <h3 className={`text-3xl font-bold mt-1 ${number === "—" ? "text-gray-300" : "text-gray-900"}`}>
+          {number}
         </h3>
+      </div>
+      <div className={`p-3 rounded-xl ${iconBgColor} ${iconColor} flex items-center justify-center`}>
+        <Icon size={22} strokeWidth={1.8} />
       </div>
     </div>
   );
@@ -419,22 +397,28 @@ const AdminBuyerManagement = () => {
                   Refresh
                 </button>
               </div>
-              {/* Stats cards */}
+              {/* Stats cards - Updated to match dashboard UI */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <StatCard
-                  label="Total Buyers"
-                  value={stats.total}
-                  type="buyers"
+                <StatCard 
+                  title="Total Buyers" 
+                  number={stats.total} 
+                  icon={Users} 
+                  iconBgColor="bg-[#235E5D]" 
+                  iconColor="text-white" 
                 />
-                <StatCard
-                  label="Active Buyers"
-                  value={stats.active}
-                  type="active"
+                <StatCard 
+                  title="Active Buyers" 
+                  number={stats.active} 
+                  icon={UserCheck} 
+                  iconBgColor="bg-[#EFB034]" 
+                  iconColor="text-white" 
                 />
-                <StatCard
-                  label="Suspended Buyers"
-                  value={stats.suspended}
-                  type="suspended"
+                <StatCard 
+                  title="Suspended Buyers" 
+                  number={stats.suspended} 
+                  icon={UserX} 
+                  iconBgColor="bg-[#EFB034]" 
+                  iconColor="text-white" 
                 />
               </div>
               {/* Buyer table */}
