@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Search, Send, Paperclip, MoreVertical,
   Image, File, X, Loader2, MessageCircle,
-  Smile, Plus, Filter, CheckCheck, AlertCircle,
+  Plus, Filter, CheckCheck, AlertCircle,
   Edit3, Trash2, Camera
 } from 'lucide-react';
 import api, { getVendorProfile } from '../services/authService';
 import Footer from '../components/Vendormanagement/VendorFooter';
 
-const DEBUG_SENDER = false; // Debug panel off
+const DEBUG_SENDER = false;
 
 // ── Resolve if a message was sent by the vendor ──────────────────────────────
 const resolveIsVendorMessage = (msg) => {
@@ -114,20 +114,6 @@ const makeOptimisticMsg = (id, text, type = 'text', mediaUrl = null, fileName = 
   _optimistic: true,
 });
 
-// ─── Emoji data ──────────────────────────────────────────────────────────────
-const EMOJI_LIST = [
-  '😀','😃','😄','😁','😅','😂','🤣','😊','😇','🙂','😉','😌','😍','🥰','😘','😗','😋','😛','😜','🤪','😝','🤑',
-  '🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','😮','😯','😲','😳','🥺','😢','😭','😱','😖',
-  '😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖',
-  '😺','😸','😹','😻','😼','😽','🙀','😿','😾','🙈','🙉','🙊','💋','💌','💘','💝','💖','💗','💓','💞','💕','💟',
-  '❤️','🔥','⭐','🌟','✨','💥','💯','💢','💨','💦','💤','🕳️','🎉','🎊','🎈','🎂','🎁','🏆','🏅','🎖️','🏵️',
-  '👍','👎','👏','🙌','🤝','🤜','🤛','✊','👊','💪','🤞','✌️','🤟','🤘','👌','🤌','🤏','👈','👉','👆','👇','☝️',
-  '✋','🤚','🖐️','🖖','👋','🤙','💅','🤳','💃','🕺','👯','👫','👬','👭','🧑‍🤝‍🧑','👨‍👩‍👦','👨‍👩‍👧','👨‍👩‍👧‍👦','👨‍👩‍👦‍👦','👨‍👩‍👧‍👧',
-  '👩‍👩‍👦','👩‍👩‍👧','👩‍👩‍👧‍👦','👩‍👩‍👦‍👦','👩‍👩‍👧‍👧','👨‍👨‍👦','👨‍👨‍👧','👨‍👨‍👧‍👦','👨‍👨‍👦‍👦','👨‍👨‍👧‍👧','👩‍👦','👩‍👧','👩‍👧‍👦','👩‍👦‍👦','👩‍👧‍👧',
-  '👨‍👦','👨‍👧','👨‍👧‍👦','👨‍👦‍👦','👨‍👧‍👧','🪢','🧶','🧵','🪡','🧥','🥼','🦺','👚','👕','👖','🩲','🩳','👔','👗','👙',
-  '👘','🥻','🩱','🩴','👠','👡','👢','👞','👟','🥿','🧢','👒','🎩','🎓','👑','⛑️','🪖','💄','💍','💎'
-];
-
 const VendorChatPage = () => {
   const [buyers,         setBuyers]         = useState([]);
   const [selectedBuyer,  setSelectedBuyer]  = useState(null);
@@ -149,17 +135,13 @@ const VendorChatPage = () => {
   const [editText,         setEditText]         = useState('');
   const [deleteConfirmId,  setDeleteConfirmId]  = useState(null);
 
-  // Emoji picker
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-
   // Refs
   const messagesEndRef   = useRef(null);
   const fileInputRef     = useRef(null);
-  const imageInputRef    = useRef(null); // Dedicated image input
+  const imageInputRef    = useRef(null);
   const inputRef         = useRef(null);
   const selectedBuyerRef = useRef(null);
   const debugLoggedRef   = useRef(false);
-  const emojiPanelRef    = useRef(null);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -315,7 +297,6 @@ const VendorChatPage = () => {
       setMessages((prev) => prev.map((m) => (m.id === tempId ? realMsg : m)));
       fetchConversations();
     } catch (err) {
-      // 🆕 Show the exact backend error message
       const backendMsg =
         err.response?.data?.message ??
         err.response?.data?.detail ??
@@ -390,7 +371,6 @@ const VendorChatPage = () => {
     const id = editingMessageId;
     if (!id || !editText.trim()) return;
     try {
-      // 👇 Adjust endpoint to match your backend (e.g., /chat/messages/{id}/edit/)
       await api.patch(`/chat/messages/${id}/edit/`, { message: editText.trim() });
       setMessages((prev) => prev.map((m) => {
         if (m.id === id) return { ...m, text: editText.trim() };
@@ -411,7 +391,7 @@ const VendorChatPage = () => {
 
   const handleDeleteExecute = async (msgId) => {
     try {
-      await api.delete(`/chat/messages/${msgId}/delete/`); // Your authService already has this
+      await api.delete(`/chat/messages/${msgId}/delete/`);
       setMessages((prev) => prev.filter((m) => m.id !== msgId));
       setDeleteConfirmId(null);
     } catch (err) {
@@ -420,30 +400,6 @@ const VendorChatPage = () => {
   };
 
   const handleDeleteCancel = () => setDeleteConfirmId(null);
-
-  // ── Emoji picker ─────────────────────────────────────────────────────────
-  const toggleEmojiPicker = () => {
-    setShowEmojiPicker((prev) => !prev);
-    setTimeout(() => inputRef.current?.focus(), 50);
-  };
-
-  const onEmojiSelect = (emoji) => {
-    setInputValue((prev) => prev + emoji);
-    inputRef.current?.focus();
-  };
-
-  // Close picker on outside click
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (emojiPanelRef.current && !emojiPanelRef.current.contains(event.target)) {
-        setShowEmojiPicker(false);
-      }
-    };
-    if (showEmojiPicker) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showEmojiPicker]);
 
   useEffect(() => { fetchConversations(); }, [fetchConversations]);
   useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
@@ -593,13 +549,6 @@ const VendorChatPage = () => {
           </div>
         )}
 
-        {/* ── DEBUG PANEL (hidden) ── */}
-        {DEBUG_SENDER && debugInfo && (
-          <div className="mx-4 mt-3 p-3 bg-yellow-50 border border-yellow-300 rounded-xl text-[10px] font-mono text-yellow-900 overflow-x-auto flex-shrink-0">
-            {/* ... debug ... */}
-          </div>
-        )}
-
         {/* ── Message area ── */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-1">
           {loading ? (
@@ -700,10 +649,11 @@ const VendorChatPage = () => {
                               <button onClick={handleEditCancel} className="p-1 text-gray-400 hover:bg-gray-100 rounded" title="Cancel"><X size={16} /></button>
                             </div>
                           ) : (
+                            // 🟡 Buyer bubble – exact gold #EFB034 with dark text
                             <div className={`px-4 py-2.5 rounded-2xl text-[13.5px] leading-relaxed shadow-sm ${
                               isVendor
                                 ? `bg-[#125852] text-white rounded-br-sm ${isOptimistic ? 'opacity-70' : ''}`
-                                : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
+                                : 'bg-[#EFB034] text-gray-900 rounded-bl-sm border border-[#d4952c]/30'
                             }`}>
                               {msg.type === 'image' ? (
                                 <img src={msg.mediaUrl} alt="attachment" className="rounded-lg max-w-full h-auto" />
@@ -765,37 +715,10 @@ const VendorChatPage = () => {
           </div>
         )}
 
-        {/* ── Emoji picker (absolute positioned above the input) ── */}
-        {selectedBuyer && showEmojiPicker && (
-          <div
-            ref={emojiPanelRef}
-            className="absolute bottom-[90px] left-1/2 -translate-x-1/2 bg-white border border-gray-200 rounded-2xl shadow-xl p-3 w-[380px] max-w-[95vw] grid grid-cols-10 gap-1.5 overflow-y-auto max-h-[240px] z-50"
-          >
-            {EMOJI_LIST.map((emoji, index) => (
-              <button
-                key={index}
-                onClick={() => onEmojiSelect(emoji)}
-                className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 rounded-lg text-lg transition-colors"
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        )}
-
         {/* ── Message input area ── */}
         {selectedBuyer && (
           <div className="px-5 py-3.5 bg-white border-t border-gray-100">
             <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-2xl px-3 py-2 focus-within:border-[#125852]/30 focus-within:bg-white transition-all">
-              {/* Emoji button */}
-              <button
-                type="button"
-                onClick={toggleEmojiPicker}
-                className="p-1.5 text-gray-400 hover:text-[#125852] rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
-              >
-                <Smile size={18} />
-              </button>
-
               {/* Image (camera) upload button */}
               <button
                 type="button"
