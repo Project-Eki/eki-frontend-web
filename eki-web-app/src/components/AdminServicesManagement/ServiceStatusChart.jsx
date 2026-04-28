@@ -1,11 +1,18 @@
 import React from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 
+const COLORS = {
+  Active:   "#EFB034",
+  Draft:    "#235E5D",
+  Flagged:  "#DC2626",
+  Archived: "#9CA3AF",
+};
+
 export const ServiceStatusChart = ({ statuses, title, subtitle }) => {
   const data = statuses.map((s) => ({
-    name: s.label,
+    name:  s.label,
     value: s.percentage,
-    color: s.color,
+    color: COLORS[s.label] || "#6B7280",
   }));
 
   const CustomTooltip = ({ active, payload }) => {
