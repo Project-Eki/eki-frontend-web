@@ -121,6 +121,41 @@ const EMOJI_LIST = [
   '😀','😂','😍','🥰','😢','😡','👍','👎','🎉','❤️','🔥','⭐','🤝','🚀','✨','💯','🙏','👋','🤔','🥳'
 ];
 
+/* ── Leaflet dynamic loader (free, no API key) ────────────────────────── */
+const loadLeaflet = () => {
+  return new Promise((resolve, reject) => {
+    if (window.L) {
+      resolve(window.L);
+      return;
+    }
+    // Load CSS
+    if (!document.getElementById('leaflet-css')) {
+      const link = document.createElement('link');
+      link.id = 'leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
+    // Load JS
+    if (document.getElementById('leaflet-js')) {
+      const check = setInterval(() => {
+        if (window.L) {
+          clearInterval(check);
+          resolve(window.L);
+        }
+      }, 200);
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = 'leaflet-js';
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.async = true;
+    script.onload = () => resolve(window.L);
+    script.onerror = (err) => reject(err);
+    document.head.appendChild(script);
+  });
+};
+
 const VendorChatPage = () => {
   const navigate = useNavigate();
 
@@ -143,7 +178,6 @@ const VendorChatPage = () => {
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editText,         setEditText]         = useState('');
   const [deleteConfirmId,  setDeleteConfirmId]  = useState(null);
-  // Track which message is actively being deleted to show spinner
   const [deletingId,       setDeletingId]       = useState(null);
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -155,8 +189,16 @@ const VendorChatPage = () => {
   const audioChunksRef   = useRef([]);
   const recordingIntervalRef = useRef(null);
 
-  // Location sharing state
   const [isSharingLocation, setIsSharingLocation] = useState(false);
+
+  // ── Location picker states (Leaflet) ─────────────────────────────────
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [pickedCoords, setPickedCoords] = useState(null);
+  const [locationName, setLocationName] = useState('');
+  const [locationAddress, setLocationAddress] = useState('');
+  const [mapLoading, setMapLoading] = useState(false);
+  const mapInstanceRef = useRef(null);
+  const markerRef = useRef(null);
 
   const messagesEndRef    = useRef(null);
   const imageInputRef    = useRef(null);
@@ -413,7 +455,7 @@ const VendorChatPage = () => {
         form.append('file_type', 'video');
 
         setUploadProgress(0);
-        // REMOVED timeout to allow large video uploads to complete
+        // No timeout – allows large video uploads to complete
         const uploadRes = await api.post('/chat/upload/', form, {
           headers: { 'Content-Type': 'multipart/form-data' },
           onUploadProgress: (e) => {
@@ -503,12 +545,11 @@ const VendorChatPage = () => {
     }
   }, [fetchConversations, scrollToBottom, recordingTime]);
 
-  /* ── Send location ──────────────────────────────────────────────────── */
+  /* ── Send location (finalizer) ───────────────────────────────────────── */
   const finalizeLocationSend = useCallback(async (convId, lat, lon, name) => {
     setIsSharingLocation(true);
     setSendError('');
 
-    // Build optimistic location message immediately
     const tempId = `temp-loc-${Date.now()}`;
     const mapsUrl = `https://www.google.com/maps?q=${lat},${lon}`;
     const optimistic = makeOptimisticMsg(
@@ -550,45 +591,150 @@ const VendorChatPage = () => {
     }
   }, [fetchConversations, scrollToBottom]);
 
-  const sendLocation = useCallback(async () => {
+  // ── Leaflet‑based map picker ──────────────────────────────────────────
+  const openLocationPicker = useCallback(async () => {
     const buyer = selectedBuyerRef.current;
     if (!buyer) return;
     setShowUploadMenu(false);
+    setShowLocationPicker(true);
+    setMapLoading(true);
+    setPickedCoords(null);
+    setLocationName('');
+    setLocationAddress('');
 
-    const doSend = (lat, lon, name) => finalizeLocationSend(buyer.id, lat, lon, name);
+    try {
+      await loadLeaflet();
+    } catch (err) {
+      alert('Could not load the map. Please check your internet connection.');
+      setMapLoading(false);
+      return;
+    }
+    setMapLoading(false);
+  }, []);
 
+  const handleConfirmLocation = useCallback(() => {
+    if (!pickedCoords) return;
+    const buyer = selectedBuyerRef.current;
+    finalizeLocationSend(buyer.id, pickedCoords.lat, pickedCoords.lng, locationName || 'Shared Location');
+    setShowLocationPicker(false);
+  }, [pickedCoords, locationName, finalizeLocationSend]);
+
+  const reverseGeocode = (lat, lng) => {
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`)
+      .then(res => res.json())
+      .then(data => {
+        const name = data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        setLocationName(name);
+        setLocationAddress(name);
+      })
+      .catch(() => {
+        setLocationName(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+        setLocationAddress('');
+      });
+  };
+
+  const searchLocation = (query) => {
+    if (!query) return;
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.length > 0) {
+          const first = data[0];
+          const lat = parseFloat(first.lat);
+          const lon = parseFloat(first.lon);
+          const pos = [lat, lon];
+          const map = mapInstanceRef.current;
+          if (map) {
+            map.setView(pos, 15);
+            if (markerRef.current) markerRef.current.setLatLng(pos);
+            setPickedCoords({ lat, lng: lon });
+            reverseGeocode(lat, lon);
+          }
+        } else {
+          alert('Location not found.');
+        }
+      })
+      .catch(() => alert('Search failed. Try again.'));
+  };
+
+  const handleUseCurrentLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const { latitude, longitude } = position.coords;
-          doSend(latitude, longitude, 'My Location');
-        },
-        () => {
-          // Fallback: manual entry
-          const coords = prompt('Location access denied.\nEnter location as "latitude,longitude" (e.g. 0.3476,32.5825)');
-          if (coords) {
-            const [lat, lon] = coords.split(',').map(Number);
-            if (!isNaN(lat) && !isNaN(lon)) {
-              doSend(lat, lon, 'Shared Location');
-            } else {
-              setSendError('Invalid coordinates entered.');
-            }
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          const pos = [lat, lon];
+          const map = mapInstanceRef.current;
+          if (map) {
+            map.setView(pos, 15);
+            if (markerRef.current) markerRef.current.setLatLng(pos);
+            setPickedCoords({ lat, lng: lon });
+            reverseGeocode(lat, lon);
           }
         },
-        { enableHighAccuracy: true, timeout: 10000 }
+        () => alert('Could not get current location.')
       );
     } else {
-      const coords = prompt('Geolocation not supported.\nEnter location as "latitude,longitude" (e.g. 0.3476,32.5825)');
-      if (coords) {
-        const [lat, lon] = coords.split(',').map(Number);
-        if (!isNaN(lat) && !isNaN(lon)) {
-          doSend(lat, lon, 'Shared Location');
-        } else {
-          setSendError('Invalid coordinates entered.');
-        }
-      }
+      alert('Geolocation is not supported by your browser.');
     }
-  }, [finalizeLocationSend]);
+  };
+
+  // Initialise Leaflet map when modal opens and loading is done
+  useEffect(() => {
+    if (!showLocationPicker || mapLoading) return;
+    const mapDiv = document.getElementById('location-map');
+    if (!mapDiv) return;
+
+    const L = window.L;
+    if (!L || !L.map) return;
+
+    // Destroy previous map instance if any
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
+    }
+
+    const defaultPos = [0.3476, 32.5825]; // Kampala
+    const map = L.map('location-map', {
+      center: defaultPos,
+      zoom: 13,
+      zoomControl: true,
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19,
+    }).addTo(map);
+
+    const marker = L.marker(defaultPos, { draggable: true }).addTo(map);
+    marker.on('dragend', () => {
+      const pos = marker.getLatLng();
+      setPickedCoords({ lat: pos.lat, lng: pos.lng });
+      reverseGeocode(pos.lat, pos.lng);
+    });
+
+    mapInstanceRef.current = map;
+    markerRef.current = marker;
+
+    // Set initial coords
+    setPickedCoords({ lat: defaultPos[0], lng: defaultPos[1] });
+    reverseGeocode(defaultPos[0], defaultPos[1]);
+
+    // Invalidate map size after a short delay (for modal transitions)
+    setTimeout(() => map.invalidateSize(), 100);
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showLocationPicker, mapLoading]);
+
+  const handleLocationFromMenu = useCallback(() => {
+    openLocationPicker();
+  }, [openLocationPicker]);
 
   /* ── Main send handler ──────────────────────────────────────────────── */
   const handleSendMessage = useCallback(async () => {
@@ -647,11 +793,6 @@ const VendorChatPage = () => {
     setAttachmentFile(null);
     if (documentInputRef.current) documentInputRef.current.value = '';
   }, [sendAttachment]);
-
-  const handleLocationFromMenu = useCallback(() => {
-    setShowUploadMenu(false);
-    sendLocation();
-  }, [sendLocation]);
 
   /* ── Voice recording ────────────────────────────────────────────────── */
   const startRecording = useCallback(async () => {
@@ -1326,6 +1467,73 @@ const VendorChatPage = () => {
                   ? <Loader2 size={14} className="animate-spin" />
                   : <Send size={14} />
                 }
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Location Picker Modal (Leaflet) ───────────────────────────── */}
+        {showLocationPicker && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-2xl w-11/12 max-w-lg p-4 shadow-2xl relative">
+              <button
+                onClick={() => setShowLocationPicker(false)}
+                className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+              >
+                <X size={18} />
+              </button>
+              <h3 className="text-base font-semibold mb-2 text-gray-800">Share a location</h3>
+              <div className="flex gap-2 mb-2">
+                <input
+                  id="location-search"
+                  type="text"
+                  placeholder="Search for a place"
+                  className="flex-1 px-3 py-1.5 border rounded-lg text-xs outline-none focus:ring-1 focus:ring-[#075E54]"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') searchLocation(e.target.value);
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    const q = document.getElementById('location-search')?.value;
+                    if (q) searchLocation(q);
+                  }}
+                  className="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded-lg"
+                >
+                  Search
+                </button>
+                <button
+                  onClick={handleUseCurrentLocation}
+                  className="px-3 py-1 bg-[#075E54] text-white text-xs rounded-lg flex items-center gap-1"
+                >
+                  <MapPin size={14} /> Current
+                </button>
+              </div>
+              <div
+                id="location-map"
+                className="w-full h-52 rounded-lg border border-gray-200 mb-2"
+                style={{ zIndex: 1 }}
+              ></div>
+              {mapLoading && (
+                <div className="flex justify-center items-center h-52">
+                  <Loader2 size={24} className="animate-spin text-[#075E54]" />
+                </div>
+              )}
+              {pickedCoords && (
+                <div className="text-[10px] text-gray-600 mb-2">
+                  {locationAddress || `${pickedCoords.lat.toFixed(6)}, ${pickedCoords.lng.toFixed(6)}`}
+                </div>
+              )}
+              <button
+                onClick={handleConfirmLocation}
+                disabled={!pickedCoords}
+                className={`w-full py-2 rounded-lg font-medium text-sm ${
+                  pickedCoords
+                    ? 'bg-[#075E54] text-white hover:bg-[#064d45]'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                Share this location
               </button>
             </div>
           </div>
