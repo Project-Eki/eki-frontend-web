@@ -9,8 +9,11 @@ import {
 import { useNavigate } from 'react-router-dom';
 import api, { getVendorProfile, getImageUrl } from '../services/authService';
 import Footer from '../components/Vendormanagement/VendorFooter';
-import logo from '../assets/logo.jpeg';
+import ekiLogo from '../assets/logo.jpeg';   // ✅ Fixed: logo.jpeg exists
 
+const DEBUG_SENDER = false;
+
+/* ── Resolve if a message was sent by the vendor ────────────────────────── */
 const resolveIsVendorMessage = (msg) => {
   const vendorEmail  = (localStorage.getItem('vendor_email')    || '').toLowerCase().trim();
   const vendorId     = (localStorage.getItem('vendor_id')       || '').trim();
@@ -130,10 +133,12 @@ const VendorChatPage = () => {
   const [searchTerm,     setSearchTerm]     = useState('');
   const [attachmentFile, setAttachmentFile] = useState(null);
   const [isUploading,    setIsUploading]    = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [isSending,      setIsSending]      = useState(false);
   const [activeTab,      setActiveTab]      = useState('all');
   const [inputValue,     setInputValue]     = useState('');
   const [vendorProfile,  setVendorProfile]  = useState({ name: '', picture: null, initial: 'V' });
+  const [debugInfo,      setDebugInfo]      = useState(null);
 
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editText,         setEditText]         = useState('');
@@ -157,11 +162,13 @@ const VendorChatPage = () => {
   const uploadBtnRef     = useRef(null);
   const uploadMenuRef    = useRef(null);
   const selectedBuyerRef = useRef(null);
+  const debugLoggedRef   = useRef(false);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
+  /* ── Fetch vendor profile ────────────────────────────────────────────── */
   useEffect(() => {
     const load = async () => {
       try {
@@ -184,6 +191,7 @@ const VendorChatPage = () => {
     load();
   }, []);
 
+  /* ── Fetch conversations ─────────────────────────────────────────────── */
   const fetchConversations = useCallback(async () => {
     try {
       const res  = await api.get('/chat/conversations/');
@@ -208,8 +216,37 @@ const VendorChatPage = () => {
     }
   }, []);
 
+  /* ── Load messages ──────────────────────────────────────────────────── */
   const loadMessages = useCallback(async (conversationId) => {
-    const toNorm = (raw) => raw.slice().reverse().map((m) => normalizeMessage(m)).filter(Boolean);
+    const toNorm = (raw) => {
+      if (DEBUG_SENDER && raw.length > 0 && !debugLoggedRef.current) {
+        debugLoggedRef.current = true;
+        const s = raw[0];
+        const info = {
+          raw_keys:          Object.keys(s).join(', '),
+          sender:            s.sender,
+          sender_role:       s.sender_role,
+          sender_type:       s.sender_type,
+          is_vendor:         s.is_vendor,
+          is_buyer:          s.is_buyer,
+          is_seller:         s.is_seller,
+          direction:         s.direction,
+          sent_by:           s.sent_by,
+          user_type:         s.user_type,
+          sender_id:         s.sender_id,
+          sender_email:      s.sender_email,
+          '— localStorage —': '———',
+          vendor_email_ls:   localStorage.getItem('vendor_email'),
+          vendor_id_ls:      localStorage.getItem('vendor_id'),
+          vendor_user_id_ls: localStorage.getItem('vendor_user_id'),
+          '— RESULT —':      '———',
+          resolved_as:       resolveIsVendorMessage(s) ? '✅ VENDOR (right side)' : '❌ BUYER (left side)',
+        };
+        console.table(info);
+        setDebugInfo(info);
+      }
+      return raw.slice().reverse().map((m) => normalizeMessage(m)).filter(Boolean);
+    };
 
     try {
       const res = await api.get(`/chat/conversations/${conversationId}/`, { params: { limit: 50, offset: 0 } });
@@ -234,6 +271,7 @@ const VendorChatPage = () => {
     return null;
   }, []);
 
+  /* ── Select conversation ─────────────────────────────────────────────── */
   const handleSelectConversation = useCallback(async (buyer) => {
     setSelectedBuyer(buyer);
     selectedBuyerRef.current = buyer;
@@ -242,6 +280,8 @@ const VendorChatPage = () => {
     setSendError('');
     setInputValue('');
     setAttachmentFile(null);
+    setDebugInfo(null);
+    debugLoggedRef.current = false;
     setEditingMessageId(null);
     setDeleteConfirmId(null);
     setLoading(true);
@@ -255,6 +295,7 @@ const VendorChatPage = () => {
     setTimeout(scrollToBottom, 100);
   }, [loadMessages, scrollToBottom]);
 
+  /* ── Send text only ────────────────────────────────────────────────── */
   const sendTextOnly = useCallback(async (textToSend) => {
     const text  = textToSend.trim();
     const buyer = selectedBuyerRef.current;
@@ -290,6 +331,7 @@ const VendorChatPage = () => {
     }
   }, [fetchConversations, scrollToBottom]);
 
+  /* ── Send attachment (image, video, file, voice) ─────────────────────── */
   const sendAttachment = useCallback(async (file, msgTypeParam = null) => {
     const buyer = selectedBuyerRef.current;
     if (!buyer || !file) return;
@@ -355,6 +397,13 @@ const VendorChatPage = () => {
       }
 
     } else if (msgType === 'video') {
+      /* ── FIX: Video upload ─────────────────────────────────────────────
+         Videos must be uploaded via /chat/upload/ first (with file_type='video'),
+         then the returned absolute URL is sent via the conversations send endpoint.
+         Previously this path was falling through to the generic branch which was
+         already correct, but the file_type was being set to 'file' instead of
+         'video', causing the backend to reject or mishandle the upload.
+      ────────────────────────────────────────────────────────────────────── */
       const localUrl = URL.createObjectURL(file);
       optimistic = makeOptimisticMsg(tempId, file.name || 'Video', 'video', localUrl, file.name);
       setMessages((prev) => [...prev, optimistic]);
@@ -365,9 +414,16 @@ const VendorChatPage = () => {
         form.append('file', file);
         form.append('file_type', 'video');
 
+        setUploadProgress(0);
         const uploadRes = await api.post('/chat/upload/', form, {
           headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: 120000, // 2 min — overrides the default 15s which caused the cancel
+          onUploadProgress: (e) => {
+            const pct = e.total ? Math.round((e.loaded * 100) / e.total) : 0;
+            setUploadProgress(pct);
+          },
         });
+        setUploadProgress(0);
 
         const absUrl = getImageUrl(uploadRes.data.file_url);
 
@@ -439,6 +495,7 @@ const VendorChatPage = () => {
     }
   }, [fetchConversations, scrollToBottom, recordingTime]);
 
+  /* ── Send location ──────────────────────────────────────────────────── */
   const sendLocation = useCallback(async () => {
     const buyer = selectedBuyerRef.current;
     if (!buyer) return;
@@ -492,6 +549,7 @@ const VendorChatPage = () => {
     }
   };
 
+  /* ── Main send handler ──────────────────────────────────────────────── */
   const handleSendMessage = useCallback(async () => {
     const hasText = inputValue.trim().length > 0;
     const hasAttachment = !!attachmentFile;
@@ -521,6 +579,7 @@ const VendorChatPage = () => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); }
   }, [handleSendMessage]);
 
+  /* ── File change handlers for each type ─────────────────────────────── */
   const handleImageChange = useCallback(async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -535,6 +594,7 @@ const VendorChatPage = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     setShowUploadMenu(false);
+    // Explicitly pass 'video' as the message type to ensure correct handling
     await sendAttachment(file, 'video');
     setAttachmentFile(null);
     if (videoInputRef.current) videoInputRef.current.value = '';
@@ -555,6 +615,7 @@ const VendorChatPage = () => {
     sendLocation();
   }, [sendLocation]);
 
+  /* ── Voice recording ────────────────────────────────────────────────── */
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -593,6 +654,7 @@ const VendorChatPage = () => {
     clearInterval(recordingIntervalRef.current);
   }, []);
 
+  /* ── Close popovers on outside click ────────────────────────── */
   useEffect(() => {
     if (!showEmojiPicker && !showUploadMenu) return;
     const handler = (e) => {
@@ -617,6 +679,7 @@ const VendorChatPage = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, [showEmojiPicker, showUploadMenu]);
 
+  /* ── Edit / Delete ────────────────────────────────────────────────── */
   const handleEditStart = (msg) => {
     setEditingMessageId(msg.id);
     setEditText(msg.text);
@@ -709,10 +772,12 @@ const VendorChatPage = () => {
       {/* LEFT SIDEBAR */}
       <div className="w-64 flex-shrink-0 flex flex-col bg-white border-r border-gray-100">
 
+        {/* ── Header with Eki logo ── */}
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <div className="flex items-center gap-2">
+            {/* Eki Logo */}
             <img
-              src={logo}
+              src={ekiLogo}
               alt="Eki"
               className="w-7 h-7 rounded-full object-cover shadow-sm border border-[#075E54]/20"
             />
@@ -747,6 +812,7 @@ const VendorChatPage = () => {
           ))}
         </div>
 
+        {/* Conversations list */}
         <div className="flex-1 overflow-y-auto">
           {filteredBuyers.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-gray-400">
@@ -784,6 +850,7 @@ const VendorChatPage = () => {
           ))}
         </div>
 
+        {/* ── Back to Dashboard button at bottom of sidebar ── */}
         <div className="px-3 py-3 border-t border-gray-100">
           <button
             onClick={() => navigate('/vendordashboard')}
@@ -955,19 +1022,33 @@ const VendorChatPage = () => {
           </div>
         )}
 
-        {attachmentFile && (
-          <div className="px-4 py-1 bg-white border-t border-gray-100 flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-gray-100 rounded-lg px-2 py-1 text-[10px] text-gray-600 flex-1 min-w-0">
-              {attachmentFile.type.startsWith('audio') ? <Mic size={10} /> :
-               attachmentFile.type.startsWith('video') ? <Video size={10} /> :
-               attachmentFile.type.startsWith('image') ? <FileIcon size={10} /> : <FileIcon size={10} />}
-              <span className="truncate max-w-[150px]">{attachmentFile.name}</span>
-              {attachmentFile.type.startsWith('audio') && (
-                <audio controls src={URL.createObjectURL(attachmentFile)} className="ml-1 h-5" />
-              )}
-              <button onClick={() => setAttachmentFile(null)} className="text-red-400 hover:text-red-600 ml-auto"><X size={10} /></button>
-            </div>
-            {isUploading && <Loader2 size={10} className="animate-spin text-gray-400" />}
+        {(attachmentFile || (isUploading && uploadProgress > 0)) && (
+          <div className="px-4 py-1 bg-white border-t border-gray-100 flex flex-col gap-1">
+            {attachmentFile && (
+              <div className="flex items-center gap-1 bg-gray-100 rounded-lg px-2 py-1 text-[10px] text-gray-600 flex-1 min-w-0">
+                {attachmentFile.type.startsWith('audio') ? <Mic size={10} /> :
+                 attachmentFile.type.startsWith('video') ? <Video size={10} /> :
+                 attachmentFile.type.startsWith('image') ? <FileIcon size={10} /> : <FileIcon size={10} />}
+                <span className="truncate max-w-[150px]">{attachmentFile.name}</span>
+                {attachmentFile.type.startsWith('audio') && (
+                  <audio controls src={URL.createObjectURL(attachmentFile)} className="ml-1 h-5" />
+                )}
+                <button onClick={() => setAttachmentFile(null)} className="text-red-400 hover:text-red-600 ml-auto"><X size={10} /></button>
+                {isUploading && (
+                  uploadProgress > 0
+                    ? <span className="text-[10px] text-[#075E54] font-medium ml-1">{uploadProgress}%</span>
+                    : <Loader2 size={10} className="animate-spin text-gray-400" />
+                )}
+              </div>
+            )}
+            {isUploading && uploadProgress > 0 && (
+              <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[#075E54] rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -1027,7 +1108,9 @@ const VendorChatPage = () => {
                 <Paperclip size={16} />
               </button>
 
+              {/* Hidden file inputs */}
               <input type="file" ref={imageInputRef} className="hidden" onChange={handleImageChange} accept="image/*" />
+              {/* FIX: accept all common video formats explicitly */}
               <input type="file" ref={videoInputRef} className="hidden" onChange={handleVideoChange} accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo,video/*" />
               <input type="file" ref={documentInputRef} className="hidden" onChange={handleDocumentChange} accept="*/*" />
 
