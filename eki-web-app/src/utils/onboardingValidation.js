@@ -36,6 +36,7 @@ export const validateAccountBasics = (formData) => {
 
   return errors;
 };
+
 // Step 3: Business Identity with Multi-Category Support
 export const validateBusinessIdentity = (formData) => {
   const errors = {};
@@ -54,30 +55,30 @@ export const validateBusinessIdentity = (formData) => {
     errors.business_type = "Required";
   }
 
-  // Business Category - FIXED validation for multi-select
+  // Business Category validation for all three types
   if (formData.business_type === "both") {
     // For "both", require at least 2 categories
     if (!formData.business_category || !Array.isArray(formData.business_category) || formData.business_category.length === 0) {
       errors.business_category = "Please select at least one category";
     } else if (formData.business_category.length === 1) {
       errors.business_category = "Please select at least 2 categories (you need both a product and service category)";
-    } else if (formData.business_category.length < 2) {
-      errors.business_category = `Please select ${2 - formData.business_category.length} more category/categories`;
     }
-  } else if (formData.business_type === "products" || formData.business_type === "services") {
-    // For single selection, handle both string and array cases
+  } else if (formData.business_type === "services") {
+    // For "services", require at least 1 category (array format)
+    if (!formData.business_category || !Array.isArray(formData.business_category) || formData.business_category.length === 0) {
+      errors.business_category = "Please select at least one service category";
+    }
+  } else if (formData.business_type === "products") {
+    // For "products", require exactly 1 category (string format)
     const categoryValue = formData.business_category;
     
-    // Check if it's an array (shouldn't happen for non-both, but handle gracefully)
     if (Array.isArray(categoryValue)) {
       if (categoryValue.length === 0) {
         errors.business_category = "Please select a category";
       } else if (categoryValue.length > 1) {
-        errors.business_category = "Only one category allowed for this business type";
+        errors.business_category = "Only one category allowed for products";
       }
-      // If it's an array with one item, it's valid
     } else {
-      // Handle string case
       if (!categoryValue || categoryValue.trim() === "") {
         errors.business_category = "Please select a category";
       }
