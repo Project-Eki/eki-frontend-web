@@ -3,14 +3,14 @@ import {
   Search, Send, Paperclip, MoreVertical,
   File as FileIcon, X, Loader2, MessageCircle,
   Plus, Filter, CheckCheck, AlertCircle,
-  Edit3, Trash2, Mic, Video, MapPin, Camera
+  Edit3, Trash2, Mic, Video, MapPin, Camera,
+  ArrowLeft
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api, { getVendorProfile, getImageUrl } from '../services/authService';
 import Footer from '../components/Vendormanagement/VendorFooter';
+import logo from '../assets/logo.jpeg';
 
-const DEBUG_SENDER = false;
-
-/* ── Resolve if a message was sent by the vendor ────────────────────────── */
 const resolveIsVendorMessage = (msg) => {
   const vendorEmail  = (localStorage.getItem('vendor_email')    || '').toLowerCase().trim();
   const vendorId     = (localStorage.getItem('vendor_id')       || '').trim();
@@ -119,6 +119,8 @@ const EMOJI_LIST = [
 ];
 
 const VendorChatPage = () => {
+  const navigate = useNavigate();
+
   const [buyers,         setBuyers]         = useState([]);
   const [selectedBuyer,  setSelectedBuyer]  = useState(null);
   const [messages,       setMessages]       = useState([]);
@@ -132,7 +134,6 @@ const VendorChatPage = () => {
   const [activeTab,      setActiveTab]      = useState('all');
   const [inputValue,     setInputValue]     = useState('');
   const [vendorProfile,  setVendorProfile]  = useState({ name: '', picture: null, initial: 'V' });
-  const [debugInfo,      setDebugInfo]      = useState(null);
 
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editText,         setEditText]         = useState('');
@@ -150,19 +151,17 @@ const VendorChatPage = () => {
   const messagesEndRef    = useRef(null);
   const imageInputRef    = useRef(null);
   const videoInputRef    = useRef(null);
-  const documentInputRef = useRef(null);   // ★ new: for PDF, Word, etc.
+  const documentInputRef = useRef(null);
   const inputRef         = useRef(null);
   const emojiBtnRef      = useRef(null);
   const uploadBtnRef     = useRef(null);
-  const uploadMenuRef    = useRef(null);   // ★ ref for menu popover
+  const uploadMenuRef    = useRef(null);
   const selectedBuyerRef = useRef(null);
-  const debugLoggedRef   = useRef(false);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
-  /* ── Fetch vendor profile ────────────────────────────────────────────── */
   useEffect(() => {
     const load = async () => {
       try {
@@ -185,7 +184,6 @@ const VendorChatPage = () => {
     load();
   }, []);
 
-  /* ── Fetch conversations ─────────────────────────────────────────────── */
   const fetchConversations = useCallback(async () => {
     try {
       const res  = await api.get('/chat/conversations/');
@@ -210,37 +208,8 @@ const VendorChatPage = () => {
     }
   }, []);
 
-  /* ── Load messages ──────────────────────────────────────────────────── */
   const loadMessages = useCallback(async (conversationId) => {
-    const toNorm = (raw) => {
-      if (DEBUG_SENDER && raw.length > 0 && !debugLoggedRef.current) {
-        debugLoggedRef.current = true;
-        const s = raw[0];
-        const info = {
-          raw_keys:          Object.keys(s).join(', '),
-          sender:            s.sender,
-          sender_role:       s.sender_role,
-          sender_type:       s.sender_type,
-          is_vendor:         s.is_vendor,
-          is_buyer:          s.is_buyer,
-          is_seller:         s.is_seller,
-          direction:         s.direction,
-          sent_by:           s.sent_by,
-          user_type:         s.user_type,
-          sender_id:         s.sender_id,
-          sender_email:      s.sender_email,
-          '— localStorage —': '———',
-          vendor_email_ls:   localStorage.getItem('vendor_email'),
-          vendor_id_ls:      localStorage.getItem('vendor_id'),
-          vendor_user_id_ls: localStorage.getItem('vendor_user_id'),
-          '— RESULT —':      '———',
-          resolved_as:       resolveIsVendorMessage(s) ? '✅ VENDOR (right side)' : '❌ BUYER (left side)',
-        };
-        console.table(info);
-        setDebugInfo(info);
-      }
-      return raw.slice().reverse().map((m) => normalizeMessage(m)).filter(Boolean);
-    };
+    const toNorm = (raw) => raw.slice().reverse().map((m) => normalizeMessage(m)).filter(Boolean);
 
     try {
       const res = await api.get(`/chat/conversations/${conversationId}/`, { params: { limit: 50, offset: 0 } });
@@ -265,7 +234,6 @@ const VendorChatPage = () => {
     return null;
   }, []);
 
-  /* ── Select conversation ─────────────────────────────────────────────── */
   const handleSelectConversation = useCallback(async (buyer) => {
     setSelectedBuyer(buyer);
     selectedBuyerRef.current = buyer;
@@ -274,8 +242,6 @@ const VendorChatPage = () => {
     setSendError('');
     setInputValue('');
     setAttachmentFile(null);
-    setDebugInfo(null);
-    debugLoggedRef.current = false;
     setEditingMessageId(null);
     setDeleteConfirmId(null);
     setLoading(true);
@@ -289,7 +255,6 @@ const VendorChatPage = () => {
     setTimeout(scrollToBottom, 100);
   }, [loadMessages, scrollToBottom]);
 
-  /* ── Send text only ────────────────────────────────────────────────── */
   const sendTextOnly = useCallback(async (textToSend) => {
     const text  = textToSend.trim();
     const buyer = selectedBuyerRef.current;
@@ -325,7 +290,6 @@ const VendorChatPage = () => {
     }
   }, [fetchConversations, scrollToBottom]);
 
-  /* ── Send attachment (image, video, file, voice) ─────────────────────── */
   const sendAttachment = useCallback(async (file, msgTypeParam = null) => {
     const buyer = selectedBuyerRef.current;
     if (!buyer || !file) return;
@@ -389,7 +353,52 @@ const VendorChatPage = () => {
       } finally {
         setIsUploading(false);
       }
+
+    } else if (msgType === 'video') {
+      const localUrl = URL.createObjectURL(file);
+      optimistic = makeOptimisticMsg(tempId, file.name || 'Video', 'video', localUrl, file.name);
+      setMessages((prev) => [...prev, optimistic]);
+      setTimeout(scrollToBottom, 50);
+
+      try {
+        const form = new FormData();
+        form.append('file', file);
+        form.append('file_type', 'video');
+
+        const uploadRes = await api.post('/chat/upload/', form, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+
+        const absUrl = getImageUrl(uploadRes.data.file_url);
+
+        const res = await api.post(`/chat/conversations/${buyer.id}/send/`, {
+          message_type: 'video',
+          media_url: absUrl,
+          file_name: uploadRes.data.file_name || file.name,
+          mime_type: uploadRes.data.mime_type || file.type,
+        });
+
+        const rawData = res.data?.data ?? res.data;
+        const realMsg = (rawData && typeof rawData === 'object')
+          ? (normalizeMessage(rawData, 'vendor') ?? { ...optimistic, _optimistic: false, mediaUrl: absUrl })
+          : { ...optimistic, _optimistic: false, mediaUrl: absUrl };
+
+        setMessages((prev) => prev.map((m) => (m.id === tempId ? realMsg : m)));
+        fetchConversations();
+      } catch (err) {
+        const backendMsg =
+          err.response?.data?.message ??
+          err.response?.data?.detail ??
+          err.response?.data?.error ??
+          (err.response?.data ? JSON.stringify(err.response.data) : 'Video upload failed.');
+        setSendError(backendMsg);
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      } finally {
+        setIsUploading(false);
+      }
+
     } else {
+      // image or file
       optimistic = makeOptimisticMsg(tempId, file.name || 'Attachment', msgType, null, file.name);
       setMessages((prev) => [...prev, optimistic]);
       setTimeout(scrollToBottom, 50);
@@ -397,7 +406,7 @@ const VendorChatPage = () => {
       try {
         const form = new FormData();
         form.append('file', file);
-        form.append('file_type', msgType === 'video' ? 'video' : (msgType === 'image' ? 'image' : 'file'));
+        form.append('file_type', msgType === 'image' ? 'image' : 'file');
         const uploadRes = await api.post('/chat/upload/', form, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
@@ -430,7 +439,6 @@ const VendorChatPage = () => {
     }
   }, [fetchConversations, scrollToBottom, recordingTime]);
 
-  /* ── Send location ──────────────────────────────────────────────────── */
   const sendLocation = useCallback(async () => {
     const buyer = selectedBuyerRef.current;
     if (!buyer) return;
@@ -484,7 +492,6 @@ const VendorChatPage = () => {
     }
   };
 
-  /* ── Main send handler ──────────────────────────────────────────────── */
   const handleSendMessage = useCallback(async () => {
     const hasText = inputValue.trim().length > 0;
     const hasAttachment = !!attachmentFile;
@@ -514,7 +521,6 @@ const VendorChatPage = () => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); }
   }, [handleSendMessage]);
 
-  /* ── File change handlers for each type ─────────────────────────────── */
   const handleImageChange = useCallback(async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -529,8 +535,7 @@ const VendorChatPage = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     setShowUploadMenu(false);
-    setAttachmentFile(file);
-    await sendAttachment(file);
+    await sendAttachment(file, 'video');
     setAttachmentFile(null);
     if (videoInputRef.current) videoInputRef.current.value = '';
   }, [sendAttachment]);
@@ -550,7 +555,6 @@ const VendorChatPage = () => {
     sendLocation();
   }, [sendLocation]);
 
-  /* ── Voice recording ────────────────────────────────────────────────── */
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -589,11 +593,9 @@ const VendorChatPage = () => {
     clearInterval(recordingIntervalRef.current);
   }, []);
 
-  /* ── Close popovers on outside click (FIXED) ────────────────────────── */
   useEffect(() => {
     if (!showEmojiPicker && !showUploadMenu) return;
     const handler = (e) => {
-      // Close emoji picker if click outside its button
       if (
         showEmojiPicker &&
         emojiBtnRef.current &&
@@ -601,7 +603,6 @@ const VendorChatPage = () => {
       ) {
         setShowEmojiPicker(false);
       }
-      // Close upload menu only if click is outside BOTH the attach button AND the menu itself
       if (
         showUploadMenu &&
         uploadBtnRef.current &&
@@ -616,7 +617,6 @@ const VendorChatPage = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, [showEmojiPicker, showUploadMenu]);
 
-  /* ── Edit / Delete ────────────────────────────────────────────────── */
   const handleEditStart = (msg) => {
     setEditingMessageId(msg.id);
     setEditText(msg.text);
@@ -706,14 +706,25 @@ const VendorChatPage = () => {
       style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}
       className="flex h-[calc(100vh-2rem)] w-full rounded-2xl overflow-hidden bg-white shadow-xl border border-gray-200 relative"
     >
-      {/* LEFT SIDEBAR – WhatsApp‑style compact list */}
+      {/* LEFT SIDEBAR */}
       <div className="w-64 flex-shrink-0 flex flex-col bg-white border-r border-gray-100">
 
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
-          <span className="font-semibold text-gray-800 text-sm">Eki Chat</span>
+          <div className="flex items-center gap-2">
+            <img
+              src={logo}
+              alt="Eki"
+              className="w-7 h-7 rounded-full object-cover shadow-sm border border-[#075E54]/20"
+            />
+            <span className="font-semibold text-gray-800 text-sm">Eki Chat</span>
+          </div>
           <div className="flex items-center gap-1">
-            <button className="w-6 h-6 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500"><Plus size={14} /></button>
-            <button className="w-6 h-6 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500"><Filter size={12} /></button>
+            <button className="w-6 h-6 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">
+              <Plus size={14} />
+            </button>
+            <button className="w-6 h-6 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">
+              <Filter size={12} />
+            </button>
           </div>
         </div>
 
@@ -772,9 +783,19 @@ const VendorChatPage = () => {
             </div>
           ))}
         </div>
+
+        <div className="px-3 py-3 border-t border-gray-100">
+          <button
+            onClick={() => navigate('/vendordashboard')}
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs font-medium text-gray-600 hover:bg-[#075E54]/10 hover:text-[#075E54] transition-all group"
+          >
+            <ArrowLeft size={14} className="text-gray-400 group-hover:text-[#075E54] transition-colors" />
+            <span>Back to Dashboard</span>
+          </button>
+        </div>
       </div>
 
-      {/* MAIN CHAT – compact WhatsApp‑style */}
+      {/* MAIN CHAT */}
       <div className="flex-1 flex flex-col min-w-0 bg-[#efeae2]">
 
         {selectedBuyer ? (
@@ -879,7 +900,7 @@ const VendorChatPage = () => {
                             <div className={`px-2.5 py-1.5 rounded-2xl text-xs shadow-sm ${
                               isVendor
                                 ? `bg-[#075E54] text-white rounded-br-md ${isOptimistic ? 'opacity-70' : ''}`
-                                : 'bg-[#EFB034] text-gray-900 rounded-bl-md border border-[#d4952c]/30'   // ★ Gold buyer bubble
+                                : 'bg-[#EFB034] text-gray-900 rounded-bl-md border border-[#d4952c]/30'
                             }`}>
                               {processedMsg.type === 'voice' ? (
                                 <audio controls src={processedMsg.mediaUrl} className="max-w-full h-6" />
@@ -963,7 +984,6 @@ const VendorChatPage = () => {
               </div>
             )}
 
-            {/* ★ Upload options menu – now stays open until you choose */}
             {showUploadMenu && (
               <div className="relative mb-1" ref={uploadMenuRef}>
                 <div className="absolute bottom-full left-0 z-20 bg-white border border-gray-200 rounded-xl shadow-lg py-1 w-44">
@@ -996,7 +1016,6 @@ const VendorChatPage = () => {
             )}
 
             <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-full px-3 py-1.5 focus-within:border-[#075E54]/30 focus-within:bg-white transition-all">
-              {/* Paperclip button – opens the menu */}
               <button
                 type="button"
                 ref={uploadBtnRef}
@@ -1008,12 +1027,10 @@ const VendorChatPage = () => {
                 <Paperclip size={16} />
               </button>
 
-              {/* Hidden file inputs */}
               <input type="file" ref={imageInputRef} className="hidden" onChange={handleImageChange} accept="image/*" />
-              <input type="file" ref={videoInputRef} className="hidden" onChange={handleVideoChange} accept="video/*" />
+              <input type="file" ref={videoInputRef} className="hidden" onChange={handleVideoChange} accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo,video/*" />
               <input type="file" ref={documentInputRef} className="hidden" onChange={handleDocumentChange} accept="*/*" />
 
-              {/* Voice record */}
               <button type="button" onClick={isRecording ? stopRecording : startRecording} disabled={isUploading || isSending}
                 className={`p-1 rounded-full transition-colors ${
                   isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-gray-400 hover:text-[#075E54]'
@@ -1022,7 +1039,6 @@ const VendorChatPage = () => {
               </button>
               {isRecording && <span className="text-[10px] text-red-500 font-mono">{new Date(recordingTime * 1000).toISOString().substr(14, 5)}</span>}
 
-              {/* Emoji */}
               <button type="button" ref={emojiBtnRef} onClick={() => setShowEmojiPicker((prev) => !prev)}
                 className="p-1 text-gray-400 hover:text-[#075E54] rounded-full" title="Add emoji">
                 😀
@@ -1031,7 +1047,6 @@ const VendorChatPage = () => {
               <input ref={inputRef} type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown}
                 placeholder="Type a message" className="flex-1 bg-transparent text-xs text-gray-700 placeholder-gray-400 outline-none" />
 
-              {/* Send */}
               <button type="button" onClick={handleSendMessage} disabled={(!inputValue.trim() && !attachmentFile) || isSending || isUploading}
                 className={`p-1.5 rounded-full transition-all ${
                   (inputValue.trim() || attachmentFile) && !isSending && !isUploading
