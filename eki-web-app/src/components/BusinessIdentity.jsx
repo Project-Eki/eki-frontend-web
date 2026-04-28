@@ -92,8 +92,8 @@ const BusinessIdentity = () => {
     () => getCategoryOptions(formData.business_type),
     [formData.business_type],
   );
+  
   // Memoized word count calculation for performance
-
   const wordCount = useMemo(() => {
     return (formData.business_description || "")
       .trim()
@@ -122,13 +122,14 @@ const BusinessIdentity = () => {
     dispatch,
   ]);
 
-  // Convert business_category format when business type changes
+  // MODIFIED: Convert business_category format when business type changes
   useEffect(() => {
+    // When switching to "both" or "services" (both require array format)
     if (
-      formData.business_type === "both" &&
+      (formData.business_type === "both" || formData.business_type === "services") &&
       !Array.isArray(formData.business_category)
     ) {
-      // Convert string to array
+      // Convert from string to array
       const newValue = formData.business_category
         ? [formData.business_category]
         : [];
@@ -136,11 +137,13 @@ const BusinessIdentity = () => {
         type: ACTIONS.UPDATE_FORM,
         payload: { business_category: newValue },
       });
-    } else if (
-      formData.business_type !== "both" &&
+    } 
+    // When switching to "products" (requires string format)
+    else if (
+      formData.business_type === "products" &&
       Array.isArray(formData.business_category)
     ) {
-      // Convert array to string (take first item)
+      // Convert from array to string (take first item or empty string)
       const newValue =
         formData.business_category.length > 0
           ? formData.business_category[0]
@@ -152,8 +155,10 @@ const BusinessIdentity = () => {
     }
   }, [formData.business_type, dispatch]);
 
+  // MODIFIED: Handle category change based on business type
   const handleCategoryChange = (value) => {
-    if (formData.business_type === "both") {
+    // For "both" and "services" - both use multi-select logic
+    if (formData.business_type === "both" || formData.business_type === "services") {
       // Multi-select logic
       const currentCategories = Array.isArray(formData.business_category)
         ? formData.business_category
@@ -172,14 +177,20 @@ const BusinessIdentity = () => {
       });
       setTouched((prev) => ({ ...prev, business_category: true }));
 
-      // Clear error if minimum 2 categories selected
-      if (newCategories.length >= 2 && errors.business_category) {
+      // Clear error based on validation rules
+      // For "services": clear error if at least 1 category selected
+      // For "both": clear error if at least 2 categories selected
+      if (formData.business_type === "services" && newCategories.length >= 1 && errors.business_category) {
+        const newErrors = { ...errors };
+        delete newErrors.business_category;
+        setErrors(newErrors);
+      } else if (formData.business_type === "both" && newCategories.length >= 2 && errors.business_category) {
         const newErrors = { ...errors };
         delete newErrors.business_category;
         setErrors(newErrors);
       }
     } else {
-      // Single-select logic
+      // Single-select logic for "products"
       dispatch({
         type: ACTIONS.UPDATE_FORM,
         payload: { business_category: value },
@@ -188,16 +199,22 @@ const BusinessIdentity = () => {
     }
 
     // Real-time validation
+    let categoryValue;
+    if (formData.business_type === "both" || formData.business_type === "services") {
+      // For multi-select, build the new array
+      const currentCategories = Array.isArray(formData.business_category)
+        ? formData.business_category
+        : [];
+      categoryValue = currentCategories.includes(value)
+        ? currentCategories.filter((cat) => cat !== value)
+        : [...currentCategories, value];
+    } else {
+      categoryValue = value;
+    }
+
     const validationErrors = validateBusinessIdentity({
       ...formData,
-      business_category:
-        formData.business_type === "both"
-          ? Array.isArray(formData.business_category)
-            ? formData.business_category.includes(value)
-              ? formData.business_category.filter((cat) => cat !== value)
-              : [...formData.business_category, value]
-            : [value]
-          : value,
+      business_category: categoryValue,
     });
     setErrors(validationErrors);
   };
@@ -247,7 +264,7 @@ const BusinessIdentity = () => {
     if (Object.keys(validationErrors).length === 0) {
       dispatch({ type: ACTIONS.NEXT_STEP });
     } else {
-      //  scroll to first error
+      // scroll to first error
       const firstErrorField = Object.keys(validationErrors)[0];
       const errorElement = document.querySelector(
         `[data-field="${firstErrorField}"]`,
@@ -260,6 +277,7 @@ const BusinessIdentity = () => {
 
   const showError = (field) => touched[field] && errors[field];
 
+  // MODIFIED: Check minimum categories based on business type
   const hasMinimumCategories = () => {
     if (formData.business_type === "both") {
       const categories = Array.isArray(formData.business_category)
@@ -267,7 +285,62 @@ const BusinessIdentity = () => {
         : [];
       return categories.length >= 2;
     }
+    if (formData.business_type === "services") {
+      const categories = Array.isArray(formData.business_category)
+        ? formData.business_category
+        : [];
+      return categories.length >= 1;
+    }
     return true;
+  };
+
+  // MODIFIED: Helper to determine if we should show multi-select UI
+  const shouldShowMultiSelect = () => {
+    return formData.business_type === "both" || formData.business_type === "services";
+  };
+
+  // MODIFIED: Helper to get selection requirement text
+  const getSelectionRequirementText = () => {
+    if (formData.business_type === "both") {
+      return "(Select at least 2 categories)";
+    }
+    if (formData.business_type === "services") {
+      return "(Select one or more categories)";
+    }
+    return "";
+  };
+
+  // MODIFIED: Helper to get selection status message
+  const getSelectionStatusMessage = () => {
+    if (!shouldShowMultiSelect()) return null;
+    
+    const categories = Array.isArray(formData.business_category)
+      ? formData.business_category
+      : [];
+    const count = categories.length;
+    
+    if (formData.business_type === "both") {
+      if (count === 0) {
+        return { text: `Selected: 0 categories`, color: "text-gray-400", warning: null };
+      }
+      if (count === 1) {
+        return { 
+          text: `Selected: 1 category(ies)`, 
+          color: "text-orange-500", 
+          warning: { text: "(Need 1 more)", icon: <MdWarning size={10} /> }
+        };
+      }
+      return { text: `Selected: ${count} category(ies)`, color: "text-green-600", warning: null };
+    }
+    
+    if (formData.business_type === "services") {
+      if (count === 0) {
+        return { text: `Selected: 0 categories`, color: "text-gray-400", warning: null };
+      }
+      return { text: `Selected: ${count} category(ies)`, color: "text-green-600", warning: null };
+    }
+    
+    return null;
   };
 
   return (
@@ -359,21 +432,22 @@ const BusinessIdentity = () => {
             </div>
           </div>
 
-          {/* Business Category */}
+          {/* Business Category - MODIFIED: Now shows multi-select for both "both" and "services" */}
           <div
-            className={`flex flex-col ${formData.business_type === "both" ? "md:col-span-2" : ""}`}
+            className={`flex flex-col ${shouldShowMultiSelect() ? "md:col-span-2" : ""}`}
             data-field="business_category"
           >
             <label className="text-[10px] font-semibold text-gray-700 mb-0.5 ml-1">
               Business Category <span className="text-red-500">*</span>
-              {formData.business_type === "both" && (
+              {shouldShowMultiSelect() && (
                 <span className="text-[8px] text-gray-500 ml-1">
-                  (Select at least 2 categories)
+                  {getSelectionRequirementText()}
                 </span>
               )}
             </label>
 
-            {formData.business_type === "both" ? (
+            {/* MODIFIED: Show multi-select for both "both" AND "services" */}
+            {shouldShowMultiSelect() ? (
               <div className="relative">
                 <div
                   className={`border rounded-xl p-2 max-h-32 overflow-y-auto ${
@@ -408,32 +482,29 @@ const BusinessIdentity = () => {
                   <InlineError message={errors.business_category} />
                 )}
 
+                {/* MODIFIED: Show selection status with appropriate messaging */}
                 {Array.isArray(formData.business_category) && (
                   <div className="mt-1 flex justify-between items-center">
                     <div
-                      className={`text-[9px] ${
-                        formData.business_category.length === 0
-                          ? "text-gray-400"
-                          : formData.business_category.length >= 2
-                            ? "text-green-600"
-                            : "text-orange-500"
-                      }`}
+                      className={`text-[9px] ${getSelectionStatusMessage()?.color || "text-gray-400"}`}
                     >
-                      Selected: {formData.business_category.length}{" "}
-                      category(ies)
-                      {formData.business_category.length < 2 &&
-                        formData.business_category.length > 0 && (
-                          <span className="ml-1">
-                            (Need {2 - formData.business_category.length} more)
-                          </span>
-                        )}
+                      {getSelectionStatusMessage()?.text}
+                      {getSelectionStatusMessage()?.warning && (
+                        <span className="ml-1">
+                          {getSelectionStatusMessage()?.warning.text}
+                        </span>
+                      )}
                     </div>
-                    {formData.business_category.length === 1 && (
+                    {/* MODIFIED: Show warning for "both" when exactly 1 category selected */}
+                    {formData.business_type === "both" && 
+                     Array.isArray(formData.business_category) && 
+                     formData.business_category.length === 1 && (
                       <div className="text-[8px] text-orange-500 flex items-center gap-1">
                         <MdWarning size={10} />
                         Select at least 1 more category
                       </div>
                     )}
+                    {/* MODIFIED: No warning for "services" since 1 category is valid */}
                   </div>
                 )}
               </div>
@@ -452,7 +523,7 @@ const BusinessIdentity = () => {
                   onChange={(e) => handleCategoryChange(e.target.value)}
                   onBlur={() => handleBlur("business_category")}
                   disabled={!formData.business_type}
-                  className={`w-full h-8 pl-9 pr-8 border rounded-xl text-[11px] focus:border-[#F2B53D]  outline-none cursor-pointer appearance-none transition-colors ${
+                  className={`w-full h-8 pl-9 pr-8 border rounded-xl text-[11px] focus:border-[#F2B53D] outline-none cursor-pointer appearance-none transition-colors ${
                     !formData.business_type
                       ? "bg-gray-50 text-gray-400 cursor-not-allowed"
                       : "bg-white"
@@ -644,18 +715,20 @@ const BusinessIdentity = () => {
           </div>
         </div>
 
-        {/* Continue Button */}
+        {/* Continue Button - MODIFIED: Updated disabled condition for services */}
         <div className="w-full flex justify-center mt-4">
           <button
             type="button"
             onClick={handleContinue}
             disabled={
               wordCount > 30 ||
-              (formData.business_type === "both" && !hasMinimumCategories())
+              (formData.business_type === "both" && !hasMinimumCategories()) ||
+              (formData.business_type === "services" && !hasMinimumCategories())
             }
             className={`w-full max-w-[200px] h-7 rounded-full text-white font-bold text-[11px] transition-all ${
               wordCount > 30 ||
-              (formData.business_type === "both" && !hasMinimumCategories())
+              (formData.business_type === "both" && !hasMinimumCategories()) ||
+              (formData.business_type === "services" && !hasMinimumCategories())
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-[#D99201] hover:bg-[#e0a630] active:bg-[#c68500]"
             }`}
