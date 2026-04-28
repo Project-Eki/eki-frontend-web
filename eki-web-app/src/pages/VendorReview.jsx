@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Navbar3 from '../components/adminDashboard/Navbar4';
 import VendorSidebar from '../components/VendorSidebar';
 import Footer from "../components/Vendormanagement/VendorFooter";
 import { VendorProvider } from '../context/vendorContext';
+import { getVendorReviews, replyToReview } from '../services/authService';
 
-// ─── Stars ───────────────────────────────────────────────────────────────────
+// ─── Stars (gold) ─────────────────────────────────────────────────────────────
 const Stars = ({ rating = 0, max = 5 }) => (
   <div className="flex gap-0.5">
     {Array.from({ length: max }).map((_, i) => (
@@ -17,12 +18,12 @@ const Stars = ({ rating = 0, max = 5 }) => (
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 const AVATAR_COLORS = [
-  { bg: "#E8F3F3", text: "#235E5D" },
   { bg: "#FEF6E4", text: "#B8860B" },
-  { bg: "#EBF5FB", text: "#1A6B9A" },
-  { bg: "#FDF2F8", text: "#8E44AD" },
-  { bg: "#EAFAF1", text: "#1E8449" },
   { bg: "#FEF9E7", text: "#D4AC0D" },
+  { bg: "#FDF2F8", text: "#8E44AD" },
+  { bg: "#EBF5FB", text: "#1A6B9A" },
+  { bg: "#EAFAF1", text: "#1E8449" },
+  { bg: "#E8F3F3", text: "#235E5D" },
 ];
 
 const getInitials = (name = "") =>
@@ -40,7 +41,7 @@ const Avatar = ({ name = "" }) => {
   );
 };
 
-// ─── Rating Bar ───────────────────────────────────────────────────────────────
+// ─── Rating Bar (gold fill) ───────────────────────────────────────────────────
 const RatingBar = ({ star, count, total }) => {
   const pct = total > 0 ? Math.round((count / total) * 100) : 0;
   return (
@@ -49,9 +50,10 @@ const RatingBar = ({ star, count, total }) => {
       <div className="flex-1 bg-gray-100 rounded-full h-2">
         <div
           className="h-2 rounded-full transition-all duration-500"
-          style={{ width: `${pct}%`, backgroundColor: "#235E5D" }}
+          style={{ width: `${pct}%`, backgroundColor: "#EFB034" }}
         />
       </div>
+      <span className="text-[10px] text-gray-400 w-6 shrink-0">{count}</span>
     </div>
   );
 };
@@ -62,20 +64,33 @@ const ReviewCard = ({ review, onSaveReply, onFlagReview }) => {
   const [editMode, setEditMode]   = useState(false);
   const [replyText, setReplyText] = useState(review.vendorReply || "");
   const [saving, setSaving]       = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  // Keep local replyText in sync if the parent updates the review
+  useEffect(() => {
+    setReplyText(review.vendorReply || "");
+  }, [review.vendorReply]);
 
   const handleSave = async () => {
     if (!replyText.trim()) return;
     setSaving(true);
-    await onSaveReply(review.id, replyText);
-    setSaving(false);
-    setShowReply(false);
-    setEditMode(false);
+    setSaveError("");
+    try {
+      await onSaveReply(review.id, replyText.trim());
+      setShowReply(false);
+      setEditMode(false);
+    } catch (err) {
+      setSaveError("Failed to save reply. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
     setReplyText(review.vendorReply || "");
     setShowReply(false);
     setEditMode(false);
+    setSaveError("");
   };
 
   return (
@@ -93,7 +108,7 @@ const ReviewCard = ({ review, onSaveReply, onFlagReview }) => {
               {review.verified && (
                 <span
                   className="text-[10px] px-1.5 py-0.5 rounded-full border"
-                  style={{ backgroundColor: "#E8F3F3", color: "#235E5D", borderColor: "#235E5D33" }}
+                  style={{ backgroundColor: "#FEF6E4", color: "#B8860B", borderColor: "#EFB03433" }}
                 >
                   ✓ Verified
                 </span>
@@ -104,11 +119,18 @@ const ReviewCard = ({ review, onSaveReply, onFlagReview }) => {
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
           {review.productName && (
-            <span className="text-[10px] font-medium" style={{ color: "#235E5D" }}>
+            <span className="text-[10px] font-medium" style={{ color: "#B8860B" }}>
               Item: {review.productName}
             </span>
           )}
           <Stars rating={review.rating} />
+          {/* Numeric rating badge */}
+          <span
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+            style={{ backgroundColor: "#FEF6E4", color: "#B8860B" }}
+          >
+            {review.rating.toFixed(1)} / 5
+          </span>
         </div>
       </div>
 
@@ -136,15 +158,18 @@ const ReviewCard = ({ review, onSaveReply, onFlagReview }) => {
             placeholder="Write your reply..."
             className="w-full border border-gray-200 rounded-lg p-3 text-sm text-gray-700 resize-none focus:outline-none"
             style={{ fontFamily: "Poppins, sans-serif" }}
-            onFocus={(e) => (e.target.style.borderColor = "#235E5D")}
+            onFocus={(e) => (e.target.style.borderColor = "#EFB034")}
             onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
           />
+          {saveError && (
+            <p className="text-[11px] text-red-500 mt-1">{saveError}</p>
+          )}
           <div className="flex gap-2 mt-2">
             <button
               onClick={handleSave}
               disabled={saving || !replyText.trim()}
               className="text-xs text-white px-4 py-1.5 rounded-lg disabled:opacity-50 transition-opacity"
-              style={{ backgroundColor: "#235E5D" }}
+              style={{ backgroundColor: "#EFB034" }}
             >
               {saving ? "Saving..." : "Save"}
             </button>
@@ -209,16 +234,74 @@ const ReviewCard = ({ review, onSaveReply, onFlagReview }) => {
   );
 };
 
+// ─── Skeleton loader card ─────────────────────────────────────────────────────
+const SkeletonCard = () => (
+  <div className="bg-white rounded-lg px-5 py-4 animate-pulse" style={{ border: "1px solid #E5E7EB" }}>
+    <div className="flex items-start gap-3">
+      <div className="w-10 h-10 rounded-full bg-gray-200 shrink-0" />
+      <div className="flex-1 space-y-2">
+        <div className="h-3 bg-gray-200 rounded w-1/3" />
+        <div className="h-2 bg-gray-100 rounded w-1/5" />
+      </div>
+      <div className="flex flex-col items-end gap-1">
+        <div className="h-3 bg-gray-100 rounded w-16" />
+        <div className="h-3 bg-gray-200 rounded w-20" />
+      </div>
+    </div>
+    <div className="mt-3 space-y-1.5">
+      <div className="h-2.5 bg-gray-100 rounded w-full" />
+      <div className="h-2.5 bg-gray-100 rounded w-5/6" />
+      <div className="h-2.5 bg-gray-100 rounded w-2/3" />
+    </div>
+  </div>
+);
+
 // ─── Inner Page Content ───────────────────────────────────────────────────────
 const VendorReviewsContent = () => {
-  const [reviews, setReviews]           = useState([]);
-  const [total, setTotal]               = useState(0);
-  const [page, setPage]                 = useState(1);
-  const [loadingMore, setLoadingMore]   = useState(false);
-  const [search, setSearch]             = useState("");
-  const [ratingFilter, setRatingFilter] = useState("All");
-  const [sort, setSort]                 = useState("newest");
+  const [reviews,       setReviews]       = useState([]);
+  const [total,         setTotal]         = useState(0);
+  const [page,          setPage]          = useState(1);
+  const [initialLoad,   setInitialLoad]   = useState(true);
+  const [loadingMore,   setLoadingMore]   = useState(false);
+  const [fetchError,    setFetchError]    = useState("");
+  const [search,        setSearch]        = useState("");
+  const [ratingFilter,  setRatingFilter]  = useState("All");
+  const [sort,          setSort]          = useState("newest");
 
+  // Map sort dropdown value → API ordering param
+  const sortToOrdering = {
+    newest:  "-created_at",
+    oldest:  "created_at",
+    highest: "-rating",
+    lowest:  "rating",
+  };
+
+  // ── Fetch first page whenever filters change ──────────────────────────────
+  const fetchReviews = useCallback(async () => {
+    setInitialLoad(true);
+    setFetchError("");
+    try {
+      const { reviews: list, total: count } = await getVendorReviews({
+        page:     1,
+        search,
+        rating:   ratingFilter === "All" ? "" : ratingFilter,
+        ordering: sortToOrdering[sort] ?? "-created_at",
+      });
+      setReviews(list);
+      setTotal(count);
+      setPage(1);
+    } catch (err) {
+      setFetchError("Could not load reviews. Please refresh the page.");
+    } finally {
+      setInitialLoad(false);
+    }
+  }, [search, ratingFilter, sort]);
+
+  useEffect(() => {
+    fetchReviews();
+  }, [fetchReviews]);
+
+  // ── Derived stats ─────────────────────────────────────────────────────────
   const avgRating = reviews.length
     ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
     : "0.0";
@@ -230,18 +313,38 @@ const VendorReviewsContent = () => {
 
   const hasMore = reviews.length < total;
 
+  // ── Save reply — calls API then updates local state ───────────────────────
   const handleSaveReply = async (reviewId, replyText) => {
+    await replyToReview(reviewId, replyText);   // throws on error — ReviewCard catches it
     setReviews((prev) =>
       prev.map((r) => r.id === reviewId ? { ...r, vendorReply: replyText } : r)
     );
   };
 
-  const handleFlagReview = async (reviewId) => {
+  const handleFlagReview = (reviewId) => {
+    // Placeholder — wire up to your flag endpoint if one exists
     console.log("Flag review:", reviewId);
   };
 
+  // ── Load more (next page) ─────────────────────────────────────────────────
   const handleLoadMore = async () => {
-    setPage((p) => p + 1);
+    if (loadingMore) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    try {
+      const { reviews: more } = await getVendorReviews({
+        page:     nextPage,
+        search,
+        rating:   ratingFilter === "All" ? "" : ratingFilter,
+        ordering: sortToOrdering[sort] ?? "-created_at",
+      });
+      setReviews((prev) => [...prev, ...more]);
+      setPage(nextPage);
+    } catch (_) {
+      // silently ignore load-more errors
+    } finally {
+      setLoadingMore(false);
+    }
   };
 
   // ── Outer shell matches OrderManagement exactly ───────────────────────────
@@ -265,26 +368,48 @@ const VendorReviewsContent = () => {
             <p className="text-slate-400 text-[11px] mt-0.5">Monitor and respond to customer feedback on your products.</p>
           </div>
 
+          {/* Fetch error banner */}
+          {fetchError && (
+            <div
+              className="mb-4 px-4 py-3 rounded-lg text-sm flex items-center gap-2"
+              style={{ backgroundColor: "#FEF2F2", color: "#DC2626", border: "1px solid #FECACA" }}
+            >
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {fetchError}
+              <button
+                onClick={fetchReviews}
+                className="ml-auto text-xs underline hover:no-underline"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
           {/* Summary cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+            {/* Average rating card — gold theme */}
             <div
               className="rounded-xl p-6 flex flex-col items-center justify-center text-center"
-              style={{ backgroundColor: "#E8F3F3", border: "1px solid #C5DEDD" }}
+              style={{ backgroundColor: "#FEF6E4", border: "1px solid #F5D68A" }}
             >
-              <p className="text-xs font-medium uppercase tracking-widest mb-2" style={{ color: "#235E5D" }}>
+              <p className="text-xs font-medium uppercase tracking-widest mb-2" style={{ color: "#B8860B" }}>
                 Average Rating
               </p>
-              <p className="text-6xl font-bold leading-none" style={{ color: "#235E5D" }}>
+              <p className="text-6xl font-bold leading-none" style={{ color: "#EFB034" }}>
                 {avgRating}
               </p>
               <div className="mt-2">
                 <Stars rating={parseFloat(avgRating)} />
               </div>
-              <p className="text-xs mt-2" style={{ color: "#235E5D99" }}>
+              <p className="text-xs mt-2" style={{ color: "#B8860B99" }}>
                 Based on {total} total review{total !== 1 ? "s" : ""}
               </p>
             </div>
 
+            {/* Rating distribution */}
             <div className="bg-white rounded-xl p-5" style={{ border: "1px solid #E5E7EB" }}>
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm font-semibold text-gray-700">Rating Distribution</p>
@@ -313,8 +438,10 @@ const VendorReviewsContent = () => {
                 placeholder="Search reviews by content or customer..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-[#F5B841] focus:border-transparent transition font-medium text-slate-700 placeholder-slate-400"
-                style={{ fontFamily: "Poppins, sans-serif" }}
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:border-transparent transition font-medium text-slate-700 placeholder-slate-400"
+                style={{ fontFamily: "Poppins, sans-serif", "--tw-ring-color": "#EFB034" }}
+                onFocus={(e) => (e.target.style.boxShadow = "0 0 0 2px #EFB03440")}
+                onBlur={(e) => (e.target.style.boxShadow = "none")}
               />
             </div>
 
@@ -326,8 +453,10 @@ const VendorReviewsContent = () => {
               <select
                 value={ratingFilter}
                 onChange={(e) => setRatingFilter(e.target.value)}
-                className="text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#F5B841]"
+                className="text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 focus:outline-none"
                 style={{ fontFamily: "Poppins, sans-serif" }}
+                onFocus={(e) => (e.target.style.boxShadow = "0 0 0 2px #EFB03440")}
+                onBlur={(e) => (e.target.style.boxShadow = "none")}
               >
                 <option value="All">Rating: All</option>
                 {[5, 4, 3, 2, 1].map((v) => (
@@ -339,8 +468,10 @@ const VendorReviewsContent = () => {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value)}
-              className="text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#F5B841]"
+              className="text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 focus:outline-none"
               style={{ fontFamily: "Poppins, sans-serif" }}
+              onFocus={(e) => (e.target.style.boxShadow = "0 0 0 2px #EFB03440")}
+              onBlur={(e) => (e.target.style.boxShadow = "none")}
             >
               <option value="newest">↑ Newest First</option>
               <option value="oldest">↓ Oldest First</option>
@@ -350,18 +481,35 @@ const VendorReviewsContent = () => {
           </div>
 
           {/* Reviews list */}
-          {reviews.length === 0 ? (
+          {initialLoad ? (
+            // Skeleton loaders while first fetch is in progress
+            <div className="flex flex-col gap-3">
+              {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
+            </div>
+          ) : reviews.length === 0 ? (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-3">
-                <svg className="w-6 h-6" fill="none" stroke="#CBD5E1" viewBox="0 0 24 24">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3"
+                style={{ backgroundColor: "#FEF6E4" }}>
+                <svg className="w-6 h-6" fill="none" stroke="#EFB034" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                     d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                 </svg>
               </div>
               <p className="text-xs font-bold text-slate-900">No reviews yet</p>
               <p className="text-[10px] text-slate-400 mt-1 font-medium">
-                Reviews will appear here once customers start rating your products.
+                {search || ratingFilter !== "All"
+                  ? "No reviews match your current filters."
+                  : "Reviews will appear here once customers start rating your products."}
               </p>
+              {(search || ratingFilter !== "All") && (
+                <button
+                  onClick={() => { setSearch(""); setRatingFilter("All"); }}
+                  className="mt-3 text-xs font-semibold px-4 py-1.5 rounded-lg"
+                  style={{ backgroundColor: "#FEF6E4", color: "#B8860B" }}
+                >
+                  Clear filters
+                </button>
+              )}
             </div>
           ) : (
             <div className="flex flex-col gap-3">
@@ -377,7 +525,7 @@ const VendorReviewsContent = () => {
           )}
 
           {/* Load more */}
-          {reviews.length > 0 && (
+          {!initialLoad && reviews.length > 0 && (
             <div className="mt-6 flex flex-col items-center gap-3">
               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
                 Showing {reviews.length} of {total} review{total !== 1 ? "s" : ""}

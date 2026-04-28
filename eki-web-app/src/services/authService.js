@@ -25,8 +25,7 @@ export const getImageUrl = (path) => {
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
-  // No timeout — allows large file uploads (videos, images) to complete
-  // without being cancelled by a hard time limit.
+  // No global timeout — allows large file uploads (videos, images) to complete
 });
 
 const PUBLIC_ROUTES = [
@@ -66,7 +65,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ─── Response interceptor (401 refresh) ──────────────────────────────────────
+// ─── Response interceptor (401 → token refresh) ──────────────────────────────
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -137,9 +136,9 @@ export const SigninUser = async (credentials) => {
   saveTokens({ access: data?.access, refresh: data?.refresh });
 
   if (data?.first_name) localStorage.setItem('vendor_first_name', data.first_name);
-  if (data?.last_name) localStorage.setItem('vendor_last_name', data.last_name);
-  if (data?.email) localStorage.setItem('vendor_email', data.email);
-  if (data?.role) localStorage.setItem('vendor_role', data.role);
+  if (data?.last_name)  localStorage.setItem('vendor_last_name',  data.last_name);
+  if (data?.email)      localStorage.setItem('vendor_email',      data.email);
+  if (data?.role)       localStorage.setItem('vendor_role',       data.role);
   if (data?.phone_number) localStorage.setItem('vendor_phone_number', data.phone_number);
 
   return response.data;
@@ -150,51 +149,52 @@ export const SignoutUser = () => {
   window.location.href = '/Login';
 };
 
-export const verifyOtp = (data) => api.post('/accounts/verify-email/', data).then((r) => r.data);
-export const resendOtp = (email) => api.post('/accounts/resend-code/', { email }).then((r) => r.data);
-export const passwordResetRequest = (email) => api.post('/accounts/reset-password/', { email });
-export const passwordResetConfirm = (data) => api.post('/accounts/confirm-password-reset/', data);
-export const changePassword = (data) => api.post('/accounts/change-password/', data);
+export const verifyOtp           = (data)  => api.post('/accounts/verify-email/',            data).then((r) => r.data);
+export const resendOtp            = (email) => api.post('/accounts/resend-code/',             { email }).then((r) => r.data);
+export const passwordResetRequest = (email) => api.post('/accounts/reset-password/',          { email });
+export const passwordResetConfirm = (data)  => api.post('/accounts/confirm-password-reset/', data);
+export const changePassword       = (data)  => api.post('/accounts/change-password/',         data);
 
 // ─── Buyer ───────────────────────────────────────────────────────────────────
-export const getBuyerProfile = () =>
+export const getBuyerProfile    = () =>
   api.get('/accounts/buyer/profile/').then((r) => r.data?.data ?? r.data);
 export const updateBuyerProfile = (data) =>
   api.patch('/accounts/buyer/profile/', data).then((r) => r.data?.data ?? r.data);
 
 // ─── Vendor profile ──────────────────────────────────────────────────────────
-let _profileCache = null;
+let _profileCache    = null;
 let _profileFetching = null;
 export const clearProfileCache = () => { _profileCache = null; };
 
 export const getVendorProfile = async () => {
-  if (_profileCache) return _profileCache;
+  if (_profileCache)    return _profileCache;
   if (_profileFetching) return _profileFetching;
 
   _profileFetching = (async () => {
     try {
-      const r = await api.get('/accounts/vendor/profile/');
+      const r    = await api.get('/accounts/vendor/profile/');
       const data = r.data?.data ?? r.data;
-      if (data?.first_name) localStorage.setItem('vendor_first_name', data.first_name);
-      if (data?.last_name) localStorage.setItem('vendor_last_name', data.last_name);
-      if (data?.email) localStorage.setItem('vendor_email', data.email);
-      if (data?.profile_picture) localStorage.setItem('vendor_profile_picture', data.profile_picture);
-      if (data?.phone_number) localStorage.setItem('vendor_phone_number', data.phone_number);
-      if (data?.business_country) localStorage.setItem('vendor_country', data.business_country);
-      else if (data?.country) localStorage.setItem('vendor_country', data.country);
-      if (data?.branch_location) localStorage.setItem('vendor_branch_location', data.branch_location);
+      if (data?.first_name)      localStorage.setItem('vendor_first_name',       data.first_name);
+      if (data?.last_name)       localStorage.setItem('vendor_last_name',        data.last_name);
+      if (data?.email)           localStorage.setItem('vendor_email',            data.email);
+      if (data?.profile_picture) localStorage.setItem('vendor_profile_picture',  data.profile_picture);
+      if (data?.phone_number)    localStorage.setItem('vendor_phone_number',     data.phone_number);
+      if (data?.business_country) localStorage.setItem('vendor_country',         data.business_country);
+      else if (data?.country)    localStorage.setItem('vendor_country',          data.country);
+      if (data?.branch_location) localStorage.setItem('vendor_branch_location',  data.branch_location);
+      if (data?.id)              localStorage.setItem('vendor_id',               String(data.id));
       _profileCache = data;
       return data;
     } catch (err) {
       const status = err.response?.status;
       if (status === 500 || status === 404) {
         const fallback = {
-          first_name: localStorage.getItem('vendor_first_name') || '',
-          last_name: localStorage.getItem('vendor_last_name') || '',
-          email: localStorage.getItem('vendor_email') || '',
+          first_name:      localStorage.getItem('vendor_first_name')      || '',
+          last_name:       localStorage.getItem('vendor_last_name')       || '',
+          email:           localStorage.getItem('vendor_email')           || '',
           profile_picture: localStorage.getItem('vendor_profile_picture') || null,
-          phone_number: localStorage.getItem('vendor_phone_number') || '',
-          business_country: localStorage.getItem('vendor_country') || 'Uganda',
+          phone_number:    localStorage.getItem('vendor_phone_number')    || '',
+          business_country: localStorage.getItem('vendor_country')        || 'Uganda',
           branch_location: localStorage.getItem('vendor_branch_location') || '',
         };
         _profileCache = fallback;
@@ -229,14 +229,14 @@ export const updateVendorProfile = async (changedFields) => {
   clearProfileCache();
   const d = res.data?.data ?? res.data;
   if (d) {
-    if (d.first_name) localStorage.setItem('vendor_first_name', d.first_name);
-    if (d.last_name) localStorage.setItem('vendor_last_name', d.last_name);
-    if (d.email) localStorage.setItem('vendor_email', d.email);
-    if (d.profile_picture) localStorage.setItem('vendor_profile_picture', d.profile_picture);
-    if (d.phone_number) localStorage.setItem('vendor_phone_number', d.phone_number);
-    if (d.business_country) localStorage.setItem('vendor_country', d.business_country);
-    else if (d.country) localStorage.setItem('vendor_country', d.country);
-    if (d.branch_location) localStorage.setItem('vendor_branch_location', d.branch_location);
+    if (d.first_name)       localStorage.setItem('vendor_first_name',      d.first_name);
+    if (d.last_name)        localStorage.setItem('vendor_last_name',       d.last_name);
+    if (d.email)            localStorage.setItem('vendor_email',           d.email);
+    if (d.profile_picture)  localStorage.setItem('vendor_profile_picture', d.profile_picture);
+    if (d.phone_number)     localStorage.setItem('vendor_phone_number',    d.phone_number);
+    if (d.business_country) localStorage.setItem('vendor_country',         d.business_country);
+    else if (d.country)     localStorage.setItem('vendor_country',         d.country);
+    if (d.branch_location)  localStorage.setItem('vendor_branch_location', d.branch_location);
   }
   return res.data?.data ?? res.data;
 };
@@ -246,11 +246,11 @@ const NOTIFICATIONS_ENDPOINT_READY = false;
 export const getVendorNotifications = async ({ limit = 15 } = {}) => {
   if (!NOTIFICATIONS_ENDPOINT_READY) return { notifications: [] };
   try {
-    const r = await api.get(`/accounts/vendor/notifications/?limit=${limit}`);
+    const r       = await api.get(`/accounts/vendor/notifications/?limit=${limit}`);
     const payload = r.data?.data ?? r.data;
-    if (Array.isArray(payload)) return { notifications: payload };
+    if (Array.isArray(payload))                return { notifications: payload };
     if (Array.isArray(payload?.notifications)) return payload;
-    if (Array.isArray(payload?.results)) return { notifications: payload.results };
+    if (Array.isArray(payload?.results))       return { notifications: payload.results };
     return { notifications: [] };
   } catch (err) {
     if (err.response?.status === 404 || err.response?.status === 500) return { notifications: [] };
@@ -282,13 +282,13 @@ export const markAllVendorNotificationsRead = async () => {
 export const getOrderNotifications = async ({ limit = 15, country = '', branch_location = '' } = {}) => {
   try {
     const params = new URLSearchParams({ limit });
-    if (country) params.append('country', country);
+    if (country)         params.append('country',         country);
     if (branch_location) params.append('branch_location', branch_location);
-    const r = await api.get(`/orders/vendor/notifications/?${params.toString()}`);
+    const r       = await api.get(`/orders/vendor/notifications/?${params.toString()}`);
     const payload = r.data?.data ?? r.data;
-    if (Array.isArray(payload)) return { notifications: payload };
+    if (Array.isArray(payload))                return { notifications: payload };
     if (Array.isArray(payload?.notifications)) return payload;
-    if (Array.isArray(payload?.results)) return { notifications: payload.results };
+    if (Array.isArray(payload?.results))       return { notifications: payload.results };
     return { notifications: [] };
   } catch (err) {
     if (err.response?.status === 404 || err.response?.status === 500) return { notifications: [] };
@@ -297,7 +297,7 @@ export const getOrderNotifications = async ({ limit = 15, country = '', branch_l
 };
 export const getOrderNotificationsUnreadCount = async () => {
   try {
-    const r = await api.get('/orders/vendor/notifications/unread-count/');
+    const r       = await api.get('/orders/vendor/notifications/unread-count/');
     const payload = r.data?.data ?? r.data;
     return Number(payload?.count ?? payload?.unread_count ?? 0);
   } catch (_) { return 0; }
@@ -323,28 +323,30 @@ const deriveTransactionType = (status) => {
 const normalizeOrderItems = (o) => {
   if (Array.isArray(o.items) && o.items.length > 0 && typeof o.items[0] === 'object') {
     return o.items.map((item) => ({
-      name: item.name ?? item.title ?? item.product_name ?? item.listing_title ?? 'Item',
-      qty: item.qty ?? item.quantity ?? item.amount ?? 1,
-      price: item.price ?? item.unit_price ?? item.item_price ?? 0,
-      total: item.total ?? item.subtotal ?? item.line_total ??
-        (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
+      name:    item.name ?? item.title ?? item.product_name ?? item.listing_title ?? 'Item',
+      qty:     item.qty ?? item.quantity ?? item.amount ?? 1,
+      price:   item.price ?? item.unit_price ?? item.item_price ?? 0,
+      total:   item.total ?? item.subtotal ?? item.line_total ??
+               (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
       variant: item.variant ?? item.variant_label ?? item.variant_name ??
-        [item.size, item.color].filter(Boolean).join(' / ') ?? '',
-      image: item.image ? getImageUrl(item.image) : item.product_image ? getImageUrl(item.product_image) : item.listing_image ? getImageUrl(item.listing_image) : null,
-      sku: item.sku ?? item.product_sku ?? '',
+               [item.size, item.color].filter(Boolean).join(' / ') ?? '',
+      image:   item.image        ? getImageUrl(item.image)         :
+               item.product_image ? getImageUrl(item.product_image) :
+               item.listing_image ? getImageUrl(item.listing_image) : null,
+      sku:     item.sku ?? item.product_sku ?? '',
     }));
   }
   if (Array.isArray(o.order_items) && o.order_items.length > 0) {
     return o.order_items.map((item) => ({
-      name: item.name ?? item.title ?? item.product_name ?? item.listing_title ?? 'Item',
-      qty: item.qty ?? item.quantity ?? 1,
-      price: item.price ?? item.unit_price ?? item.item_price ?? 0,
-      total: item.total ?? item.subtotal ??
-        (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
+      name:    item.name ?? item.title ?? item.product_name ?? item.listing_title ?? 'Item',
+      qty:     item.qty ?? item.quantity ?? 1,
+      price:   item.price ?? item.unit_price ?? item.item_price ?? 0,
+      total:   item.total ?? item.subtotal ??
+               (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
       variant: item.variant ?? item.variant_label ??
-        [item.size, item.color].filter(Boolean).join(' / ') ?? '',
-      image: item.image ? getImageUrl(item.image) : item.product_image ? getImageUrl(item.product_image) : null,
-      sku: item.sku ?? '',
+               [item.size, item.color].filter(Boolean).join(' / ') ?? '',
+      image:   item.image ? getImageUrl(item.image) : item.product_image ? getImageUrl(item.product_image) : null,
+      sku:     item.sku ?? '',
     }));
   }
   const altKey = ['products', 'cart_items', 'line_items', 'listings'].find(
@@ -352,15 +354,15 @@ const normalizeOrderItems = (o) => {
   );
   if (altKey) {
     return o[altKey].map((item) => ({
-      name: item.name ?? item.title ?? item.product_name ?? 'Item',
-      qty: item.qty ?? item.quantity ?? 1,
-      price: item.price ?? item.unit_price ?? 0,
-      total: item.total ?? item.subtotal ??
-        (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
+      name:    item.name ?? item.title ?? item.product_name ?? 'Item',
+      qty:     item.qty ?? item.quantity ?? 1,
+      price:   item.price ?? item.unit_price ?? 0,
+      total:   item.total ?? item.subtotal ??
+               (Number(item.price ?? item.unit_price ?? 0) * Number(item.qty ?? item.quantity ?? 1)),
       variant: item.variant ?? item.variant_label ??
-        [item.size, item.color].filter(Boolean).join(' / ') ?? '',
-      image: item.image ? getImageUrl(item.image) : item.product_image ? getImageUrl(item.product_image) : null,
-      sku: item.sku ?? '',
+               [item.size, item.color].filter(Boolean).join(' / ') ?? '',
+      image:   item.image ? getImageUrl(item.image) : item.product_image ? getImageUrl(item.product_image) : null,
+      sku:     item.sku ?? '',
     }));
   }
   return [];
@@ -369,54 +371,50 @@ const normalizeOrderItems = (o) => {
 const normalizeOrderCustomer = (o) => {
   if (o.customer && typeof o.customer === 'object') {
     return {
-      name: o.customer.name ?? o.customer.full_name ?? o.customer.username ??
-        [o.customer.first_name, o.customer.last_name].filter(Boolean).join(' ') ?? '—',
-      email: o.customer.email ?? '',
-      phone: o.customer.phone ?? o.customer.phone_number ?? '',
+      name:    o.customer.name ?? o.customer.full_name ?? o.customer.username ??
+               [o.customer.first_name, o.customer.last_name].filter(Boolean).join(' ') ?? '—',
+      email:   o.customer.email ?? '',
+      phone:   o.customer.phone ?? o.customer.phone_number ?? '',
       address: o.customer.address ?? o.customer.delivery_address ?? o.customer.location ?? '',
     };
   }
   const name =
     (typeof o.customer === 'string' && o.customer) ||
-    o.customer_name ||
-    o.buyer_name ||
-    o.buyer?.name ||
-    o.buyer?.full_name ||
+    o.customer_name || o.buyer_name ||
+    o.buyer?.name  || o.buyer?.full_name ||
     [o.buyer?.first_name, o.buyer?.last_name].filter(Boolean).join(' ') ||
-    o.user?.name ||
-    o.user?.full_name ||
+    o.user?.name   || o.user?.full_name ||
     [o.user?.first_name, o.user?.last_name].filter(Boolean).join(' ') ||
-    o.user?.username ||
-    '—';
+    o.user?.username || '—';
   return {
     name,
-    email: o.customer_email || o.buyer?.email || o.user?.email || o.email || '',
-    phone: o.customer_phone || o.buyer?.phone || o.buyer?.phone_number || o.user?.phone || o.phone || o.phone_number || '',
+    email:   o.customer_email || o.buyer?.email || o.user?.email || o.email || '',
+    phone:   o.customer_phone || o.buyer?.phone || o.buyer?.phone_number || o.user?.phone || o.phone || o.phone_number || '',
     address: o.delivery_address || o.shipping_address || o.customer_address || o.buyer?.address || o.location || '',
   };
 };
 
 const normalizeOrder = (o) => {
-  const customer = normalizeOrderCustomer(o);
-  const items = normalizeOrderItems(o);
+  const customer    = normalizeOrderCustomer(o);
+  const items       = normalizeOrderItems(o);
   const derivedType = deriveTransactionType(o.status);
   return {
     ...o,
-    id: o.id ?? o.order_id ?? o.pk,
+    id:               o.id ?? o.order_id ?? o.pk,
     customer,
     items,
-    total: Number(o.total ?? o.total_amount ?? o.total_price ?? o.amount ?? o.grand_total ?? 0),
-    subtotal: Number(o.subtotal ?? o.sub_total ?? o.subtotal_amount ?? 0) || null,
-    shipping: Number(o.shipping ?? o.shipping_fee ?? o.delivery_fee ?? 0) || null,
-    tax: Number(o.tax ?? o.tax_amount ?? o.vat ?? 0) || null,
-    status: o.status ?? o.order_status ?? 'pending',
-    date: o.date ?? o.created_at ?? o.order_date ?? '',
-    location: o.location ?? o.delivery_address ?? o.shipping_address ?? '',
-    notes: o.notes ?? o.order_notes ?? o.special_instructions ?? '',
-    review: o.review ?? o.customer_review ?? null,
+    total:            Number(o.total ?? o.total_amount ?? o.total_price ?? o.amount ?? o.grand_total ?? 0),
+    subtotal:         Number(o.subtotal ?? o.sub_total ?? o.subtotal_amount ?? 0) || null,
+    shipping:         Number(o.shipping ?? o.shipping_fee ?? o.delivery_fee ?? 0) || null,
+    tax:              Number(o.tax ?? o.tax_amount ?? o.vat ?? 0) || null,
+    status:           o.status ?? o.order_status ?? 'pending',
+    date:             o.date ?? o.created_at ?? o.order_date ?? '',
+    location:         o.location ?? o.delivery_address ?? o.shipping_address ?? '',
+    notes:            o.notes ?? o.order_notes ?? o.special_instructions ?? '',
+    review:           o.review ?? o.customer_review ?? null,
     transaction_type: derivedType,
-    type: derivedType,
-    transaction_id: o.id ?? o.order_id ?? o.pk,
+    type:             derivedType,
+    transaction_id:   o.id ?? o.order_id ?? o.pk,
   };
 };
 
@@ -427,83 +425,57 @@ export const getVendorOrders = async ({ status = '', search = '' } = {}) => {
     if (status) params.append('status', status);
     if (search) params.append('search', search);
     const query = params.toString() ? `?${params.toString()}` : '';
-    const r = await api.get(`/orders/vendor/order-list/${query}`);
+    const r       = await api.get(`/orders/vendor/order-list/${query}`);
     const payload = r.data?.data ?? r.data;
     let list = [];
-    if (Array.isArray(payload)) list = payload;
+    if (Array.isArray(payload))          list = payload;
     else if (Array.isArray(payload?.results)) list = payload.results;
-    else if (Array.isArray(payload?.orders)) list = payload.orders;
-    else if (Array.isArray(payload?.data)) list = payload.data;
+    else if (Array.isArray(payload?.orders))  list = payload.orders;
+    else if (Array.isArray(payload?.data))    list = payload.data;
     return list.map(normalizeOrder);
-  } catch (_) {
-    return [];
-  }
+  } catch (_) { return []; }
 };
 
 // ─── Unified Vendor Action Endpoint ──────────────────────────────────────────
 const vendorOrderAction = async (orderId, action, extraPayload = {}) => {
   const payload = { action, ...extraPayload };
-
-  console.group(`[vendorOrderAction] ${action} on order ${orderId}`);
-  console.log('REQUEST payload:', JSON.stringify(payload, null, 2));
-
   try {
     const r = await api.post(`/orders/vendor/action/${orderId}/`, payload);
-    console.log('RESPONSE status:', r.status);
-    console.log('RESPONSE data:', JSON.stringify(r.data, null, 2));
-    console.groupEnd();
     return r.data?.data ?? r.data;
   } catch (err) {
-    console.error('ERROR status   :', err.response?.status);
-    console.error('ERROR data     :', JSON.stringify(err.response?.data, null, 2));
-    console.groupEnd();
     throw err;
   }
 };
 
-// ─── Order Actions (all via unified endpoint) ────────────────────────────────
-export const confirmVendorOrder = (orderId, confirmationCode, notes = '') =>
+// ─── Order Actions ────────────────────────────────────────────────────────────
+export const confirmVendorOrder    = (orderId, confirmationCode, notes = '') =>
   vendorOrderAction(orderId, 'confirm_onsite', {
     confirmation_code: confirmationCode,
     ...(notes ? { notes } : {}),
   });
-
-export const verifyPickupCode = async (orderId, code) => {
-  const r = await vendorOrderAction(orderId, 'mark_fulfilled', { pickup_code: code });
-  return r;
-};
-
-export const resendPickupCode = (orderId) =>
+export const verifyPickupCode      = (orderId, code) =>
+  vendorOrderAction(orderId, 'mark_fulfilled', { pickup_code: code });
+export const resendPickupCode      = (orderId) =>
   vendorOrderAction(orderId, 'resend_code');
-
 export const updateVendorOrderStatus = (orderId, status) =>
   vendorOrderAction(orderId, 'update_status', { status });
-
-export const startServiceOrder = (orderId) =>
+export const startServiceOrder     = (orderId) =>
   vendorOrderAction(orderId, 'start_service');
-
-export const completeServiceOrder = (orderId) =>
+export const completeServiceOrder  = (orderId) =>
   vendorOrderAction(orderId, 'complete_service');
-
 export const markOrderReadyForPickup = (orderId) =>
   vendorOrderAction(orderId, 'ready_for_pickup');
-
-export const updateOrderTracking = (orderId, trackingData) =>
+export const updateOrderTracking   = (orderId, trackingData) =>
   vendorOrderAction(orderId, 'update_tracking', trackingData);
 
 // ─── Wallet & Escrow ─────────────────────────────────────────────────────────
 export const getVendorWallet = async () => {
-  try {
-    const r = await api.get('/payments/wallet/vendor/');
-    return r.data?.data ?? r.data ?? {};
-  } catch (_) { return {}; }
+  try { const r = await api.get('/payments/wallet/vendor/'); return r.data?.data ?? r.data ?? {}; }
+  catch (_) { return {}; }
 };
-
 export const getVendorEscrow = async () => {
-  try {
-    const r = await api.get('/orders/vendor/escrow-summary/');
-    return r.data?.data ?? r.data ?? {};
-  } catch (_) { return {}; }
+  try { const r = await api.get('/orders/vendor/escrow-summary/'); return r.data?.data ?? r.data ?? {}; }
+  catch (_) { return {}; }
 };
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
@@ -514,37 +486,32 @@ export const getVendorDashboard = async () => {
     raw = dashRes.data?.data ?? dashRes.data ?? {};
   } catch (_) {}
 
-  let country = 'Uganda';
-  let storeName = '';
-  let vendorType = 'Products';
-  let businessCategory = 'retail';
-  let currencySymbol = 'UGX';
-  let branchLocation = '';
+  let country = 'Uganda', storeName = '', vendorType = 'Products',
+      businessCategory = 'retail', currencySymbol = 'UGX', branchLocation = '';
 
-  const isProductVendor = raw.is_product_vendor ?? true;
-  const isServiceVendor = raw.is_service_vendor ?? false;
-  const vendor_type = raw.vendor_type ?? (isProductVendor ? 'product' : 'service');
+  const isProductVendor     = raw.is_product_vendor ?? true;
+  const isServiceVendor     = raw.is_service_vendor  ?? false;
+  const vendor_type         = raw.vendor_type ?? (isProductVendor ? 'product' : 'service');
   const allowedListingTypes = raw.allowed_listing_types ?? (isProductVendor ? ['product'] : ['service']);
 
   try {
     const p = await getVendorProfile();
-    country = p.business_country || p.country || localStorage.getItem('vendor_country') || 'Uganda';
-    storeName = p.business_name || '';
-    vendorType = p.business_type || (isProductVendor ? 'Products' : 'Services');
+    country          = p.business_country || p.country || localStorage.getItem('vendor_country') || 'Uganda';
+    storeName        = p.business_name || '';
+    vendorType       = p.business_type || (isProductVendor ? 'Products' : 'Services');
     businessCategory = p.business_category || raw.business_category || 'retail';
-    currencySymbol = raw.currencySymbol || p.currencySymbol || 'UGX';
-    branchLocation = p.branch_location || localStorage.getItem('vendor_branch_location') || '';
+    currencySymbol   = raw.currencySymbol || p.currencySymbol || 'UGX';
+    branchLocation   = p.branch_location  || localStorage.getItem('vendor_branch_location') || '';
   } catch (_) {}
 
   let liveOrders = [];
   try { liveOrders = await getVendorOrders(); } catch (_) {}
 
-  const metricsData = raw.metrics || {};
-  const salesHistoryData = raw.salesHistory || [];
-  const rawRecentOrders = raw.recentOrders || [];
-  const recentOrdersData = rawRecentOrders.length > 0 ? rawRecentOrders : liveOrders.slice(0, 10);
-
-  const openOrdersCount = Number(metricsData.openOrders ?? 0) || liveOrders.filter((o) =>
+  const metricsData        = raw.metrics       || {};
+  const salesHistoryData   = raw.salesHistory  || [];
+  const rawRecentOrders    = raw.recentOrders  || [];
+  const recentOrdersData   = rawRecentOrders.length > 0 ? rawRecentOrders : liveOrders.slice(0, 10);
+  const openOrdersCount    = Number(metricsData.openOrders ?? 0) || liveOrders.filter((o) =>
     ['pending', 'confirmed', 'processing'].includes(String(o.status).toLowerCase())
   ).length;
 
@@ -552,7 +519,9 @@ export const getVendorDashboard = async () => {
   if (derivedSalesHistory.length === 0 && liveOrders.length > 0) {
     const byDate = {};
     liveOrders.forEach((o) => {
-      const dateKey = o.date ? (() => { try { return new Date(o.date).toLocaleDateString(); } catch (_) { return o.date; } })() : 'Unknown';
+      const dateKey = o.date
+        ? (() => { try { return new Date(o.date).toLocaleDateString(); } catch (_) { return o.date; } })()
+        : 'Unknown';
       byDate[dateKey] = (byDate[dateKey] || 0) + Number(o.total ?? 0);
     });
     derivedSalesHistory = Object.entries(byDate)
@@ -561,31 +530,21 @@ export const getVendorDashboard = async () => {
   }
 
   return {
-    storeName,
-    vendorType,
-    country,
-    businessCategory,
-    currencySymbol,
-    branchLocation,
-    vendor_type,
-    is_product_vendor: isProductVendor,
-    is_service_vendor: isServiceVendor,
+    storeName, vendorType, country, businessCategory, currencySymbol, branchLocation,
+    vendor_type, is_product_vendor: isProductVendor, is_service_vendor: isServiceVendor,
     allowed_listing_types: allowedListingTypes,
-    first_name: raw.first_name,
-    last_name: raw.last_name,
-    email: raw.email,
-    phone_number: raw.phone_number,
-    profile_picture: raw.profile_picture,
+    first_name: raw.first_name, last_name: raw.last_name,
+    email: raw.email, phone_number: raw.phone_number, profile_picture: raw.profile_picture,
     metrics: {
-      grossSales: Number(metricsData.grossSales ?? 0),
-      openOrders: openOrdersCount,
+      grossSales:     Number(metricsData.grossSales     ?? 0),
+      openOrders:     openOrdersCount,
       pendingPayouts: Number(metricsData.pendingPayouts ?? 0),
       activeListings: Number(metricsData.activeListings ?? 0),
     },
-    salesHistory: derivedSalesHistory.map((item) => ({ date: item.date, sales: Number(item.sales ?? 0) })),
-    recentOrders: recentOrdersData.map(normalizeOrder),
+    salesHistory:    derivedSalesHistory.map((item) => ({ date: item.date, sales: Number(item.sales ?? 0) })),
+    recentOrders:    recentOrdersData.map(normalizeOrder),
     inventoryAlerts: raw.inventoryAlerts || [],
-    reviews: raw.reviews || [],
+    reviews:         raw.reviews         || [],
   };
 };
 
@@ -598,7 +557,7 @@ export const getCategories = (businessCategory = null) => {
   });
 };
 
-// ─── Listings (Products) ─────────────────────────────────────────────────────
+// ─── Listings ────────────────────────────────────────────────────────────────
 const normalizeImage = (img) => {
   if (!img) return null;
   if (typeof img === 'string') return { image: getImageUrl(img) };
@@ -607,66 +566,55 @@ const normalizeImage = (img) => {
 };
 
 const normalizeListing = (item) => {
-  const salesStatus = item.sales_status || item.detail?.sales_status || {};
+  const salesStatus     = item.sales_status || item.detail?.sales_status || {};
   const discountEnabled = salesStatus?.on_sale === true;
-  const discountPct = salesStatus?.discount_percentage ?? item.discount_percentage ?? 0;
-  const discountedPrice = salesStatus?.discounted_price ?? item.discounted_price ?? null;
+  const discountPct     = salesStatus?.discount_percentage ?? item.discount_percentage ?? 0;
+  const discountedPrice = salesStatus?.discounted_price    ?? item.discounted_price    ?? null;
 
   const normalizedVariants = (item.variants ?? item.detail?.variants ?? []).map((v) => ({
-    ...v,
-    stock: v.stock ?? v.quantity ?? v.stock_quantity ?? v.detail?.stock ?? 0,
+    ...v, stock: v.stock ?? v.quantity ?? v.stock_quantity ?? v.detail?.stock ?? 0,
   }));
 
   let imagesArray = [];
-  if (Array.isArray(item.images)) imagesArray = item.images;
+  if      (Array.isArray(item.images))         imagesArray = item.images;
   else if (Array.isArray(item.detail?.images)) imagesArray = item.detail.images;
   else if (Array.isArray(item.listing_images)) imagesArray = item.listing_images;
   else if (Array.isArray(item.product_images)) imagesArray = item.product_images;
-  else if (item.image) imagesArray = [item.image];
+  else if (item.image)                         imagesArray = [item.image];
 
   const normalizedImages = imagesArray.map(normalizeImage).filter(Boolean);
 
   const reservedStock =
-    item.reserved_stock ??
-    item.reserved ??
-    item.ordered_quantity ??
-    item.pending_quantity ??
-    item.detail?.reserved_stock ??
-    item.detail?.reserved ??
-    item.detail?.ordered_quantity ??
-    0;
+    item.reserved_stock ?? item.reserved ?? item.ordered_quantity ?? item.pending_quantity ??
+    item.detail?.reserved_stock ?? item.detail?.reserved ?? item.detail?.ordered_quantity ?? 0;
 
   const rawStock =
-    item.detail?.stock ??
-    item.stock ??
-    item.stock_quantity ??
-    item.quantity ??
-    0;
+    item.detail?.stock ?? item.stock ?? item.stock_quantity ?? item.quantity ?? 0;
 
   const availableStock = Math.max(0, Number(rawStock) - Number(reservedStock));
 
   return {
     ...item,
-    id: item.id,
-    is_published: item.is_published === true || item.status === 'published',
-    sku: item.detail?.sku ?? item.sku ?? '',
-    stock: availableStock,
-    raw_stock: Number(rawStock),
-    reserved_stock: Number(reservedStock),
-    variants: normalizedVariants,
-    branch_location: item.branch_location ?? item.detail?.branch_location ?? '',
+    id:               item.id,
+    is_published:     item.is_published === true || item.status === 'published',
+    sku:              item.detail?.sku ?? item.sku ?? '',
+    stock:            availableStock,
+    raw_stock:        Number(rawStock),
+    reserved_stock:   Number(reservedStock),
+    variants:         normalizedVariants,
+    branch_location:  item.branch_location ?? item.detail?.branch_location ?? '',
     discount_enabled: discountEnabled,
     discount_percentage: discountPct,
     discounted_price: discountedPrice,
-    images: normalizedImages,
+    images:           normalizedImages,
   };
 };
 
 export const getProducts = async () => {
-  const res = await api.get('/listings/', { params: { listing_type: 'product' } });
+  const res     = await api.get('/listings/', { params: { listing_type: 'product' } });
   const payload = res.data?.data ?? res.data;
   let raw = [];
-  if (Array.isArray(payload)) raw = payload;
+  if (Array.isArray(payload))          raw = payload;
   else if (Array.isArray(payload?.results)) raw = payload.results;
   return raw.map(normalizeListing);
 };
@@ -674,18 +622,18 @@ export const getProducts = async () => {
 export const createProductListing = async (productData) => {
   const stockQty = parseInt(productData.stock) || 0;
   const hasRealVariants =
-    (Array.isArray(productData.sizes) && productData.sizes.filter(Boolean).length > 0) ||
+    (Array.isArray(productData.sizes)  && productData.sizes.filter(Boolean).length  > 0) ||
     (Array.isArray(productData.colors) && productData.colors.filter(Boolean).length > 0);
   let variants = [];
   if (hasRealVariants) {
     if (Array.isArray(productData.variants) && productData.variants.length > 0) {
       productData.variants.forEach((v) => {
         if (!v.value?.trim()) return;
-        if (v.type === 'Size') variants.push({ color: '', size: v.value.trim(), stock: parseInt(v.stock) || 0 });
+        if (v.type === 'Size')  variants.push({ color: '', size: v.value.trim(), stock: parseInt(v.stock) || 0 });
         if (v.type === 'Color') variants.push({ color: v.value.trim(), size: '', stock: parseInt(v.stock) || 0 });
       });
     }
-    const sizes = Array.isArray(productData.sizes) ? productData.sizes.filter(Boolean) : [];
+    const sizes  = Array.isArray(productData.sizes)  ? productData.sizes.filter(Boolean)  : [];
     const colors = Array.isArray(productData.colors) ? productData.colors.filter(Boolean) : [];
     if (variants.length === 0) {
       if (sizes.length > 0 && colors.length > 0) {
@@ -705,20 +653,15 @@ export const createProductListing = async (productData) => {
   const payload = {
     listing_type: 'product',
     business_category: productData.business_category,
-    title: productData.title?.trim(),
+    title:       productData.title?.trim(),
     description: productData.description?.trim() || '',
-    status: productData.is_published ? 'published' : 'draft',
+    status:      productData.is_published ? 'published' : 'draft',
     availability: 'available',
-    price: String(parseFloat(productData.price)),
-    price_unit: 'item',
+    price:        String(parseFloat(productData.price)),
+    price_unit:   'item',
     branch_location: productData.branch_location || localStorage.getItem('vendor_branch_location') || '',
     sales_status: salesStatus,
-    detail: {
-      sku: productData.sku?.trim() || '',
-      base_price: String(parseFloat(productData.price)),
-      stock: stockQty,
-      variants,
-    },
+    detail: { sku: productData.sku?.trim() || '', base_price: String(parseFloat(productData.price)), stock: stockQty, variants },
   };
   if (productData.category_id) payload.category_id = productData.category_id;
   const res = await api.post('/listings/', payload);
@@ -728,18 +671,18 @@ export const createProductListing = async (productData) => {
 export const updateProductListing = async (listingId, productData) => {
   const stockQty = parseInt(productData.stock) || 0;
   const hasRealVariants =
-    (Array.isArray(productData.sizes) && productData.sizes.filter(Boolean).length > 0) ||
+    (Array.isArray(productData.sizes)  && productData.sizes.filter(Boolean).length  > 0) ||
     (Array.isArray(productData.colors) && productData.colors.filter(Boolean).length > 0);
   let variants = [];
   if (hasRealVariants) {
     if (Array.isArray(productData.variants) && productData.variants.length > 0) {
       productData.variants.forEach((v) => {
         if (!v.value?.trim()) return;
-        if (v.type === 'Size') variants.push({ color: '', size: v.value.trim(), stock: parseInt(v.stock) || 0 });
+        if (v.type === 'Size')  variants.push({ color: '', size: v.value.trim(), stock: parseInt(v.stock) || 0 });
         if (v.type === 'Color') variants.push({ color: v.value.trim(), size: '', stock: parseInt(v.stock) || 0 });
       });
     }
-    const sizes = Array.isArray(productData.sizes) ? productData.sizes.filter(Boolean) : [];
+    const sizes  = Array.isArray(productData.sizes)  ? productData.sizes.filter(Boolean)  : [];
     const colors = Array.isArray(productData.colors) ? productData.colors.filter(Boolean) : [];
     if (variants.length === 0) {
       if (sizes.length > 0 && colors.length > 0) {
@@ -758,19 +701,14 @@ export const updateProductListing = async (listingId, productData) => {
       : { on_sale: false };
   const payload = {
     listing_type: 'product',
-    title: productData.title?.trim(),
+    title:       productData.title?.trim(),
     description: productData.description?.trim() || '',
-    status: productData.is_published ? 'published' : 'draft',
-    price: String(parseFloat(productData.price)),
-    price_unit: 'item',
+    status:      productData.is_published ? 'published' : 'draft',
+    price:        String(parseFloat(productData.price)),
+    price_unit:   'item',
     branch_location: productData.branch_location || localStorage.getItem('vendor_branch_location') || '',
     sales_status: salesStatus,
-    detail: {
-      sku: productData.sku?.trim() || '',
-      base_price: String(parseFloat(productData.price)),
-      stock: stockQty,
-      variants,
-    },
+    detail: { sku: productData.sku?.trim() || '', base_price: String(parseFloat(productData.price)), stock: stockQty, variants },
   };
   if (productData.category_id) payload.category_id = productData.category_id;
   const res = await api.patch(`/listings/${listingId}/`, payload);
@@ -778,28 +716,22 @@ export const updateProductListing = async (listingId, productData) => {
 };
 
 export const updateVariantStock = async (listingId, variantId, stock) => {
-  const res = await api.patch(`/listings/${listingId}/variants/${variantId}/`, {
-    stock: parseInt(stock) || 0,
-  });
+  const res = await api.patch(`/listings/${listingId}/variants/${variantId}/`, { stock: parseInt(stock) || 0 });
   return res.data?.data ?? res.data;
 };
 
 export const updateProductStock = async (listingId, stock) => {
-  const listing = await api.get(`/listings/${listingId}/`);
-  const variants = listing.data?.data?.detail?.variants || [];
+  const listing        = await api.get(`/listings/${listingId}/`);
+  const variants       = listing.data?.data?.detail?.variants || [];
   const defaultVariant = variants.find((v) => v.color === 'Default' && v.size === '');
   if (defaultVariant) return updateVariantStock(listingId, defaultVariant.id, stock);
   throw new Error('No default variant found to update stock');
 };
 
-export const deleteProductListing = (listingId) =>
-  api.delete(`/listings/${listingId}/`).then((r) => r.data);
-
-export const updateListingStatus = (listingId, newStatus) =>
-  api.patch(`/listings/${listingId}/status/`, { status: newStatus })
-    .then((r) => r.data?.data ?? r.data);
-
-export const uploadListingImage = async (listingId, imageFile) => {
+export const deleteProductListing  = (listingId) => api.delete(`/listings/${listingId}/`).then((r) => r.data);
+export const updateListingStatus   = (listingId, newStatus) =>
+  api.patch(`/listings/${listingId}/status/`, { status: newStatus }).then((r) => r.data?.data ?? r.data);
+export const uploadListingImage    = async (listingId, imageFile) => {
   if (!(imageFile instanceof File)) return null;
   const form = new FormData();
   form.append('image', imageFile);
@@ -807,8 +739,7 @@ export const uploadListingImage = async (listingId, imageFile) => {
     headers: { 'Content-Type': 'multipart/form-data' },
   }).then((r) => r.data?.data ?? r.data);
 };
-
-export const uploadListingImages = async (listingId, imageFiles) => {
+export const uploadListingImages   = async (listingId, imageFiles) => {
   if (!Array.isArray(imageFiles) || imageFiles.length === 0) return [];
   const results = [];
   for (const file of imageFiles) {
@@ -820,87 +751,197 @@ export const uploadListingImages = async (listingId, imageFiles) => {
   }
   return results;
 };
-
-export const deleteListingImage = (listingId, imageId) =>
+export const deleteListingImage    = (listingId, imageId) =>
   api.delete(`/listings/${listingId}/images/${imageId}/`).then((r) => r.data);
-
-export const updateProductVariant = (listingId, variantId, data) =>
-  api.patch(`/listings/${listingId}/variants/${variantId}/`, data)
-    .then((r) => r.data?.data ?? r.data);
-
-export const deleteProductVariant = (listingId, variantId) =>
+export const updateProductVariant  = (listingId, variantId, data) =>
+  api.patch(`/listings/${listingId}/variants/${variantId}/`, data).then((r) => r.data?.data ?? r.data);
+export const deleteProductVariant  = (listingId, variantId) =>
   api.delete(`/listings/${listingId}/variants/${variantId}/`).then((r) => r.data);
 
-// ─── Chat API ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// ─── CHAT API ─────────────────────────────────────────────────────────────────
+// All 6 endpoints from the screenshot are connected here and in VendorChatPage.
+// ═══════════════════════════════════════════════════════════════════════════════
 
+/**
+ * POST /api/v1/chat/conversations/{conversation_id}/read/
+ * Mark all messages in a conversation as read.
+ */
+export const markChatConversationRead = (conversationId) =>
+  api.post(`/chat/conversations/${conversationId}/read/`).then((r) => r.data);
+
+/**
+ * POST /api/v1/chat/conversations/{conversation_id}/send/
+ * Send a message (text, image, video, file) to a conversation.
+ * Body: { message_type, message?, media_url?, file_name?, mime_type? }
+ */
+export const sendChatMessage = (conversationId, messageData) =>
+  api.post(`/chat/conversations/${conversationId}/send/`, messageData).then((r) => r.data);
+
+/**
+ * DELETE /api/v1/chat/messages/{message_id}/delete/
+ * Permanently delete a chat message.
+ * Called by VendorChatPage → handleDeleteExecute
+ */
+export const deleteChatMessage = (messageId) =>
+  api.delete(`/chat/messages/${messageId}/delete/`).then((r) => r.data);
+
+/**
+ * PATCH /api/v1/chat/messages/{message_id}/edit/
+ * Edit the text of an existing message.
+ * Body: { message: string }
+ * Called by VendorChatPage → handleEditSave
+ */
+export const editChatMessage = (messageId, newText) =>
+  api.patch(`/chat/messages/${messageId}/edit/`, { message: newText }).then((r) => r.data);
+
+/**
+ * POST /api/v1/chat/messages/delivered/
+ * Mark one or more messages as delivered.
+ * Body: { message_ids: number[] }
+ */
+export const markChatMessagesDelivered = (messageIds) =>
+  api.post('/chat/messages/delivered/', {
+    message_ids: Array.isArray(messageIds) ? messageIds : [messageIds],
+  }).then((r) => r.data);
+
+/**
+ * POST /api/v1/chat/share-location/
+ * Share a GPS location in a conversation.
+ * Body: { conversation_id, latitude, longitude, location_name, location_address }
+ * Called by VendorChatPage → finalizeLocationSend
+ */
+export const shareChatLocation = (conversationId, latitude, longitude, locationName = '', locationAddress = '') =>
+  api.post('/chat/share-location/', {
+    conversation_id: conversationId,
+    latitude,
+    longitude,
+    location_name:    locationName,
+    location_address: locationAddress,
+  }).then((r) => r.data);
+
+// ─── Additional chat helpers ──────────────────────────────────────────────────
+
+/** POST /api/v1/chat/conversation/start/  — start a new conversation from an order */
 export const startChatConversation = (orderId) =>
-  api.post('/chat/conversation/start/', { order_id: orderId }).then(r => r.data);
+  api.post('/chat/conversation/start/', { order_id: orderId }).then((r) => r.data);
 
+/** GET /api/v1/chat/conversations/  — list all conversations */
 export const getChatConversations = () =>
-  api.get('/chat/conversations/').then(r => {
+  api.get('/chat/conversations/').then((r) => {
     const list = r.data ?? [];
-    return (Array.isArray(list) ? list : []).map(c => ({
+    return (Array.isArray(list) ? list : []).map((c) => ({
       ...c,
       unread_count: c._unread_count || c.unread_count || 0,
     }));
   });
 
+/** GET /api/v1/chat/conversations/{id}/  — load messages for one conversation */
 export const getChatConversation = (conversationId, limit = 50, offset = 0) =>
-  api.get(`/chat/conversations/${conversationId}/`, {
-    params: { limit, offset },
-  }).then(r => {
-    const data = r.data;
+  api.get(`/chat/conversations/${conversationId}/`, { params: { limit, offset } }).then((r) => {
+    const data     = r.data;
     const messages = (data.messages || []).slice().reverse();
     return { ...data, messages };
   });
 
-export const markChatConversationRead = (conversationId) =>
-  api.post(`/chat/conversations/${conversationId}/read/`).then(r => r.data);
-
-export const sendChatMessage = (conversationId, messageData) =>
-  api.post(`/chat/conversations/${conversationId}/send/`, messageData).then(r => r.data);
-
-export const deleteChatMessage = (messageId) =>
-  api.delete(`/chat/messages/${messageId}/delete/`).then(r => r.data);
-
-export const markChatMessagesDelivered = (messageIds) =>
-  api.post('/chat/messages/delivered/', {
-    message_ids: Array.isArray(messageIds) ? messageIds : [messageIds],
-  }).then(r => r.data);
-
-export const shareChatLocation = (conversationId, latitude, longitude,
-  locationName = '', locationAddress = '') =>
-  api.post('/chat/share-location/', {
-    conversation_id: conversationId,
-    latitude,
-    longitude,
-    location_name: locationName,
-    location_address: locationAddress,
-  }).then(r => r.data);
-
-export const sendVoiceNote = (conversationId, voiceUrl, duration) =>
-  api.post('/chat/voice-note/', {
-    conversation_id: conversationId,
-    voice_url: voiceUrl,
-    duration,
-  }).then(r => r.data);
-
-export const sendChatTyping = (conversationId, isTyping) =>
-  api.post('/chat/typing/', {
-    conversation_id: conversationId,
-    is_typing: isTyping,
-  }).then(r => r.data);
-
-export const getUnreadChatCount = () =>
-  api.get('/chat/unread-count/').then(r => r.data.unread_count ?? 0);
-
+/**
+ * POST /api/v1/chat/upload/
+ * Upload a file (image, video, document, voice) and get back a file_url.
+ * file_type: 'image' | 'video' | 'file' | 'voice'
+ */
 export const uploadChatFile = (file, fileType = 'image') => {
   const form = new FormData();
-  form.append('file', file);
+  form.append('file',      file);
   form.append('file_type', fileType);
   return api.post('/chat/upload/', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
-  }).then(r => r.data);
+  }).then((r) => r.data);
+};
+
+/** POST /api/v1/chat/voice-note/  — send a recorded voice message */
+export const sendVoiceNote = (conversationId, voiceUrl, duration) =>
+  api.post('/chat/voice-note/', {
+    conversation_id: conversationId,
+    voice_url:       voiceUrl,
+    duration,
+  }).then((r) => r.data);
+
+/** POST /api/v1/chat/typing/  — broadcast typing indicator */
+export const sendChatTyping = (conversationId, isTyping) =>
+  api.post('/chat/typing/', {
+    conversation_id: conversationId,
+    is_typing:       isTyping,
+  }).then((r) => r.data);
+
+/** GET /api/v1/chat/unread-count/  — total unread message count */
+export const getUnreadChatCount = () =>
+  api.get('/chat/unread-count/').then((r) => r.data.unread_count ?? 0);
+
+// ─── Reviews API ──────────────────────────────────────────────────────────────
+const normalizeReview = (r) => ({
+  id:           r.id ?? r.review_id ?? r.pk,
+  reviewerName: r.reviewer_name ?? r.buyer_name ?? r.customer_name ??
+                [r.buyer?.first_name, r.buyer?.last_name].filter(Boolean).join(' ') ??
+                r.user?.name ?? r.user?.full_name ?? r.user?.username ?? 'Anonymous',
+  rating:       Number(r.rating ?? r.stars ?? r.score ?? 0),
+  comment:      r.comment ?? r.review ?? r.text ?? r.body ?? '',
+  productName:  r.product_name ?? r.listing_title ?? r.listing?.title ?? r.product?.name ?? '',
+  vendorReply:  r.vendor_reply ?? r.reply ?? r.response ?? r.vendor_response ?? '',
+  verified:     r.verified_purchase ?? r.is_verified ?? r.verified ?? false,
+  createdAt:    r.created_at
+    ? (() => {
+        try {
+          return new Date(r.created_at).toLocaleDateString('en-US', {
+            year: 'numeric', month: 'short', day: 'numeric',
+          });
+        } catch (_) { return r.created_at; }
+      })()
+    : r.date ?? r.timestamp ?? '',
+  _raw: r,
+});
+
+export const getVendorReviews = async ({ page = 1, search = '', rating = '', ordering = '-created_at' } = {}) => {
+  const vendorId = localStorage.getItem('vendor_id') || '';
+  if (!vendorId) {
+    try {
+      const profile = await getVendorProfile();
+      if (!profile?.id) return { reviews: [], total: 0 };
+      localStorage.setItem('vendor_id', String(profile.id));
+      return getVendorReviews({ page, search, rating, ordering });
+    } catch (_) { return { reviews: [], total: 0 }; }
+  }
+  try {
+    const params = new URLSearchParams();
+    params.append('page', page);
+    if (search)   params.append('search',   search);
+    if (rating)   params.append('rating',   rating);
+    if (ordering) params.append('ordering', ordering);
+    const r       = await api.get(`/reviews/vendors/${vendorId}/reviews/?${params.toString()}`);
+    const payload = r.data?.data ?? r.data;
+    let rawList = [], total = 0;
+    if (Array.isArray(payload))                { rawList = payload;          total = payload.length; }
+    else if (Array.isArray(payload?.results))  { rawList = payload.results;  total = payload.count ?? payload.total ?? rawList.length; }
+    else if (Array.isArray(payload?.reviews))  { rawList = payload.reviews;  total = payload.count ?? payload.total ?? rawList.length; }
+    return { reviews: rawList.map(normalizeReview), total };
+  } catch (err) {
+    if (err.response?.status === 404 || err.response?.status === 500) return { reviews: [], total: 0 };
+    throw err;
+  }
+};
+
+export const replyToReview = async (reviewId, replyText) => {
+  try {
+    const r = await api.post('/reviews/vendor/create/', {
+      review_id:    reviewId,
+      vendor_reply: replyText,
+      reply:        replyText,
+      response:     replyText,
+    });
+    return r.data?.data ?? r.data;
+  } catch (err) {
+    console.error('[replyToReview] error:', err.response?.data ?? err.message);
+    throw err;
+  }
 };
 
 export default api;

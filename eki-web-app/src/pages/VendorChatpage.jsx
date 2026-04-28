@@ -9,7 +9,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import api, { getVendorProfile, getImageUrl } from '../services/authService';
 import Footer from '../components/Vendormanagement/VendorFooter';
-import ekiLogo from '../assets/logo.jpeg';   // ✅ Fixed: logo.jpeg exists
+import ekiLogo from '../assets/logo.jpeg';
 
 const DEBUG_SENDER = false;
 
@@ -143,6 +143,8 @@ const VendorChatPage = () => {
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editText,         setEditText]         = useState('');
   const [deleteConfirmId,  setDeleteConfirmId]  = useState(null);
+  // Track which message is actively being deleted to show spinner
+  const [deletingId,       setDeletingId]       = useState(null);
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showUploadMenu,  setShowUploadMenu]  = useState(false);
@@ -152,6 +154,9 @@ const VendorChatPage = () => {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef   = useRef([]);
   const recordingIntervalRef = useRef(null);
+
+  // Location sharing state
+  const [isSharingLocation, setIsSharingLocation] = useState(false);
 
   const messagesEndRef    = useRef(null);
   const imageInputRef    = useRef(null);
@@ -397,13 +402,6 @@ const VendorChatPage = () => {
       }
 
     } else if (msgType === 'video') {
-      /* ── FIX: Video upload ─────────────────────────────────────────────
-         Videos must be uploaded via /chat/upload/ first (with file_type='video'),
-         then the returned absolute URL is sent via the conversations send endpoint.
-         Previously this path was falling through to the generic branch which was
-         already correct, but the file_type was being set to 'file' instead of
-         'video', causing the backend to reject or mishandle the upload.
-      ────────────────────────────────────────────────────────────────────── */
       const localUrl = URL.createObjectURL(file);
       optimistic = makeOptimisticMsg(tempId, file.name || 'Video', 'video', localUrl, file.name);
       setMessages((prev) => [...prev, optimistic]);
@@ -417,7 +415,7 @@ const VendorChatPage = () => {
         setUploadProgress(0);
         const uploadRes = await api.post('/chat/upload/', form, {
           headers: { 'Content-Type': 'multipart/form-data' },
-          timeout: 120000, // 2 min — overrides the default 15s which caused the cancel
+          timeout: 120000,
           onUploadProgress: (e) => {
             const pct = e.total ? Math.round((e.loaded * 100) / e.total) : 0;
             setUploadProgress(pct);
@@ -454,8 +452,9 @@ const VendorChatPage = () => {
       }
 
     } else {
-      // image or file
-      optimistic = makeOptimisticMsg(tempId, file.name || 'Attachment', msgType, null, file.name);
+      // image or file/document
+      const previewUrl = (msgType === 'image') ? URL.createObjectURL(file) : null;
+      optimistic = makeOptimisticMsg(tempId, file.name || 'Attachment', msgType, previewUrl, file.name);
       setMessages((prev) => [...prev, optimistic]);
       setTimeout(scrollToBottom, 50);
 
@@ -463,9 +462,17 @@ const VendorChatPage = () => {
         const form = new FormData();
         form.append('file', file);
         form.append('file_type', msgType === 'image' ? 'image' : 'file');
+
+        setUploadProgress(0);
         const uploadRes = await api.post('/chat/upload/', form, {
           headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (e) => {
+            const pct = e.total ? Math.round((e.loaded * 100) / e.total) : 0;
+            setUploadProgress(pct);
+          },
         });
+        setUploadProgress(0);
+
         const absUrl = getImageUrl(uploadRes.data.file_url);
         const res = await api.post(`/chat/conversations/${buyer.id}/send/`, {
           message_type: msgType,
@@ -476,8 +483,8 @@ const VendorChatPage = () => {
 
         const rawData = res.data?.data ?? res.data;
         const realMsg = (rawData && typeof rawData === 'object')
-          ? (normalizeMessage(rawData, 'vendor') ?? { ...optimistic, _optimistic: false })
-          : { ...optimistic, _optimistic: false };
+          ? (normalizeMessage(rawData, 'vendor') ?? { ...optimistic, _optimistic: false, mediaUrl: absUrl })
+          : { ...optimistic, _optimistic: false, mediaUrl: absUrl };
 
         setMessages((prev) => prev.map((m) => (m.id === tempId ? realMsg : m)));
         fetchConversations();
@@ -491,63 +498,97 @@ const VendorChatPage = () => {
         setMessages((prev) => prev.filter((m) => m.id !== tempId));
       } finally {
         setIsUploading(false);
+        setUploadProgress(0);
       }
     }
   }, [fetchConversations, scrollToBottom, recordingTime]);
 
   /* ── Send location ──────────────────────────────────────────────────── */
-  const sendLocation = useCallback(async () => {
-    const buyer = selectedBuyerRef.current;
-    if (!buyer) return;
+  const finalizeLocationSend = useCallback(async (convId, lat, lon, name) => {
+    setIsSharingLocation(true);
+    setSendError('');
 
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          await finalizeLocationSend(buyer.id, latitude, longitude, 'My location');
-        },
-        async () => {
-          const coords = prompt('Enter location as "latitude,longitude" (e.g. 0.3476,32.5825)');
-          if (coords) {
-            const [lat, lon] = coords.split(',').map(Number);
-            if (!isNaN(lat) && !isNaN(lon)) {
-              await finalizeLocationSend(buyer.id, lat, lon, 'Shared location');
-            } else {
-              alert('Invalid coordinates');
-            }
-          }
-        }
-      );
-    } else {
-      const coords = prompt('Enter location as "latitude,longitude" (e.g. 0.3476,32.5825)');
-      if (coords) {
-        const [lat, lon] = coords.split(',').map(Number);
-        if (!isNaN(lat) && !isNaN(lon)) {
-          await finalizeLocationSend(buyer.id, lat, lon, 'Shared location');
-        } else {
-          alert('Invalid coordinates');
-        }
-      }
-    }
-  }, []);
+    // Build optimistic location message immediately
+    const tempId = `temp-loc-${Date.now()}`;
+    const mapsUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+    const optimistic = makeOptimisticMsg(
+      tempId,
+      `📍 ${name}\n${lat.toFixed(6)}, ${lon.toFixed(6)}`,
+      'location',
+      mapsUrl,
+      null
+    );
+    setMessages((prev) => [...prev, optimistic]);
+    setTimeout(scrollToBottom, 50);
 
-  const finalizeLocationSend = async (convId, lat, lon, name) => {
-    setIsUploading(true);
     try {
-      await api.post('/chat/share-location/', {
+      const res = await api.post('/chat/share-location/', {
         conversation_id: convId,
         latitude: lat,
         longitude: lon,
         location_name: name,
         location_address: '',
       });
+
+      const rawData = res.data?.data ?? res.data;
+      const realMsg = (rawData && typeof rawData === 'object')
+        ? (normalizeMessage(rawData, 'vendor') ?? { ...optimistic, _optimistic: false })
+        : { ...optimistic, _optimistic: false };
+
+      setMessages((prev) => prev.map((m) => (m.id === tempId ? realMsg : m)));
       fetchConversations();
     } catch (err) {
-      setSendError('Failed to share location.');
+      const backendMsg =
+        err.response?.data?.message ??
+        err.response?.data?.detail ??
+        err.response?.data?.error ??
+        'Failed to share location.';
+      setSendError(backendMsg);
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
     } finally {
-      setIsUploading(false);
+      setIsSharingLocation(false);
     }
-  };
+  }, [fetchConversations, scrollToBottom]);
+
+  const sendLocation = useCallback(async () => {
+    const buyer = selectedBuyerRef.current;
+    if (!buyer) return;
+    setShowUploadMenu(false);
+
+    const doSend = (lat, lon, name) => finalizeLocationSend(buyer.id, lat, lon, name);
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          doSend(latitude, longitude, 'My Location');
+        },
+        () => {
+          // Fallback: manual entry
+          const coords = prompt('Location access denied.\nEnter location as "latitude,longitude" (e.g. 0.3476,32.5825)');
+          if (coords) {
+            const [lat, lon] = coords.split(',').map(Number);
+            if (!isNaN(lat) && !isNaN(lon)) {
+              doSend(lat, lon, 'Shared Location');
+            } else {
+              setSendError('Invalid coordinates entered.');
+            }
+          }
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    } else {
+      const coords = prompt('Geolocation not supported.\nEnter location as "latitude,longitude" (e.g. 0.3476,32.5825)');
+      if (coords) {
+        const [lat, lon] = coords.split(',').map(Number);
+        if (!isNaN(lat) && !isNaN(lon)) {
+          doSend(lat, lon, 'Shared Location');
+        } else {
+          setSendError('Invalid coordinates entered.');
+        }
+      }
+    }
+  }, [finalizeLocationSend]);
 
   /* ── Main send handler ──────────────────────────────────────────────── */
   const handleSendMessage = useCallback(async () => {
@@ -584,8 +625,7 @@ const VendorChatPage = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     setShowUploadMenu(false);
-    setAttachmentFile(file);
-    await sendAttachment(file);
+    await sendAttachment(file, 'image');
     setAttachmentFile(null);
     if (imageInputRef.current) imageInputRef.current.value = '';
   }, [sendAttachment]);
@@ -594,7 +634,6 @@ const VendorChatPage = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     setShowUploadMenu(false);
-    // Explicitly pass 'video' as the message type to ensure correct handling
     await sendAttachment(file, 'video');
     setAttachmentFile(null);
     if (videoInputRef.current) videoInputRef.current.value = '';
@@ -604,8 +643,7 @@ const VendorChatPage = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     setShowUploadMenu(false);
-    setAttachmentFile(file);
-    await sendAttachment(file);
+    await sendAttachment(file, 'file');
     setAttachmentFile(null);
     if (documentInputRef.current) documentInputRef.current.value = '';
   }, [sendAttachment]);
@@ -679,38 +717,64 @@ const VendorChatPage = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, [showEmojiPicker, showUploadMenu]);
 
-  /* ── Edit / Delete ────────────────────────────────────────────────── */
+  /* ── Edit message ─────────────────────────────────────────────────── */
   const handleEditStart = (msg) => {
     setEditingMessageId(msg.id);
     setEditText(msg.text);
+    setDeleteConfirmId(null);
   };
 
   const handleEditSave = async () => {
     const id = editingMessageId;
     if (!id || !editText.trim()) return;
     try {
+      // PATCH /api/v1/chat/messages/{message_id}/edit/
       await api.patch(`/chat/messages/${id}/edit/`, { message: editText.trim() });
       setMessages((prev) => prev.map((m) => {
         if (m.id === id) return { ...m, text: editText.trim() };
         return m;
       }));
       setEditingMessageId(null);
+      setEditText('');
     } catch (err) {
-      alert('Failed to edit. Check backend endpoint.');
+      const backendMsg =
+        err.response?.data?.message ??
+        err.response?.data?.detail ??
+        err.response?.data?.error ??
+        'Failed to edit message.';
+      setSendError(backendMsg);
     }
   };
 
-  const handleEditCancel = () => setEditingMessageId(null);
+  const handleEditCancel = () => {
+    setEditingMessageId(null);
+    setEditText('');
+  };
 
-  const handleDeleteConfirm = (msgId) => setDeleteConfirmId(msgId);
+  /* ── Delete message ────────────────────────────────────────────────── */
+  const handleDeleteConfirm = (msgId) => {
+    setDeleteConfirmId(msgId);
+    setEditingMessageId(null); // close any open edit
+  };
 
   const handleDeleteExecute = async (msgId) => {
+    setDeletingId(msgId);
     try {
+      // DELETE /api/v1/chat/messages/{message_id}/delete/
       await api.delete(`/chat/messages/${msgId}/delete/`);
       setMessages((prev) => prev.filter((m) => m.id !== msgId));
       setDeleteConfirmId(null);
+      fetchConversations(); // refresh sidebar last message
     } catch (err) {
-      alert('Failed to delete. Check backend endpoint.');
+      const backendMsg =
+        err.response?.data?.message ??
+        err.response?.data?.detail ??
+        err.response?.data?.error ??
+        'Failed to delete message.';
+      setSendError(backendMsg);
+      setDeleteConfirmId(null);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -775,7 +839,6 @@ const VendorChatPage = () => {
         {/* ── Header with Eki logo ── */}
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <div className="flex items-center gap-2">
-            {/* Eki Logo */}
             <img
               src={ekiLogo}
               alt="Eki"
@@ -923,6 +986,7 @@ const VendorChatPage = () => {
                     const isOptimistic = processedMsg._optimistic === true;
                     const isEditing    = editingMessageId === processedMsg.id;
                     const isDeletingConfirm = deleteConfirmId === processedMsg.id;
+                    const isBeingDeleted = deletingId === processedMsg.id;
 
                     return (
                       <div
@@ -939,29 +1003,71 @@ const VendorChatPage = () => {
                         )}
 
                         <div className={`max-w-[70%] flex flex-col ${isVendor ? 'items-end' : 'items-start'}`}>
+                          {/* Edit / Delete controls — only for vendor messages that are not optimistic */}
                           {isVendor && !isOptimistic && (
                             <div className={`mb-0.5 flex items-center gap-1 transition-opacity duration-150 ${
                               isEditing || isDeletingConfirm ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                             }`}>
-                              <button onClick={(e) => { e.stopPropagation(); handleEditStart(processedMsg); }} className="p-0.5 text-gray-400 hover:text-blue-500 rounded" title="Edit"><Edit3 size={10} /></button>
-                              <button onClick={(e) => { e.stopPropagation(); handleDeleteConfirm(processedMsg.id); }} className="p-0.5 text-gray-400 hover:text-red-500 rounded" title="Delete"><Trash2 size={10} /></button>
+                              {/* Edit button — only for text messages */}
+                              {processedMsg.type === 'text' && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleEditStart(processedMsg); }}
+                                  className="p-0.5 text-gray-400 hover:text-blue-500 rounded"
+                                  title="Edit message"
+                                >
+                                  <Edit3 size={10} />
+                                </button>
+                              )}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteConfirm(processedMsg.id); }}
+                                className="p-0.5 text-gray-400 hover:text-red-500 rounded"
+                                title="Delete message"
+                                disabled={isBeingDeleted}
+                              >
+                                {isBeingDeleted
+                                  ? <Loader2 size={10} className="animate-spin text-red-400" />
+                                  : <Trash2 size={10} />
+                                }
+                              </button>
                             </div>
                           )}
 
+                          {/* Delete confirmation */}
                           {isDeletingConfirm && (
-                            <div className="bg-white rounded-lg px-2 py-1 text-[10px] text-gray-700 mb-0.5 shadow-sm flex items-center gap-1">
-                              <span>Delete?</span>
-                              <button onClick={() => handleDeleteExecute(processedMsg.id)} className="text-red-500 font-bold">Yes</button>
-                              <button onClick={handleDeleteCancel} className="text-gray-400">No</button>
+                            <div className="bg-white rounded-lg px-2 py-1 text-[10px] text-gray-700 mb-0.5 shadow-sm flex items-center gap-1.5 border border-red-100">
+                              <span className="text-red-500 font-medium">Delete message?</span>
+                              <button
+                                onClick={() => handleDeleteExecute(processedMsg.id)}
+                                className="text-white bg-red-500 hover:bg-red-600 rounded px-1.5 py-0.5 font-bold transition-colors"
+                                disabled={isBeingDeleted}
+                              >
+                                {isBeingDeleted ? <Loader2 size={8} className="animate-spin" /> : 'Yes'}
+                              </button>
+                              <button
+                                onClick={handleDeleteCancel}
+                                className="text-gray-500 hover:text-gray-700 rounded px-1 py-0.5 transition-colors"
+                              >
+                                No
+                              </button>
                             </div>
                           )}
 
+                          {/* Editing input */}
                           {isEditing ? (
-                            <div className="flex items-center gap-1">
-                              <input type="text" value={editText} onChange={(e) => setEditText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleEditSave(); if (e.key === 'Escape') handleEditCancel(); }}
-                                className="px-2 py-1 bg-white border border-[#075E54] rounded-lg text-xs outline-none focus:ring-1 focus:ring-[#075E54] shadow-sm w-full min-w-[120px]" autoFocus />
-                              <button onClick={handleEditSave} className="p-0.5 text-green-600" title="Save"><CheckCheck size={12} /></button>
-                              <button onClick={handleEditCancel} className="p-0.5 text-gray-400" title="Cancel"><X size={12} /></button>
+                            <div className="flex items-center gap-1 w-full min-w-[200px]">
+                              <input
+                                type="text"
+                                value={editText}
+                                onChange={(e) => setEditText(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleEditSave();
+                                  if (e.key === 'Escape') handleEditCancel();
+                                }}
+                                className="px-2 py-1 bg-white border border-[#075E54] rounded-lg text-xs outline-none focus:ring-1 focus:ring-[#075E54] shadow-sm flex-1"
+                                autoFocus
+                              />
+                              <button onClick={handleEditSave} className="p-0.5 text-green-600 hover:text-green-700" title="Save"><CheckCheck size={12} /></button>
+                              <button onClick={handleEditCancel} className="p-0.5 text-gray-400 hover:text-gray-600" title="Cancel"><X size={12} /></button>
                             </div>
                           ) : (
                             <div className={`px-2.5 py-1.5 rounded-2xl text-xs shadow-sm ${
@@ -972,18 +1078,38 @@ const VendorChatPage = () => {
                               {processedMsg.type === 'voice' ? (
                                 <audio controls src={processedMsg.mediaUrl} className="max-w-full h-6" />
                               ) : processedMsg.type === 'image' ? (
-                                <img src={processedMsg.mediaUrl} alt="attachment" className="rounded-lg max-w-[180px] max-h-[180px] object-cover" />
+                                <img
+                                  src={processedMsg.mediaUrl}
+                                  alt="attachment"
+                                  className="rounded-lg max-w-[180px] max-h-[180px] object-cover cursor-pointer"
+                                  onClick={() => window.open(processedMsg.mediaUrl, '_blank')}
+                                />
                               ) : processedMsg.type === 'video' ? (
-                                <video controls src={processedMsg.mediaUrl} className="rounded-lg max-w-[180px] max-h-[180px] object-cover" />
+                                <video
+                                  controls
+                                  src={processedMsg.mediaUrl}
+                                  className="rounded-lg max-w-[200px] max-h-[180px]"
+                                />
                               ) : processedMsg.type === 'file' ? (
-                                <a href={processedMsg.mediaUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 underline">
-                                  <FileIcon size={12} />{safeStr(processedMsg.fileName || processedMsg.text)}
+                                <a
+                                  href={processedMsg.mediaUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="flex items-center gap-1.5 underline hover:opacity-80"
+                                >
+                                  <FileIcon size={12} />
+                                  <span className="truncate max-w-[140px]">{safeStr(processedMsg.fileName || processedMsg.text)}</span>
                                 </a>
                               ) : processedMsg.type === 'location' ? (
-                                <div className="text-xs">
-                                  <MapPin size={12} className="inline mr-1" />
-                                  {processedMsg.text}
-                                </div>
+                                <a
+                                  href={processedMsg.mediaUrl || `https://www.google.com/maps/search/?q=${encodeURIComponent(processedMsg.text)}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="flex items-start gap-1 hover:opacity-80"
+                                >
+                                  <MapPin size={12} className="mt-0.5 flex-shrink-0" />
+                                  <span className="whitespace-pre-wrap break-words">{safeStr(processedMsg.text)}</span>
+                                </a>
                               ) : (
                                 <p className="break-words whitespace-pre-wrap leading-relaxed">{safeStr(processedMsg.text)}</p>
                               )}
@@ -1022,13 +1148,22 @@ const VendorChatPage = () => {
           </div>
         )}
 
+        {/* Location sharing indicator */}
+        {isSharingLocation && (
+          <div className="flex items-center gap-2 px-4 py-1 bg-blue-50 text-blue-600 text-[10px]">
+            <Loader2 size={10} className="animate-spin" />
+            <span>Sharing location...</span>
+          </div>
+        )}
+
+        {/* Attachment preview + upload progress */}
         {(attachmentFile || (isUploading && uploadProgress > 0)) && (
           <div className="px-4 py-1 bg-white border-t border-gray-100 flex flex-col gap-1">
             {attachmentFile && (
               <div className="flex items-center gap-1 bg-gray-100 rounded-lg px-2 py-1 text-[10px] text-gray-600 flex-1 min-w-0">
                 {attachmentFile.type.startsWith('audio') ? <Mic size={10} /> :
                  attachmentFile.type.startsWith('video') ? <Video size={10} /> :
-                 attachmentFile.type.startsWith('image') ? <FileIcon size={10} /> : <FileIcon size={10} />}
+                 attachmentFile.type.startsWith('image') ? <Camera size={10} /> : <FileIcon size={10} />}
                 <span className="truncate max-w-[150px]">{attachmentFile.name}</span>
                 {attachmentFile.type.startsWith('audio') && (
                   <audio controls src={URL.createObjectURL(attachmentFile)} className="ml-1 h-5" />
@@ -1054,6 +1189,7 @@ const VendorChatPage = () => {
 
         {selectedBuyer && (
           <div className="px-3 py-2 bg-white border-t border-gray-200">
+            {/* Emoji picker */}
             {showEmojiPicker && (
               <div className="relative mb-1">
                 <div className="absolute bottom-full left-0 z-20 bg-white border border-gray-200 rounded-xl shadow-lg p-1.5 grid grid-cols-7 gap-0.5 max-w-[240px]">
@@ -1065,78 +1201,131 @@ const VendorChatPage = () => {
               </div>
             )}
 
+            {/* Upload menu */}
             {showUploadMenu && (
               <div className="relative mb-1" ref={uploadMenuRef}>
                 <div className="absolute bottom-full left-0 z-20 bg-white border border-gray-200 rounded-xl shadow-lg py-1 w-44">
                   <button
-                    onClick={() => imageInputRef.current?.click()}
+                    onClick={() => { setShowUploadMenu(false); imageInputRef.current?.click(); }}
                     className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 w-full text-left"
                   >
-                    <Camera size={14} /> Photo / Image
+                    <Camera size={14} className="text-[#075E54]" /> Photo / Image
                   </button>
                   <button
-                    onClick={() => videoInputRef.current?.click()}
+                    onClick={() => { setShowUploadMenu(false); videoInputRef.current?.click(); }}
                     className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 w-full text-left"
                   >
-                    <Video size={14} /> Video
+                    <Video size={14} className="text-blue-500" /> Video
                   </button>
                   <button
-                    onClick={() => documentInputRef.current?.click()}
+                    onClick={() => { setShowUploadMenu(false); documentInputRef.current?.click(); }}
                     className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 w-full text-left"
                   >
-                    <FileIcon size={14} /> Document
+                    <FileIcon size={14} className="text-orange-500" /> Document
                   </button>
                   <button
                     onClick={handleLocationFromMenu}
                     className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 w-full text-left"
+                    disabled={isSharingLocation}
                   >
-                    <MapPin size={14} /> Location
+                    <MapPin size={14} className="text-red-500" />
+                    {isSharingLocation ? 'Getting location...' : 'Location'}
                   </button>
                 </div>
               </div>
             )}
 
             <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-full px-3 py-1.5 focus-within:border-[#075E54]/30 focus-within:bg-white transition-all">
+              {/* Paperclip / attach menu */}
               <button
                 type="button"
                 ref={uploadBtnRef}
                 onClick={() => setShowUploadMenu((prev) => !prev)}
-                disabled={isUploading || isSending}
-                className="p-1 text-gray-400 hover:text-[#075E54] rounded-full transition-colors"
-                title="Attach"
+                disabled={isUploading || isSending || isSharingLocation}
+                className="p-1 text-gray-400 hover:text-[#075E54] rounded-full transition-colors disabled:opacity-40"
+                title="Attach file"
               >
                 <Paperclip size={16} />
               </button>
 
               {/* Hidden file inputs */}
-              <input type="file" ref={imageInputRef} className="hidden" onChange={handleImageChange} accept="image/*" />
-              {/* FIX: accept all common video formats explicitly */}
-              <input type="file" ref={videoInputRef} className="hidden" onChange={handleVideoChange} accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo,video/*" />
-              <input type="file" ref={documentInputRef} className="hidden" onChange={handleDocumentChange} accept="*/*" />
+              <input
+                type="file"
+                ref={imageInputRef}
+                className="hidden"
+                onChange={handleImageChange}
+                accept="image/*"
+              />
+              <input
+                type="file"
+                ref={videoInputRef}
+                className="hidden"
+                onChange={handleVideoChange}
+                accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo,video/*"
+              />
+              <input
+                type="file"
+                ref={documentInputRef}
+                className="hidden"
+                onChange={handleDocumentChange}
+                accept="*/*"
+              />
 
-              <button type="button" onClick={isRecording ? stopRecording : startRecording} disabled={isUploading || isSending}
-                className={`p-1 rounded-full transition-colors ${
+              {/* Voice recording */}
+              <button
+                type="button"
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={isUploading || isSending}
+                className={`p-1 rounded-full transition-colors disabled:opacity-40 ${
                   isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-gray-400 hover:text-[#075E54]'
-                }`} title={isRecording ? 'Stop' : 'Record voice'}>
+                }`}
+                title={isRecording ? 'Stop recording' : 'Record voice message'}
+              >
                 <Mic size={16} />
               </button>
-              {isRecording && <span className="text-[10px] text-red-500 font-mono">{new Date(recordingTime * 1000).toISOString().substr(14, 5)}</span>}
+              {isRecording && (
+                <span className="text-[10px] text-red-500 font-mono">
+                  {new Date(recordingTime * 1000).toISOString().substr(14, 5)}
+                </span>
+              )}
 
-              <button type="button" ref={emojiBtnRef} onClick={() => setShowEmojiPicker((prev) => !prev)}
-                className="p-1 text-gray-400 hover:text-[#075E54] rounded-full" title="Add emoji">
+              {/* Emoji */}
+              <button
+                type="button"
+                ref={emojiBtnRef}
+                onClick={() => setShowEmojiPicker((prev) => !prev)}
+                className="p-1 text-gray-400 hover:text-[#075E54] rounded-full"
+                title="Add emoji"
+              >
                 😀
               </button>
 
-              <input ref={inputRef} type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown}
-                placeholder="Type a message" className="flex-1 bg-transparent text-xs text-gray-700 placeholder-gray-400 outline-none" />
+              {/* Text input */}
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type a message"
+                className="flex-1 bg-transparent text-xs text-gray-700 placeholder-gray-400 outline-none"
+              />
 
-              <button type="button" onClick={handleSendMessage} disabled={(!inputValue.trim() && !attachmentFile) || isSending || isUploading}
+              {/* Send button */}
+              <button
+                type="button"
+                onClick={handleSendMessage}
+                disabled={(!inputValue.trim() && !attachmentFile) || isSending || isUploading || isSharingLocation}
                 className={`p-1.5 rounded-full transition-all ${
-                  (inputValue.trim() || attachmentFile) && !isSending && !isUploading
+                  (inputValue.trim() || attachmentFile) && !isSending && !isUploading && !isSharingLocation
                     ? 'bg-[#075E54] text-white shadow-sm'
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }`}>
-                {isSending || isUploading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                }`}
+              >
+                {isSending || isUploading
+                  ? <Loader2 size={14} className="animate-spin" />
+                  : <Send size={14} />
+                }
               </button>
             </div>
           </div>
