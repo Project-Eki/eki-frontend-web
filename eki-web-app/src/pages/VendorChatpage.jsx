@@ -4,7 +4,7 @@ import {
   File as FileIcon, X, Loader2, MessageCircle,
   Plus, Filter, CheckCheck, AlertCircle,
   Edit3, Trash2, Mic, Video, MapPin, Camera,
-  ArrowLeft
+  ArrowLeft, Smile
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api, { getVendorProfile, getImageUrl } from '../services/authService';
@@ -128,7 +128,6 @@ const loadLeaflet = () => {
       resolve(window.L);
       return;
     }
-    // Load CSS
     if (!document.getElementById('leaflet-css')) {
       const link = document.createElement('link');
       link.id = 'leaflet-css';
@@ -136,7 +135,6 @@ const loadLeaflet = () => {
       link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
       document.head.appendChild(link);
     }
-    // Load JS
     if (document.getElementById('leaflet-js')) {
       const check = setInterval(() => {
         if (window.L) {
@@ -191,7 +189,6 @@ const VendorChatPage = () => {
 
   const [isSharingLocation, setIsSharingLocation] = useState(false);
 
-  // ── Location picker states (Leaflet) ─────────────────────────────────
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [pickedCoords, setPickedCoords] = useState(null);
   const [locationName, setLocationName] = useState('');
@@ -215,7 +212,6 @@ const VendorChatPage = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
-  /* ── Fetch vendor profile ────────────────────────────────────────────── */
   useEffect(() => {
     const load = async () => {
       try {
@@ -238,7 +234,6 @@ const VendorChatPage = () => {
     load();
   }, []);
 
-  /* ── Fetch conversations ─────────────────────────────────────────────── */
   const fetchConversations = useCallback(async () => {
     try {
       const res  = await api.get('/chat/conversations/');
@@ -263,7 +258,6 @@ const VendorChatPage = () => {
     }
   }, []);
 
-  /* ── Load messages ──────────────────────────────────────────────────── */
   const loadMessages = useCallback(async (conversationId) => {
     const toNorm = (raw) => {
       if (DEBUG_SENDER && raw.length > 0 && !debugLoggedRef.current) {
@@ -318,7 +312,6 @@ const VendorChatPage = () => {
     return null;
   }, []);
 
-  /* ── Select conversation ─────────────────────────────────────────────── */
   const handleSelectConversation = useCallback(async (buyer) => {
     setSelectedBuyer(buyer);
     selectedBuyerRef.current = buyer;
@@ -342,7 +335,6 @@ const VendorChatPage = () => {
     setTimeout(scrollToBottom, 100);
   }, [loadMessages, scrollToBottom]);
 
-  /* ── Send text only ────────────────────────────────────────────────── */
   const sendTextOnly = useCallback(async (textToSend) => {
     const text  = textToSend.trim();
     const buyer = selectedBuyerRef.current;
@@ -378,7 +370,6 @@ const VendorChatPage = () => {
     }
   }, [fetchConversations, scrollToBottom]);
 
-  /* ── Send attachment (image, video, file, voice) ─────────────────────── */
   const sendAttachment = useCallback(async (file, msgTypeParam = null) => {
     const buyer = selectedBuyerRef.current;
     if (!buyer || !file) return;
@@ -455,7 +446,6 @@ const VendorChatPage = () => {
         form.append('file_type', 'video');
 
         setUploadProgress(0);
-        // No timeout – allows large video uploads to complete
         const uploadRes = await api.post('/chat/upload/', form, {
           headers: { 'Content-Type': 'multipart/form-data' },
           onUploadProgress: (e) => {
@@ -494,7 +484,6 @@ const VendorChatPage = () => {
       }
 
     } else {
-      // image or file/document
       const previewUrl = (msgType === 'image') ? URL.createObjectURL(file) : null;
       optimistic = makeOptimisticMsg(tempId, file.name || 'Attachment', msgType, previewUrl, file.name);
       setMessages((prev) => [...prev, optimistic]);
@@ -545,7 +534,6 @@ const VendorChatPage = () => {
     }
   }, [fetchConversations, scrollToBottom, recordingTime]);
 
-  /* ── Send location (finalizer) ───────────────────────────────────────── */
   const finalizeLocationSend = useCallback(async (convId, lat, lon, name) => {
     setIsSharingLocation(true);
     setSendError('');
@@ -591,7 +579,6 @@ const VendorChatPage = () => {
     }
   }, [fetchConversations, scrollToBottom]);
 
-  // ── Leaflet‑based map picker ──────────────────────────────────────────
   const openLocationPicker = useCallback(async () => {
     const buyer = selectedBuyerRef.current;
     if (!buyer) return;
@@ -679,7 +666,6 @@ const VendorChatPage = () => {
     }
   };
 
-  // Initialise Leaflet map when modal opens and loading is done
   useEffect(() => {
     if (!showLocationPicker || mapLoading) return;
     const mapDiv = document.getElementById('location-map');
@@ -688,13 +674,12 @@ const VendorChatPage = () => {
     const L = window.L;
     if (!L || !L.map) return;
 
-    // Destroy previous map instance if any
     if (mapInstanceRef.current) {
       mapInstanceRef.current.remove();
       mapInstanceRef.current = null;
     }
 
-    const defaultPos = [0.3476, 32.5825]; // Kampala
+    const defaultPos = [0.3476, 32.5825];
     const map = L.map('location-map', {
       center: defaultPos,
       zoom: 13,
@@ -716,11 +701,9 @@ const VendorChatPage = () => {
     mapInstanceRef.current = map;
     markerRef.current = marker;
 
-    // Set initial coords
     setPickedCoords({ lat: defaultPos[0], lng: defaultPos[1] });
     reverseGeocode(defaultPos[0], defaultPos[1]);
 
-    // Invalidate map size after a short delay (for modal transitions)
     setTimeout(() => map.invalidateSize(), 100);
 
     return () => {
@@ -729,14 +712,12 @@ const VendorChatPage = () => {
         mapInstanceRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showLocationPicker, mapLoading]);
 
   const handleLocationFromMenu = useCallback(() => {
     openLocationPicker();
   }, [openLocationPicker]);
 
-  /* ── Main send handler ──────────────────────────────────────────────── */
   const handleSendMessage = useCallback(async () => {
     const hasText = inputValue.trim().length > 0;
     const hasAttachment = !!attachmentFile;
@@ -766,7 +747,6 @@ const VendorChatPage = () => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); }
   }, [handleSendMessage]);
 
-  /* ── File change handlers for each type ─────────────────────────────── */
   const handleImageChange = useCallback(async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -794,7 +774,6 @@ const VendorChatPage = () => {
     if (documentInputRef.current) documentInputRef.current.value = '';
   }, [sendAttachment]);
 
-  /* ── Voice recording ────────────────────────────────────────────────── */
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -833,7 +812,6 @@ const VendorChatPage = () => {
     clearInterval(recordingIntervalRef.current);
   }, []);
 
-  /* ── Close popovers on outside click ────────────────────────── */
   useEffect(() => {
     if (!showEmojiPicker && !showUploadMenu) return;
     const handler = (e) => {
@@ -858,7 +836,6 @@ const VendorChatPage = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, [showEmojiPicker, showUploadMenu]);
 
-  /* ── Edit message ─────────────────────────────────────────────────── */
   const handleEditStart = (msg) => {
     setEditingMessageId(msg.id);
     setEditText(msg.text);
@@ -869,7 +846,6 @@ const VendorChatPage = () => {
     const id = editingMessageId;
     if (!id || !editText.trim()) return;
     try {
-      // PATCH /api/v1/chat/messages/{message_id}/edit/
       await api.patch(`/chat/messages/${id}/edit/`, { message: editText.trim() });
       setMessages((prev) => prev.map((m) => {
         if (m.id === id) return { ...m, text: editText.trim() };
@@ -892,20 +868,18 @@ const VendorChatPage = () => {
     setEditText('');
   };
 
-  /* ── Delete message ────────────────────────────────────────────────── */
   const handleDeleteConfirm = (msgId) => {
     setDeleteConfirmId(msgId);
-    setEditingMessageId(null); // close any open edit
+    setEditingMessageId(null);
   };
 
   const handleDeleteExecute = async (msgId) => {
     setDeletingId(msgId);
     try {
-      // DELETE /api/v1/chat/messages/{message_id}/delete/
       await api.delete(`/chat/messages/${msgId}/delete/`);
       setMessages((prev) => prev.filter((m) => m.id !== msgId));
       setDeleteConfirmId(null);
-      fetchConversations(); // refresh sidebar last message
+      fetchConversations();
     } catch (err) {
       const backendMsg =
         err.response?.data?.message ??
@@ -977,13 +951,13 @@ const VendorChatPage = () => {
       {/* LEFT SIDEBAR */}
       <div className="w-64 flex-shrink-0 flex flex-col bg-white border-r border-gray-100">
 
-        {/* ── Header with Eki logo ── */}
+        {/* Header with enlarged Eki logo */}
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <div className="flex items-center gap-2">
             <img
               src={ekiLogo}
               alt="Eki"
-              className="w-7 h-7 rounded-full object-cover shadow-sm border border-[#075E54]/20"
+              className="w-10 h-10 rounded-full object-cover shadow-sm border border-[#075E54]/20"
             />
             <span className="font-semibold text-gray-800 text-sm">Eki Chat</span>
           </div>
@@ -1054,7 +1028,7 @@ const VendorChatPage = () => {
           ))}
         </div>
 
-        {/* ── Back to Dashboard button at bottom of sidebar ── */}
+        {/* Back to Dashboard button */}
         <div className="px-3 py-3 border-t border-gray-100">
           <button
             onClick={() => navigate('/vendordashboard')}
@@ -1092,7 +1066,8 @@ const VendorChatPage = () => {
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
+        {/* MESSAGE AREA WITH TIGHTER SPACING */}
+        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
           {loading ? (
             <div className="flex flex-col gap-3 animate-pulse">
               {[1, 2, 3].map((i) => (
@@ -1114,13 +1089,15 @@ const VendorChatPage = () => {
           ) : (
             Object.entries(groupedMessages).map(([dateKey, group]) => (
               <div key={dateKey}>
-                <div className="flex justify-center my-3">
+                {/* Date separator — reduced vertical margin */}
+                <div className="flex justify-center my-1.5">
                   <span className="text-[10px] text-gray-500 bg-white/80 px-2 py-0.5 rounded-md shadow-sm">
                     {formatDateSep(group.date)}
                   </span>
                 </div>
 
-                <div className="space-y-1">
+                {/* Message group — tighter spacing */}
+                <div className="space-y-0.5">
                   {group.msgs.map((msg, idx) => {
                     const processedMsg = extractAudioFromMessage(msg);
                     const isVendor     = processedMsg.sender === 'vendor';
@@ -1132,7 +1109,7 @@ const VendorChatPage = () => {
                     return (
                       <div
                         key={processedMsg.id ?? idx}
-                        className={`flex items-end gap-1.5 ${isVendor ? 'justify-end' : 'justify-start'} relative group`}
+                        className={`flex items-end gap-1 ${isVendor ? 'justify-end' : 'justify-start'} relative group`}
                       >
                         {!isVendor && (
                           <div className="w-6 h-6 rounded-full bg-[#075E54] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 mb-0.5 overflow-hidden shadow-sm">
@@ -1149,7 +1126,6 @@ const VendorChatPage = () => {
                             <div className={`mb-0.5 flex items-center gap-1 transition-opacity duration-150 ${
                               isEditing || isDeletingConfirm ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                             }`}>
-                              {/* Edit button — only for text messages */}
                               {processedMsg.type === 'text' && (
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleEditStart(processedMsg); }}
@@ -1173,7 +1149,6 @@ const VendorChatPage = () => {
                             </div>
                           )}
 
-                          {/* Delete confirmation */}
                           {isDeletingConfirm && (
                             <div className="bg-white rounded-lg px-2 py-1 text-[10px] text-gray-700 mb-0.5 shadow-sm flex items-center gap-1.5 border border-red-100">
                               <span className="text-red-500 font-medium">Delete message?</span>
@@ -1193,7 +1168,6 @@ const VendorChatPage = () => {
                             </div>
                           )}
 
-                          {/* Editing input */}
                           {isEditing ? (
                             <div className="flex items-center gap-1 w-full min-w-[200px]">
                               <input
@@ -1211,7 +1185,7 @@ const VendorChatPage = () => {
                               <button onClick={handleEditCancel} className="p-0.5 text-gray-400 hover:text-gray-600" title="Cancel"><X size={12} /></button>
                             </div>
                           ) : (
-                            <div className={`px-2.5 py-1.5 rounded-2xl text-xs shadow-sm ${
+                            <div className={`px-2.5 py-1 rounded-2xl text-xs shadow-sm ${
                               isVendor
                                 ? `bg-[#075E54] text-white rounded-br-md ${isOptimistic ? 'opacity-70' : ''}`
                                 : 'bg-[#EFB034] text-gray-900 rounded-bl-md border border-[#d4952c]/30'
@@ -1257,7 +1231,8 @@ const VendorChatPage = () => {
                             </div>
                           )}
 
-                          <div className={`flex items-center gap-1 mt-0.5 ${isVendor ? 'flex-row-reverse' : ''}`}>
+                          {/* Timestamp row — zero top margin, tighter gap */}
+                          <div className={`flex items-center gap-0.5 mt-0 ${isVendor ? 'flex-row-reverse' : ''}`}>
                             <span className="text-[9px] text-gray-500">{formatTime(processedMsg.timestamp)}</span>
                             {isVendor && !isOptimistic && <CheckCheck size={10} className="text-[#075E54]" />}
                             {isVendor && isOptimistic  && <Loader2 size={8} className="animate-spin text-gray-400" />}
@@ -1289,7 +1264,6 @@ const VendorChatPage = () => {
           </div>
         )}
 
-        {/* Location sharing indicator */}
         {isSharingLocation && (
           <div className="flex items-center gap-2 px-4 py-1 bg-blue-50 text-blue-600 text-[10px]">
             <Loader2 size={10} className="animate-spin" />
@@ -1297,7 +1271,6 @@ const VendorChatPage = () => {
           </div>
         )}
 
-        {/* Attachment preview + upload progress */}
         {(attachmentFile || (isUploading && uploadProgress > 0)) && (
           <div className="px-4 py-1 bg-white border-t border-gray-100 flex flex-col gap-1">
             {attachmentFile && (
@@ -1328,15 +1301,25 @@ const VendorChatPage = () => {
           </div>
         )}
 
+        {/* ── COMPACT INPUT BAR (WhatsApp style) ── */}
         {selectedBuyer && (
-          <div className="px-3 py-2 bg-white border-t border-gray-200">
+          <div className="px-2 py-1 bg-white border-t border-gray-200">
             {/* Emoji picker */}
             {showEmojiPicker && (
               <div className="relative mb-1">
                 <div className="absolute bottom-full left-0 z-20 bg-white border border-gray-200 rounded-xl shadow-lg p-1.5 grid grid-cols-7 gap-0.5 max-w-[240px]">
                   {EMOJI_LIST.map((emoji) => (
-                    <button key={emoji} onClick={() => { setInputValue((prev) => prev + emoji); setShowEmojiPicker(false); inputRef.current?.focus(); }}
-                      className="w-7 h-7 flex items-center justify-center text-sm hover:bg-gray-100 rounded">{emoji}</button>
+                    <button
+                      key={emoji}
+                      onClick={() => {
+                        setInputValue((prev) => prev + emoji);
+                        setShowEmojiPicker(false);
+                        inputRef.current?.focus();
+                      }}
+                      className="w-7 h-7 flex items-center justify-center text-sm hover:bg-gray-100 rounded"
+                    >
+                      {emoji}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -1376,8 +1359,9 @@ const VendorChatPage = () => {
               </div>
             )}
 
-            <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-full px-3 py-1.5 focus-within:border-[#075E54]/30 focus-within:bg-white transition-all">
-              {/* Paperclip / attach menu */}
+            {/* Input row */}
+            <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-full px-2 py-1 focus-within:border-[#075E54]/30 focus-within:bg-white transition-all">
+              {/* Paperclip / attach */}
               <button
                 type="button"
                 ref={uploadBtnRef}
@@ -1390,55 +1374,39 @@ const VendorChatPage = () => {
               </button>
 
               {/* Hidden file inputs */}
-              <input
-                type="file"
-                ref={imageInputRef}
-                className="hidden"
-                onChange={handleImageChange}
-                accept="image/*"
-              />
-              <input
-                type="file"
-                ref={videoInputRef}
-                className="hidden"
-                onChange={handleVideoChange}
-                accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo,video/*"
-              />
-              <input
-                type="file"
-                ref={documentInputRef}
-                className="hidden"
-                onChange={handleDocumentChange}
-                accept="*/*"
-              />
+              <input type="file" ref={imageInputRef} className="hidden" onChange={handleImageChange} accept="image/*" />
+              <input type="file" ref={videoInputRef} className="hidden" onChange={handleVideoChange} accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo,video/*" />
+              <input type="file" ref={documentInputRef} className="hidden" onChange={handleDocumentChange} accept="*/*" />
 
-              {/* Voice recording */}
-              <button
-                type="button"
-                onClick={isRecording ? stopRecording : startRecording}
-                disabled={isUploading || isSending}
-                className={`p-1 rounded-full transition-colors disabled:opacity-40 ${
-                  isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-gray-400 hover:text-[#075E54]'
-                }`}
-                title={isRecording ? 'Stop recording' : 'Record voice message'}
-              >
-                <Mic size={16} />
-              </button>
+              {/* Mic when empty, send when text */}
+              {inputValue.trim().length === 0 && !attachmentFile ? (
+                <button
+                  type="button"
+                  onClick={isRecording ? stopRecording : startRecording}
+                  disabled={isUploading || isSending}
+                  className={`p-1 rounded-full transition-colors disabled:opacity-40 ${
+                    isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-gray-400 hover:text-[#075E54]'
+                  }`}
+                  title={isRecording ? 'Stop recording' : 'Record voice message'}
+                >
+                  <Mic size={16} />
+                </button>
+              ) : null}
               {isRecording && (
                 <span className="text-[10px] text-red-500 font-mono">
                   {new Date(recordingTime * 1000).toISOString().substr(14, 5)}
                 </span>
               )}
 
-              {/* Emoji */}
+              {/* Emoji button with Smile icon */}
               <button
                 type="button"
                 ref={emojiBtnRef}
                 onClick={() => setShowEmojiPicker((prev) => !prev)}
-                className="p-1 text-gray-400 hover:text-[#075E54] rounded-full"
+                className="p-1 text-gray-400 hover:text-[#075E54] rounded-full transition-colors"
                 title="Add emoji"
               >
-                😀
+                <Smile size={16} />
               </button>
 
               {/* Text input */}
@@ -1452,27 +1420,30 @@ const VendorChatPage = () => {
                 className="flex-1 bg-transparent text-xs text-gray-700 placeholder-gray-400 outline-none"
               />
 
-              {/* Send button */}
-              <button
-                type="button"
-                onClick={handleSendMessage}
-                disabled={(!inputValue.trim() && !attachmentFile) || isSending || isUploading || isSharingLocation}
-                className={`p-1.5 rounded-full transition-all ${
-                  (inputValue.trim() || attachmentFile) && !isSending && !isUploading && !isSharingLocation
-                    ? 'bg-[#075E54] text-white shadow-sm'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                {isSending || isUploading
-                  ? <Loader2 size={14} className="animate-spin" />
-                  : <Send size={14} />
-                }
-              </button>
+              {/* Send button (only when text exists) */}
+              {(inputValue.trim().length > 0 || attachmentFile) && (
+                <button
+                  type="button"
+                  onClick={handleSendMessage}
+                  disabled={isSending || isUploading || isSharingLocation}
+                  className={`p-1 rounded-full transition-all ${
+                    !isSending && !isUploading && !isSharingLocation
+                      ? 'bg-[#075E54] text-white shadow-sm'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  {isSending || isUploading ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Send size={14} />
+                  )}
+                </button>
+              )}
             </div>
           </div>
         )}
 
-        {/* ── Location Picker Modal (Leaflet) ───────────────────────────── */}
+        {/* Location Picker Modal */}
         {showLocationPicker && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
             <div className="bg-white rounded-2xl w-11/12 max-w-lg p-4 shadow-2xl relative">
