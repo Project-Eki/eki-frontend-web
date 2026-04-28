@@ -3,9 +3,23 @@ import { Layers, ChevronLeft, ChevronRight, Search, Download } from "lucide-reac
 
 const GOLD = "#EFB034";
 
-const STATUS_OPTIONS = ["All", "Active", "Flagged", "Draft", "Archived"];
-const CATEGORY_OPTIONS = ["All Categories", "Technology", "Home Services", "Creative", "Business", "Health", "Education"];
+const STATUS_OPTIONS   = ["All", "Active", "Flagged", "Draft", "Archived"];
 const ALLOWED_STATUSES = ["Active", "Flagged", "Draft", "Archived"];
+
+/**
+ * Category options match the CATEGORY_LABELS map in AdminServicesManagement.
+ * These are the human-readable forms of the backend business_category values
+ * for service-type listings:
+ *   airlines | transport | tailoring | hotels | professional
+ */
+const CATEGORY_OPTIONS = [
+  "All Categories",
+  "Airlines",
+  "Transport",
+  "Tailoring",
+  "Hotels",
+  "Professional",
+];
 
 const getStatusBadgeClass = (status) => {
   switch (status) {
@@ -33,7 +47,12 @@ const StatusFilterDropdown = ({ options, currentFilter, onFilterChange }) => (
         <option key={o} value={o} className="text-gray-700 bg-white">{o}</option>
       ))}
     </select>
-    <ChevronLeft size={12} className={`absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none rotate-[-90deg] ${currentFilter !== "All" ? "text-white" : "text-gray-400"}`} />
+    <ChevronLeft
+      size={12}
+      className={`absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none rotate-[-90deg] ${
+        currentFilter !== "All" ? "text-white" : "text-gray-400"
+      }`}
+    />
   </div>
 );
 
@@ -53,11 +72,18 @@ const CategoryFilterDropdown = ({ options, currentFilter, onFilterChange }) => (
   </div>
 );
 
-export const ServiceTable = ({ services, onSelect, selectedId, selectedRows, onSelectRow, onSelectAll }) => {
-  const [statusFilter, setStatusFilter] = useState("All");
+export const ServiceTable = ({
+  services,
+  onSelect,
+  selectedId,
+  selectedRows,
+  onSelectRow,
+  onSelectAll,
+}) => {
+  const [statusFilter, setStatusFilter]     = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [search, setSearch]                 = useState("");
+  const [page, setPage]                     = useState(1);
   const PER_PAGE = 5;
 
   const filtered = services
@@ -76,28 +102,36 @@ export const ServiceTable = ({ services, onSelect, selectedId, selectedRows, onS
     });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const safePage = Math.min(page, totalPages);
-  const slice = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+  const safePage   = Math.min(page, totalPages);
+  const slice      = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
 
   const handleSearch = (e) => { setSearch(e.target.value); setPage(1); };
 
   const handleExport = () => {
     if (filtered.length === 0) return;
-    const headers = ["Service ID", "Title", "Category", "Billing Model", "Vendor", "Recent Buyer", "Status"];
+    const headers = ["Service ID", "Title", "Category", "Billing Model", "Vendor", "Status"];
     const rows = filtered.map((s) =>
-      [`"${s.serviceId || ""}"`, `"${s.title || ""}"`, `"${s.category || ""}"`, `"${s.billingModel || ""}"`, `"${s.vendor || ""}"`, `"${s.buyer || ""}"`, `"${s.status || ""}"`].join(",")
+      [
+        `"${s.serviceId || ""}"`,
+        `"${s.title || ""}"`,
+        `"${s.category || ""}"`,
+        `"${s.billingModel || ""}"`,
+        `"${s.vendor || ""}"`,
+        `"${s.status || ""}"`,
+      ].join(",")
     );
-    const csv = [headers.join(","), ...rows].join("\n");
+    const csv  = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
     a.download = "services.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const allSelected = slice.length > 0 && slice.every((s) => selectedRows.includes(s.id));
+  const allSelected =
+    slice.length > 0 && slice.every((s) => selectedRows.includes(s.id));
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
@@ -111,6 +145,7 @@ export const ServiceTable = ({ services, onSelect, selectedId, selectedRows, onS
             </span>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Search */}
             <div className="relative">
               <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -121,8 +156,16 @@ export const ServiceTable = ({ services, onSelect, selectedId, selectedRows, onS
                 className="pl-7 pr-3 py-1.5 text-[11px] border border-gray-200 rounded-lg outline-none focus:border-amber-400 w-48"
               />
             </div>
-            <CategoryFilterDropdown options={CATEGORY_OPTIONS} currentFilter={categoryFilter} onFilterChange={setCategoryFilter} />
-            <StatusFilterDropdown options={STATUS_OPTIONS} currentFilter={statusFilter} onFilterChange={setStatusFilter} />
+            <CategoryFilterDropdown
+              options={CATEGORY_OPTIONS}
+              currentFilter={categoryFilter}
+              onFilterChange={setCategoryFilter}
+            />
+            <StatusFilterDropdown
+              options={STATUS_OPTIONS}
+              currentFilter={statusFilter}
+              onFilterChange={setStatusFilter}
+            />
             <button
               onClick={handleExport}
               className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold border rounded-lg transition-colors hover:opacity-90"
@@ -136,7 +179,7 @@ export const ServiceTable = ({ services, onSelect, selectedId, selectedRows, onS
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-left min-w-[900px]">
+        <table className="w-full text-left min-w-[860px]">
           <thead className="bg-gray-50 text-[10px] uppercase text-gray-500 font-bold border-b border-gray-100">
             <tr>
               <th className="px-3 py-3 w-8">
@@ -151,7 +194,7 @@ export const ServiceTable = ({ services, onSelect, selectedId, selectedRows, onS
               <th className="px-4 py-3">Category</th>
               <th className="px-4 py-3">Billing Model</th>
               <th className="px-4 py-3">Vendor</th>
-              <th className="px-4 py-3">Recent Buyer</th>
+              <th className="px-4 py-3">Availability</th>
               <th className="px-4 py-3">Status</th>
             </tr>
           </thead>
@@ -166,7 +209,9 @@ export const ServiceTable = ({ services, onSelect, selectedId, selectedRows, onS
               slice.map((service) => (
                 <tr
                   key={service.id}
-                  className={`hover:bg-gray-50 transition-colors cursor-pointer ${selectedId === service.id ? "bg-teal-50/40" : ""}`}
+                  className={`hover:bg-gray-50 transition-colors cursor-pointer ${
+                    selectedId === service.id ? "bg-teal-50/40" : ""
+                  }`}
                   onClick={() => onSelect(service)}
                 >
                   <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
@@ -181,7 +226,11 @@ export const ServiceTable = ({ services, onSelect, selectedId, selectedRows, onS
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                         {service.thumbnail ? (
-                          <img src={service.thumbnail} alt="" className="w-9 h-9 rounded-lg object-cover" />
+                          <img
+                            src={service.thumbnail}
+                            alt=""
+                            className="w-9 h-9 rounded-lg object-cover"
+                          />
                         ) : (
                           <Layers size={15} className="text-gray-400" />
                         )}
@@ -195,9 +244,15 @@ export const ServiceTable = ({ services, onSelect, selectedId, selectedRows, onS
                   <td className="px-4 py-3 text-xs text-gray-600">{service.category}</td>
                   <td className="px-4 py-3 text-xs font-medium text-gray-700">{service.billingModel}</td>
                   <td className="px-4 py-3 text-xs text-gray-600">{service.vendor}</td>
-                  <td className="px-4 py-3 text-xs text-gray-600">{service.buyer || "—"}</td>
+                  <td className="px-4 py-3 text-xs text-gray-500 capitalize">
+                    {service.availability?.replace(/_/g, " ") || "—"}
+                  </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase whitespace-nowrap border ${getStatusBadgeClass(service.status)}`}>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase whitespace-nowrap border ${getStatusBadgeClass(
+                        service.status
+                      )}`}
+                    >
                       {service.status}
                     </span>
                   </td>
@@ -212,13 +267,22 @@ export const ServiceTable = ({ services, onSelect, selectedId, selectedRows, onS
       {totalPages > 1 && (
         <div className="px-4 py-2.5 border-t border-gray-100 flex items-center justify-between">
           <span className="text-[11px] text-gray-400">
-            Showing {(safePage - 1) * PER_PAGE + 1}–{Math.min(safePage * PER_PAGE, filtered.length)} of {filtered.length} results
+            Showing {(safePage - 1) * PER_PAGE + 1}–
+            {Math.min(safePage * PER_PAGE, filtered.length)} of {filtered.length} results
           </span>
           <div className="flex gap-1">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1} className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 transition-colors">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={safePage === 1}
+              className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 transition-colors"
+            >
               <ChevronLeft size={14} />
             </button>
-            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 transition-colors">
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={safePage === totalPages}
+              className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 transition-colors"
+            >
               <ChevronRight size={14} />
             </button>
           </div>
