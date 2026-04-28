@@ -97,10 +97,10 @@ const VerifyEmail = () => {
   };
 
   return (
-    <div className="w-full flex flex-col items-center animate-fadeIn">
+    <div className="w-full flex flex-col items-center animate-fadeIn py-12">
       {/* Smaller Icon */}
-      <div className="w-10 h-10 bg-[#FFF8ED] rounded-full flex items-center justify-center mb-3 border border-[#F2B53D]/10">
-        <HiOutlineShieldCheck className="text-[#F2B53D]" size={20} />
+      <div className="w-11 h-11 bg-[#FFF8ED] rounded-full flex items-center justify-center mb-3 border border-[#F2B53D]/10">
+        <HiOutlineShieldCheck className="text-[#F2B53D]" size={22} />
       </div>
 
       {/* Smaller Heading */}

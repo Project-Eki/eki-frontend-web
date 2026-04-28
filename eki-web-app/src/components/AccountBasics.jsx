@@ -125,7 +125,7 @@ const AccountBasics = () => {
 
   return (
     <div className="w-full animate-slideUp">
-      <form className="space-y-2.5" onSubmit={handleContinue}>
+      <form className="space-y-4" onSubmit={handleContinue}>
         {errors.general && <MessageAlert message={errors.general} type="error" />}
 
         {/* Name Fields */}
