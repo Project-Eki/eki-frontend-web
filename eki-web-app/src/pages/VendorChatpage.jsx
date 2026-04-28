@@ -413,9 +413,9 @@ const VendorChatPage = () => {
         form.append('file_type', 'video');
 
         setUploadProgress(0);
+        // REMOVED timeout to allow large video uploads to complete
         const uploadRes = await api.post('/chat/upload/', form, {
           headers: { 'Content-Type': 'multipart/form-data' },
-          timeout: 120000,
           onUploadProgress: (e) => {
             const pct = e.total ? Math.round((e.loaded * 100) / e.total) : 0;
             setUploadProgress(pct);
