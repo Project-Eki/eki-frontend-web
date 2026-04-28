@@ -378,12 +378,6 @@ export const submitVendorApplication = async (formData) => {
   return response.data;
 };
 
-// Get vendor profile - USE THE CORRECT ENDPOINT
-// export const getVendorProfile = async () => {
-//   // Try register-vendor endpoint first (GET returns the profile)
-//   const response = await api.get("/accounts/register-vendor/");
-//   return response.data.data; 
-// };
 
 // Alternative: Use the dedicated vendor/profile endpoint
 export const getVendorProfileAlt = async () => {
@@ -593,6 +587,130 @@ export const markNotificationRead = async (notificationId) => {
 };
 
 
+// BUYER MANAGEMENT — add these to api.js
+
+// GET /api/v1/accounts/admin/buyers/
+// Returns { data: { buyers: [...], summary: {...}, pagination: {...} } }
+// Supports ?status=active|pending|suspended  ?search=...  ?page=N
+export const getBuyers = async (filters = {}) => {
+  const response = await api.get("/accounts/admin/buyers/", { params: filters });
+  return response.data;
+};
+
+// POST /api/v1/accounts/admin/buyers/{id}/action/
+// Django's AdminBuyerActionSerializer accepts:
+//   action : "activate" | "deactivate" | "verify_email" | "reset_password" | "delete"
+//   reason : string (optional)
+//
+// UI status  →  Django action
+//  "active"      "activate"
+//  "suspended"   "deactivate"
+//  "terminated"  "delete"
+export const updateBuyerStatus = async (buyerId, uiStatus, reason = "") => {
+  const actionMap = {
+    active:     "activate",
+    suspended:  "deactivate",
+    terminated: "delete",
+    // pass-through if caller already uses Django's action strings
+    activate:   "activate",
+    deactivate: "deactivate",
+    delete:     "delete",
+  };
+
+  const action = actionMap[uiStatus] ?? uiStatus;
+  const payload = { action };
+  if (reason) payload.reason = reason;
+
+  const response = await api.post(
+    `/accounts/admin/buyers/${buyerId}/action/`,
+    payload
+  );
+  return response.data;
+};
+
+
+
+// ============================================
+// ADMIN PRODUCTS API — add these to api.js
+// ============================================
+
+/**
+ * GET /listings/admin/products/
+ * Fetches all product listings across all vendors for the admin dashboard.
+ *
+ * Supported filters:
+ *   q            – free-text search (title, description, tags)
+ *   status       – "draft" | "published" | "archived"
+ *   business_category – retail | fashion | electronics | food | beauty | home | sports | automotive | other
+ *   vendor_id    – UUID
+ *   vendor_name  – partial match string
+ *   min_price / max_price
+ *   availability – available | limited | fully_booked | booked | by_request
+ *   tags         – comma-separated slugs
+ *   category     – category slug
+ *   page         – page number (20 results / page on web)
+ */
+export const getAdminProducts = async (filters = {}) => {
+  const params = {};
+
+  if (filters.q)                 params.q = filters.q;
+  if (filters.status)            params.status = filters.status;
+  if (filters.business_category) params.business_category = filters.business_category;
+  if (filters.vendor_id)         params.vendor_id = filters.vendor_id;
+  if (filters.vendor_name)       params.vendor_name = filters.vendor_name;
+  if (filters.min_price != null) params.min_price = filters.min_price;
+  if (filters.max_price != null) params.max_price = filters.max_price;
+  if (filters.availability)      params.availability = filters.availability;
+  if (filters.tags)              params.tags = filters.tags;
+  if (filters.category)          params.category = filters.category;
+  if (filters.page)              params.page = filters.page;
+
+  const response = await api.get("/listings/admin/products/", { params });
+  // Backend wraps in { success, data: { results, count, next, previous } }
+  return response.data;
+};
+
+/**
+ * GET /listings/admin/services/
+ * Fetches all service listings across all vendors for the admin dashboard.
+ * Accepts the same filter params as getAdminProducts.
+ */
+export const getAdminServices = async (filters = {}) => {
+  const params = {};
+
+  if (filters.q)                 params.q = filters.q;
+  if (filters.status)            params.status = filters.status;
+  if (filters.business_category) params.business_category = filters.business_category;
+  if (filters.vendor_id)         params.vendor_id = filters.vendor_id;
+  if (filters.vendor_name)       params.vendor_name = filters.vendor_name;
+  if (filters.min_price != null) params.min_price = filters.min_price;
+  if (filters.max_price != null) params.max_price = filters.max_price;
+  if (filters.availability)      params.availability = filters.availability;
+  if (filters.tags)              params.tags = filters.tags;
+  if (filters.category)          params.category = filters.category;
+  if (filters.page)              params.page = filters.page;
+
+  const response = await api.get("/listings/admin/services/", { params });
+  return response.data;
+};
+
+/**
+ * PATCH /listings/{listing_id}/status/
+ * Update a listing's status (draft | published | archived).
+ * Reuses the existing updateListingStatus helper if already present.
+ */
+export const adminUpdateListingStatus = async (listingId, status) => {
+  const response = await api.patch(`/listings/${listingId}/status/`, { status });
+  return response.data;
+};
+
+/**
+ * DELETE /listings/{listing_id}/
+ * Hard-delete a listing. Admin should confirm before calling.
+ */
+export const adminDeleteListing = async (listingId) => {
+  await api.delete(`/listings/${listingId}/`);
+};
 
 /*  PAYMENTS & TRANSACTIONS  */
 
@@ -684,6 +802,17 @@ export const processWithdrawal = async (withdrawalId, action, rejectionReason = 
   return response.data;
 };
 
+// Get current admin settings (profile, permissions, preferences)
+export const getAdminSettings = async () => {
+  const response = await api.get("/accounts/admin/settings/");
+  return response.data;
+};
+
+// Update admin settings
+export const updateAdminSettings = async (data) => {
+  const response = await api.patch("/accounts/admin/settings/", data);
+  return response.data;
+};
 
 // ============================================
 // PRIVACY SETTINGS API FUNCTIONS

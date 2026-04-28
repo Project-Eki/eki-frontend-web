@@ -75,30 +75,52 @@ function AccountSettingsPage() {
     const loadProfile = async () => {
       setProfileLoading(true);
       try {
+        // Check if user is actually a vendor
+        const role =
+          localStorage.getItem("userRole") ||
+          localStorage.getItem("user_role") ||
+          "";
+
+        if (role.toLowerCase() !== "vendor") {
+          // Not a vendor - redirect or show error
+          console.log("Not a vendor user, redirecting...");
+          // Optionally redirect to admin settings
+          // window.location.href = "/admin-account-settings";
+          setProfileLoading(false);
+          return;
+        }
         const res = await getVendorProfile();
         const remoteImage = res.profile_picture || null;
-        const fullName    = [res.first_name, res.last_name].filter(Boolean).join(' ').trim();
+        const fullName = [res.first_name, res.last_name]
+          .filter(Boolean)
+          .join(" ")
+          .trim();
 
         const storedPhoneSetDate =
-          localStorage.getItem('vendor_phone_set_date') ||
-          (res.business_phone || res.phone_number ? new Date().toISOString() : null);
+          localStorage.getItem("vendor_phone_set_date") ||
+          (res.business_phone || res.phone_number
+            ? new Date().toISOString()
+            : null);
 
         setUserData({
-          firstName:        res.first_name     || '',
-          lastName:         res.last_name      || '',
-          email:            res.email          || '',
-          phone:            res.business_phone || res.phone_number || '',
-          profileImage:     remoteImage,
+          firstName: res.first_name || "",
+          lastName: res.last_name || "",
+          email: res.email || "",
+          phone: res.business_phone || res.phone_number || "",
+          profileImage: remoteImage,
           profileImageFile: null,
-          phoneSetDate:     storedPhoneSetDate,
+          phoneSetDate: storedPhoneSetDate,
         });
 
-        const savedTempPhone = localStorage.getItem('vendor_temp_phone') || '';
+        const savedTempPhone = localStorage.getItem("vendor_temp_phone") || "";
         setTempPhone(savedTempPhone);
         setNavbarProfileImage(remoteImage);
         setNavbarName(fullName);
       } catch (err) {
         console.error('Failed to load profile:', err);
+        if (err.response?.status === 403) {
+          window.location.href = "/admin-account-settings";
+        }
       } finally {
         setProfileLoading(false);
       }

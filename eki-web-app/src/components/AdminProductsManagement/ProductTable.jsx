@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { Package, ChevronLeft, ChevronRight } from "lucide-react";
+// ProductTable.js (updated with loading prop)
+import React from "react";
+import { Package, ChevronLeft, ChevronRight, Loader } from "lucide-react";
 import { StatusFilterDropdown, CategoryFilterDropdown, ProductSearchBar } from "./ProductFilters";
 
 const STATUS_OPTIONS = ["All", "Active", "Flagged", "Draft", "Archived"];
@@ -15,43 +16,28 @@ const getStatusBadgeClass = (status) => {
   }
 };
 
-export const ProductTable = ({ products, onSelect, selectedId, selectedRows, onSelectRow, onSelectAll, onExport }) => {
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [categoryFilter, setCategoryFilter] = useState("All Categories");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const PER_PAGE = 5;
-
-  // Only show products with the 4 allowed statuses
-  const ALLOWED_STATUSES = ["Active", "Flagged", "Draft", "Archived"];
-
-  const filtered = products
-    .filter((p) => ALLOWED_STATUSES.includes(p.status))
-    .filter((p) => statusFilter === "All" || p.status === statusFilter)
-    .filter((p) => categoryFilter === "All Categories" || p.category === categoryFilter)
-    .filter((p) => {
-      if (!search.trim()) return true;
-      const q = search.toLowerCase();
-      return (
-        p.title?.toLowerCase().includes(q) ||
-        p.sku?.toLowerCase().includes(q) ||
-        p.vendor?.toLowerCase().includes(q)
-      );
-    });
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const safePage = Math.min(page, totalPages);
-  const slice = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
-
-  const handleSearch = (e) => {
-    setSearch(e.target.value);
-    setPage(1);
-  };
+export const ProductTable = ({ 
+  products, 
+  onSelect, 
+  selectedId, 
+  selectedRows, 
+  onSelectRow, 
+  onSelectAll, 
+  onExport,
+  onSearch,
+  onStatusFilter,
+  onCategoryFilter,
+  currentStatus,
+  currentCategory,
+  pagination,
+  onPageChange,
+  loading = false
+}) => {
+  const allSelected = products.length > 0 && products.every((p) => selectedRows.includes(p.id));
 
   const handleExport = () => {
-    if (filtered.length === 0) return;
     const headers = ["SKU", "Product Name", "Category", "Price", "Vendor", "Status"];
-    const rows = filtered.map((p) =>
+    const rows = products.map((p) =>
       [`"${p.sku || ""}"`, `"${p.title || ""}"`, `"${p.category || ""}"`, `"${p.price || ""}"`, `"${p.vendor || ""}"`, `"${p.status || ""}"`].join(",")
     );
     const csv = [headers.join(","), ...rows].join("\n");
@@ -59,13 +45,11 @@ export const ProductTable = ({ products, onSelect, selectedId, selectedRows, onS
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "products.csv";
+    a.download = `products_export_${new Date().toISOString().slice(0, 19)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     onExport?.();
   };
-
-  const allSelected = slice.length > 0 && slice.every((p) => selectedRows.includes(p.id));
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
@@ -75,19 +59,36 @@ export const ProductTable = ({ products, onSelect, selectedId, selectedRows, onS
           <div className="flex items-center gap-3">
             <h3 className="text-sm font-semibold text-gray-900">Products</h3>
             <span className="text-[11px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-              {filtered.length} product{filtered.length !== 1 ? "s" : ""}
+              {pagination?.totalItems || products.length} product{products.length !== 1 ? "s" : ""}
             </span>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <ProductSearchBar search={search} onSearchChange={handleSearch} onExport={handleExport} />
-            <CategoryFilterDropdown options={CATEGORY_OPTIONS} currentFilter={categoryFilter} onFilterChange={setCategoryFilter} />
-            <StatusFilterDropdown options={STATUS_OPTIONS} currentFilter={statusFilter} onFilterChange={setStatusFilter} />
+            <ProductSearchBar 
+              search={currentStatus === 'All' ? '' : undefined} 
+              onSearchChange={(e) => onSearch(e.target.value)} 
+              onExport={handleExport} 
+            />
+            <CategoryFilterDropdown 
+              options={CATEGORY_OPTIONS} 
+              currentFilter={currentCategory} 
+              onFilterChange={onCategoryFilter} 
+            />
+            <StatusFilterDropdown 
+              options={STATUS_OPTIONS} 
+              currentFilter={currentStatus} 
+              onFilterChange={onStatusFilter} 
+            />
           </div>
         </div>
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto relative">
+        {loading && (
+          <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
+            <Loader className="animate-spin text-[#EFB034]" size={32} />
+          </div>
+        )}
         <table className="w-full text-left min-w-[700px]">
           <thead className="bg-gray-50 text-[10px] uppercase text-gray-500 font-bold border-b border-gray-100">
             <tr>
@@ -95,7 +96,7 @@ export const ProductTable = ({ products, onSelect, selectedId, selectedRows, onS
                 <input
                   type="checkbox"
                   checked={allSelected}
-                  onChange={(e) => onSelectAll(slice.map((p) => p.id), e.target.checked)}
+                  onChange={(e) => onSelectAll(products.map((p) => p.id), e.target.checked)}
                   className="rounded border-gray-300"
                 />
               </th>
@@ -107,14 +108,14 @@ export const ProductTable = ({ products, onSelect, selectedId, selectedRows, onS
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {slice.length === 0 ? (
+            {products.length === 0 && !loading ? (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-400">
                   No products match your search.
                 </td>
               </tr>
             ) : (
-              slice.map((product) => (
+              products.map((product) => (
                 <tr
                   key={product.id}
                   className={`hover:bg-gray-50 transition-colors cursor-pointer ${selectedId === product.id ? "bg-teal-50/40" : ""}`}
@@ -159,22 +160,25 @@ export const ProductTable = ({ products, onSelect, selectedId, selectedRows, onS
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {pagination && pagination.totalPages > 1 && (
         <div className="px-4 py-2.5 border-t border-gray-100 flex items-center justify-between">
           <span className="text-[11px] text-gray-400">
-            Showing {(safePage - 1) * PER_PAGE + 1}–{Math.min(safePage * PER_PAGE, filtered.length)} of {filtered.length} results
+            Showing {((pagination.currentPage - 1) * 10) + 1}–{Math.min(pagination.currentPage * 10, pagination.totalItems)} of {pagination.totalItems} results
           </span>
           <div className="flex gap-1">
             <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={safePage === 1}
+              onClick={() => onPageChange(pagination.currentPage - 1)}
+              disabled={pagination.currentPage === 1}
               className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 transition-colors"
             >
               <ChevronLeft size={14} />
             </button>
+            <span className="px-2 py-1 text-xs text-gray-600">
+              Page {pagination.currentPage} of {pagination.totalPages}
+            </span>
             <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={safePage === totalPages}
+              onClick={() => onPageChange(pagination.currentPage + 1)}
+              disabled={pagination.currentPage === pagination.totalPages}
               className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 transition-colors"
             >
               <ChevronRight size={14} />

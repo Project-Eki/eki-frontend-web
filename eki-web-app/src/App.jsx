@@ -33,6 +33,10 @@ import VendorChat from "./pages/VendorChatpage";
 import AdminTransactions from "./pages/AdminTransactions";
 import AdminWalletTransactions from "./pages/AdminWalletTransactions";
 import AdminWithdrawals from "./pages/AdminWithdrawals";
+import AdminAccountSettingsPage from "./pages/AdminAccountSettingsPage";
+import AdminManagementPage from "./pages/AdminManagementPage";
+
+
 
 
 // --- THE OTP IMPORT ---
@@ -82,7 +86,6 @@ function App() {
           <Route path="/otp" element={<OtpVerify />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/admin-login" element={<AdminSignin />} />
-
           {/* Vendor Onboarding */}
           <Route
             path="/signup"
@@ -92,7 +95,6 @@ function App() {
               </VendorOnboardingProvider>
             }
           />
-
           {/* Protected Vendor Routes — VendorProvider scoped here only */}
           <Route
             path="/vendordashboard"
@@ -104,7 +106,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/product-dashboard"
             element={
@@ -115,18 +116,26 @@ function App() {
               </ProtectedRoute>
             }
           />
-
-          <Route path="/order-management" element={
-            <ProtectedRoute allowedRole="vendor">
-              <VendorLayout><OrderManagement /></VendorLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/vendor-chat" element={
-            <ProtectedRoute allowedRole="vendor">
-              <VendorLayout><VendorChat /></VendorLayout>
-            </ProtectedRoute>
-          } />
-
+          <Route
+            path="/order-management"
+            element={
+              <ProtectedRoute allowedRole="vendor">
+                <VendorLayout>
+                  <OrderManagement />
+                </VendorLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vendor-chat"
+            element={
+              <ProtectedRoute allowedRole="vendor">
+                <VendorLayout>
+                  <VendorChat />
+                </VendorLayout>
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/business-settings"
             element={
@@ -137,7 +146,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/services"
             element={
@@ -169,7 +177,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/admin-management"
             element={
@@ -178,8 +185,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-
-           <Route
+          <Route
             path="/admin-buyer-management"
             element={
               <ProtectedRoute allowedRole="admin">
@@ -187,9 +193,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-
-          
-           <Route
+          <Route
             path="/admin-products-management"
             element={
               <ProtectedRoute allowedRole="admin">
@@ -197,9 +201,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-
-          
-           <Route
+          <Route
             path="/admin-services-management"
             element={
               <ProtectedRoute allowedRole="admin">
@@ -207,7 +209,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/admin-payments"
             element={
@@ -216,7 +217,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/admin-transactions"
             element={
@@ -225,7 +225,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/admin-wallet-transactions"
             element={
@@ -234,7 +233,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/admin-withdrawals"
             element={
@@ -243,8 +241,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
-          
           <Route
             path="/admin-orders-management"
             element={
@@ -253,7 +249,22 @@ function App() {
               </ProtectedRoute>
             }
           />
-
+          <Route
+            path="/admin-account-settings"
+            element={
+              <ProtectedRoute allowedRole="admin">
+                <AdminAccountSettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin-management-page"
+            element={
+              <ProtectedRoute allowedRole="admin">
+                <AdminManagementPage />
+              </ProtectedRoute>
+            }
+          />
           {/* Shared Protected Routes */}
           <Route path="/settings" element={<Settings />} />
           <Route
@@ -264,10 +275,11 @@ function App() {
               </ProtectedRoute>
             }
           />
+          // Vendor routes should only be accessible to vendors
           <Route
             path="/account-settings"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRole="vendor">
                 <AccountSettingsPage />
               </ProtectedRoute>
             }
@@ -280,7 +292,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           {/* 404 Fallback */}
           <Route
             path="*"
