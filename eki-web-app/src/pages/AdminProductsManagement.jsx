@@ -12,7 +12,7 @@ import api from "../services/api";
 
 const GOLD = "#EFB034";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+//Helpers
 
 /**
  * Normalise a raw listing from the backend into the shape the UI components

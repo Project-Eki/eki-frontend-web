@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import api from "../../services/api"; // Add this import
+import api from "../../services/api";
 import {
   LayoutDashboard,
   Users,
@@ -115,7 +115,6 @@ const Sidebar = ({ mobileOpen, onClose }) => {
   useEffect(() => {
     const checkAdminStatus = async () => {
       try {
-        // Try to get admin profile from API
         const res = await api.get("/accounts/admin/profile/");
         const profile = res.data?.data || res.data;
         const isSuper = profile?.is_superuser === true;
@@ -123,7 +122,6 @@ const Sidebar = ({ mobileOpen, onClose }) => {
         console.log("Is Super Admin?", isSuper);
         setIsSuperAdmin(isSuper);
 
-        // Add Admin Management to menu if super admin
         if (isSuper) {
           setMenuItems([...baseMenuItems, adminManagementItem]);
         } else {
@@ -132,7 +130,6 @@ const Sidebar = ({ mobileOpen, onClose }) => {
       } catch (err) {
         console.error("Failed to check admin status:", err);
 
-        // Fallback: Check localStorage for role
         const userRole =
           localStorage.getItem("userRole") || localStorage.getItem("user_role");
         const isSuperFromStorage = userRole?.toLowerCase() === "superadmin";
@@ -180,9 +177,6 @@ const Sidebar = ({ mobileOpen, onClose }) => {
   const toggleSubmenu = (label) => {
     setOpenSubmenu(openSubmenu === label ? null : label);
   };
-
-  const isSubmenuActive = (item) =>
-    item.submenu?.some((sub) => location.pathname === sub.path);
 
   if (loading) {
     return (
@@ -235,7 +229,6 @@ const Sidebar = ({ mobileOpen, onClose }) => {
           <nav className="flex-1 px-2.5 flex flex-col overflow-y-auto pt-1">
             <ul className="space-y-0.5">
               {menuItems.map((item) => {
-                const childActive = isSubmenuActive(item);
                 const isOpen = openSubmenu === item.label;
 
                 return (
@@ -244,25 +237,25 @@ const Sidebar = ({ mobileOpen, onClose }) => {
                       <>
                         <button
                           onClick={() => toggleSubmenu(item.label)}
-                          className={`w-full flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-xl transition-all duration-200 cursor-pointer ${childActive ? "bg-white/10 text-white" : "text-white/65 hover:bg-white/8 hover:text-white"}`}
+                          className={`w-full flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-xl transition-all duration-200 cursor-pointer text-white/65 hover:bg-white/8 hover:text-white`}
                         >
                           <div className="flex items-center gap-2.5">
-                            <item.icon
-                              size={15}
-                              strokeWidth={childActive ? 2.2 : 1.7}
-                              className={childActive ? "text-[#EFB034]" : ""}
-                            />
+                            <item.icon size={15} strokeWidth={1.7} />
                             <span className="text-[12px] font-semibold">
                               {item.label}
                             </span>
                           </div>
                           <ChevronRight
                             size={12}
-                            className={`transition-transform duration-200 opacity-60 ${isOpen ? "rotate-90" : ""}`}
+                            className={`transition-transform duration-200 opacity-60 ${
+                              isOpen ? "rotate-90" : ""
+                            }`}
                           />
                         </button>
                         <div
-                          className={`overflow-hidden transition-all duration-200 ease-in-out ${isOpen ? "max-h-40 opacity-100" : "max-h-0 opacity-0"}`}
+                          className={`overflow-hidden transition-all duration-200 ease-in-out ${
+                            isOpen ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
+                          }`}
                         >
                           <div className="ml-3 mt-0.5 mb-0.5 pl-3 border-l border-white/10 space-y-0.5">
                             {item.submenu.map((subItem) => (
@@ -271,7 +264,11 @@ const Sidebar = ({ mobileOpen, onClose }) => {
                                 to={subItem.path}
                                 onClick={() => onClose?.()}
                                 className={({ isActive }) =>
-                                  `flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11.5px] font-medium transition-all ${isActive ? "bg-[#EFB034]/20 text-[#EFB034]" : "text-white/55 hover:bg-white/8 hover:text-white"}`
+                                  `flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11.5px] font-medium transition-all ${
+                                    isActive
+                                      ? "bg-[#EFB034] text-white"
+                                      : "text-white/65 hover:bg-white/8 hover:text-white"
+                                  }`
                                 }
                               >
                                 {({ isActive }) => (
@@ -279,11 +276,9 @@ const Sidebar = ({ mobileOpen, onClose }) => {
                                     <subItem.icon
                                       size={13}
                                       strokeWidth={isActive ? 2.2 : 1.6}
+                                      className={isActive ? "text-white" : ""}
                                     />
                                     <span>{subItem.label}</span>
-                                    {isActive && (
-                                      <span className="ml-auto w-1 h-1 rounded-full bg-[#EFB034]" />
-                                    )}
                                   </>
                                 )}
                               </NavLink>
@@ -295,11 +290,16 @@ const Sidebar = ({ mobileOpen, onClose }) => {
                       <NavLink to={item.path} onClick={() => onClose?.()}>
                         {({ isActive }) => (
                           <div
-                            className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all duration-200 cursor-pointer ${isActive ? "bg-[#EFB034] text-white shadow-sm" : "text-white/65 hover:bg-white/8 hover:text-white"}`}
+                            className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all duration-200 cursor-pointer ${
+                              isActive
+                                ? "bg-[#EFB034] text-white shadow-sm"
+                                : "text-white/65 hover:bg-white/8 hover:text-white"
+                            }`}
                           >
                             <item.icon
                               size={15}
                               strokeWidth={isActive ? 2.2 : 1.7}
+                              className={isActive ? "text-white" : ""}
                             />
                             <span className="text-[12px] font-semibold">
                               {item.label}
@@ -331,6 +331,7 @@ const Sidebar = ({ mobileOpen, onClose }) => {
                     <accountSettingsItem.icon
                       size={15}
                       strokeWidth={isActive ? 2.2 : 1.7}
+                      className={isActive ? "text-white" : ""}
                     />
                     <span className="text-[12px] font-semibold">
                       {accountSettingsItem.label}
@@ -342,7 +343,7 @@ const Sidebar = ({ mobileOpen, onClose }) => {
               {/* Logout Button */}
               <button
                 onClick={handleLogoutClick}
-                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[12px] font-semibold text-white/55 hover:bg-white/8 hover:text-white transition-all"
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[12px] font-semibold text-white/65 hover:bg-white/8 hover:text-white transition-all"
               >
                 <LogOut size={15} strokeWidth={1.7} />
                 <span>Log out</span>
