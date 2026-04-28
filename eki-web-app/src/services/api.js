@@ -628,6 +628,90 @@ export const updateBuyerStatus = async (buyerId, uiStatus, reason = "") => {
   return response.data;
 };
 
+
+
+// ============================================
+// ADMIN PRODUCTS API — add these to api.js
+// ============================================
+
+/**
+ * GET /listings/admin/products/
+ * Fetches all product listings across all vendors for the admin dashboard.
+ *
+ * Supported filters:
+ *   q            – free-text search (title, description, tags)
+ *   status       – "draft" | "published" | "archived"
+ *   business_category – retail | fashion | electronics | food | beauty | home | sports | automotive | other
+ *   vendor_id    – UUID
+ *   vendor_name  – partial match string
+ *   min_price / max_price
+ *   availability – available | limited | fully_booked | booked | by_request
+ *   tags         – comma-separated slugs
+ *   category     – category slug
+ *   page         – page number (20 results / page on web)
+ */
+export const getAdminProducts = async (filters = {}) => {
+  const params = {};
+
+  if (filters.q)                 params.q = filters.q;
+  if (filters.status)            params.status = filters.status;
+  if (filters.business_category) params.business_category = filters.business_category;
+  if (filters.vendor_id)         params.vendor_id = filters.vendor_id;
+  if (filters.vendor_name)       params.vendor_name = filters.vendor_name;
+  if (filters.min_price != null) params.min_price = filters.min_price;
+  if (filters.max_price != null) params.max_price = filters.max_price;
+  if (filters.availability)      params.availability = filters.availability;
+  if (filters.tags)              params.tags = filters.tags;
+  if (filters.category)          params.category = filters.category;
+  if (filters.page)              params.page = filters.page;
+
+  const response = await api.get("/listings/admin/products/", { params });
+  // Backend wraps in { success, data: { results, count, next, previous } }
+  return response.data;
+};
+
+/**
+ * GET /listings/admin/services/
+ * Fetches all service listings across all vendors for the admin dashboard.
+ * Accepts the same filter params as getAdminProducts.
+ */
+export const getAdminServices = async (filters = {}) => {
+  const params = {};
+
+  if (filters.q)                 params.q = filters.q;
+  if (filters.status)            params.status = filters.status;
+  if (filters.business_category) params.business_category = filters.business_category;
+  if (filters.vendor_id)         params.vendor_id = filters.vendor_id;
+  if (filters.vendor_name)       params.vendor_name = filters.vendor_name;
+  if (filters.min_price != null) params.min_price = filters.min_price;
+  if (filters.max_price != null) params.max_price = filters.max_price;
+  if (filters.availability)      params.availability = filters.availability;
+  if (filters.tags)              params.tags = filters.tags;
+  if (filters.category)          params.category = filters.category;
+  if (filters.page)              params.page = filters.page;
+
+  const response = await api.get("/listings/admin/services/", { params });
+  return response.data;
+};
+
+/**
+ * PATCH /listings/{listing_id}/status/
+ * Update a listing's status (draft | published | archived).
+ * Reuses the existing updateListingStatus helper if already present.
+ */
+export const adminUpdateListingStatus = async (listingId, status) => {
+  const response = await api.patch(`/listings/${listingId}/status/`, { status });
+  return response.data;
+};
+
+/**
+ * DELETE /listings/{listing_id}/
+ * Hard-delete a listing. Admin should confirm before calling.
+ */
+export const adminDeleteListing = async (listingId) => {
+  await api.delete(`/listings/${listingId}/`);
+};
+
 /*  PAYMENTS & TRANSACTIONS  */
 
 // Get payment transactions with filters and pagination
